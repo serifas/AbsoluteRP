@@ -1,0 +1,13 @@
+{
+    "Author": "Lynie",
+    "Name": "Absolute Roleplay",
+    "Punchline": "A plugin for creating profiles and sharing them, with more to come!",
+    "Description": "Use /absolute or the settings button to open.",
+    "InternalName": "Absolute Roleplay",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "Absolute",
+        "Roleplay",
+        "RP"
+    ]
+}
