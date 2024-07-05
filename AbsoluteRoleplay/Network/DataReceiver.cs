@@ -1168,6 +1168,9 @@ namespace Networking
                         }
                     }
                     plugin.OpenConnectionsWindow();
+                    plugin.newConnection = false;
+                    plugin.CheckConnectionsRequestStatus();
+                    
 
                 }
             }
@@ -1186,6 +1189,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     plugin.newConnection = true;
+                    plugin.CheckConnectionsRequestStatus();
 
                 }
             }

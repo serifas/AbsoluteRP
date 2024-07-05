@@ -579,7 +579,6 @@ namespace Networking
                         buffer.WriteString(username);
                         buffer.WriteString(receiverName);
                         buffer.WriteString(receiverWorld);
-
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

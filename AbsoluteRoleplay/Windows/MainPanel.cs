@@ -272,7 +272,6 @@ public class MainPanel : Window, IDisposable
             {
                 plugin.ControlsLogin = true;
                 plugin.newConnection = false;
-                plugin.UnloadConnectionsBar();
                 plugin.CloseAllWindows();
                 plugin.OpenMainPanel();
                 switchUI();

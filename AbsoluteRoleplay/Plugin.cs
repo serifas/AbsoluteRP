@@ -19,6 +19,7 @@ using System.Numerics;
 using OtterGui.Log;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using System.Threading.Channels;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 namespace AbsoluteRoleplay
 { 
     public partial class Plugin : IDalamudPlugin
@@ -171,6 +172,8 @@ namespace AbsoluteRoleplay
             UpdateStatus();
             //self explanitory
             ToggleMainUI();
+            //check for existing connection requests
+            CheckConnectionsRequestStatus();
         }
         public async void Connect()
         {
@@ -312,10 +315,9 @@ namespace AbsoluteRoleplay
 
 
         //used to alert people of incoming connection requests
-        public void LoadConnectionsBar(float deltaTime)
+        public void LoadConnectionsBar()
         {
-            timer += deltaTime;
-            float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0; // Alternate between 0 and 14 (red) every BlinkInterval
+           
 
             if (connectionsBarEntry == null)
             {
@@ -323,11 +325,12 @@ namespace AbsoluteRoleplay
                 if (dtrBar.Get(randomTitle) is not { } entry) return;
                 connectionsBarEntry = entry;
                 connectionsBarEntry.Tooltip = "New Connections Request";
+                ConnectionsWindow.currentListing = 2;
                 entry.OnClick = () => DataSender.RequestConnections(Configuration.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
             }
 
             SeStringBuilder statusString = new SeStringBuilder();
-            statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
+            statusString.AddUiGlow(14); // Apply pulsing glow
             statusString.AddText("\uE070"); //Boxed question mark (Mario brick)
             statusString.AddUiGlow(0);
             SeString str = statusString.BuiltString;
@@ -339,7 +342,8 @@ namespace AbsoluteRoleplay
         {
             if(connectionsBarEntry != null)
             {
-                connectionsBarEntry = null;
+                connectionsBarEntry?.Remove();
+                
             }
         }
         public void Dispose()
@@ -371,20 +375,24 @@ namespace AbsoluteRoleplay
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
-
-
-        private void OnUpdate(IFramework framework)
+        public void CheckConnectionsRequestStatus()
         {
-            TimeSpan deltaTimeSpan = framework.UpdateDelta;
+            TimeSpan deltaTimeSpan = Framework.UpdateDelta;
             float deltaTime = (float)deltaTimeSpan.TotalSeconds; // Convert deltaTime to seconds
-
-     
-
             // If we receive a connection request
             if (newConnection == true)
             {
-                LoadConnectionsBar(deltaTime);
+                LoadConnectionsBar();
             }
+            else
+            {
+                UnloadConnectionsBar();
+            }
+        }
+
+        private void OnUpdate(IFramework framework)
+        {
+        
 
             if (IsOnline() == true && ClientTCP.IsConnected() == true && ControlsLogin == false)
             {

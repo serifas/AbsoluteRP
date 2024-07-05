@@ -52,8 +52,6 @@ namespace AbsoluteRoleplay.Windows
         }
         public override void Draw()
         {
-            plugin.newConnection = false;
-            plugin.UnloadConnectionsBar();
             AddConnectionListingOptions();
             Vector2 windowSize = ImGui.GetWindowSize();
             Vector2 childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
@@ -208,7 +206,7 @@ namespace AbsoluteRoleplay.Windows
             public void AddConnectionListingOptions()
             {
             var (text, desc) = Constants.ConnectionListingVals[currentListing];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Alignment", text);
+            using var combo = OtterGui.Raii.ImRaii.Combo("##Connetions", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
