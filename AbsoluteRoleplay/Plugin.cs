@@ -20,13 +20,16 @@ using OtterGui.Log;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using System.Threading.Channels;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
-{ 
+{
     public partial class Plugin : IDalamudPlugin
     {
         public static Plugin plugin;
         public string username;
         private const string CommandName = "/absolute";
+        private const string ChatToggleCommand = "/arpchat";
         public bool loggedIn;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
@@ -62,6 +65,7 @@ namespace AbsoluteRoleplay
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
+        private ChatWindow ChatWindow { get; init; }
 
         //logger for printing errors and such
         public Logger logger = new Logger();
@@ -113,7 +117,11 @@ namespace AbsoluteRoleplay
 
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "Type /absolute to open the plugin window."
+                HelpMessage = "opens the plugin window."
+            }); 
+            CommandManager.AddHandler(ChatToggleCommand, new CommandInfo(OnChatCommand)
+            {
+                HelpMessage = "opens the chat window."
             });
             //init our windows
             OptionsWindow = new OptionsWindow(this);
@@ -127,6 +135,7 @@ namespace AbsoluteRoleplay
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
+            ChatWindow = new ChatWindow(this);
 
             Configuration.Initialize(PluginInterface);
 
@@ -142,6 +151,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
+            WindowSystem.AddWindow(ChatWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -200,13 +210,6 @@ namespace AbsoluteRoleplay
             //remove the current windows and switch back to login window.
             MainPanel.switchUI();
             MainPanel.login = true;
-
-            if (ClientTCP.IsConnected())
-            {
-                //if connected disconnect from the server
-                ClientTCP.Disconnect();
-            }
-
         }
         private void UnobservedTaskExceptionHandler(object sender, UnobservedTaskExceptionEventArgs e)
         {
@@ -315,9 +318,10 @@ namespace AbsoluteRoleplay
 
 
         //used to alert people of incoming connection requests
-        public void LoadConnectionsBar()
+        public void LoadConnectionsBar(float deltaTime)
         {
-           
+            timer += deltaTime;
+            float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0; // Alternate between 0 and 14 (red) every BlinkInterval
 
             if (connectionsBarEntry == null)
             {
@@ -330,7 +334,7 @@ namespace AbsoluteRoleplay
             }
 
             SeStringBuilder statusString = new SeStringBuilder();
-            statusString.AddUiGlow(14); // Apply pulsing glow
+            statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
             statusString.AddText("\uE070"); //Boxed question mark (Mario brick)
             statusString.AddUiGlow(0);
             SeString str = statusString.BuiltString;
@@ -372,6 +376,7 @@ namespace AbsoluteRoleplay
             RestorationWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
+            ChatWindow?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -382,7 +387,7 @@ namespace AbsoluteRoleplay
             // If we receive a connection request
             if (newConnection == true)
             {
-                LoadConnectionsBar();
+                LoadConnectionsBar(deltaTime);
             }
             else
             {
@@ -406,6 +411,10 @@ namespace AbsoluteRoleplay
         {
             // in response to the slash command, just toggle the display status of our main ui
             ToggleMainUI();
+        }
+        private void OnChatCommand(string command, string arguments)
+        {
+            ToggleChatUI();
         }
         public void CloseAllWindows()
         {
@@ -443,6 +452,7 @@ namespace AbsoluteRoleplay
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
+        public void ToggleChatUI() => ChatWindow.Toggle();
 
         internal async void UpdateStatus()
         {

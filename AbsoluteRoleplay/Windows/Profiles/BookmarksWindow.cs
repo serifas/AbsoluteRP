@@ -5,7 +5,6 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
 using ImGuiScene;
-using AbsoluteRoleplay;
 using OtterGui.Raii;
 using OtterGui;
 using System;
@@ -25,7 +24,7 @@ using Dalamud.Game.ClientState.Objects;
 using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Helpers;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class BookmarksWindow : Window, IDisposable
     {
@@ -36,7 +35,7 @@ namespace AbsoluteRoleplay.Windows
         public BookmarksWindow(Plugin plugin) : base(
        "BOOKMARKS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(300, 500),
                 MaximumSize = new Vector2(500, 800)
@@ -45,15 +44,15 @@ namespace AbsoluteRoleplay.Windows
         }
         public override void Draw()
         {
-            
+
             Vector2 windowSize = ImGui.GetWindowSize();
-            Vector2 childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
+            var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
             using var profileTable = ImRaii.Child("Profiles", childSize, true);
-            if(profileTable)
+            if (profileTable)
             {
                 if (plugin.IsOnline())
                 {
-                    for (int i = 1; i < profiles.Count; i++)
+                    for (var i = 1; i < profiles.Count; i++)
                     {
                         if (DisableBookmarkSelection == true)
                         {

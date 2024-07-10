@@ -15,7 +15,7 @@ using System.Linq;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Textures.TextureWraps;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public enum TabValue
     {
@@ -68,7 +68,7 @@ namespace AbsoluteRoleplay.Windows
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
 
                 MinimumSize = new Vector2(600, 400),
@@ -77,9 +77,9 @@ namespace AbsoluteRoleplay.Windows
 
             this.plugin = plugin;
             pg = Plugin.PluginInterface;
-            this.configuration = plugin.Configuration;
-            this._fileDialogManager = new FileDialogManager();
-           
+            configuration = plugin.Configuration;
+            _fileDialogManager = new FileDialogManager();
+
 
         }
         public override void OnOpen()
@@ -96,8 +96,8 @@ namespace AbsoluteRoleplay.Windows
             {
                 pictureTab = pictureTabImage;
             }
-            this.persistAvatarHolder = avatarHolder; //unneeded at the moment, but I seem to keep needing and not needing it so I am leaving it for now.
-            for (int bf = 0; bf < bioFieldsArr.Length; bf++)
+            persistAvatarHolder = avatarHolder; //unneeded at the moment, but I seem to keep needing and not needing it so I am leaving it for now.
+            for (var bf = 0; bf < bioFieldsArr.Length; bf++)
             {
                 //set all the bioFields to an empty string
                 bioFieldsArr[bf] = string.Empty;
@@ -107,7 +107,7 @@ namespace AbsoluteRoleplay.Windows
                 TabOpen.Add(tab, false); //set all tabs to be closed by default
             }
             //set the base value for our arrays and lists
-            for (int i = 0; i < 31; i++)
+            for (var i = 0; i < 31; i++)
             {
                 ChapterNames[i] = string.Empty;
                 ChapterContents[i] = string.Empty;
@@ -122,16 +122,16 @@ namespace AbsoluteRoleplay.Windows
                 galleryImagesList.Add(pictureTab);
                 galleryThumbsList.Add(pictureTab);
                 imageURLs[i] = string.Empty;
-            }           
+            }
             galleryImages = galleryImagesList.ToArray();
             galleryThumbs = galleryThumbsList.ToArray();
 
             //set all our text entry fields for the bio to empty strings
-            for (int b = 0; b < bioFieldsArr.Length; b++)
+            for (var b = 0; b < bioFieldsArr.Length; b++)
             {
                 bioFieldsArr[b] = string.Empty;
             }
-            if(avatarBytes == null)
+            if (avatarBytes == null)
             {
                 //set the avatar to the avatar_holder.png by default
                 if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
@@ -139,7 +139,7 @@ namespace AbsoluteRoleplay.Windows
                     avatarBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/profiles/avatar_holder.png"));
                 }
             }
-          
+
         }
         //method to check if we have loaded our data received from the server
         public static bool AllLoaded()
@@ -155,7 +155,7 @@ namespace AbsoluteRoleplay.Windows
         }
         public override void Draw()
         {
-            IPlayerCharacter player = Plugin.ClientState.LocalPlayer;
+            var player = Plugin.ClientState.LocalPlayer;
             //if we have loaded all the data received from the server and we are logged in game
             if (AllLoaded() == true && plugin.IsOnline())
             {
@@ -163,7 +163,7 @@ namespace AbsoluteRoleplay.Windows
 
 
                 if (ExistingProfile == true)//if we have a profile add the edit profile button
-                {                
+                {
                     if (ImGui.Checkbox("Set Private", ref privateProfile))
                     {
                         //send our privacy settings to the server
@@ -190,7 +190,7 @@ namespace AbsoluteRoleplay.Windows
                 }
 
                 using var ProfileTable = ImRaii.Child("PROFILE");
-                if(ProfileTable) 
+                if (ProfileTable)
                 {
                     #region BIO
                     if (TabOpen[TabValue.Bio])
@@ -204,7 +204,7 @@ namespace AbsoluteRoleplay.Windows
                         }
                         ImGui.Spacing();
                         //simple for loop to get through our bio text fields
-                        for (int i = 0; i < Constants.BioFieldVals.Length; i++)
+                        for (var i = 0; i < Constants.BioFieldVals.Length; i++)
                         {
                             var BioField = Constants.BioFieldVals[i];
                             //if our input type is single line 
@@ -236,7 +236,7 @@ namespace AbsoluteRoleplay.Windows
 
                         ImGui.TextColored(new Vector4(1, 1, 1, 1), "PERSONALITY TRAITS:");
                         //add personality combos
-                        AddPersonalitySelection_1(); 
+                        AddPersonalitySelection_1();
                         AddPersonalitySelection_2();
                         AddPersonalitySelection_3();
                         if (ImGui.Button("Save Bio"))
@@ -270,11 +270,11 @@ namespace AbsoluteRoleplay.Windows
                         if (ImGui.Button("Submit Hooks"))
                         {
                             //create a new List to hold our hook values
-                            List<Tuple<int, string, string>> hooks = new List<Tuple<int, string, string>>();
-                            for (int i = 0; i < hookCount; i++)
+                            var hooks = new List<Tuple<int, string, string>>();
+                            for (var i = 0; i < hookCount; i++)
                             {
                                 //create a new hook tuple to add to the list
-                                Tuple<int, string, string> hook = Tuple.Create(i, HookNames[i], HookContents[i]);
+                                var hook = Tuple.Create(i, HookNames[i], HookContents[i]);
                                 hooks.Add(hook);
                             }
                             //send the data to the server
@@ -308,13 +308,13 @@ namespace AbsoluteRoleplay.Windows
                             if (ImGui.Button("Submit Story"))
                             {
                                 //create a new list for our stories to be held in
-                                List<Tuple<string, string>> storyChapters = new List<Tuple<string, string>>();
-                                for (int i = 0; i < storyChapterCount + 1; i++)
+                                var storyChapters = new List<Tuple<string, string>>();
+                                for (var i = 0; i < storyChapterCount + 1; i++)
                                 {
                                     //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
-                                    string chapterName = ChapterNames[i].ToString();
-                                    string chapterContent = ChapterContents[i].ToString();
-                                    Tuple<string, string> chapter = Tuple.Create(chapterName, chapterContent);
+                                    var chapterName = ChapterNames[i].ToString();
+                                    var chapterContent = ChapterContents[i].ToString();
+                                    var chapter = Tuple.Create(chapterName, chapterContent);
                                     storyChapters.Add(chapter);
                                 }
                                 //finally send the story data to the server
@@ -342,7 +342,7 @@ namespace AbsoluteRoleplay.Windows
                         ImGui.SameLine();
                         if (ImGui.Button("Submit Gallery"))
                         {
-                            for (int i = 0; i < galleryImageCount; i++)
+                            for (var i = 0; i < galleryImageCount; i++)
                             {
                                 //pretty simple stuff, just send the gallery related array values to the server
                                 DataSender.SendGalleryImage(configuration.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
@@ -397,14 +397,14 @@ namespace AbsoluteRoleplay.Windows
                     if (ReorderGallery == true)
                     {
                         ReorderGallery = false;
-                        
-                        bool nextExists = ImageExists[NextAvailableImageIndex() + 1];//bool to check if the next image in the list exists
-                        int firstOpen = NextAvailableImageIndex(); //index of the first image that does not exist
+
+                        var nextExists = ImageExists[NextAvailableImageIndex() + 1];//bool to check if the next image in the list exists
+                        var firstOpen = NextAvailableImageIndex(); //index of the first image that does not exist
                         ImageExists[firstOpen] = true; //set the image to exist again
-                        
+
                         if (nextExists) // if our next image in the list exists
                         {
-                            for (int i = firstOpen; i < galleryImageCount; i++)
+                            for (var i = firstOpen; i < galleryImageCount; i++)
                             {
                                 //swap the image behind it to the one ahead, along with hte imageUrl and such
                                 galleryImages[i] = galleryImages[i + 1];
@@ -428,12 +428,12 @@ namespace AbsoluteRoleplay.Windows
                     if (ReorderHooks == true)
                     {
                         ReorderHooks = false;
-                        bool nextHookExists = hookExists[NextAvailableHookIndex() + 1];
-                        int firstHookOpen = NextAvailableHookIndex();
+                        var nextHookExists = hookExists[NextAvailableHookIndex() + 1];
+                        var firstHookOpen = NextAvailableHookIndex();
                         hookExists[firstHookOpen] = true;
                         if (nextHookExists)
                         {
-                            for (int i = firstHookOpen; i < hookCount; i++)
+                            for (var i = firstHookOpen; i < hookCount; i++)
                             {
                                 HookNames[i] = HookNames[i + 1];
                                 HookContents[i] = HookContents[i + 1];
@@ -451,12 +451,12 @@ namespace AbsoluteRoleplay.Windows
                     if (ReorderChapters == true)
                     {
                         ReorderChapters = false;
-                        bool nextChapterExists = storyChapterExists[NextAvailableChapterIndex() + 1];
-                        int firstChapterOpen = NextAvailableChapterIndex();
+                        var nextChapterExists = storyChapterExists[NextAvailableChapterIndex() + 1];
+                        var firstChapterOpen = NextAvailableChapterIndex();
                         storyChapterExists[firstChapterOpen] = true;
                         if (nextChapterExists)
                         {
-                            for (int i = firstChapterOpen; i < storyChapterCount; i++)
+                            for (var i = firstChapterOpen; i < storyChapterCount; i++)
                             {
                                 ChapterNames[i] = ChapterNames[i + 1];
                                 ChapterContents[i] = ChapterContents[i + 1];
@@ -476,7 +476,7 @@ namespace AbsoluteRoleplay.Windows
                 //if our content is not all loaded use the loader
                 Misc.StartLoader(loaderInd, percentage, loading);
             }
-            
+
         }
         public void CreateChapter()
         {
@@ -508,7 +508,7 @@ namespace AbsoluteRoleplay.Windows
         }
         public void ClearChaptersInView() //not used at the moment
         {
-            for (int i = 0; i < viewChapter.Length; i++)
+            for (var i = 0; i < viewChapter.Length; i++)
             {
                 viewChapter[i] = false;
             }
@@ -522,16 +522,16 @@ namespace AbsoluteRoleplay.Windows
                 if (storyChapterExists[i] == true && viewChapter[i] == true)
                 {
                     //create a new child with the scale of the window size but inset slightly
-                    Vector2 windowSize = ImGui.GetWindowSize();
+                    var windowSize = ImGui.GetWindowSize();
                     using var profileTable = ImRaii.Child("##Chapter" + i, new Vector2(windowSize.X - 20, windowSize.Y - 130));
-                    if(profileTable)
+                    if (profileTable)
                     {
                         //set an input size for our input text as well to adjust with window scale
-                        Vector2 inputSize = new Vector2(windowSize.X - 30, windowSize.Y - 200); // Adjust as needed
+                        var inputSize = new Vector2(windowSize.X - 30, windowSize.Y - 200); // Adjust as needed
                         ImGui.InputTextMultiline("##ChapterContent" + i, ref ChapterContents[i], 5000, inputSize);
 
                         using var chapterControlTable = ImRaii.Child("##ChapterControls" + i);
-                        if(chapterControlTable)
+                        if (chapterControlTable)
                         {
                             using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
@@ -559,9 +559,9 @@ namespace AbsoluteRoleplay.Windows
         {
             if (hookExists[i] == true)
             {
-                
+
                 using var hookChild = ImRaii.Child("##Hook" + i, new Vector2(550, 250));
-                if(hookChild)
+                if (hookChild)
                 {
                     ImGui.InputTextWithHint("##HookName" + i, "Hook Name", ref HookNames[i], 300);
                     ImGui.InputTextMultiline("##HookContent" + i, ref HookContents[i], 5000, new Vector2(500, 200));
@@ -570,9 +570,9 @@ namespace AbsoluteRoleplay.Windows
                     {
 
                         using var hookControlsTable = ImRaii.Child("##HookControls" + i);
-                        if(hookControlsTable)
+                        if (hookControlsTable)
                         {
-                            using (OtterGui.Raii.ImRaii.Disabled(!AbsoluteRoleplay.Plugin.CtrlPressed()))
+                            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
                                 if (ImGui.Button("Remove##" + "hook" + i))
                                 {
@@ -601,19 +601,19 @@ namespace AbsoluteRoleplay.Windows
                 using var table = ImRaii.Table("table_name", 4);
                 if (table)
                 {
-                    for (int i = 0; i < imageIndex; i++)
+                    for (var i = 0; i < imageIndex; i++)
                     {
                         ImGui.TableNextColumn();
                         DrawGalleryImage(i);
                     }
-                }             
+                }
             }
         }
         public void DrawHooksUI(Plugin plugin, int hookCount)
         {
             if (TabOpen[TabValue.Hooks])
             {
-                for (int i = 0; i < hookCount; i++)
+                for (var i = 0; i < hookCount; i++)
                 {
                     DrawHook(i, plugin);
                 }
@@ -623,9 +623,9 @@ namespace AbsoluteRoleplay.Windows
         //gets the next image index that does not exist
         public static int NextAvailableImageIndex()
         {
-            bool load = true;
-            int index = 0;
-            for (int i = 0; i < ImageExists.Length; i++)
+            var load = true;
+            var index = 0;
+            for (var i = 0; i < ImageExists.Length; i++)
             {
                 if (ImageExists[i] == false && load == true)
                 {
@@ -639,9 +639,9 @@ namespace AbsoluteRoleplay.Windows
         //gets the next chapter index that does not exist
         public static int NextAvailableChapterIndex()
         {
-            bool load = true;
-            int index = 0;
-            for (int i = 0; i < storyChapterExists.Length; i++)
+            var load = true;
+            var index = 0;
+            for (var i = 0; i < storyChapterExists.Length; i++)
             {
                 if (storyChapterExists[i] == false && load == true)
                 {
@@ -655,9 +655,9 @@ namespace AbsoluteRoleplay.Windows
         //gets the next hook index that does not exist
         public int NextAvailableHookIndex()
         {
-            bool load = true;
-            int index = 0;
-            for (int i = 0; i < hookExists.Length; i++)
+            var load = true;
+            var index = 0;
+            for (var i = 0; i < hookExists.Length; i++)
             {
                 if (hookExists[i] == false && load == true)
                 {
@@ -672,18 +672,18 @@ namespace AbsoluteRoleplay.Windows
 
         public void DrawGalleryImage(int i)
         {
-            IPlayerCharacter player = Plugin.ClientState.LocalPlayer;
+            var player = Plugin.ClientState.LocalPlayer;
 
             if (ImageExists[i] == true)
             {
 
                 using var galleryImageChild = ImRaii.Child("##GalleryImage" + i, new Vector2(150, 280));
-                if(galleryImageChild)
+                if (galleryImageChild)
                 {
                     ImGui.Text("Will this image be 18+ ?");
                     if (ImGui.Checkbox("Yes 18+", ref NSFW[i]))
                     {
-                        for (int g = 0; g < galleryImageCount; g++)
+                        for (var g = 0; g < galleryImageCount; g++)
                         {
                             //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
                             DataSender.SendGalleryImage(configuration.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
@@ -694,7 +694,7 @@ namespace AbsoluteRoleplay.Windows
                     ImGui.Text("Is this a possible trigger ?");
                     if (ImGui.Checkbox("Yes Triggering", ref TRIGGER[i]))
                     {
-                        for (int g = 0; g < galleryImageCount; g++)
+                        for (var g = 0; g < galleryImageCount; g++)
                         {
                             //same for triggering, we don't want to lose this info if the user is forgetful
                             DataSender.SendGalleryImage(configuration.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
@@ -719,7 +719,7 @@ namespace AbsoluteRoleplay.Windows
                         using var galleryImageControlsTable = ImRaii.Child("##GalleryImageControls" + i);
                         if (galleryImageControlsTable)
                         {
-                            using (OtterGui.Raii.ImRaii.Disabled(!AbsoluteRoleplay.Plugin.CtrlPressed()))
+                            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
                                 //button to remove the gallery image
                                 if (ImGui.Button("Remove##" + "gallery_remove" + i))
@@ -755,16 +755,16 @@ namespace AbsoluteRoleplay.Windows
         {
             try
             {
-                for (int g = 0; g < galleryImages.Length; g++)
+                for (var g = 0; g < galleryImages.Length; g++)
                 {
                     galleryImageCount = 0;
                     ReorderGallery = true;
                 }
-                for (int i = 0; i < 30; i++)
+                for (var i = 0; i < 30; i++)
                 {
                     ImageExists[i] = false;
                 }
-                for (int i = 0; i < galleryImages.Length; i++)
+                for (var i = 0; i < galleryImages.Length; i++)
                 {
                     galleryImages[i] = pictureTab;
                     galleryThumbs[i] = pictureTab;
@@ -772,27 +772,27 @@ namespace AbsoluteRoleplay.Windows
             }
             catch (Exception ex)
             {
-               // plugin.logger.Error("Could not reset gallery:: Results may be incorrect.");
+                // plugin.logger.Error("Could not reset gallery:: Results may be incorrect.");
             }
         }
         public static void RemoveExistingGallery()
         {
-            for (int i = 0; i < galleryImages.Length; i++)
+            for (var i = 0; i < galleryImages.Length; i++)
             {
                 galleryImages[i]?.Dispose();
                 galleryImages[i] = null;
             }
-            for (int i = 0; i < galleryThumbs.Length; i++)
+            for (var i = 0; i < galleryThumbs.Length; i++)
             {
                 galleryThumbs[i]?.Dispose();
                 galleryThumbs[i] = null;
             }
-            for (int i = 0; i < galleryImagesList.Count; i++)
+            for (var i = 0; i < galleryImagesList.Count; i++)
             {
                 galleryImages[i]?.Dispose();
                 galleryImages[i] = null;
             }
-            for (int i = 0; i < galleryThumbsList.Count; i++)
+            for (var i = 0; i < galleryThumbsList.Count; i++)
             {
                 galleryThumbsList[i]?.Dispose();
                 galleryThumbsList[i] = null;
@@ -802,7 +802,7 @@ namespace AbsoluteRoleplay.Windows
         //method ot reset the entire story section
         public static void ResetStory()
         {
-            for (int s = 0; s < storyChapterCount; s++)
+            for (var s = 0; s < storyChapterCount; s++)
             {
                 ChapterNames[s] = string.Empty;
                 ChapterContents[s] = string.Empty;
@@ -836,13 +836,13 @@ namespace AbsoluteRoleplay.Windows
             currentAvatarImg?.Dispose();
             currentAvatarImg = null;
             persistAvatarHolder?.Dispose();
-            persistAvatarHolder = null;       
-            for (int i = 0; i < galleryImagesList.Count; i++)
+            persistAvatarHolder = null;
+            for (var i = 0; i < galleryImagesList.Count; i++)
             {
                 galleryImagesList[i]?.Dispose();
                 galleryImagesList[i] = null;
             }
-            for (int i = 0; i < galleryThumbsList.Count; i++)
+            for (var i = 0; i < galleryThumbsList.Count; i++)
             {
                 galleryThumbsList[i]?.Dispose();
                 galleryThumbsList[i] = null;
@@ -851,13 +851,13 @@ namespace AbsoluteRoleplay.Windows
 
         public void AddChapterSelection()
         {
-            string chapterName = ChapterNames[currentChapter];
+            var chapterName = ChapterNames[currentChapter];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Chapter", chapterName);
             if (!combo)
                 return;
             foreach (var (newText, idx) in ChapterNames.WithIndex())
             {
-                string label = newText;
+                var label = newText;
                 if (label == string.Empty)
                 {
                     label = "New Chapter";
@@ -946,14 +946,14 @@ namespace AbsoluteRoleplay.Windows
             {
                 if (!s)
                     return;
-                string imagePath = f[0].ToString();
+                var imagePath = f[0].ToString();
                 var image = Path.GetFullPath(imagePath);
-                byte[] imageBytes = File.ReadAllBytes(image);
+                var imageBytes = File.ReadAllBytes(image);
                 if (avatar == true)
                 {
                     avatarBytes = File.ReadAllBytes(imagePath);
                 }
-            }, 0, null, this.configuration.AlwaysOpenDefaultImport);
+            }, 0, null, configuration.AlwaysOpenDefaultImport);
 
         }
         public static void ReloadProfile()
@@ -968,7 +968,7 @@ namespace AbsoluteRoleplay.Windows
             if (AllLoaded())
             {
                 ClearUI();
-            }         
+            }
         }
     }
 }

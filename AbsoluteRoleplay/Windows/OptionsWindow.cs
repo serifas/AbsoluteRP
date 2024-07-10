@@ -4,7 +4,6 @@ using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
 using System;
 using Dalamud.Interface.GameFonts;
-using AbsoluteRoleplay;
 using AbsoluteRoleplay.Helpers;
 namespace AbsoluteRoleplay.Windows
 {
@@ -19,7 +18,7 @@ namespace AbsoluteRoleplay.Windows
         public OptionsWindow(Plugin plugin) : base(
        "OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(300, 180),
                 MaximumSize = new Vector2(300, 180)

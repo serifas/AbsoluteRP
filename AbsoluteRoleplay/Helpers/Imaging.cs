@@ -1,5 +1,4 @@
 using Dalamud.Interface.Internal;
-using AbsoluteRoleplay.Windows;
 using OtterGui.Log;
 using System;
 using System.Drawing;
@@ -11,6 +10,7 @@ using ImGuiNET;
 using JetBrains.Annotations;
 using System.Drawing.Imaging;
 using Dalamud.Interface.Utility;
+using AbsoluteRoleplay.Windows.Profiles;
 
 namespace AbsoluteRoleplay.Helpers
 {

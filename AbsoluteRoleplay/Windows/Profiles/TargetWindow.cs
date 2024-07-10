@@ -12,10 +12,9 @@ using Dalamud.Plugin.Services;
 using Dalamud.Interface.Internal;
 using AbsoluteRoleplay.Helpers;
 using Microsoft.VisualBasic;
-using AbsoluteRoleplay;
 using Dalamud.Interface.Textures.TextureWraps;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class TargetWindow : Window, IDisposable
     {
@@ -71,13 +70,13 @@ namespace AbsoluteRoleplay.Windows
         public TargetWindow(Plugin plugin) : base(
        "TARGET", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(600, 400),
                 MaximumSize = new Vector2(750, 950)
             };
             this.plugin = plugin;
-            this.pg = Plugin.PluginInterface;
+            pg = Plugin.PluginInterface;
         }
         public override void OnOpen()
         {
@@ -88,7 +87,7 @@ namespace AbsoluteRoleplay.Windows
             }
 
             //alignment icons
-            for (int i = 0; i < 30; i++)
+            for (var i = 0; i < 30; i++)
             {
                 ChapterContent[i] = string.Empty;
                 ChapterTitle[i] = string.Empty;
@@ -247,7 +246,7 @@ namespace AbsoluteRoleplay.Windows
                             if (viewHooks == true)
                             {
                                 Misc.SetTitle(plugin, true, "Hooks"); //set title again
-                                for (int h = 0; h < hookEditCount; h++)
+                                for (var h = 0; h < hookEditCount; h++)
                                 {
                                     Misc.SetCenter(plugin, HookNames[h].ToString()); // set the position to the center of the window
                                     ImGui.TextUnformatted(HookNames[h].ToUpper()); //display the title in the center
@@ -259,16 +258,16 @@ namespace AbsoluteRoleplay.Windows
                             if (viewStory == true)
                             {
                                 Misc.SetTitle(plugin, true, storyTitle);
-                                string chapterMsg = "";
+                                var chapterMsg = "";
 
 
-                                for (int h = 0; h < chapterCount; h++)
+                                for (var h = 0; h < chapterCount; h++)
                                 {
                                     Misc.SetCenter(plugin, ChapterTitle[h]);
                                     ImGui.TextUnformatted(ChapterTitle[h].ToUpper());
                                     ImGui.Spacing();
                                     using var defInfFontDen = ImRaii.DefaultFont();
-                                    ImGui.TextUnformatted(ChapterContent[h]);
+                                    ImGui.TextWrapped(ChapterContent[h]);
                                 }
 
 
@@ -284,7 +283,7 @@ namespace AbsoluteRoleplay.Windows
                                 using var table = ImRaii.Table("GalleryTargetTable", 4);
                                 if (table)
                                 {
-                                    for (int i = 0; i < existingGalleryImageCount; i++)
+                                    for (var i = 0; i < existingGalleryImageCount; i++)
                                     {
                                         ImGui.TableNextColumn();
                                         ImGui.Image(galleryThumbs[i].ImGuiHandle, new Vector2(galleryThumbs[i].Width, galleryThumbs[i].Height));
@@ -375,7 +374,7 @@ namespace AbsoluteRoleplay.Windows
         //method to check if all our data for the window is loaded
         public bool AllLoaded()
         {
-            bool loaded = false;
+            var loaded = false;
             if (DataReceiver.TargetStoryLoadStatus != -1 &&
               DataReceiver.TargetHooksLoadStatus != -1 &&
               DataReceiver.TargetBioLoadStatus != -1 &&

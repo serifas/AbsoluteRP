@@ -51,6 +51,7 @@ namespace Networking
         SSendProfileAccessUpdate = 39,
         SSendConnectionsRequest = 40,
         SSendProfileStatus = 41,
+        SSendChatMessage = 42,
     }
     public class DataSender
     {
@@ -609,6 +610,28 @@ namespace Networking
                 catch (Exception ex)
                 {
                     plugin.logger.Error("Error in SetProfileStatus: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendChatMessage(string characterName, string characterWorld, string chatInput)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SSendChatMessage);
+                        buffer.WriteString(characterName);
+                        buffer.WriteString(characterWorld);
+                        buffer.WriteString(chatInput);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
                 }
             }
         }

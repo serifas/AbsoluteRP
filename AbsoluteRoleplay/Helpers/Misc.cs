@@ -35,6 +35,7 @@ namespace AbsoluteRoleplay
             // Return the percentage
             return value / 100f * 100f;
         }
+      
         public static string GenerateRandomString(int length = 30)
         {
             const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

@@ -26,10 +26,9 @@ using Dalamud.Game.ClientState;
 using Networking;
 using Dalamud.Plugin.Services;
 using Dalamud.Interface.Internal;
-using AbsoluteRoleplay;
 using Dalamud.Interface.Textures.TextureWraps;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class ImagePreview : Window, IDisposable
     {
@@ -44,8 +43,8 @@ namespace AbsoluteRoleplay.Windows
         public ImagePreview(Plugin plugin) : base(
        "PREVIEW", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.configuration = plugin.Configuration;
-            this.SizeConstraints = new WindowSizeConstraints
+            configuration = plugin.Configuration;
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(2000, 2000)
@@ -54,7 +53,7 @@ namespace AbsoluteRoleplay.Windows
 
         public override void Draw()
         {
-            (int scaledWidth, int scaledHeight) = CalculateScaledDimensions();
+            (var scaledWidth, var scaledHeight) = CalculateScaledDimensions();
 
             // Here you would render the texture at the calculated width and height
             ImGui.Image(PreviewImage.ImGuiHandle, new Vector2(scaledWidth, scaledHeight));
@@ -68,11 +67,11 @@ namespace AbsoluteRoleplay.Windows
 
         private (int, int) CalculateScaledDimensions()
         {
-            GetImGuiWindowDimensions(out int windowWidth, out int windowHeight);
+            GetImGuiWindowDimensions(out var windowWidth, out var windowHeight);
 
             // Calculate the aspect ratios
-            float windowAspect = (float)windowWidth / windowHeight;
-            float textureAspect = (float)width / height;
+            var windowAspect = (float)windowWidth / windowHeight;
+            var textureAspect = (float)width / height;
 
             // Determine the scale factor
             int newWidth, newHeight;

@@ -9,6 +9,9 @@ using System.Text.RegularExpressions;
 using AbsoluteRoleplay.Helpers;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Interface.Textures;
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Chat;
+using Dalamud.Interface.Textures.TextureWraps;
 
 namespace Networking
 {
@@ -61,6 +64,7 @@ namespace Networking
         SSendNoTargetOOCInfo = 54,
         ReceiveConnections = 55,
         ReceiveNewConnectionRequest = 56,
+        ReceiveChatMessage = 57,
     }
     class DataReceiver
     {
@@ -1176,7 +1180,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
+                plugin.logger.Error($"Error handling ReceiveConnections message: {ex}");
             }
         }
 
@@ -1195,8 +1199,32 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
+        internal static void ReceiveChatMessage(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    string profileName = buffer.ReadString();
+                    int avatarLen = buffer.ReadInt();
+                    byte[] avatarBytes = buffer.ReadBytes(avatarLen);
+                    string message = buffer.ReadString();
+                    IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    Tuple<string, IDalamudTextureWrap, string> messageContent = Tuple.Create(profileName, avatar, message);
+                    ChatWindow.messages.Add(messageContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveChatMessage message: {ex}");
+            }
+        }
+
+        
     }
 }

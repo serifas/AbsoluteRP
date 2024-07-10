@@ -5,7 +5,6 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
 using ImGuiScene;
-using AbsoluteRoleplay;
 using OtterGui.Raii;
 using OtterGui;
 using System;
@@ -26,7 +25,7 @@ using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Helpers;
 using FFXIVClientStructs.FFXIV.Client.Game;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class ConnectionsWindow : Window, IDisposable
     {
@@ -43,7 +42,7 @@ namespace AbsoluteRoleplay.Windows
         public ConnectionsWindow(Plugin plugin) : base(
        "CONNECTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(300, 500),
                 MaximumSize = new Vector2(500, 800)
@@ -54,19 +53,19 @@ namespace AbsoluteRoleplay.Windows
         {
             AddConnectionListingOptions();
             Vector2 windowSize = ImGui.GetWindowSize();
-            Vector2 childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
+            var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
             localPlayerName = Plugin.ClientState.LocalPlayer.Name.ToString();
             localPlayerWorld = Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
-            if (currentListing == 2) 
+            if (currentListing == 2)
             {
                 using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
-                if(receivedRequestsTable)
+                if (receivedRequestsTable)
                 {
 
-                    for (int i = 0; i < receivedProfileRequests.Count; i++)
+                    for (var i = 0; i < receivedProfileRequests.Count; i++)
                     {
-                        string requesterName = receivedProfileRequests[i].Item1;
-                        string requesterWorld = receivedProfileRequests[i].Item2;
+                        var requesterName = receivedProfileRequests[i].Item1;
+                        var requesterWorld = receivedProfileRequests[i].Item2;
                         ImGui.TextUnformatted(requesterName + " @ " + requesterWorld);
                         ImGui.SameLine();
                         using (ImRaii.Disabled(!Plugin.CtrlPressed()))
@@ -113,10 +112,10 @@ namespace AbsoluteRoleplay.Windows
                 if (connectedTable)
                 {
 
-                    for (int i = 0; i < connetedProfileList.Count; i++)
+                    for (var i = 0; i < connetedProfileList.Count; i++)
                     {
-                        string connectionName = connetedProfileList[i].Item1;
-                        string connectionWorld = connetedProfileList[i].Item2;
+                        var connectionName = connetedProfileList[i].Item1;
+                        var connectionWorld = connetedProfileList[i].Item2;
                         ImGui.TextUnformatted(connectionName + " @ " + connectionWorld);
                         ImGui.SameLine();
                         using (ImRaii.Disabled(!Plugin.CtrlPressed()))
@@ -146,16 +145,17 @@ namespace AbsoluteRoleplay.Windows
                 }
 
             }
-            if(currentListing == 1) {
+            if (currentListing == 1)
+            {
                 using var sentRequestsTable = ImRaii.Child("SentRequests", childSize, true);
                 if (sentRequestsTable)
                 {
 
-                    for (int i = 0; i < sentProfileRequests.Count; i++)
+                    for (var i = 0; i < sentProfileRequests.Count; i++)
                     {
 
-                        string receiverName = sentProfileRequests[i].Item1;
-                        string receiverWorld = sentProfileRequests[i].Item2;
+                        var receiverName = sentProfileRequests[i].Item1;
+                        var receiverWorld = sentProfileRequests[i].Item2;
                         ImGui.TextUnformatted(receiverName + " @ " + receiverWorld);
                         ImGui.SameLine();
                         using (ImRaii.Disabled(!Plugin.CtrlPressed()))
@@ -172,16 +172,16 @@ namespace AbsoluteRoleplay.Windows
                     }
                 }
             }
-            if(currentListing == 3)
+            if (currentListing == 3)
             {
                 using var blockedRequestsTable = ImRaii.Child("BlockedRequests", childSize, true);
                 if (blockedRequestsTable)
                 {
 
-                    for (int i = 0; i < blockedProfileRequests.Count; i++)
+                    for (var i = 0; i < blockedProfileRequests.Count; i++)
                     {
-                        string blockedName = blockedProfileRequests[i].Item1;
-                        string blockedWorld = blockedProfileRequests[i].Item2;
+                        var blockedName = blockedProfileRequests[i].Item1;
+                        var blockedWorld = blockedProfileRequests[i].Item2;
                         ImGui.TextUnformatted(blockedName + " @ " + blockedWorld);
                         ImGui.SameLine();
                         using (ImRaii.Disabled(!Plugin.CtrlPressed()))
@@ -202,11 +202,11 @@ namespace AbsoluteRoleplay.Windows
             }
 
         }
-        
-            public void AddConnectionListingOptions()
-            {
+
+        public void AddConnectionListingOptions()
+        {
             var (text, desc) = Constants.ConnectionListingVals[currentListing];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Connetions", text);
+            using var combo = ImRaii.Combo("##Connetions", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;

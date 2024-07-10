@@ -13,6 +13,7 @@ using AbsoluteRoleplay;
 using System.Diagnostics;
 using Dalamud.Plugin.Services;
 using Dalamud.Interface.Textures.TextureWraps;
+using AbsoluteRoleplay.Windows.Profiles;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
