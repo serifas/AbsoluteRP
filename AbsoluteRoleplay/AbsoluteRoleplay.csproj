@@ -6,7 +6,7 @@
     <Authors>Lynie</Authors>
     <Version>0.0.0.1</Version>
     <Description>An all around Roleplay Plugin.</Description>
-    <PackageProjectUrl>https://github.com/serifas/AbsoluteRoleplay</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
