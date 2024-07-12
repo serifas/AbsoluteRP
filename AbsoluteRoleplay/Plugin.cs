@@ -68,7 +68,7 @@ namespace AbsoluteRoleplay
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
-        private ChatWindow ChatWindow { get; init; }
+       // private ChatWindow ChatWindow { get; init; }
 
         //logger for printing errors and such
         public Logger logger = new Logger();
@@ -140,7 +140,7 @@ namespace AbsoluteRoleplay
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
-            ChatWindow = new ChatWindow(this);
+            //ChatWindow = new ChatWindow(this);
 
             Configuration.Initialize(PluginInterface);
 
@@ -156,7 +156,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
-            WindowSystem.AddWindow(ChatWindow);
+           // WindowSystem.AddWindow(ChatWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -384,7 +384,7 @@ namespace AbsoluteRoleplay
             RestorationWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
-            ChatWindow?.Dispose();
+            //ChatWindow?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -418,10 +418,11 @@ namespace AbsoluteRoleplay
             // in response to the slash command, just toggle the display status of our main ui
             ToggleMainUI();
         }
+        /*
         private void OnChatCommand(string command, string arguments)
         {
             ToggleChatUI();
-        }
+        }*/
         public void CloseAllWindows()
         {
             foreach (Window window in WindowSystem.Windows)
@@ -458,7 +459,7 @@ namespace AbsoluteRoleplay
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
-        public void ToggleChatUI() => ChatWindow.Toggle();
+       // public void ToggleChatUI() => ChatWindow.Toggle();
 
         internal async void UpdateStatus()
         {
