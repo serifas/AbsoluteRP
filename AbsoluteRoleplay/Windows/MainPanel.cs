@@ -242,7 +242,7 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("Events - Coming soon");
+                ImGui.SetTooltip("Events - WIP");
             }
 
 
@@ -261,7 +261,7 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("Systems - Coming soon");
+                ImGui.SetTooltip("Systems - WIP");
             }
 
 
@@ -328,7 +328,7 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("Manage NPCs - Coming soon");
+                ImGui.SetTooltip("Manage NPCs - WIP");
             }
 
 
@@ -347,7 +347,7 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("View NPC bookmarks - Coming soon");
+                ImGui.SetTooltip("View NPC bookmarks - WIP");
             }
 
         }

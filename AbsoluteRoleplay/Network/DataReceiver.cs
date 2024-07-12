@@ -124,7 +124,6 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     var msg = buffer.ReadString();
                     plugin.UpdateStatus();
-                    plugin.logger.Error(msg);
                     // Handle the message as needed
                 }
             }
@@ -590,7 +589,6 @@ namespace Networking
                         ProfileWindow.ImageExists[i] = true;
                         ProfileWindow.loading = "Gallery Image: " + i;
                         ProfileWindow.loaderInd = i;
-                        plugin.logger.Error("Loaded Image " + i);
                     }
                     ProfileWindow.ExistingGallery = true;
                     ProfileWindow.ClearOnLoad();
@@ -699,14 +697,6 @@ namespace Networking
                     int personality_1 = buffer.ReadInt();
                     int personality_2 = buffer.ReadInt();
                     int personality_3 = buffer.ReadInt();
-                    plugin.logger.Error(name);
-                    plugin.logger.Error(profileID.ToString());
-                    plugin.logger.Error(name);
-                    plugin.logger.Error(race);
-                    plugin.logger.Error(age);
-                    plugin.logger.Error(height);
-                    plugin.logger.Error(weight);
-                    plugin.logger.Error(atFirstGlance);
                     ProfileWindow.ExistingBio = true;
 
                     ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;

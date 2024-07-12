@@ -26,7 +26,7 @@ namespace AbsoluteRoleplay.Windows.Chat
             SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new FFXIVVector2(300, 180),
-                MaximumSize = new FFXIVVector2(1000, 700)
+                MaximumSize = new FFXIVVector2(1000, 500)
             };
         }
 
@@ -82,14 +82,32 @@ namespace AbsoluteRoleplay.Windows.Chat
             {
                 if (treeChild)
                 {
+                    // Main content of the Hierarchy child
                     if (ImGui.TreeNode("Top level item"))
                     {
                         ImGui.BulletText("Bottom level name");
                         ImGui.TreePop();
                     }
+
+                    // Pin section to the bottom
+                    var pinSectionHeight = 35.0f;
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + ImGui.GetContentRegionAvail().Y - pinSectionHeight);
+                    using (var pinSection = ImRaii.Child("PinnedSection", new Vector2(treeWidth, pinSectionHeight), false))
+                    {
+                        if (pinSection)
+                        {
+                            if (ImGui.Button("+", new Vector2(25, 25)))
+                            {
+                                // Handle Pinned Button 1 click
+                            }
+                            if (ImGui.IsItemHovered())
+                            {
+                                ImGui.SetTooltip("Create Group");
+                            }
+                        }
+                    }
                 }
             }
-
 
             // Separator line
             ImGui.Separator();
@@ -163,3 +181,4 @@ namespace AbsoluteRoleplay.Windows.Chat
         }
     }
 }
+

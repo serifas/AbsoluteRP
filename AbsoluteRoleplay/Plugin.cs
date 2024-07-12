@@ -28,8 +28,10 @@ namespace AbsoluteRoleplay
     {
         public static Plugin plugin;
         public string username;
-        private const string CommandName = "/absolute";
-        private const string ChatToggleCommand = "/arpchat";
+        private const string CommandName = "/arp";
+        //WIP
+        //private const string ChatToggleCommand = "/arpchat";
+      
         public bool loggedIn;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
@@ -118,12 +120,14 @@ namespace AbsoluteRoleplay
 
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "opens the plugin window."
+                HelpMessage = "opens the plugin window (or use the dice button by your map)."
             }); 
+            //WIP
+            /*
             CommandManager.AddHandler(ChatToggleCommand, new CommandInfo(OnChatCommand)
             {
                 HelpMessage = "opens the chat window."
-            });
+            });*/
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -188,7 +192,7 @@ namespace AbsoluteRoleplay
         public async void Connect()
         {
             LoadStatusBarEntry();
-            LoadChatBarEntry();
+            //LoadChatBarEntry();
             if (IsOnline())
             {
                 if (!ClientTCP.IsConnected())
@@ -312,6 +316,7 @@ namespace AbsoluteRoleplay
             //assign on click to toggle the main ui
             entry.OnClick = () => ToggleMainUI();
         }
+        /*
         public void LoadChatBarEntry()
         {
             var entry = dtrBar.Get("AbsoluteChat");
@@ -323,7 +328,7 @@ namespace AbsoluteRoleplay
             //assign on click to toggle the main ui
             entry.OnClick = () => ToggleChatUI();
         }
-
+        */
         //used to alert people of incoming connection requests
         public void LoadConnectionsBarEntry(float deltaTime)
         {
