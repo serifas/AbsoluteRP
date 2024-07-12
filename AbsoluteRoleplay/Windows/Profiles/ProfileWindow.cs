@@ -326,6 +326,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             ImGui.SetTooltip("Add a chapter to submit your story");
                         }
                         ImGui.NewLine();
+
                     }
                     #endregion
                     #region GALLERY
@@ -526,6 +527,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     using var profileTable = ImRaii.Child("##Chapter" + i, new Vector2(windowSize.X - 20, windowSize.Y - 130));
                     if (profileTable)
                     {
+                        ImGui.TextUnformatted("Chapter Name:");
+                        ImGui.SameLine();
+                        ImGui.InputText(string.Empty, ref ChapterNames[i], 100);
                         //set an input size for our input text as well to adjust with window scale
                         var inputSize = new Vector2(windowSize.X - 30, windowSize.Y - 200); // Adjust as needed
                         ImGui.InputTextMultiline("##ChapterContent" + i, ref ChapterContents[i], 5000, inputSize);

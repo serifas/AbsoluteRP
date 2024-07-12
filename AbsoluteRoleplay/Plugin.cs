@@ -33,7 +33,8 @@ namespace AbsoluteRoleplay
         public bool loggedIn;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
-        private IDtrBarEntry? connectionsBarEntry; 
+        private IDtrBarEntry? connectionsBarEntry;
+        private IDtrBarEntry? chatBarEntry;
         public static bool BarAdded = false;
         internal static  float timer = 0f;
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
@@ -174,7 +175,6 @@ namespace AbsoluteRoleplay
             }
         }
 
-
         public async void LoadConnection()
         {
             Connect();
@@ -187,9 +187,10 @@ namespace AbsoluteRoleplay
         }
         public async void Connect()
         {
+            LoadStatusBarEntry();
+            LoadChatBarEntry();
             if (IsOnline())
             {
-                LoadStatusBar();
                 if (!ClientTCP.IsConnected())
                 {
                     ClientTCP.AttemptConnect();
@@ -198,9 +199,10 @@ namespace AbsoluteRoleplay
         }
 
 
-
         private void Logout()
         {
+            //set our bool back to false to let update re instantiate our login attempt and dtrbar entries
+            ControlsLogin = false;
             //remove our bar entries
             connectionsBarEntry = null;
             statusBarEntry = null;
@@ -299,40 +301,41 @@ namespace AbsoluteRoleplay
         }
 
         //server connection status dtrBarEntry
-        public void LoadStatusBar()
+        public void LoadStatusBarEntry()
         {
-            if (statusBarEntry == null)
-            {
-                //if the statusBarEntry is null create the entry
-                string randomTitle = Misc.GenerateRandomString();
-                if (dtrBar.Get(randomTitle) is not { } entry) return;
-                statusBarEntry = entry;
-                string icon = "\uE03E"; //dice icon
-                statusBarEntry.Text = icon; //set text to icon
-                //set base tooltip value
-                statusBarEntry.Tooltip = "Absolute Roleplay";
-                //assign on click to toggle the main ui
-                entry.OnClick = () => ToggleMainUI();
-            }
+            var entry = dtrBar.Get("AbsoluteRoleplay");
+            statusBarEntry = entry;
+            string icon = "\uE03E"; //dice icon
+            statusBarEntry.Text = icon; //set text to icon
+            //set base tooltip value
+            statusBarEntry.Tooltip = "Absolute Roleplay";                
+            //assign on click to toggle the main ui
+            entry.OnClick = () => ToggleMainUI();
+        }
+        public void LoadChatBarEntry()
+        {
+            var entry = dtrBar.Get("AbsoluteChat");
+            chatBarEntry = entry;
+            string icon = "\uE0BB"; //link icon
+            chatBarEntry.Text = icon; //set text to icon
+            //set base tooltip value
+            chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
+            //assign on click to toggle the main ui
+            entry.OnClick = () => ToggleChatUI();
         }
 
-
         //used to alert people of incoming connection requests
-        public void LoadConnectionsBar(float deltaTime)
+        public void LoadConnectionsBarEntry(float deltaTime)
         {
             timer += deltaTime;
             float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0; // Alternate between 0 and 14 (red) every BlinkInterval
 
-            if (connectionsBarEntry == null)
-            {
-                string randomTitle = Misc.GenerateRandomString();
-                if (dtrBar.Get(randomTitle) is not { } entry) return;
-                connectionsBarEntry = entry;
-                connectionsBarEntry.Tooltip = "New Connections Request";
-                ConnectionsWindow.currentListing = 2;
-                entry.OnClick = () => DataSender.RequestConnections(Configuration.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
-            }
-
+            var entry = dtrBar.Get("AbsoluteConnection");
+            connectionsBarEntry = entry;
+            connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
+            ConnectionsWindow.currentListing = 2;
+            entry.OnClick = () => DataSender.RequestConnections(Configuration.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
+            
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
             statusString.AddText("\uE070"); //Boxed question mark (Mario brick)
@@ -346,8 +349,7 @@ namespace AbsoluteRoleplay
         {
             if(connectionsBarEntry != null)
             {
-                connectionsBarEntry?.Remove();
-                
+                connectionsBarEntry?.Remove();                
             }
         }
         public void Dispose()
@@ -355,6 +357,7 @@ namespace AbsoluteRoleplay
             WindowSystem?.RemoveAllWindows();
             statusBarEntry?.Remove();
             statusBarEntry = null;
+            connectionsBarEntry?.Remove();
             connectionsBarEntry = null;
             CommandManager.RemoveHandler(CommandName);
             ContextMenu.OnMenuOpened -= AddContextMenu;
@@ -387,7 +390,7 @@ namespace AbsoluteRoleplay
             // If we receive a connection request
             if (newConnection == true)
             {
-                LoadConnectionsBar(deltaTime);
+                LoadConnectionsBarEntry(deltaTime);
             }
             else
             {
@@ -397,8 +400,6 @@ namespace AbsoluteRoleplay
 
         private void OnUpdate(IFramework framework)
         {
-        
-
             if (IsOnline() == true && ClientTCP.IsConnected() == true && ControlsLogin == false)
             {
                 // Auto login when first opening the plugin or logging in

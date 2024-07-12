@@ -393,6 +393,7 @@ public class MainPanel : Window, IDisposable
         {
             DataSender.Login(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
         }
+        plugin.LoadConnection();
         plugin.CloseAllWindows();
     }
     public void switchUI()

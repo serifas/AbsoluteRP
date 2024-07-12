@@ -1,15 +1,15 @@
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Common.Math;
+using FFXIVVector2 = FFXIVClientStructs.FFXIV.Common.Math.Vector2;
+using FFXIVVector4 = FFXIVClientStructs.FFXIV.Common.Math.Vector4;
 using ImGuiNET;
 using System;
-using Dalamud.Interface.GameFonts;
-using AbsoluteRoleplay.Helpers;
-using Dalamud.Interface.Utility.Raii;
-using Networking;
 using System.Collections.Generic;
 using Dalamud.Interface.Textures.TextureWraps;
-using ImGuiScene;
+using Networking;
+using System.Numerics;
+using Dalamud.Interface.Utility.Raii;
+
 namespace AbsoluteRoleplay.Windows.Chat
 {
     public class ChatWindow : Window, IDisposable
@@ -20,91 +20,100 @@ namespace AbsoluteRoleplay.Windows.Chat
         private float previousScrollY = 0.0f;
         private bool isAtBottom = true;
         public static List<Tuple<string, IDalamudTextureWrap, string>> messages = new List<Tuple<string, IDalamudTextureWrap, string>>();
-        public ChatWindow(Plugin plugin) : base(
-       "CHAT")
+
+        public ChatWindow(Plugin plugin) : base("CHAT")
         {
             SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(300, 180),
-                MaximumSize = new Vector2(500, 800)
+                MinimumSize = new FFXIVVector2(300, 180),
+                MaximumSize = new FFXIVVector2(1000, 700)
             };
         }
 
-
         public override void Draw()
         {
+            var windowSize = ImGui.GetWindowSize();
+            var windowWidth = windowSize.X;
+            var windowHeight = windowSize.Y;
 
-            // Calculate the height for the chat content and input areas
-            var windowHeight = ImGui.GetWindowHeight();
             var inputTextHeight = ImGui.GetTextLineHeightWithSpacing() + 8; // Adding some padding
             var contentHeight = windowHeight - inputTextHeight - 50; // Adjust for padding and separator
 
             // Begin child window for chat content
-            ImGui.BeginChild("Chat Content", new Vector2(0, contentHeight), true);
-
-            // Get the current scroll position and the maximum scroll position
-            float scrollY = ImGui.GetScrollY();
-            float scrollMaxY = ImGui.GetScrollMaxY();
-
-            // Check if the user scrolled up
-            if (scrollY < previousScrollY)
+            using (var chatContent = ImRaii.Child("Chat Content", new Vector2(windowWidth * 0.7f - 20, contentHeight), true))
             {
-                shouldScrollToEnd = false;
+                if (chatContent)
+                {
+                    float scrollY = ImGui.GetScrollY();
+                    float scrollMaxY = ImGui.GetScrollMaxY();
+
+                    if (scrollY < previousScrollY)
+                    {
+                        shouldScrollToEnd = false;
+                    }
+
+                    DrawChat();
+
+                    scrollY = ImGui.GetScrollY();
+                    scrollMaxY = ImGui.GetScrollMaxY();
+
+                    isAtBottom = scrollMaxY - scrollY < 1.0f;
+
+                    if (shouldScrollToEnd)
+                    {
+                        ImGui.SetScrollY(ImGui.GetScrollMaxY());
+                        shouldScrollToEnd = false;
+                    }
+
+                    if (isAtBottom)
+                    {
+                        shouldScrollToEnd = true;
+                    }
+
+                    previousScrollY = scrollY;
+                }
             }
 
-            // Draw the chat content
-            DrawChat();
+            ImGui.SameLine();
+            var treeWidth = windowWidth - (windowWidth * 0.7f) - ImGui.GetStyle().ItemSpacing.X;
 
-            // Recalculate scroll positions after adding content
-            scrollY = ImGui.GetScrollY();
-            scrollMaxY = ImGui.GetScrollMaxY();
-
-            // Check if the user is at the bottom of the scroll
-            isAtBottom = scrollMaxY - scrollY < 1.0f;
-
-            // Scroll to the end if shouldScrollToEnd is true
-            if (shouldScrollToEnd)
+            // Begin child window for the tree node on the right-hand side
+            using (var treeChild = ImRaii.Child("Hierarchy", new Vector2(treeWidth, contentHeight), true))
             {
-                ImGui.SetScrollY(ImGui.GetScrollMaxY());
-                shouldScrollToEnd = false; // Reset the flag after scrolling
+                if (treeChild)
+                {
+                    if (ImGui.TreeNode("Top level item"))
+                    {
+                        ImGui.BulletText("Bottom level name");
+                        ImGui.TreePop();
+                    }
+                }
             }
 
-            // Set shouldScrollToEnd to true if the user was at the bottom
-            if (isAtBottom)
-            {
-                shouldScrollToEnd = true;
-            }
-
-            // Update the previous scroll position
-            previousScrollY = scrollY;
-
-            ImGui.EndChild(); // End child window for chat content
 
             // Separator line
             ImGui.Separator();
 
             // Begin child window for input text at the bottom
-            ImGui.BeginChild("Chat Input", new Vector2(0, inputTextHeight), false);
-
-            ImGui.InputText("Message", ref chatInput, 5000);
-
-            // Check if the input text field is focused and the enter key is pressed
-            if (ImGui.IsItemFocused() && ImGui.IsKeyPressed(ImGuiKey.Enter))
+            using (var chatInputChild = ImRaii.Child("Chat Input", new Vector2(0, inputTextHeight), false))
             {
-                // Handle enter key pressed while input text is focused
-                DataSender.SendChatMessage(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString(), chatInput);
-                chatInput = string.Empty; // Clear the input after sending
-
-                // Set the flag to scroll to the end only if the user is at the bottom
-                if (isAtBottom)
+                if (chatInputChild)
                 {
-                    shouldScrollToEnd = true;
+                    ImGui.InputText("Message", ref chatInput, 5000);
+
+                    if (ImGui.IsItemFocused() && ImGui.IsKeyPressed(ImGuiKey.Enter))
+                    {
+                        DataSender.SendChatMessage(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString(), chatInput);
+                        chatInput = string.Empty;
+
+                        if (isAtBottom)
+                        {
+                            shouldScrollToEnd = true;
+                        }
+                        ImGui.SetKeyboardFocusHere(-1);
+                    }
                 }
-                ImGui.SetKeyboardFocusHere(-1);
             }
-
-            ImGui.EndChild(); // End child window for chat input
-
         }
 
         public static void DrawChat()
@@ -113,9 +122,37 @@ namespace AbsoluteRoleplay.Windows.Chat
             {
                 string profileName = messages[i].Item1;
                 string msg = messages[i].Item3;
-                ImGui.Image(messages[i].Item2.ImGuiHandle, new System.Numerics.Vector2(40, 40));
+                ImGui.Image(messages[i].Item2.ImGuiHandle, new Vector2(40, 40));
+
+                if (ImGui.BeginPopupContextItem("RightClickContext" + i))
+                {
+                    if (ImGui.MenuItem("Message"))
+                    {
+                    }
+                    if (ImGui.MenuItem("Invite to Group"))
+                    {
+                    }
+                    ImGui.EndPopup();
+                }
+
+                if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                {
+                    ImGui.OpenPopup("RightClickContext" + i);
+                }
+
                 ImGui.SameLine();
-                ImGui.TextColored(new Vector4(0.22f, 0.69f, 1.0f, 1.0f), profileName + ":");
+
+                Vector4 normalColor = new Vector4(0.22f, 0.69f, 1.0f, 1.0f);
+                Vector4 hoverColor = new Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.TextColored(hoverColor, profileName + ":");
+                }
+                else
+                {
+                    ImGui.TextColored(normalColor, profileName + ":");
+                }
+
                 ImGui.SameLine();
                 ImGui.TextWrapped(msg);
             }
@@ -125,5 +162,4 @@ namespace AbsoluteRoleplay.Windows.Chat
         {
         }
     }
-
 }
