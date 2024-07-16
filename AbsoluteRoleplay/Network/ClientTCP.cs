@@ -200,6 +200,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
+                
                 plugin.logger.Error("Could not establish connection: " + ex.ToString());
                 clientSocket?.Dispose();
             }

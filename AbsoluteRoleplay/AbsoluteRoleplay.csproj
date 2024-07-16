@@ -22,11 +22,11 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="DalamudPackager" Version="2.1.13" />
       <PackageReference Include="Lumina" Version="4.1.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
       <PackageReference Include="System.Drawing.Common" Version="8.0.6" />
       <ProjectReference Include="..\OtterGui\OtterGui.csproj" />
+        <PackageReference Include="DalamudPackager" Version="2.1.13" />
       <!--Common-->
       <None Update="UI\common\blank.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>

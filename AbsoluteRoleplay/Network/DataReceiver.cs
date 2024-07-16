@@ -10,7 +10,7 @@ using AbsoluteRoleplay.Helpers;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Interface.Textures;
 using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Chat;
+//using AbsoluteRoleplay.Windows.Chat;
 using Dalamud.Interface.Textures.TextureWraps;
 
 namespace Networking
@@ -1206,7 +1206,7 @@ namespace Networking
                     string message = buffer.ReadString();
                     IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     Tuple<string, IDalamudTextureWrap, string> messageContent = Tuple.Create(profileName, avatar, message);
-                    ChatWindow.messages.Add(messageContent);
+                   // ChatWindow.messages.Add(messageContent);
                 }
             }
             catch (Exception ex)

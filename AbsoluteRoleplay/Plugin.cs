@@ -21,7 +21,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using System.Threading.Channels;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Chat;
+//using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
     public partial class Plugin : IDalamudPlugin
@@ -30,7 +30,7 @@ namespace AbsoluteRoleplay
         public string username;
         private const string CommandName = "/arp";
         //WIP
-        //private const string ChatToggleCommand = "/arpchat";
+        private const string ChatToggleCommand = "/arpchat";
       
         public bool loggedIn;
         private IDtrBar dtrBar;
@@ -68,7 +68,8 @@ namespace AbsoluteRoleplay
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
-       // private ChatWindow ChatWindow { get; init; }
+        //private ChatWindow ChatWindow { get; init; }
+        public bool ConnectionLoaded = false;
 
         //logger for printing errors and such
         public Logger logger = new Logger();
@@ -123,11 +124,11 @@ namespace AbsoluteRoleplay
                 HelpMessage = "opens the plugin window (or use the dice button by your map)."
             }); 
             //WIP
-            /*
+            
             CommandManager.AddHandler(ChatToggleCommand, new CommandInfo(OnChatCommand)
             {
                 HelpMessage = "opens the chat window."
-            });*/
+            });
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -156,7 +157,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
-           // WindowSystem.AddWindow(ChatWindow);
+            //WindowSystem.AddWindow(ChatWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -168,15 +169,8 @@ namespace AbsoluteRoleplay
             ContextMenu.OnMenuOpened += AddContextMenu;
 
             ClientState.Logout += Logout;
-            ClientState.Login += LoadConnection;
             MainPanel.plugin = this;
             Framework.Update += OnUpdate;
-            //if online and present in game
-            if (ClientState.IsLoggedIn && clientState.LocalPlayer != null)
-            {
-                //load our connection
-                LoadConnection();
-            }
         }
 
         public async void LoadConnection()
@@ -192,7 +186,7 @@ namespace AbsoluteRoleplay
         public async void Connect()
         {
             LoadStatusBarEntry();
-            //LoadChatBarEntry();
+           // LoadChatBarEntry();
             if (IsOnline())
             {
                 if (!ClientTCP.IsConnected())
@@ -316,7 +310,7 @@ namespace AbsoluteRoleplay
             //assign on click to toggle the main ui
             entry.OnClick = () => ToggleMainUI();
         }
-        /*
+        
         public void LoadChatBarEntry()
         {
             var entry = dtrBar.Get("AbsoluteChat");
@@ -326,9 +320,9 @@ namespace AbsoluteRoleplay
             //set base tooltip value
             chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
             //assign on click to toggle the main ui
-            entry.OnClick = () => ToggleChatUI();
+            //entry.OnClick = () => ToggleChatUI();
         }
-        */
+        
         //used to alert people of incoming connection requests
         public void LoadConnectionsBarEntry(float deltaTime)
         {
@@ -403,8 +397,15 @@ namespace AbsoluteRoleplay
             }
         }
 
+        
+
         private void OnUpdate(IFramework framework)
         {
+            if(IsOnline() == true && ClientTCP.IsConnected() == false && ConnectionLoaded == false)
+            {
+                LoadConnection();
+                ConnectionLoaded = true;
+            }
             if (IsOnline() == true && ClientTCP.IsConnected() == true && ControlsLogin == false)
             {
                 // Auto login when first opening the plugin or logging in
@@ -418,11 +419,11 @@ namespace AbsoluteRoleplay
             // in response to the slash command, just toggle the display status of our main ui
             ToggleMainUI();
         }
-        /*
+        
         private void OnChatCommand(string command, string arguments)
         {
-            ToggleChatUI();
-        }*/
+            //ToggleChatUI();
+        }
         public void CloseAllWindows()
         {
             foreach (Window window in WindowSystem.Windows)
