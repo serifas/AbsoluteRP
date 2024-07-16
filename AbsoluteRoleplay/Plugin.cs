@@ -30,7 +30,7 @@ namespace AbsoluteRoleplay
         public string username;
         private const string CommandName = "/arp";
         //WIP
-        private const string ChatToggleCommand = "/arpchat";
+        //private const string ChatToggleCommand = "/arpchat";
       
         public bool loggedIn;
         private IDtrBar dtrBar;
@@ -125,10 +125,11 @@ namespace AbsoluteRoleplay
             }); 
             //WIP
             
-            CommandManager.AddHandler(ChatToggleCommand, new CommandInfo(OnChatCommand)
+            /*CommandManager.AddHandler(ChatToggleCommand, new CommandInfo(OnChatCommand)
             {
                 HelpMessage = "opens the chat window."
             });
+            */
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -420,10 +421,10 @@ namespace AbsoluteRoleplay
             ToggleMainUI();
         }
         
-        private void OnChatCommand(string command, string arguments)
+        /*private void OnChatCommand(string command, string arguments)
         {
-            //ToggleChatUI();
-        }
+            ToggleChatUI();
+        }*/
         public void CloseAllWindows()
         {
             foreach (Window window in WindowSystem.Windows)
