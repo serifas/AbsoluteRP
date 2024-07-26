@@ -167,7 +167,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (ImGui.Checkbox("Set Private", ref privateProfile))
                     {
                         //send our privacy settings to the server
-                        DataSender.SetProfileStatus(plugin.Configuration.username.ToString(), player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), privateProfile);
+                        DataSender.SetProfileStatus(plugin.username.ToString(), player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), privateProfile);
                     }
                 }
                 if (ExistingProfile == false) //else create our add profile button to create a new profile
@@ -346,7 +346,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             for (var i = 0; i < galleryImageCount; i++)
                             {
                                 //pretty simple stuff, just send the gallery related array values to the server
-                                DataSender.SendGalleryImage(configuration.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                                DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
                                                     NSFW[i], TRIGGER[i], imageURLs[i], i);
 
                             }
@@ -690,7 +690,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         for (var g = 0; g < galleryImageCount; g++)
                         {
                             //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
-                            DataSender.SendGalleryImage(configuration.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                            DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
                                               NSFW[g], TRIGGER[g], imageURLs[g], g);
 
                         }
@@ -701,7 +701,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         for (var g = 0; g < galleryImageCount; g++)
                         {
                             //same for triggering, we don't want to lose this info if the user is forgetful
-                            DataSender.SendGalleryImage(configuration.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                            DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
                                               NSFW[g], TRIGGER[g], imageURLs[g], g);
                         }
                     }

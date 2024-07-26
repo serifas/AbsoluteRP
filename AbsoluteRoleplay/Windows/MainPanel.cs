@@ -191,7 +191,11 @@ public class MainPanel : Window, IDisposable
                         {
                             DataSender.Register(registerUser, registerPassword, email);
                         }
-                       
+                    }
+                    else
+                    {
+                        status = "Passwords do not match.";
+                        statusColor = new Vector4(255, 0, 0, 255);
                     }
 
                 }
@@ -223,7 +227,7 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                DataSender.RequestConnections(plugin.Configuration.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.RequestConnections(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
 
             }
             if (ImGui.IsItemHovered())
@@ -308,7 +312,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (plugin.IsOnline())
                 {
-                    DataSender.RequestBookmarks(plugin.Configuration.username);
+                    DataSender.RequestBookmarks(plugin.username);
                 }
                
             }
@@ -385,12 +389,16 @@ public class MainPanel : Window, IDisposable
             plugin.Configuration.username = string.Empty;
             plugin.Configuration.password = string.Empty;
         }
+        plugin.username = username;
+        plugin.password = password;
         plugin.Configuration.Save();
     }
     public void AttemptLogin()
     {
         if(ClientTCP.IsConnected() && plugin.Configuration.username != string.Empty && plugin.Configuration.password != string.Empty)
         {
+            plugin.username = username;
+            plugin.password = password;
             DataSender.Login(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
         }
         plugin.LoadConnection();

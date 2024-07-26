@@ -52,6 +52,7 @@ namespace Networking
         SSendConnectionsRequest = 40,
         SSendProfileStatus = 41,
         SSendChatMessage = 42,
+        SCreateGroupChat = 43,
     }
     public class DataSender
     {
@@ -614,7 +615,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendChatMessage(string characterName, string characterWorld, string chatInput)
+        internal static async void SendChatMessage(int groupID, string characterName, string characterWorld, string chatInput)
         {
             if (ClientTCP.IsConnected())
             {
@@ -626,6 +627,29 @@ namespace Networking
                         buffer.WriteString(characterName);
                         buffer.WriteString(characterWorld);
                         buffer.WriteString(chatInput);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void CreateGroup(string groupName, string username, string password)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SCreateGroupChat);
+                        buffer.WriteString(username);
+                        buffer.WriteString(password);
+                        buffer.WriteString(groupName);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

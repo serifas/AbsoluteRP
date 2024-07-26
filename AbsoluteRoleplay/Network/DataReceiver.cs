@@ -65,6 +65,7 @@ namespace Networking
         ReceiveConnections = 55,
         ReceiveNewConnectionRequest = 56,
         ReceiveChatMessage = 57,
+        ReceiveGroupMemberships = 58,
     }
     class DataReceiver
     {
@@ -1192,6 +1193,7 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
+        /*
         internal static void ReceiveChatMessage(byte[] data)
         {
             try
@@ -1204,9 +1206,10 @@ namespace Networking
                     int avatarLen = buffer.ReadInt();
                     byte[] avatarBytes = buffer.ReadBytes(avatarLen);
                     string message = buffer.ReadString();
+                    int groupID = buffer.ReadInt();
                     IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    Tuple<string, IDalamudTextureWrap, string> messageContent = Tuple.Create(profileName, avatar, message);
-                   // ChatWindow.messages.Add(messageContent);
+                    Tuple<int, string, IDalamudTextureWrap, string> messageContent = Tuple.Create(groupID, profileName, avatar, message);
+                    ChatWindow.messages.Add(messageContent);
                 }
             }
             catch (Exception ex)
@@ -1214,7 +1217,31 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveChatMessage message: {ex}");
             }
         }
+        public static void ReceiveGroupMemberships(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int groupCount = buffer.ReadInt();
 
-        
+                    ChatWindow.groups.Clear();
+                    for (int i = 0; i < groupCount; i++)
+                    {
+                        string groupName = buffer.ReadString();
+                        string groupDescription = buffer.ReadString();                  
+                        ChatWindow.groups.Add(Tuple.Create(groupName, groupDescription));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveGroupMemberships message: {ex}");
+            }
+        }*/
+
+
     }
 }

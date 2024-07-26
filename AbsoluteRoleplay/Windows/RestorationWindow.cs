@@ -28,7 +28,7 @@ namespace AbsoluteRoleplay.Windows
         {
             this.SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(420, 350),
+                MinimumSize = new Vector2(600, 300),
                 MaximumSize = new Vector2(420, 350)
             };
             pg = plugin;
@@ -59,7 +59,11 @@ namespace AbsoluteRoleplay.Windows
                             //send the key with the new password to restore the account to settings the user knows
                             DataSender.SendRestoration(restorationEmail, restorationPass, restorationKey);
                         }
-                        
+                    }
+                    else
+                    {
+                        restorationCol = new Vector4(255, 0, 0, 255);
+                        restorationStatus = "Passwords do not match.";
                     }
                    
 

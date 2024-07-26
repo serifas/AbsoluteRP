@@ -27,10 +27,11 @@ namespace AbsoluteRoleplay
     public partial class Plugin : IDalamudPlugin
     {
         public static Plugin plugin;
-        public string username;
+        public string username = "";
+        public string password = "";
         private const string CommandName = "/arp";
         //WIP
-        //private const string ChatToggleCommand = "/arpchat";
+        private const string ChatToggleCommand = "/arpchat";
       
         public bool loggedIn;
         private IDtrBar dtrBar;
@@ -68,7 +69,6 @@ namespace AbsoluteRoleplay
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
-        //private ChatWindow ChatWindow { get; init; }
         public bool ConnectionLoaded = false;
 
         //logger for printing errors and such
@@ -80,6 +80,7 @@ namespace AbsoluteRoleplay
         public bool ControlsLogin = false;
         private bool shouldCheckTarget = true;
         private bool isWindowOpen;
+       // private bool chatLoaded = false;
 
 
         //initialize our plugin
@@ -121,15 +122,11 @@ namespace AbsoluteRoleplay
 
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
-                HelpMessage = "opens the plugin window (or use the dice button by your map)."
+                HelpMessage = "opens the plugin window."
             }); 
             //WIP
             
-            /*CommandManager.AddHandler(ChatToggleCommand, new CommandInfo(OnChatCommand)
-            {
-                HelpMessage = "opens the chat window."
-            });
-            */
+            
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -142,7 +139,6 @@ namespace AbsoluteRoleplay
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
-            //ChatWindow = new ChatWindow(this);
 
             Configuration.Initialize(PluginInterface);
 
@@ -158,7 +154,6 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
-            //WindowSystem.AddWindow(ChatWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -187,7 +182,6 @@ namespace AbsoluteRoleplay
         public async void Connect()
         {
             LoadStatusBarEntry();
-           // LoadChatBarEntry();
             if (IsOnline())
             {
                 if (!ClientTCP.IsConnected())
@@ -279,7 +273,7 @@ namespace AbsoluteRoleplay
                     TargetWindow.ReloadTarget();
                     OpenTargetWindow();
                     //send a request to the server for the target profile info
-                    DataSender.RequestTargetProfile(characterName, characterWorld, Configuration.username);
+                    DataSender.RequestTargetProfile(characterName, characterWorld, plugin.username);
                 }
 
             }
@@ -295,7 +289,7 @@ namespace AbsoluteRoleplay
                 //fetch target player once more
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
                 //send a bookmark message to the server
-                DataSender.BookmarkPlayer(Configuration.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.BookmarkPlayer(plugin.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
             }
         }
 
@@ -311,9 +305,10 @@ namespace AbsoluteRoleplay
             //assign on click to toggle the main ui
             entry.OnClick = () => ToggleMainUI();
         }
-        
-        public void LoadChatBarEntry()
+        //WIP
+       /* public void LoadChatBarEntry()
         {
+            
             var entry = dtrBar.Get("AbsoluteChat");
             chatBarEntry = entry;
             string icon = "\uE0BB"; //link icon
@@ -321,9 +316,8 @@ namespace AbsoluteRoleplay
             //set base tooltip value
             chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
             //assign on click to toggle the main ui
-            //entry.OnClick = () => ToggleChatUI();
         }
-        
+        */
         //used to alert people of incoming connection requests
         public void LoadConnectionsBarEntry(float deltaTime)
         {
@@ -334,7 +328,7 @@ namespace AbsoluteRoleplay
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
             ConnectionsWindow.currentListing = 2;
-            entry.OnClick = () => DataSender.RequestConnections(Configuration.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
+            entry.OnClick = () => DataSender.RequestConnections(plugin.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
             
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
@@ -379,7 +373,6 @@ namespace AbsoluteRoleplay
             RestorationWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
-            //ChatWindow?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -407,6 +400,11 @@ namespace AbsoluteRoleplay
                 LoadConnection();
                 ConnectionLoaded = true;
             }
+           /* if(loggedIn == true && chatLoaded == false)
+            {
+               // LoadChatBarEntry();
+                chatLoaded = true;
+            }*/
             if (IsOnline() == true && ClientTCP.IsConnected() == true && ControlsLogin == false)
             {
                 // Auto login when first opening the plugin or logging in
@@ -421,10 +419,6 @@ namespace AbsoluteRoleplay
             ToggleMainUI();
         }
         
-        /*private void OnChatCommand(string command, string arguments)
-        {
-            ToggleChatUI();
-        }*/
         public void CloseAllWindows()
         {
             foreach (Window window in WindowSystem.Windows)
@@ -461,7 +455,6 @@ namespace AbsoluteRoleplay
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
-       // public void ToggleChatUI() => ChatWindow.Toggle();
 
         internal async void UpdateStatus()
         {

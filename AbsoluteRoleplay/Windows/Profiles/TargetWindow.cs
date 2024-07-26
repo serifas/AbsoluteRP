@@ -311,7 +311,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 {
                                     if (plugin.IsOnline())
                                     {
-                                        DataSender.AddProfileNotes(plugin.Configuration.username, characterNameVal, characterWorldVal, profileNotes);
+                                        DataSender.AddProfileNotes(plugin.username, characterNameVal, characterWorldVal, profileNotes);
                                     }
 
                                 }
