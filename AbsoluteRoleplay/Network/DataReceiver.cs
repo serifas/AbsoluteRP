@@ -418,6 +418,7 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     string username = buffer.ReadString();
                     int status = buffer.ReadInt();
+                    plugin.username = username;
                     //account window
                     if (status == (int)Constants.StatusMessages.LOGIN_BANNED)
                     {
@@ -433,7 +434,6 @@ namespace Networking
                     if (status == (int)Constants.StatusMessages.LOGIN_VERIFIED)
                     {
                         plugin.loggedIn = true;
-                        plugin.username = username;
                         MainPanel.status = "Logged In";
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.viewMainWindow = true;

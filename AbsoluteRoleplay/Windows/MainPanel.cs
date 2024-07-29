@@ -110,14 +110,14 @@ public class MainPanel : Window, IDisposable
             if (ImGui.Button("Login"))
             {
                 if (plugin.IsOnline() && ClientTCP.IsConnected() == true)
-                {                    
-                    SaveLoginPreferences();
+                {
+                    SaveLoginPreferences(this.username.ToString(), this.password.ToString());
                     DataSender.Login(this.username, this.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
                 }
             }
             ImGui.SameLine();
             if(ImGui.Checkbox("Remember Me", ref Remember)){
-                SaveLoginPreferences();
+                SaveLoginPreferences(this.username.ToString(), this.password.ToString());
             }
             if (ImGui.Button("Forgot"))
             {
@@ -170,8 +170,8 @@ public class MainPanel : Window, IDisposable
         if (register == true)
         {
 
-            ImGui.InputTextWithHint("##username", $"Username", ref this.registerUser, 100);
-            ImGui.InputTextWithHint("##passver", $"Password", ref this.registerPassword, 100, ImGuiInputTextFlags.Password);
+            ImGui.InputTextWithHint("##username", $"Username", ref registerUser, 100);
+            ImGui.InputTextWithHint("##passver", $"Password", ref registerPassword, 100, ImGuiInputTextFlags.Password);
             ImGui.InputTextWithHint("##regpassver", $"Verify Password", ref this.registerVerPassword, 100, ImGuiInputTextFlags.Password);
             ImGui.InputTextWithHint("##email", $"Email", ref this.email, 100);
             ImGui.Checkbox("I am atleast 18 years of age", ref Agree18);
@@ -186,10 +186,11 @@ public class MainPanel : Window, IDisposable
                 {
                     if (registerPassword == registerVerPassword)
                     {
-                        plugin.Configuration.username = registerUser;
                         if (plugin.IsOnline())
                         {
-                            DataSender.Register(registerUser, registerPassword, email);
+                            SaveLoginPreferences(registerUser, registerPassword);
+                            plugin.username = registerUser.ToString();
+                            DataSender.Register(registerUser.ToString(), registerPassword, email);
                         }
                     }
                     else
@@ -376,7 +377,7 @@ public class MainPanel : Window, IDisposable
 
         
     }
-    public void SaveLoginPreferences()
+    public void SaveLoginPreferences(string username, string password)
     {
         plugin.Configuration.rememberInformation = Remember;
         if (plugin.Configuration.rememberInformation == true)
