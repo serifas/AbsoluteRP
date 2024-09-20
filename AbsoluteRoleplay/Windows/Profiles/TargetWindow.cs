@@ -33,7 +33,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool ExistingBio;
         public static bool ExistingHooks;
         public static int hookEditCount, existingGalleryImageCount;
-        public static bool showAlignment, showPersonality;
+        public static bool showAlignment;
+        public static bool showPersonality, showPersonality1, showPersonality2, showPersonality3 = false;
         public static bool ExistingStory;
         public static bool ExistingOOC;
         public static bool ExistingGallery;
@@ -214,27 +215,37 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     ImGui.Spacing();
 
                                     ImGui.TextColored(new Vector4(1, 1, 1, 1), "PERSONALITY TRAITS:");
-
-                                    ImGui.Image(personalityImg1.ImGuiHandle, new Vector2(32, 42));
-
-                                    if (ImGui.IsItemHovered())
+                                    if(showPersonality1 == true)
                                     {
-                                        ImGui.SetTooltip(personality1Tooltip);
-                                    }
-                                    ImGui.SameLine();
-                                    ImGui.Image(personalityImg2.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg1.ImGuiHandle, new Vector2(32, 42));
 
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip(personality2Tooltip);
+                                        if (ImGui.IsItemHovered())
+                                        {
+                                            ImGui.SetTooltip(personality1Tooltip);
+                                        }
+                                        ImGui.SameLine();
                                     }
-                                    ImGui.SameLine();
-                                    ImGui.Image(personalityImg3.ImGuiHandle, new Vector2(32, 42));
+                                    if (showPersonality2 == true)
+                                    {
+                                        ImGui.Image(personalityImg2.ImGuiHandle, new Vector2(32, 42));
 
-                                    if (ImGui.IsItemHovered())
-                                    {
-                                        ImGui.SetTooltip(personality3Tooltip);
+                                        if (ImGui.IsItemHovered())
+                                        {
+                                            ImGui.SetTooltip(personality2Tooltip);
+                                        }
+                                        ImGui.SameLine();
                                     }
+                                    if(showPersonality3 == true)
+                                    {
+                                        ImGui.Image(personalityImg3.ImGuiHandle, new Vector2(32, 42));
+
+                                        if (ImGui.IsItemHovered())
+                                        {
+                                            ImGui.SetTooltip(personality3Tooltip);
+                                        }
+                                    }
+                                  
+                                   
 
                                 }
 

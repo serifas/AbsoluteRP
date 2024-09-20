@@ -635,14 +635,12 @@ namespace Networking
                     {
                         TargetWindow.showAlignment = false;
                     }
-                    if (personality_1 == 26 && personality_2 == 26 && personality_3 == 26)
-                    {
-                        TargetWindow.showPersonality = false;
-                    }
-                    else
-                    {
-                        TargetWindow.showPersonality = true;
-                    }
+                    if (personality_1 == 26) { TargetWindow.showPersonality1 = false; } else { TargetWindow.showPersonality1 = true; }
+                    if (personality_2 == 26) { TargetWindow.showPersonality2 = false; } else { TargetWindow.showPersonality2 = true; }
+                    if (personality_3 == 26) { TargetWindow.showPersonality3 = false; } else { TargetWindow.showPersonality3 = true; }
+                    if(personality_1 == 26 && personality_2 == 26 && personality_3 == 26){TargetWindow.showPersonality = false;}
+                    else{TargetWindow.showPersonality = true; }
+
                     TargetWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     TargetWindow.characterEditName = name.Replace("''", "'"); TargetWindow.characterEditRace = race.Replace("''", "'"); TargetWindow.characterEditGender = gender.Replace("''", "'");
                     TargetWindow.characterEditAge = age.Replace("''", "'"); TargetWindow.characterEditHeight = height.Replace("''", "'"); TargetWindow.characterEditWeight = weight.Replace("''", "'");

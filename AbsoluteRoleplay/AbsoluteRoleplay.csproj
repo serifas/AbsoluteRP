@@ -182,9 +182,12 @@
       <None Update="UI\common\profiles\personalities\wild.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="UI\common\profiles\personalities\worldly.png">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <None Update="UI\common\profiles\personalities\worldly.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+      <None Update="UI\common\profiles\personalities\none.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
       <None Update="UI\common\systems\systems_combat.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>

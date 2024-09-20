@@ -319,7 +319,7 @@ namespace AbsoluteRoleplay
                 if (id == (int)Personalities.Tough) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tough.png"))).Result;}
                 if (id == (int)Personalities.Wild) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/wild.png"))).Result;}
                 if (id == (int)Personalities.Worldly) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result;}
-                if (id == (int)Personalities.None) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/none.png"))).Result;}
+                if (id == (int)Personalities.None) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result;}
             }
             return personalityIcon;
         }
