@@ -18,7 +18,8 @@ using System.Security.Cryptography;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
-
+    //TODO
+    /*
     //changed
     public class EventCreationWindow : Window, IDisposable
     {
@@ -60,7 +61,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         }
        
-    }
+    }*/
 }
 
 
