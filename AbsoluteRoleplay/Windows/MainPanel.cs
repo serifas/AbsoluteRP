@@ -70,17 +70,17 @@ public class MainPanel : Window, IDisposable
     }
     public override void OnOpen()
     {
-        var kofi = Constants.UICommonImage(Constants.CommonImageTypes.kofiBtn);
-        var discod = Constants.UICommonImage(Constants.CommonImageTypes.discordBtn);
-        var profileSectionImg = Constants.UICommonImage(Constants.CommonImageTypes.profileSection);
-        var eventsImg = Constants.UICommonImage(Constants.CommonImageTypes.eventsSection);
-        var systemsImg = Constants.UICommonImage(Constants.CommonImageTypes.systemsSection);
-        var connectionsImg = Constants.UICommonImage(Constants.CommonImageTypes.connectionsSection);
-        var profileImg = Constants.UICommonImage(Constants.CommonImageTypes.profileCreateProfile);
-        var profileBookmarkImg = Constants.UICommonImage(Constants.CommonImageTypes.profileBookmarkProfile);
-        var npcImg = Constants.UICommonImage(Constants.CommonImageTypes.profileCreateNPC);
-        var npcBookmarkImg = Constants.UICommonImage(Constants.CommonImageTypes.profileBookmarkNPC);
-        var reconnectImg = Constants.UICommonImage(Constants.CommonImageTypes.reconnect);
+        var kofi = Defines.UICommonImage(Defines.CommonImageTypes.kofiBtn);
+        var discod = Defines.UICommonImage(Defines.CommonImageTypes.discordBtn);
+        var profileSectionImg = Defines.UICommonImage(Defines.CommonImageTypes.profileSection);
+        var eventsImg = Defines.UICommonImage(Defines.CommonImageTypes.eventsSection);
+        var systemsImg = Defines.UICommonImage(Defines.CommonImageTypes.systemsSection);
+        var connectionsImg = Defines.UICommonImage(Defines.CommonImageTypes.connectionsSection);
+        var profileImg = Defines.UICommonImage(Defines.CommonImageTypes.profileCreateProfile);
+        var profileBookmarkImg = Defines.UICommonImage(Defines.CommonImageTypes.profileBookmarkProfile);
+        var npcImg = Defines.UICommonImage(Defines.CommonImageTypes.profileCreateNPC);
+        var npcBookmarkImg = Defines.UICommonImage(Defines.CommonImageTypes.profileBookmarkNPC);
+        var reconnectImg = Defines.UICommonImage(Defines.CommonImageTypes.reconnect);
 
         if (kofi != null) { kofiBtnImg = kofi; }
         if (discod != null) { discoBtn = discod; }

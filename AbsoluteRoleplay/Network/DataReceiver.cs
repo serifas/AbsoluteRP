@@ -319,19 +319,19 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     ProfileWindow.ClearUI();
-                    var currentAvatar = Constants.UICommonImage(Constants.CommonImageTypes.avatarHolder);
+                    var currentAvatar = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
                     if (currentAvatar != null)
                     {
                         ProfileWindow.currentAvatarImg = currentAvatar;
                     }
 
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.name] = "";
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.race] = "";
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.gender] = "";
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.age] = "";
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.height] = "";
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.weight] = "";
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.afg] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.name] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.race] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.age] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.height] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = "";
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = "";
                     ProfileWindow.currentAlignment = 0;
 
                     ProfileWindow.currentPersonality_1 = 0;
@@ -420,69 +420,69 @@ namespace Networking
                     int status = buffer.ReadInt();
                     plugin.username = username;
                     //account window
-                    if (status == (int)Constants.StatusMessages.LOGIN_BANNED)
+                    if (status == (int)Defines.StatusMessages.LOGIN_BANNED)
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account Banned";
                     }
-                    if (status == (int)Constants.StatusMessages.LOGIN_UNVERIFIED)
+                    if (status == (int)Defines.StatusMessages.LOGIN_UNVERIFIED)
                     {
                         plugin.loggedIn = false;
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Unverified Account";
                     }
-                    if (status == (int)Constants.StatusMessages.LOGIN_VERIFIED)
+                    if (status == (int)Defines.StatusMessages.LOGIN_VERIFIED)
                     {
                         plugin.loggedIn = true;
                         MainPanel.status = "Logged In";
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.viewMainWindow = true;
                     }
-                    if(status == (int)Constants.StatusMessages.LOGIN_WRONG_INFORMATION)
+                    if(status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new System.Numerics.Vector4(255,0,0,255);   
                         MainPanel.status = "Incorrect login details";
                     }
-                    if (status == (int)Constants.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
+                    if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Username already in use.";
                     }
 
-                    if (status == (int)Constants.StatusMessages.REGISTRATION_DUPLICATE_EMAIL)
+                    if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_EMAIL)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Email already in use.";
                     }
-                    if (status == (int)Constants.StatusMessages.LOGIN_WRONG_INFORMATION)
+                    if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Incorrect Account Info";
                         MainPanel.viewMainWindow = false;
                     }
-                    if (status == (int)Constants.StatusMessages.FORGOT_REQUEST_RECEIVED)
+                    if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_RECEIVED)
                     {
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.status = "Request received, please stand by...";
                     }
-                    if (status == (int)Constants.StatusMessages.FORGOT_REQUEST_INCORRECT)
+                    if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_INCORRECT)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "There is no account with this email.";
                     }
                     //Restoration window
-                    if (status == (int)Constants.StatusMessages.PASSCHANGE_INCORRECT_RESTORATION_KEY)
+                    if (status == (int)Defines.StatusMessages.PASSCHANGE_INCORRECT_RESTORATION_KEY)
                     {
                         RestorationWindow.restorationCol = new Vector4(255, 0, 0, 255);
                         RestorationWindow.restorationStatus = "Incorrect Key.";
                     }
-                    if (status == (int)Constants.StatusMessages.PASSCHANGE_PASSWORD_CHANGED)
+                    if (status == (int)Defines.StatusMessages.PASSCHANGE_PASSWORD_CHANGED)
                     {
                         RestorationWindow.restorationCol = new Vector4(0, 255, 0, 255);
                         RestorationWindow.restorationStatus = "Password updated, you may close this window.";
                     }
                     //Verification window
-                    if (status == (int)Constants.StatusMessages.VERIFICATION_KEY_VERIFIED)
+                    if (status == (int)Defines.StatusMessages.VERIFICATION_KEY_VERIFIED)
                     {
                         VerificationWindow.verificationCol = new Vector4(0, 255, 0, 255);
                         VerificationWindow.verificationStatus = "Account Verified! you may now log in.";
@@ -492,12 +492,12 @@ namespace Networking
                         MainPanel.register = false;
 
                     }
-                    if (status == (int)Constants.StatusMessages.VERIFICATION_INCORRECT_KEY)
+                    if (status == (int)Defines.StatusMessages.VERIFICATION_INCORRECT_KEY)
                     {
                         VerificationWindow.verificationCol = new Vector4(255, 0, 0, 255);
                         VerificationWindow.verificationStatus = "Incorrect verification key.";
                     }
-                    if (status == (int)Constants.StatusMessages.REGISTRATION_INSUFFICIENT_DATA)
+                    if (status == (int)Defines.StatusMessages.REGISTRATION_INSUFFICIENT_DATA)
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Please fill all fields.";
@@ -645,20 +645,20 @@ namespace Networking
                     TargetWindow.characterEditName = name.Replace("''", "'"); TargetWindow.characterEditRace = race.Replace("''", "'"); TargetWindow.characterEditGender = gender.Replace("''", "'");
                     TargetWindow.characterEditAge = age.Replace("''", "'"); TargetWindow.characterEditHeight = height.Replace("''", "'"); TargetWindow.characterEditWeight = weight.Replace("''", "'");
                     TargetWindow.characterEditAfg = atFirstGlance.Replace("''", "'");
-                    var alignmentImage = Constants.AlignementIcon(alignment);
-                    var personality1Image = Constants.PersonalityIcon(personality_1);
-                    var personality2Image = Constants.PersonalityIcon(personality_2);
-                    var personality3Image = Constants.PersonalityIcon(personality_3);
+                    var alignmentImage = Defines.AlignementIcon(alignment);
+                    var personality1Image = Defines.PersonalityIcon(personality_1);
+                    var personality2Image = Defines.PersonalityIcon(personality_2);
+                    var personality3Image = Defines.PersonalityIcon(personality_3);
 
                     if (alignmentImage != null) { TargetWindow.alignmentImg = alignmentImage; }
                     if (personality1Image != null) { TargetWindow.personalityImg1 = personality1Image; }
                     if (personality2Image != null) { TargetWindow.personalityImg2 = personality2Image; }
                     if (personality3Image != null) { TargetWindow.personalityImg3 = personality3Image; }
 
-                    var (text, desc) = Constants.AlignmentVals[alignment];
-                    var (textpers1, descpers1) = Constants.PersonalityValues[personality_1];
-                    var (textpers2, descpers2) = Constants.PersonalityValues[personality_2];
-                    var (textpers3, descpers3) = Constants.PersonalityValues[personality_3];
+                    var (text, desc) = Defines.AlignmentVals[alignment];
+                    var (textpers1, descpers1) = Defines.PersonalityValues[personality_1];
+                    var (textpers2, descpers2) = Defines.PersonalityValues[personality_2];
+                    var (textpers3, descpers3) = Defines.PersonalityValues[personality_3];
                     TargetWindow.alignmentTooltip = text + ": \n" + desc;
                     TargetWindow.personality1Tooltip = textpers1 + ": \n" + descpers1;
                     TargetWindow.personality2Tooltip = textpers2 + ": \n" + descpers2;
@@ -716,13 +716,13 @@ namespace Networking
                     {
                         ProfileWindow.personalityHidden = false;
                     }
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.name] = name.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.race] = race.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.gender] = gender.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.age] = age.ToString().Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.height] = height.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.weight] = weight.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Constants.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.name] = name.Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.race] = race.Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = gender.Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.age] = age.ToString().Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.height] = height.Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = weight.Replace("''", "'");
+                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
                     ProfileWindow.currentAlignment = alignment;
 
                     ProfileWindow.currentPersonality_1 = personality_1;
@@ -1120,19 +1120,19 @@ namespace Networking
                         Tuple<string, string> receiver = Tuple.Create(receiverName, receiverWorld);
                         if (isReceiver)
                         {
-                            if (status == (int)Constants.ConnectionStatus.pending)
+                            if (status == (int)Defines.ConnectionStatus.pending)
                             {
                                 ConnectionsWindow.receivedProfileRequests.Add(requester);
                             }
-                            if (status == (int)Constants.ConnectionStatus.accepted)
+                            if (status == (int)Defines.ConnectionStatus.accepted)
                             {
                                 ConnectionsWindow.connetedProfileList.Add(requester);
                             }
-                            if (status == (int)Constants.ConnectionStatus.blocked)
+                            if (status == (int)Defines.ConnectionStatus.blocked)
                             {
                                 ConnectionsWindow.blockedProfileRequests.Add(requester);
                             }
-                            if (status == (int)Constants.ConnectionStatus.refused)
+                            if (status == (int)Defines.ConnectionStatus.refused)
                             {
                                 if (ConnectionsWindow.receivedProfileRequests.Contains(requester))
                                 {
@@ -1142,19 +1142,19 @@ namespace Networking
                         }
                         else if (!isReceiver)
                         {
-                            if (status == (int)Constants.ConnectionStatus.pending)
+                            if (status == (int)Defines.ConnectionStatus.pending)
                             {
                                 ConnectionsWindow.sentProfileRequests.Add(receiver);
                             }
-                            if (status == (int)Constants.ConnectionStatus.accepted)
+                            if (status == (int)Defines.ConnectionStatus.accepted)
                             {
                                 ConnectionsWindow.connetedProfileList.Add(receiver);
                             }
-                            if (status == (int)Constants.ConnectionStatus.blocked)
+                            if (status == (int)Defines.ConnectionStatus.blocked)
                             {
                                 ConnectionsWindow.blockedProfileRequests.Add(receiver);
                             }
-                            if (status == (int)Constants.ConnectionStatus.refused)
+                            if (status == (int)Defines.ConnectionStatus.refused)
                             {
                                 ConnectionsWindow.sentProfileRequests.Add(receiver);
                             }

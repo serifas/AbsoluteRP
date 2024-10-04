@@ -16,7 +16,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace AbsoluteRoleplay
 {
-    internal class Constants
+    internal class Defines
     {
         public enum StatusMessages
         {

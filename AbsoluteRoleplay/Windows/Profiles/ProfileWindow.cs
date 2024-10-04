@@ -85,13 +85,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public override void OnOpen()
         {
             TabOpen.Clear(); //clear our TabOpen array before populating again
-            var avatarHolderImage = Constants.UICommonImage(Constants.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
+            var avatarHolderImage = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
             if (avatarHolderImage != null)
             {
                 avatarHolder = avatarHolderImage; //set our avatarHolder ot the same TextureWrap
             }
             //same for pictureTab
-            var pictureTabImage = Constants.UICommonImage(Constants.CommonImageTypes.blankPictureTab);
+            var pictureTabImage = Defines.UICommonImage(Defines.CommonImageTypes.blankPictureTab);
             if (pictureTabImage != null)
             {
                 pictureTab = pictureTabImage;
@@ -204,11 +204,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         }
                         ImGui.Spacing();
                         //simple for loop to get through our bio text fields
-                        for (var i = 0; i < Constants.BioFieldVals.Length; i++)
+                        for (var i = 0; i < Defines.BioFieldVals.Length; i++)
                         {
-                            var BioField = Constants.BioFieldVals[i];
+                            var BioField = Defines.BioFieldVals[i];
                             //if our input type is single line 
-                            if (BioField.Item4 == Constants.InputTypes.single)
+                            if (BioField.Item4 == Defines.InputTypes.single)
                             {
                                 ImGui.Text(BioField.Item1);
                                 //if our label is not AFG use sameline
@@ -244,13 +244,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             //submit our bio to the server
                             DataSender.SubmitProfileBio(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
                                                     avatarBytes,
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.name].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.race].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.gender].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.age].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.height].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.weight].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Constants.BioFieldTypes.afg].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.gender].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.age].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
                                                     currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
 
                         }
@@ -881,13 +881,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void AddAlignmentSelection()
         {
-            var (text, desc) = Constants.AlignmentVals[currentAlignment];
+            var (text, desc) = Defines.AlignmentVals[currentAlignment];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Alignment", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Constants.AlignmentVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in Defines.AlignmentVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentAlignment))
                     currentAlignment = idx;
@@ -897,13 +897,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void AddPersonalitySelection_1()
         {
-            var (text, desc) = Constants.PersonalityValues[currentPersonality_1];
+            var (text, desc) = Defines.PersonalityValues[currentPersonality_1];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #1", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Constants.PersonalityValues.WithIndex())
+            foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentPersonality_1))
                     currentPersonality_1 = idx;
@@ -913,13 +913,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void AddPersonalitySelection_2()
         {
-            var (text, desc) = Constants.PersonalityValues[currentPersonality_2];
+            var (text, desc) = Defines.PersonalityValues[currentPersonality_2];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #2", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Constants.PersonalityValues.WithIndex())
+            foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentPersonality_2))
                     currentPersonality_2 = idx;
@@ -929,13 +929,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void AddPersonalitySelection_3()
         {
-            var (text, desc) = Constants.PersonalityValues[currentPersonality_3];
+            var (text, desc) = Defines.PersonalityValues[currentPersonality_3];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #3", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Constants.PersonalityValues.WithIndex())
+            foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentPersonality_3))
                     currentPersonality_3 = idx;
