@@ -14,6 +14,8 @@ using OtterGui;
 using System.Linq;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Textures.TextureWraps;
+using System.Diagnostics;
+using System.Collections;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -64,6 +66,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static int storyChapterCount = -1;
         public static int currentChapter;
         public static bool privateProfile; //sets whether the profile is allowed to be publicly viewed
+      
+
+
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -168,6 +173,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         //send our privacy settings to the server
                         DataSender.SetProfileStatus(plugin.username.ToString(), player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), privateProfile);
+                    }
+                    if (ImGui.Button("Create Backup"))
+                    {
+                        SaveBackupFile();
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Load Backup"))
+                    {
+                        LoadBackupFile();
                     }
                 }
                 if (ExistingProfile == false) //else create our add profile button to create a new profile
@@ -479,6 +493,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
 
         }
+
+
         public void CreateChapter()
         {
             if (storyChapterCount < 30)
@@ -942,6 +958,169 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                 ImGuiUtil.SelectableHelpMarker(newDesc);
             }
+        }
+
+        private void LoadBackupFile()
+        {
+            _fileDialogManager.OpenFileDialog("Select Backup", "Data{.dat}", (s, f) =>
+            {
+                if (!s)
+                    return;
+                var dataPath = f[0].ToString();
+                using (StreamReader reader = new StreamReader(dataPath))
+                {
+                    // Read the base64 string and convert it back to a byte array (avatarBytes)
+                    string avatarBts = reader.ReadLine();
+                    avatarBytes = Convert.FromBase64String(avatarBts);
+
+                    // Extract values between custom tags and assign them back to variables
+                    bioFieldsArr[(int)Defines.BioFieldTypes.name] = ExtractValue(reader.ReadLine(), "name");
+                    bioFieldsArr[(int)Defines.BioFieldTypes.race] = ExtractValue(reader.ReadLine(), "race");
+                    bioFieldsArr[(int)Defines.BioFieldTypes.gender] = ExtractValue(reader.ReadLine(), "gender");
+                    bioFieldsArr[(int)Defines.BioFieldTypes.age] = ExtractValue(reader.ReadLine(), "age");
+                    bioFieldsArr[(int)Defines.BioFieldTypes.height] = ExtractValue(reader.ReadLine(), "height");
+                    bioFieldsArr[(int)Defines.BioFieldTypes.weight] = ExtractValue(reader.ReadLine(), "weight");
+                    bioFieldsArr[(int)Defines.BioFieldTypes.afg] = ExtractValue(reader.ReadLine(), "afg");
+                    currentAlignment = int.Parse(ExtractValue(reader.ReadLine(), "alignment"));
+                    currentPersonality_1 = int.Parse(ExtractValue(reader.ReadLine(), "personality_1"));
+                    currentPersonality_2 = int.Parse(ExtractValue(reader.ReadLine(), "personality_2"));
+                    currentPersonality_3 = int.Parse(ExtractValue(reader.ReadLine(), "personality_3"));
+
+                    // Read hooks
+                    string hooksStart = reader.ReadLine();
+                    List<string> hookNames = new List<string>();
+                    List<string> hookContents = new List<string>();
+
+                    string line;
+                    while ((line = reader.ReadLine()) != null && !line.Contains("<hooks>"))
+                    {
+                        hookNames.Add(ExtractValue(line, "hookname"));
+                        hookContents.Add(ExtractValue(reader.ReadLine(), "hookcontent"));
+                    }
+                    hookCount = HookNames.Length;
+                    for (int i = 0; i < hookCount; i++)
+                    {
+                        hookExists[i] = true;
+                    }
+                    HookNames = hookNames.ToArray(); // Assign the collected hooks to your variables
+                    HookContents = hookContents.ToArray();
+
+                    // Story data
+                    storyTitle = reader.ReadLine();
+                    reader.ReadLine(); // Skip <storychapters>
+
+                    List<string> chapterNames = new List<string>();
+                    List<string> chapterContents = new List<string>();
+
+                    while ((line = reader.ReadLine()) != null && !line.Contains("<storychapters>"))
+                    {
+                        chapterNames.Add(ExtractValue(line, "chaptername"));
+                        chapterContents.Add(ExtractValue(reader.ReadLine(), "chaptercontent"));
+                    }
+                    chapterCount = chapterNames.Count;
+                    currentChapter = 0;
+                    for (int i = 0; i < chapterCount; i++)
+                    {
+                        storyChapterExists[i] = true;
+                    }
+                    ChapterNames = chapterNames.ToArray();
+                    ChapterContents = chapterContents.ToArray();
+
+                    // OOC Info
+                    oocInfo = reader.ReadLine();
+
+                    // Gallery data
+                    reader.ReadLine(); // Skip <gallery>
+
+                    List<bool> nsfwList = new List<bool>();
+                    List<bool> triggerList = new List<bool>();
+                    List<string> urlList = new List<string>();
+
+                    while ((line = reader.ReadLine()) != null && !line.Contains("<gallery>"))
+                    {
+                        nsfwList.Add(bool.Parse(ExtractValue(line, "nsfw")));
+                        triggerList.Add(bool.Parse(ExtractValue(reader.ReadLine(), "trigger")));
+                        urlList.Add(ExtractValue(reader.ReadLine(), "url"));
+                    }
+
+                    NSFW = nsfwList.ToArray();
+                    TRIGGER = triggerList.ToArray();
+                    imageURLs = urlList.ToArray();
+                }
+
+            }, 0, null, configuration.AlwaysOpenDefaultImport);
+        }
+        public void SaveBackupFile()
+        {
+            _fileDialogManager.SaveFileDialog("Save Backup", "Data{.dat, .json}", "backup", ".dat", (s, f) =>
+            {
+                if (!s)
+                    return;
+                var dataPath = f.ToString();
+
+
+                using (StreamWriter writer = new StreamWriter($"{dataPath}.dat"))
+                {
+                    string avatarBts = Convert.ToBase64String(avatarBytes);           
+                    writer.WriteLine(avatarBts);
+                    writer.WriteLine($"<name>{bioFieldsArr[(int)Defines.BioFieldTypes.name]}<name>");
+                    writer.WriteLine($"<race>{bioFieldsArr[(int)Defines.BioFieldTypes.race]}<race>");
+                    writer.WriteLine($"<gender>{bioFieldsArr[(int)Defines.BioFieldTypes.gender]}<gender>");
+                    writer.WriteLine($"<age>{bioFieldsArr[(int)Defines.BioFieldTypes.age]}<age>");
+                    writer.WriteLine($"<height>{bioFieldsArr[(int)Defines.BioFieldTypes.height]}<height>");
+                    writer.WriteLine($"<weight>{bioFieldsArr[(int)Defines.BioFieldTypes.weight]}<weight>");
+                    writer.WriteLine($"<afg>{bioFieldsArr[(int)Defines.BioFieldTypes.afg]}<afg>");
+                    writer.WriteLine($"<alignment>{currentAlignment}<alignment>");
+                    writer.WriteLine($"<personality_1>{currentPersonality_1}<personality_1>");
+                    writer.WriteLine($"<personality_2>{currentPersonality_2}<personality_2>");
+                    writer.WriteLine($"<personality_3>{currentPersonality_3}<personality_3>");
+
+                    writer.WriteLine("<hooks>");
+                    for(int i = 0; i < hookCount; i++)
+                    {
+                        writer.WriteLine($"<hookname>{HookNames[i]}<hookname>");
+                        writer.WriteLine($"<hookcontent>{HookContents[i]}<hookcontent>");
+                    }
+                    writer.WriteLine(" <hooks>");
+
+                    writer.WriteLine(storyTitle);
+                    writer.WriteLine("<storychapters>");
+                    for (int i = 0; i < storyChapterCount; i++)
+                    {
+                        writer.WriteLine($"<chaptername>{ChapterNames[i]}<chaptername>");
+                        writer.WriteLine($"<chaptercontent>{ChapterContents[i]}<chaptercontent>");
+                    }
+                    writer.WriteLine("<storychapters>");
+                    writer.WriteLine(oocInfo);
+                    writer.WriteLine("<gallery>");
+                    for (int i = 0; i < galleryImageCount; i++)
+                    {
+                        writer.WriteLine($"<nsfw>{NSFW[i]}<nsfw>");
+                        writer.WriteLine($"<trigger>{TRIGGER[i]}<trigger>");
+                        writer.WriteLine($"<url>{imageURLs[i]}<url>");
+                    }
+                    writer.WriteLine(" <gallery>");
+                }
+
+
+                    
+                
+
+
+            });
+        }
+
+        private string ExtractValue(string line, string tag)
+        {
+            // Extracts the content between <tag> and <tag>
+            int startIndex = line.IndexOf($"<{tag}>") + tag.Length + 2;
+            int endIndex = line.IndexOf($"<{tag}>", startIndex);
+
+            if (startIndex != -1 && endIndex != -1)
+            {
+                return line.Substring(startIndex, endIndex - startIndex);
+            }
+            return string.Empty;
         }
 
         public void EditImage(bool avatar, int imageIndex)
