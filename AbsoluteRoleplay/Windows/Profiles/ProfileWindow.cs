@@ -14,11 +14,6 @@ using OtterGui;
 using System.Linq;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Textures.TextureWraps;
-using System.Diagnostics;
-using System.Collections;
-using OtterGui.Log;
-using static Lumina.Data.Parsing.Layer.LayerCommon;
-using Dalamud.Hooking;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -69,9 +64,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static int storyChapterCount = -1;
         public static int currentChapter;
         public static bool privateProfile; //sets whether the profile is allowed to be publicly viewed
-      
-
-
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -177,20 +169,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         //send our privacy settings to the server
                         DataSender.SetProfileStatus(plugin.username.ToString(), player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), privateProfile);
                     }
-                    if (ImGui.Button("Create Backup"))
-                    {
-                        SaveBackupFile();
-                    }
-                    ImGui.SameLine();
-                    if (ImGui.Button("Load Backup"))
-                    {
-                        LoadBackupFile();
-                    }
-                    ImGui.SameLine();
-                    if(ImGui.Button("Submit Profile"))
-                    {
-                        SubmitProfileData();
-                    }
                 }
                 if (ExistingProfile == false) //else create our add profile button to create a new profile
                 {
@@ -261,7 +239,21 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         AddPersonalitySelection_1();
                         AddPersonalitySelection_2();
                         AddPersonalitySelection_3();
-                      
+                        if (ImGui.Button("Save Bio"))
+                        {
+                            //submit our bio to the server
+                            DataSender.SubmitProfileBio(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                                                    avatarBytes,
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.gender].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.age].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
+                                                    bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
+                                                    currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
+
+                        }
                     }
                     #endregion
                     #region HOOKS
@@ -274,7 +266,21 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 hookCount++;
                             }
                         }
-                       
+                        ImGui.SameLine();
+                        if (ImGui.Button("Submit Hooks"))
+                        {
+                            //create a new List to hold our hook values
+                            var hooks = new List<Tuple<int, string, string>>();
+                            for (var i = 0; i < hookCount; i++)
+                            {
+                                //create a new hook tuple to add to the list
+                                var hook = Tuple.Create(i, HookNames[i], HookContents[i]);
+                                hooks.Add(hook);
+                            }
+                            //send the data to the server
+                            DataSender.SendHooks(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), hooks);
+
+                        }
                         ImGui.NewLine();
                         AddHooks = true;
                         hookExists[hookCount] = true;
@@ -297,7 +303,28 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             CreateChapter();
                         }
 
-                      
+                        using (OtterGui.Raii.ImRaii.Disabled(!storyChapterExists.Any(x => x))) //disable if no stories chapters exist
+                        {
+                            if (ImGui.Button("Submit Story"))
+                            {
+                                //create a new list for our stories to be held in
+                                var storyChapters = new List<Tuple<string, string>>();
+                                for (var i = 0; i < storyChapterCount + 1; i++)
+                                {
+                                    //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
+                                    var chapterName = ChapterNames[i].ToString();
+                                    var chapterContent = ChapterContents[i].ToString();
+                                    var chapter = Tuple.Create(chapterName, chapterContent);
+                                    storyChapters.Add(chapter);
+                                }
+                                //finally send the story data to the server
+                                DataSender.SendStory(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), storyTitle, storyChapters);
+                            }
+                        }
+                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                        {
+                            ImGui.SetTooltip("Add a chapter to submit your story");
+                        }
                         ImGui.NewLine();
 
                     }
@@ -312,7 +339,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 galleryImageCount++;
                             }
-                        }                       
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button("Submit Gallery"))
+                        {
+                            for (var i = 0; i < galleryImageCount; i++)
+                            {
+                                //pretty simple stuff, just send the gallery related array values to the server
+                                DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                                                    NSFW[i], TRIGGER[i], imageURLs[i], i);
+
+                            }
+
+                        }
                         ImGui.NewLine();
                         addGalleryImageGUI = true;
                         ImageExists[galleryImageCount] = true;
@@ -322,7 +361,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                     if (TabOpen[TabValue.OOC])
                     {
-                        ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));                       
+                        ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));
+                        if (ImGui.Button("Submit OOC"))
+                        {
+                            //send the OOC info to the server, just a string really
+                            DataSender.SendOOCInfo(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo);
+                        }
                     }
                     #endregion
                     if (loadPreview == true)
@@ -435,8 +479,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
 
         }
-
-
         public void CreateChapter()
         {
             if (storyChapterCount < 30)
@@ -474,12 +516,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void DrawChapter(int i, Plugin plugin)
         {
-            if (i < 0 || i >= ChapterNames.Length)
-            {
-                // Log or handle the error
-                
-                return; // Prevent out-of-bounds access
-            }
+
             if (TabOpen[TabValue.Story] == true && i >= 0)
             {
                 //if our chapter exists and we are viewing it
@@ -818,19 +855,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public void AddChapterSelection()
         {
-            // Ensure currentChapter is within the valid range of ChapterNames array
-            if (ChapterNames == null || ChapterNames.Length == 0 || currentChapter < 0 || currentChapter >= ChapterNames.Length)
-            {
-                ImGui.Text("No chapters available."); // Handle cases where no chapters exist
-                return;
-            }
-
-            var chapterName = ChapterNames[currentChapter];  // Safe to access now
-
+            var chapterName = ChapterNames[currentChapter];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Chapter", chapterName);
             if (!combo)
                 return;
-
             foreach (var (newText, idx) in ChapterNames.WithIndex())
             {
                 var label = newText;
@@ -838,30 +866,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     label = "New Chapter";
                 }
-
                 if (newText != string.Empty)
                 {
                     if (ImGui.Selectable(label + "##" + idx, idx == currentChapter))
                     {
                         currentChapter = idx;
-
-                        // Ensure arrays are large enough before accessing them
-                        if (currentChapter < storyChapterExists.Length && currentChapter < viewChapter.Length)
-                        {
-                            storyChapterExists[currentChapter] = true;
-                            viewChapter[currentChapter] = true;
-                            drawChapter = true;
-                        }
-                        else
-                        {
-                            ImGui.Text("Chapter index exceeds available data size."); // Add error handling if needed
-                        }
+                        storyChapterExists[currentChapter] = true;
+                        viewChapter[currentChapter] = true;
+                        drawChapter = true;
                     }
                     ImGuiUtil.SelectableHelpMarker("Select to edit chapter");
                 }
             }
         }
-
         public void AddAlignmentSelection()
         {
             var (text, desc) = Defines.AlignmentVals[currentAlignment];
@@ -925,226 +942,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                 ImGuiUtil.SelectableHelpMarker(newDesc);
             }
-        }
-
-        private void LoadBackupFile()
-        {
-            _fileDialogManager.OpenFileDialog("Select Backup", "Data{.dat}", (s, f) =>
-            {
-                if (!s)
-                    return;
-
-                var dataPath = f[0].ToString();
-                using (StreamReader reader = new StreamReader(dataPath))
-                {
-                    // Read the base64 string and convert it back to a byte array (avatarBytes)
-                    string avatarBts = reader.ReadLine();
-                    avatarBytes = Convert.FromBase64String(avatarBts);
-
-                    // Extract values between custom tags and assign them back to variables
-                    bioFieldsArr[(int)Defines.BioFieldTypes.name] = ExtractValue(reader.ReadLine(), "name");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.race] = ExtractValue(reader.ReadLine(), "race");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.gender] = ExtractValue(reader.ReadLine(), "gender");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.age] = ExtractValue(reader.ReadLine(), "age");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.height] = ExtractValue(reader.ReadLine(), "height");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.weight] = ExtractValue(reader.ReadLine(), "weight");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.afg] = ExtractValue(reader.ReadLine(), "afg");
-                    currentAlignment = int.Parse(ExtractValue(reader.ReadLine(), "alignment"));
-                    currentPersonality_1 = int.Parse(ExtractValue(reader.ReadLine(), "personality_1"));
-                    currentPersonality_2 = int.Parse(ExtractValue(reader.ReadLine(), "personality_2"));
-                    currentPersonality_3 = int.Parse(ExtractValue(reader.ReadLine(), "personality_3"));
-
-                    // Read hooks
-                    string hooksStart = reader.ReadLine();
-                    List<string> hookNames = new List<string>();
-                    List<string> hookContents = new List<string>();
-
-                    string line;
-                    while ((line = reader.ReadLine()) != null && !line.Contains("<hooks>"))
-                    {
-                        hookNames.Add(ExtractValue(line, "hookname"));
-                        hookContents.Add(ExtractValue(reader.ReadLine(), "hookcontent"));
-                    }
-
-                    // Initialize hook arrays
-                    hookCount = hookNames.Count;
-                    HookNames = hookNames.ToArray(); // Assign the collected hooks to your variables
-                    HookContents = hookContents.ToArray();
-
-                    // Initialize hookExists array
-                    hookExists = new bool[hookCount];
-                    for (int i = 0; i < hookCount; i++)
-                    {
-                        hookExists[i] = true; // Assuming all hooks exist initially
-                    }
-
-                    // Story data
-                    storyTitle = reader.ReadLine();
-                    reader.ReadLine(); // Skip <storychapters>
-
-                    List<string> chapterNames = new List<string>();
-                    List<string> chapterContents = new List<string>();
-
-                    while ((line = reader.ReadLine()) != null && !line.Contains("<storychapters>"))
-                    {
-                        chapterNames.Add(ExtractValue(line, "chaptername"));
-                        chapterContents.Add(ExtractValue(reader.ReadLine(), "chaptercontent"));
-                    }
-
-                    // Initialize chapter arrays
-                    chapterCount = chapterNames.Count;
-                    ChapterNames = chapterNames.ToArray();
-                    ChapterContents = chapterContents.ToArray();
-
-                    // Initialize storyChapterExists and viewChapter arrays
-                    storyChapterExists = new bool[chapterCount];
-                    viewChapter = new bool[chapterCount];
-                    for (int i = 0; i < chapterCount; i++)
-                    {
-                        storyChapterExists[i] = true; // Assuming all chapters exist initially
-                        viewChapter[i] = true; // Assuming all chapters are viewable initially
-                    }
-
-                    // OOC Info
-                    oocInfo = reader.ReadLine();
-
-                    // Gallery data
-                    reader.ReadLine(); // Skip <gallery>
-
-                    List<bool> nsfwList = new List<bool>();
-                    List<bool> triggerList = new List<bool>();
-                    List<string> urlList = new List<string>();
-
-                    while ((line = reader.ReadLine()) != null && !line.Contains("<gallery>"))
-                    {
-                        nsfwList.Add(bool.Parse(ExtractValue(line, "nsfw")));
-                        triggerList.Add(bool.Parse(ExtractValue(reader.ReadLine(), "trigger")));
-                        urlList.Add(ExtractValue(reader.ReadLine(), "url"));
-                    }
-
-                    // Assign gallery arrays
-                    NSFW = nsfwList.ToArray();
-                    TRIGGER = triggerList.ToArray();
-                    imageURLs = urlList.ToArray();
-                }
-            }, 0, null, configuration.AlwaysOpenDefaultImport);
-        }
-        public void SubmitProfileData()
-        {
-            var player = Plugin.ClientState.LocalPlayer;
-            DataSender.SubmitProfileBio(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                                  avatarBytes,
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.gender].Replace("'", "''"),
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.age].Replace("'", "''"),
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
-                                                  bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
-                                                  currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
-            var hooks = new List<Tuple<int, string, string>>();
-            for (var i = 0; i < hookCount; i++)
-            {
-                //create a new hook tuple to add to the list
-                var hook = Tuple.Create(i, HookNames[i], HookContents[i]);
-                hooks.Add(hook);
-            }
-            DataSender.SendHooks(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), hooks);
-
-            //create a new list for our stories to be held in
-            var storyChapters = new List<Tuple<string, string>>();
-            for (var i = 0; i < storyChapterCount + 1; i++)
-            {
-                //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
-                var chapterName = ChapterNames[i].ToString();
-                var chapterContent = ChapterContents[i].ToString();
-                var chapter = Tuple.Create(chapterName, chapterContent);
-                storyChapters.Add(chapter);
-            }
-            //finally send the story data to the server
-            DataSender.SendStory(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), storyTitle, storyChapters);
-
-            for (var i = 0; i < galleryImageCount; i++)
-            {
-                //pretty simple stuff, just send the gallery related array values to the server
-                DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                    NSFW[i], TRIGGER[i], imageURLs[i], i);
-
-            }
-            //send the OOC info to the server, just a string really
-            DataSender.SendOOCInfo(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo);
-        }
-        public void SaveBackupFile()
-        {
-            _fileDialogManager.SaveFileDialog("Save Backup", "Data{.dat, .json}", "backup", ".dat", (s, f) =>
-            {
-                if (!s)
-                    return;
-                var dataPath = f.ToString();
-
-
-                using (StreamWriter writer = new StreamWriter($"{dataPath}.dat"))
-                {
-                    string avatarBts = Convert.ToBase64String(avatarBytes);           
-                    writer.WriteLine(avatarBts);
-                    writer.WriteLine($"<name>{bioFieldsArr[(int)Defines.BioFieldTypes.name]}<name>");
-                    writer.WriteLine($"<race>{bioFieldsArr[(int)Defines.BioFieldTypes.race]}<race>");
-                    writer.WriteLine($"<gender>{bioFieldsArr[(int)Defines.BioFieldTypes.gender]}<gender>");
-                    writer.WriteLine($"<age>{bioFieldsArr[(int)Defines.BioFieldTypes.age]}<age>");
-                    writer.WriteLine($"<height>{bioFieldsArr[(int)Defines.BioFieldTypes.height]}<height>");
-                    writer.WriteLine($"<weight>{bioFieldsArr[(int)Defines.BioFieldTypes.weight]}<weight>");
-                    writer.WriteLine($"<afg>{bioFieldsArr[(int)Defines.BioFieldTypes.afg]}<afg>");
-                    writer.WriteLine($"<alignment>{currentAlignment}<alignment>");
-                    writer.WriteLine($"<personality_1>{currentPersonality_1}<personality_1>");
-                    writer.WriteLine($"<personality_2>{currentPersonality_2}<personality_2>");
-                    writer.WriteLine($"<personality_3>{currentPersonality_3}<personality_3>");
-
-                    writer.WriteLine("<hooks>");
-                    for(int i = 0; i < hookCount; i++)
-                    {
-                        writer.WriteLine($"<hookname>{HookNames[i]}<hookname>");
-                        writer.WriteLine($"<hookcontent>{HookContents[i]}<hookcontent>");
-                    }
-                    writer.WriteLine(" <hooks>");
-
-                    writer.WriteLine(storyTitle);
-                    writer.WriteLine("<storychapters>");
-                    for (int i = 0; i < storyChapterCount; i++)
-                    {
-                        writer.WriteLine($"<chaptername>{ChapterNames[i]}<chaptername>");
-                        writer.WriteLine($"<chaptercontent>{ChapterContents[i]}<chaptercontent>");
-                    }
-                    writer.WriteLine("<storychapters>");
-                    writer.WriteLine(oocInfo);
-                    writer.WriteLine("<gallery>");
-                    for (int i = 0; i < galleryImageCount; i++)
-                    {
-                        writer.WriteLine($"<nsfw>{NSFW[i]}<nsfw>");
-                        writer.WriteLine($"<trigger>{TRIGGER[i]}<trigger>");
-                        writer.WriteLine($"<url>{imageURLs[i]}<url>");
-                    }
-                    writer.WriteLine(" <gallery>");
-                }
-
-
-                    
-                
-
-
-            });
-        }
-
-        private string ExtractValue(string line, string tag)
-        {
-            // Extracts the content between <tag> and <tag>
-            int startIndex = line.IndexOf($"<{tag}>") + tag.Length + 2;
-            int endIndex = line.IndexOf($"<{tag}>", startIndex);
-
-            if (startIndex != -1 && endIndex != -1)
-            {
-                return line.Substring(startIndex, endIndex - startIndex);
-            }
-            return string.Empty;
         }
 
         public void EditImage(bool avatar, int imageIndex)
