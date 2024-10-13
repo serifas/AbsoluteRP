@@ -16,6 +16,9 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Textures.TextureWraps;
 using System.Diagnostics;
 using System.Collections;
+using OtterGui.Log;
+using static Lumina.Data.Parsing.Layer.LayerCommon;
+using Dalamud.Hooking;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -183,6 +186,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         LoadBackupFile();
                     }
+                    ImGui.SameLine();
+                    if(ImGui.Button("Submit Profile"))
+                    {
+                        SubmitProfileData();
+                    }
                 }
                 if (ExistingProfile == false) //else create our add profile button to create a new profile
                 {
@@ -253,21 +261,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         AddPersonalitySelection_1();
                         AddPersonalitySelection_2();
                         AddPersonalitySelection_3();
-                        if (ImGui.Button("Save Bio"))
-                        {
-                            //submit our bio to the server
-                            DataSender.SubmitProfileBio(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                                    avatarBytes,
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.gender].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.age].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
-                                                    bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
-                                                    currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
-
-                        }
+                      
                     }
                     #endregion
                     #region HOOKS
@@ -280,21 +274,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 hookCount++;
                             }
                         }
-                        ImGui.SameLine();
-                        if (ImGui.Button("Submit Hooks"))
-                        {
-                            //create a new List to hold our hook values
-                            var hooks = new List<Tuple<int, string, string>>();
-                            for (var i = 0; i < hookCount; i++)
-                            {
-                                //create a new hook tuple to add to the list
-                                var hook = Tuple.Create(i, HookNames[i], HookContents[i]);
-                                hooks.Add(hook);
-                            }
-                            //send the data to the server
-                            DataSender.SendHooks(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), hooks);
-
-                        }
+                       
                         ImGui.NewLine();
                         AddHooks = true;
                         hookExists[hookCount] = true;
@@ -317,28 +297,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             CreateChapter();
                         }
 
-                        using (OtterGui.Raii.ImRaii.Disabled(!storyChapterExists.Any(x => x))) //disable if no stories chapters exist
-                        {
-                            if (ImGui.Button("Submit Story"))
-                            {
-                                //create a new list for our stories to be held in
-                                var storyChapters = new List<Tuple<string, string>>();
-                                for (var i = 0; i < storyChapterCount + 1; i++)
-                                {
-                                    //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
-                                    var chapterName = ChapterNames[i].ToString();
-                                    var chapterContent = ChapterContents[i].ToString();
-                                    var chapter = Tuple.Create(chapterName, chapterContent);
-                                    storyChapters.Add(chapter);
-                                }
-                                //finally send the story data to the server
-                                DataSender.SendStory(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), storyTitle, storyChapters);
-                            }
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Add a chapter to submit your story");
-                        }
+                      
                         ImGui.NewLine();
 
                     }
@@ -353,19 +312,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 galleryImageCount++;
                             }
-                        }
-                        ImGui.SameLine();
-                        if (ImGui.Button("Submit Gallery"))
-                        {
-                            for (var i = 0; i < galleryImageCount; i++)
-                            {
-                                //pretty simple stuff, just send the gallery related array values to the server
-                                DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                                    NSFW[i], TRIGGER[i], imageURLs[i], i);
-
-                            }
-
-                        }
+                        }                       
                         ImGui.NewLine();
                         addGalleryImageGUI = true;
                         ImageExists[galleryImageCount] = true;
@@ -375,12 +322,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                     if (TabOpen[TabValue.OOC])
                     {
-                        ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));
-                        if (ImGui.Button("Submit OOC"))
-                        {
-                            //send the OOC info to the server, just a string really
-                            DataSender.SendOOCInfo(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo);
-                        }
+                        ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));                       
                     }
                     #endregion
                     if (loadPreview == true)
@@ -532,7 +474,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void DrawChapter(int i, Plugin plugin)
         {
-
+            if (i < 0 || i >= ChapterNames.Length)
+            {
+                // Log or handle the error
+                
+                return; // Prevent out-of-bounds access
+            }
             if (TabOpen[TabValue.Story] == true && i >= 0)
             {
                 //if our chapter exists and we are viewing it
@@ -871,10 +818,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public void AddChapterSelection()
         {
-            var chapterName = ChapterNames[currentChapter];
+            // Ensure currentChapter is within the valid range of ChapterNames array
+            if (ChapterNames == null || ChapterNames.Length == 0 || currentChapter < 0 || currentChapter >= ChapterNames.Length)
+            {
+                ImGui.Text("No chapters available."); // Handle cases where no chapters exist
+                return;
+            }
+
+            var chapterName = ChapterNames[currentChapter];  // Safe to access now
+
             using var combo = OtterGui.Raii.ImRaii.Combo("##Chapter", chapterName);
             if (!combo)
                 return;
+
             foreach (var (newText, idx) in ChapterNames.WithIndex())
             {
                 var label = newText;
@@ -882,19 +838,30 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     label = "New Chapter";
                 }
+
                 if (newText != string.Empty)
                 {
                     if (ImGui.Selectable(label + "##" + idx, idx == currentChapter))
                     {
                         currentChapter = idx;
-                        storyChapterExists[currentChapter] = true;
-                        viewChapter[currentChapter] = true;
-                        drawChapter = true;
+
+                        // Ensure arrays are large enough before accessing them
+                        if (currentChapter < storyChapterExists.Length && currentChapter < viewChapter.Length)
+                        {
+                            storyChapterExists[currentChapter] = true;
+                            viewChapter[currentChapter] = true;
+                            drawChapter = true;
+                        }
+                        else
+                        {
+                            ImGui.Text("Chapter index exceeds available data size."); // Add error handling if needed
+                        }
                     }
                     ImGuiUtil.SelectableHelpMarker("Select to edit chapter");
                 }
             }
         }
+
         public void AddAlignmentSelection()
         {
             var (text, desc) = Defines.AlignmentVals[currentAlignment];
@@ -966,6 +933,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 if (!s)
                     return;
+
                 var dataPath = f[0].ToString();
                 using (StreamReader reader = new StreamReader(dataPath))
                 {
@@ -997,13 +965,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         hookNames.Add(ExtractValue(line, "hookname"));
                         hookContents.Add(ExtractValue(reader.ReadLine(), "hookcontent"));
                     }
-                    hookCount = HookNames.Length;
-                    for (int i = 0; i < hookCount; i++)
-                    {
-                        hookExists[i] = true;
-                    }
+
+                    // Initialize hook arrays
+                    hookCount = hookNames.Count;
                     HookNames = hookNames.ToArray(); // Assign the collected hooks to your variables
                     HookContents = hookContents.ToArray();
+
+                    // Initialize hookExists array
+                    hookExists = new bool[hookCount];
+                    for (int i = 0; i < hookCount; i++)
+                    {
+                        hookExists[i] = true; // Assuming all hooks exist initially
+                    }
 
                     // Story data
                     storyTitle = reader.ReadLine();
@@ -1017,14 +990,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         chapterNames.Add(ExtractValue(line, "chaptername"));
                         chapterContents.Add(ExtractValue(reader.ReadLine(), "chaptercontent"));
                     }
+
+                    // Initialize chapter arrays
                     chapterCount = chapterNames.Count;
-                    currentChapter = 0;
-                    for (int i = 0; i < chapterCount; i++)
-                    {
-                        storyChapterExists[i] = true;
-                    }
                     ChapterNames = chapterNames.ToArray();
                     ChapterContents = chapterContents.ToArray();
+
+                    // Initialize storyChapterExists and viewChapter arrays
+                    storyChapterExists = new bool[chapterCount];
+                    viewChapter = new bool[chapterCount];
+                    for (int i = 0; i < chapterCount; i++)
+                    {
+                        storyChapterExists[i] = true; // Assuming all chapters exist initially
+                        viewChapter[i] = true; // Assuming all chapters are viewable initially
+                    }
 
                     // OOC Info
                     oocInfo = reader.ReadLine();
@@ -1043,12 +1022,57 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         urlList.Add(ExtractValue(reader.ReadLine(), "url"));
                     }
 
+                    // Assign gallery arrays
                     NSFW = nsfwList.ToArray();
                     TRIGGER = triggerList.ToArray();
                     imageURLs = urlList.ToArray();
                 }
-
             }, 0, null, configuration.AlwaysOpenDefaultImport);
+        }
+        public void SubmitProfileData()
+        {
+            var player = Plugin.ClientState.LocalPlayer;
+            DataSender.SubmitProfileBio(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                                                  avatarBytes,
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.gender].Replace("'", "''"),
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.age].Replace("'", "''"),
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
+                                                  bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
+                                                  currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
+            var hooks = new List<Tuple<int, string, string>>();
+            for (var i = 0; i < hookCount; i++)
+            {
+                //create a new hook tuple to add to the list
+                var hook = Tuple.Create(i, HookNames[i], HookContents[i]);
+                hooks.Add(hook);
+            }
+            DataSender.SendHooks(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), hooks);
+
+            //create a new list for our stories to be held in
+            var storyChapters = new List<Tuple<string, string>>();
+            for (var i = 0; i < storyChapterCount + 1; i++)
+            {
+                //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
+                var chapterName = ChapterNames[i].ToString();
+                var chapterContent = ChapterContents[i].ToString();
+                var chapter = Tuple.Create(chapterName, chapterContent);
+                storyChapters.Add(chapter);
+            }
+            //finally send the story data to the server
+            DataSender.SendStory(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), storyTitle, storyChapters);
+
+            for (var i = 0; i < galleryImageCount; i++)
+            {
+                //pretty simple stuff, just send the gallery related array values to the server
+                DataSender.SendGalleryImage(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                                    NSFW[i], TRIGGER[i], imageURLs[i], i);
+
+            }
+            //send the OOC info to the server, just a string really
+            DataSender.SendOOCInfo(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo);
         }
         public void SaveBackupFile()
         {
