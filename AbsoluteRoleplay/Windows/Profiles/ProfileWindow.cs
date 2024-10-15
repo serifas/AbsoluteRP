@@ -933,167 +933,153 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 return lineCount;
             }
         }
-       public async void LoadBackupFile()
-{
-    try
-    {
-        // Open file dialog to select the backup file
-        _fileDialogManager.OpenFileDialog("Load Backup", "Data{.dat, .json}", async (success, filePath) =>
+        public async void LoadBackupFile()
         {
-            if (!success) return;
-
-            var dataPath = filePath.ToString();
-
             try
             {
-                using (StreamReader reader = new StreamReader($"{dataPath}.dat"))
+                _fileDialogManager.OpenFileDialog("Load Backup", "Data{.dat, .json}", async (success, filePath) =>
                 {
-                    // Read avatar bytes
-                    string avatarBts = await reader.ReadLineAsync();
-                    avatarBytes = Convert.FromBase64String(avatarBts); // Convert back to byte array
+                    if (!success) return;
 
-                    // Initialize Bio Fields
-                    bioFieldsArr[(int)Defines.BioFieldTypes.name] = await ExtractTagFromFile(dataPath, "name");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.race] = await ExtractTagFromFile(dataPath, "race");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.gender] = await ExtractTagFromFile(dataPath, "gender");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.age] = await ExtractTagFromFile(dataPath, "age");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.height] = await ExtractTagFromFile(dataPath, "height");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.weight] = await ExtractTagFromFile(dataPath, "weight");
-                    bioFieldsArr[(int)Defines.BioFieldTypes.afg] = await ExtractTagFromFile(dataPath, "afg");
+                    var dataPath = filePath.ToString();
 
-                    // For alignment and personality
-                    currentAlignment = SafeParseInt(await ExtractTagFromFile(dataPath, "alignment"));
-                    currentPersonality_1 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_1"));
-                    currentPersonality_2 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_2"));
-                    currentPersonality_3 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_3"));
-
-                    // Hooks section
-                    List<string> hookNames = new List<string>();
-                    List<string> hookContents = new List<string>();
-
-                    string line;
-                    bool inHooksSection = false;
-
-                    // Read lines until <hooks> is found, then start extracting hook data
-                    while ((line = await reader.ReadLineAsync()) != null)
+                    try
                     {
-                        if (line.Trim() == "<hooks>")
+                        using (StreamReader reader = new StreamReader($"{dataPath}.dat"))
                         {
-                            inHooksSection = true;
-                            continue; // Start processing after finding <hooks> tag
-                        }
-                        if (inHooksSection)
-                        {
-                            if (line.Trim() == "</hooks>") break; // End when </hooks> is found
-                            
-                            if (line.Contains("<hookname>"))
+                            // Read avatar bytes
+                            string avatarBts = await reader.ReadLineAsync();
+                            avatarBytes = Convert.FromBase64String(avatarBts); // Convert back to byte array
+                            currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+
+                            // Initialize Bio Fields
+                            bioFieldsArr[(int)Defines.BioFieldTypes.name] = await ExtractTagFromFile(dataPath, "name");
+                            bioFieldsArr[(int)Defines.BioFieldTypes.race] = await ExtractTagFromFile(dataPath, "race");
+                            bioFieldsArr[(int)Defines.BioFieldTypes.gender] = await ExtractTagFromFile(dataPath, "gender");
+                            bioFieldsArr[(int)Defines.BioFieldTypes.age] = await ExtractTagFromFile(dataPath, "age");
+                            bioFieldsArr[(int)Defines.BioFieldTypes.height] = await ExtractTagFromFile(dataPath, "height");
+                            bioFieldsArr[(int)Defines.BioFieldTypes.weight] = await ExtractTagFromFile(dataPath, "weight");
+                            bioFieldsArr[(int)Defines.BioFieldTypes.afg] = await ExtractTagFromFile(dataPath, "afg");
+
+                            // For alignment and personality
+                            currentAlignment = SafeParseInt(await ExtractTagFromFile(dataPath, "alignment"));
+                            currentPersonality_1 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_1"));
+                            currentPersonality_2 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_2"));
+                            currentPersonality_3 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_3"));
+
+                            // Hooks section
+                            List<string> hookNames = new List<string>();
+                            List<string> hookContents = new List<string>();
+
+                            string line;
+                            bool inHooksSection = false;
+
+                            while ((line = await reader.ReadLineAsync()) != null)
                             {
-                                hookNames.Add(await ExtractTagFromFile(dataPath, "hookname"));
+                                if (line.Trim() == "<hooks>")
+                                {
+                                    inHooksSection = true;
+                                    continue; // Start processing after finding <hooks> tag
+                                }
+                                if (inHooksSection)
+                                {
+                                    if (line.Trim() == "</hooks>") break;
+
+                                    if (line.Contains("<hookname>"))
+                                    {
+                                        hookNames.Add(await ExtractTagFromFile(dataPath, "hookname"));
+                                    }
+                                    if (line.Contains("<hookcontent>"))
+                                    {
+                                        hookContents.Add(await ExtractTagFromFile(dataPath, "hookcontent"));
+                                    }
+                                }
                             }
-                            if (line.Contains("<hookcontent>"))
+
+                            for (int i = 0; i < hookNames.Count; i++)
                             {
-                                hookContents.Add(await ExtractTagFromFile(dataPath, "hookcontent"));
+                                hookCount = i;
+                                hookExists[i] = true;
                             }
+
+                            if (hookNames.Count > 0 && hookContents.Count > 0)
+                            {
+                                HookNames = hookNames.ToArray();
+                                HookContents = hookContents.ToArray();
+                            }
+
+                            // Story section
+                            storyTitle = await ExtractTagFromFile(dataPath, "storytitle");
+                            List<string> chapterNames = new List<string>();
+                            List<string> chapterContents = new List<string>();
+
+                            while ((line = await reader.ReadLineAsync()) != null)
+                            {
+                                if (line.Trim() == "<storychapters>") break;
+
+                                if (!string.IsNullOrWhiteSpace(line))
+                                {
+                                    chapterNames.Add(await ExtractTagFromFile(dataPath, "chaptername"));
+                                    chapterContents.Add(await ExtractTagFromFile(dataPath, "chaptercontent"));
+                                }
+                            }
+                            for (int i = 0; i < chapterNames.Count; i++)
+                            {
+                                storyChapterCount = i;
+                                storyChapterExists[i] = true;
+                            }
+                            if (chapterNames.Count > 0 && chapterContents.Count > 0)
+                            {
+                                ChapterNames = chapterNames.ToArray();
+                                ChapterContents = chapterContents.ToArray();
+                            }
+
+                            // OOC Info
+                            oocInfo = await ExtractTagFromFile(dataPath, "ooc");
+
+                            // Gallery section
+                            List<bool> nsfwList = new List<bool>();
+                            List<bool> triggerList = new List<bool>();
+                            List<string> imageURLList = new List<string>();
+
+                            while ((line = await reader.ReadLineAsync()) != null)
+                            {
+                                if (line.Trim() == "<gallery>") break;
+
+                                if (!string.IsNullOrWhiteSpace(line))
+                                {
+                                        nsfwList.Add(bool.Parse(await ExtractTagFromFile(dataPath, "nsfw")));
+                                        triggerList.Add(bool.Parse(await ExtractTagFromFile(dataPath, "trigger")));
+                                        imageURLList.Add(await ExtractTagFromFile(dataPath, "url"));
+                                }
+                            }
+                            for (int i = 0; i < imageURLList.Count; i++)
+                            {
+                                galleryImageCount = i;
+                                ImageExists[i] = true;
+                            }
+                            if (nsfwList.Count > 0 && triggerList.Count > 0 && imageURLList.Count > 0)
+                            {
+                                NSFW = nsfwList.ToArray();
+                                TRIGGER = triggerList.ToArray();
+                                imageURLs = imageURLList.ToArray();
+                            }
+
+                            // Redraw the window to ensure content is visible
+                            plugin.logger.Error("Profile loaded successfully.");
                         }
                     }
-
-                    // Now process each hookname and hookcontent
-                    for (int i = 0; i < hookNames.Count; i++)
+                    catch (Exception ex)
                     {
-                        hookCount = i; // Update hook count
-                        hookExists[i] = true; // Mark hook as existing
+                        plugin.logger.Error($"Error reading backup file: {ex.Message}");
                     }
-
-                    // Assign hooks if present
-                    if (hookNames.Count > 0 && hookContents.Count > 0)
-                    {
-                        HookNames = hookNames.ToArray();
-                        HookContents = hookContents.ToArray();
-                    }
-
-                    // Story section
-                    storyTitle = await ExtractTagFromFile(dataPath, "storytitle");
-                    List<string> chapterNames = new List<string>();
-                    List<string> chapterContents = new List<string>();
-
-                    while ((line = await reader.ReadLineAsync()) != null)
-                    {
-                        if (line.Trim() == "<storychapters>") break;
-
-                        if (!string.IsNullOrWhiteSpace(line))
-                        {
-                            chapterNames.Add(await ExtractTagFromFile(dataPath, "chaptername"));
-                            chapterContents.Add(await ExtractTagFromFile(dataPath, "chaptercontent"));
-                        }
-                    }
-                    for (int i = 0; i < chapterNames.Count; i++)
-                    {
-                        storyChapterCount = i;
-                        storyChapterExists[i] = true;
-                    }
-                    // Assign story chapters if present
-                    if (chapterNames.Count > 0 && chapterContents.Count > 0)
-                    {
-                        ChapterNames = chapterNames.ToArray();
-                        ChapterContents = chapterContents.ToArray();
-                    }
-
-                    // OOC Info
-                    oocInfo = await ExtractTagFromFile(dataPath, "ooc");
-
-                    addGalleryImageGUI = true;
-                    // Gallery section
-                    List<bool> nsfwList = new List<bool>();
-                    List<bool> triggerList = new List<bool>();
-                    List<string> imageURLList = new List<string>();
-
-                    while ((line = await reader.ReadLineAsync()) != null)
-                    {
-                        if (line.Trim() == "<gallery>") break;
-
-                        if (!string.IsNullOrWhiteSpace(line))
-                        {
-                            if (line.Contains("<nsfw>"))
-                                nsfwList.Add(bool.Parse(await ExtractTagFromFile(dataPath, "nsfw")));
-                            if (line.Contains("<trigger>"))
-                                triggerList.Add(bool.Parse(await ExtractTagFromFile(dataPath, "trigger")));
-                            if (line.Contains("<url>"))
-                                imageURLList.Add(await ExtractTagFromFile(dataPath, "url"));
-                        }
-                    }
-                    for (int i = 0; i < imageURLList.Count; i++)
-                    {
-                        plugin.logger.Error("Received " + i + "Images");
-                        galleryImageCount = i;
-                        ImageExists[i] = true;        
-                    }
-                    // Assign gallery items if present
-                    if (nsfwList.Count > 0 && triggerList.Count > 0 && imageURLList.Count > 0)
-                    {
-                        NSFW = nsfwList.ToArray();
-                        TRIGGER = triggerList.ToArray();
-                        imageURLs = imageURLList.ToArray();
-                    }
-                    for (int i = 0; i < nsfwList.Count; i++)
-                    {
-                        NSFW[i] = nsfwList[i];
-                    }
-                    addGalleryImageGUI = true;
-                }
+                });
             }
             catch (Exception ex)
             {
-                // Log the exception details for troubleshooting
-                plugin.logger.Error($"Error reading backup file: {ex.Message}");
+                plugin.logger.Error($"Error opening file dialog: {ex.Message}");
             }
-        });
-    }
-    catch (Exception ex)
-    {
-        // Handle any exceptions that occur during the file dialog operation
-        plugin.logger.Error($"Error opening file dialog: {ex.Message}");
-    }
-}
+        }
 
 
 

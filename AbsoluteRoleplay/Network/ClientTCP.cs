@@ -6,6 +6,8 @@ using AbsoluteRoleplay;
 using Dalamud.Plugin.Services;
 using System.Drawing;
 using System.Numerics;
+using System.Net.Security;
+using System.Security.Authentication;
 
 namespace Networking
 {
@@ -13,14 +15,15 @@ namespace Networking
     {
         public static bool Connected;
         public static TcpClient clientSocket;
-        private static NetworkStream myStream;
+        public static SslStream sslStream;
         private static byte[] recBuffer;
         private static readonly string server = "join.infinite-roleplay.net";
-        private static readonly int port = 25565;
+        private static readonly int port = 5392;
         private static readonly int bufferSize = 8192;
         public static Plugin plugin;
         public static Vector4 Green = new Vector4(0, 255, 0, 255);
         public static Vector4 Red = new Vector4(255, 0, 0, 255);
+
         public static void StartReceiving()
         {
             Task.Run(ReceiveDataAsync);
@@ -32,7 +35,7 @@ namespace Networking
             {
                 while (Connected)
                 {
-                    int length = await myStream.ReadAsync(recBuffer, 0, recBuffer.Length);
+                    int length = await sslStream.ReadAsync(recBuffer, 0, recBuffer.Length);
                     if (length <= 0) break;
 
                     var newBytes = new byte[length];
@@ -49,7 +52,6 @@ namespace Networking
 
         public static async Task<string> GetConnectionStatusAsync(TcpClient _tcpClient)
         {
-
             try
             {
                 if (_tcpClient != null && _tcpClient.Client != null && _tcpClient.Client.Connected)
@@ -77,6 +79,7 @@ namespace Networking
                 return "Disconnected";
             }
         }
+
         public static async Task<bool> PingHostAsync(string host, int port, int timeout = 1000)
         {
             try
@@ -101,15 +104,16 @@ namespace Networking
             catch (Exception ex)
             {
                 // Log the exception if necessary
-                // PluginLog.LogError(ex, "Error pinging host");
                 return false;
             }
         }
+
         public static bool IsConnected()
         {
             bool isConnected = Task.Run(async () => await IsConnectedToServerAsync(clientSocket)).GetAwaiter().GetResult();
             return isConnected;
         }
+
         public static async Task<bool> IsConnectedToServerAsync(TcpClient tcpClient)
         {
             try
@@ -138,8 +142,6 @@ namespace Networking
 
         private static void UpdateServerStatus(string status, System.Numerics.Vector4 color)
         {
-            // Ensure thread safety if this method updates UI elements
-            // Assuming MainPanel updates must be done on the main/UI thread
             Task.Run(() =>
             {
                 MainPanel.serverStatus = status;
@@ -152,7 +154,7 @@ namespace Networking
             try
             {
                 bool pinged = await PingHostAsync(server, port);
-                if(pinged)
+                if (pinged)
                 {
                     bool connected = await IsConnectedToServerAsync(clientSocket);
                     if (!connected)
@@ -176,7 +178,6 @@ namespace Networking
                     ClientHandleData.InitializePackets(true);
                 }
                 EstablishConnection();
-                myStream = clientSocket.GetStream();
                 recBuffer = new byte[bufferSize];
 
                 Connected = true;
@@ -197,25 +198,40 @@ namespace Networking
                 clientSocket.ReceiveBufferSize = bufferSize;
                 clientSocket.SendBufferSize = bufferSize;
                 clientSocket.Connect(server, port);
+
+                sslStream = new SslStream(clientSocket.GetStream(), false,
+                    new RemoteCertificateValidationCallback(ValidateServerCertificate), null);
+
+                sslStream.AuthenticateAsClient(server);
             }
             catch (Exception ex)
             {
-                
                 plugin.logger.Error("Could not establish connection: " + ex.ToString());
                 clientSocket?.Dispose();
             }
         }
 
+        private static bool ValidateServerCertificate(object sender, System.Security.Cryptography.X509Certificates.X509Certificate certificate,
+            System.Security.Cryptography.X509Certificates.X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+            if (sslPolicyErrors == SslPolicyErrors.None)
+                return true;
+
+            plugin.logger.Error($"Certificate error: {sslPolicyErrors}");
+            return false;
+        }
+
         public static void Disconnect()
         {
             Connected = false;
-            myStream?.Close();
-            myStream?.Dispose();
+            sslStream?.Close();
+            sslStream?.Dispose();
             clientSocket?.Close();
             clientSocket?.Dispose();
             MainPanel.serverStatus = "Disconnected";
             MainPanel.serverStatusColor = new System.Numerics.Vector4(255, 0, 0, 255);
         }
+
         public static void AttemptConnect()
         {
             try
@@ -227,6 +243,7 @@ namespace Networking
                 plugin.logger.Error("Could not establish reconnect: " + ex);
             }
         }
+
         public static async Task SendDataAsync(byte[] data)
         {
             try
@@ -235,7 +252,7 @@ namespace Networking
                 {
                     buffer.WriteInt(data.GetUpperBound(0) - data.GetLowerBound(0) + 1);
                     buffer.WriteBytes(data);
-                    await myStream.WriteAsync(buffer.ToArray(), 0, buffer.ToArray().Length);
+                    await sslStream.WriteAsync(buffer.ToArray(), 0, buffer.ToArray().Length);
                 }
             }
             catch (Exception ex)
