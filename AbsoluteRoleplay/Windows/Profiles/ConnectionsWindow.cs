@@ -72,7 +72,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Decline##Decline" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.refused);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.refused).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -84,7 +84,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Accept##Accept" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.accepted);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.accepted).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -96,7 +96,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Block##Block" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.blocked);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.blocked).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -122,7 +122,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Remove##Remove" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.removed);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.removed).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -134,7 +134,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Block##Block" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.blocked);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.blocked).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -162,7 +162,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Cancel##Cancel" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)Defines.ConnectionStatus.canceled);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)Defines.ConnectionStatus.canceled).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -188,7 +188,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Unblock##Unblock" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)Defines.ConnectionStatus.removed);
+                                DataSender.SendProfileAccessUpdateAsync(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)Defines.ConnectionStatus.removed).GetAwaiter().GetResult();
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

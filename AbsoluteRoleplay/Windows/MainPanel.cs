@@ -109,10 +109,10 @@ public class MainPanel : Window, IDisposable
 
             if (ImGui.Button("Login"))
             {
-                if (plugin.IsOnline() && ClientTCP.IsConnected() == true)
+                if (plugin.IsOnline() && ClientHTTP.GetWebSocketState().Item1 == true)
                 {
                     SaveLoginPreferences(this.username.ToString(), this.password.ToString());
-                    DataSender.Login(this.username, this.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                    DataSender.SendLoginAsync(this.username, this.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
                 }
             }
             ImGui.SameLine();
@@ -142,7 +142,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(172, 27)))
                 {
-                    Util.OpenLink("https://discord.gg/absolute-roleplay");
+                    Util.OpenLink("https://discord.gg/wQ43RrEx7m");
                 }
             }
 
@@ -155,7 +155,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (plugin.IsOnline())
                 {
-                    DataSender.SendRestorationRequest(this.restorationEmail);
+                    DataSender.SendRestorationRequestAsync(this.restorationEmail).GetAwaiter().GetResult();
                 }
             }
 
@@ -190,7 +190,7 @@ public class MainPanel : Window, IDisposable
                         {
                             SaveLoginPreferences(registerUser, registerPassword);
                             plugin.username = registerUser.ToString();
-                            DataSender.Register(registerUser.ToString(), registerPassword, email);
+                            DataSender.SendRegisterAsync(registerUser.ToString(), registerPassword, email).GetAwaiter().GetResult();
                         }
                     }
                     else
@@ -228,7 +228,7 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                DataSender.RequestConnections(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.SendConnectionsRequestAsync(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
 
             }
             if (ImGui.IsItemHovered())
@@ -300,7 +300,7 @@ public class MainPanel : Window, IDisposable
                     ProfileWindow.TabOpen[TabValue.Gallery] = true;
                     plugin.OpenProfileWindow();
                     //FETCH USER AND PASS ASEWLL
-                    DataSender.FetchProfile(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                    DataSender.SendFetchProfilesAsync(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
                     ProfileWindow.ClearUI();
                 }
             }
@@ -313,7 +313,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (plugin.IsOnline())
                 {
-                    DataSender.RequestBookmarks(plugin.username);
+                    DataSender.SendBookmarkRequestAsync(plugin.username).GetAwaiter().GetResult();
                 }
                
             }
@@ -370,7 +370,7 @@ public class MainPanel : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(18, 18)))
         {
-            ClientTCP.AttemptConnect();
+            ClientHTTP.ConnectWebSocketAsync("wss://infinite-roleplay.net/ws").GetAwaiter().GetResult();
             plugin.UpdateStatus();
         }
         ImGui.TextColored(statusColor, status);
@@ -396,11 +396,11 @@ public class MainPanel : Window, IDisposable
     }
     public void AttemptLogin()
     {
-        if(ClientTCP.IsConnected() && plugin.Configuration.username != string.Empty && plugin.Configuration.password != string.Empty)
+        if(ClientHTTP.GetWebSocketState().Item1 && plugin.Configuration.username != string.Empty && plugin.Configuration.password != string.Empty)
         {
             plugin.username = username;
             plugin.password = password;
-            DataSender.Login(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+            DataSender.SendLoginAsync(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
         }
         plugin.LoadConnection();
         plugin.CloseAllWindows();

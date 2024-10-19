@@ -48,9 +48,9 @@ namespace AbsoluteRoleplay
         [PluginService] internal static IClientState ClientState { get; private set; } = null;
         [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
         [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
-        [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
 
         [LibraryImport("user32")]
+
         internal static partial short GetKeyState(int nVirtKey);
         //used for making sure click happy people don't mess up their hard work
         public static bool CtrlPressed() => (GetKeyState(0xA2) & 0x8000) != 0 || (GetKeyState(0xA3) & 0x8000) != 0;
@@ -58,7 +58,6 @@ namespace AbsoluteRoleplay
 
 
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
-        //Windows
         private OptionsWindow OptionsWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
@@ -110,9 +109,8 @@ namespace AbsoluteRoleplay
             ContextMenu = contextMenu;
             Framework = framework;
 
-            
-            //unhandeled exception handeling - probably not really needed anymore.
-            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        //unhandeled exception handeling - probably not really needed anymore.
+        AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
 
             //assing our Configuration var
@@ -185,9 +183,10 @@ namespace AbsoluteRoleplay
             LoadStatusBarEntry();
             if (IsOnline())
             {
-                if (!ClientTCP.IsConnected())
+                bool connected = ClientHTTP.GetWebSocketState().Item1;
+                if (!connected)
                 {
-                    ClientTCP.AttemptConnect();
+                    await ClientHTTP.ConnectWebSocketAsync("wss://infinite-roleplay.net/ws");
                 }
             }
         }
@@ -225,67 +224,35 @@ namespace AbsoluteRoleplay
                 logger.Error("Exception handled" + exception.Message);
             });
         }
-       
-        /// <summary>
-        /// 
-        /// 
-        private unsafe void AddContextMenu(IMenuOpenedArgs args)
+        public void AddContextMenu(IMenuOpenedArgs args)
         {
-            var ctx = AgentContext.Instance();
-            if (args.AgentPtr != (nint)ctx)
+            if (IsOnline())
             {
-                return;
+                var targetPlayer = TargetManager.Target as IPlayerCharacter;
+                if (args.AddonPtr == (nint)0 && targetPlayer != null && loggedIn == true)
+                {
+                    //if we are right clicking a player and are logged into hte plugin, add our contextMenu items.
+                    MenuItem view = new MenuItem();
+                    MenuItem bookmark = new MenuItem();
+                    view.Name = "View Absolute Profile";
+                    view.PrefixColor = 56;
+                    view.Prefix = SeIconChar.BoxedQuestionMark;
+                    bookmark.Name = "Bookmark Absolute Profile";
+                    bookmark.PrefixColor = 56;
+                    bookmark.Prefix = SeIconChar.BoxedPlus;
+                    //assign on click actions
+                    view.OnClicked += ViewProfile;
+                    bookmark.OnClicked += BookmarkProfile;
+                    //add the menu item
+                    args.AddMenuItem(view);
+                    args.AddMenuItem(bookmark);
+
+                }
             }
 
-            if (ctx->TargetObjectId.ObjectId != 0xE000_0000)
-            {
-                ViewContextMenu(args, ctx->TargetObjectId.ObjectId);
-                return;
-            }
-            MenuItem view = new MenuItem();
-            MenuItem bookmark = new MenuItem();
-            view.Name = "View Absolute Profile";
-            view.PrefixColor = 56;
-            view.Prefix = SeIconChar.BoxedQuestionMark;
-            bookmark.Name = "Bookmark Absolute Profile";
-            bookmark.PrefixColor = 56;
-            bookmark.Prefix = SeIconChar.BoxedPlus;
-            //assign on click actions
-            view.OnClicked += ViewProfile;
-            bookmark.OnClicked += BookmarkProfile;
-            //add the menu item
-            args.AddMenuItem(view);
-            args.AddMenuItem(bookmark);
         }
 
-        private void ViewContextMenu(IMenuOpenedArgs args, uint objectId)
-        {
-            var obj = ObjectTable.SearchById(objectId);
-            if (obj is not IPlayerCharacter chara)
-            {
-                return;
-            }
-
-            MenuItem view = new MenuItem();
-            MenuItem bookmark = new MenuItem();
-            view.Name = "View Absolute Profile";
-            view.PrefixColor = 56;
-            view.Prefix = SeIconChar.BoxedQuestionMark;
-            bookmark.Name = "Bookmark Absolute Profile";
-            bookmark.PrefixColor = 56;
-            bookmark.Prefix = SeIconChar.BoxedPlus;
-            //assign on click actions
-            view.OnClicked += ViewProfile;
-            bookmark.OnClicked += BookmarkProfile;
-            //add the menu item
-            args.AddMenuItem(view);
-            args.AddMenuItem(bookmark);
-        }
-
-        /// </summary>
-        /// <param name="args"></param>
-
-        private void ViewProfile(IMenuItemClickedArgs args)
+        private async void ViewProfile(IMenuItemClickedArgs args)
         {
             try
             {
@@ -306,7 +273,7 @@ namespace AbsoluteRoleplay
                     TargetWindow.ReloadTarget();
                     OpenTargetWindow();
                     //send a request to the server for the target profile info
-                    DataSender.RequestTargetProfile(characterName, characterWorld, plugin.username);
+                    await DataSender.SendRequestTargetProfileAsync(characterName, characterWorld, plugin.username);
                 }
 
             }
@@ -315,14 +282,14 @@ namespace AbsoluteRoleplay
                 logger.Error("Error when viewing profile from context " + ex.ToString());
             }
         }
-        private void BookmarkProfile(IMenuItemClickedArgs args)
+        private async void BookmarkProfile(IMenuItemClickedArgs args)
         {
             if (IsOnline()) //once again may not need this
             {
                 //fetch target player once more
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
                 //send a bookmark message to the server
-                DataSender.BookmarkPlayer(plugin.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
+                await DataSender.SendPlayerBookmarkAsync(plugin.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
             }
         }
 
@@ -352,7 +319,7 @@ namespace AbsoluteRoleplay
         }
         */
         //used to alert people of incoming connection requests
-        public void LoadConnectionsBarEntry(float deltaTime)
+        public async void LoadConnectionsBarEntry(float deltaTime)
         {
             timer += deltaTime;
             float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0; // Alternate between 0 and 14 (red) every BlinkInterval
@@ -360,9 +327,16 @@ namespace AbsoluteRoleplay
             var entry = dtrBar.Get("AbsoluteConnection");
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
-            ConnectionsWindow.currentListing = 2;
-            entry.OnClick = () => DataSender.RequestConnections(plugin.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
-            
+            ConnectionsWindow.currentListing = 2; entry.OnClick = async () =>
+            {
+                // Await the async method here
+                await DataSender.SendConnectionsRequestAsync(
+                    plugin.username.ToString(),
+                    ClientState.LocalPlayer.Name.ToString(),
+                    ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()
+                );
+            };
+
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
             statusString.AddText("\uE070"); //Boxed question mark (Mario brick)
@@ -391,7 +365,6 @@ namespace AbsoluteRoleplay
             PluginInterface.UiBuilder.Draw -= DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUI;
-            ClientState.Login -= LoadConnection;
             ClientState.Logout -= Logout;
             Framework.Update -= OnUpdate;
             // Dispose all windows
@@ -424,26 +397,11 @@ namespace AbsoluteRoleplay
             }
         }
 
-        
+
 
         private void OnUpdate(IFramework framework)
         {
-            if(IsOnline() == true && ClientTCP.IsConnected() == false && ConnectionLoaded == false)
-            {
-                LoadConnection();
-                ConnectionLoaded = true;
-            }
-           /* if(loggedIn == true && chatLoaded == false)
-            {
-               // LoadChatBarEntry();
-                chatLoaded = true;
-            }*/
-            if (IsOnline() == true && ClientTCP.IsConnected() == true && ControlsLogin == false)
-            {
-                // Auto login when first opening the plugin or logging in
-                MainPanel.AttemptLogin();
-                ControlsLogin = true;
-            }
+           
         }
 
         private void OnCommand(string command, string args)
@@ -494,7 +452,7 @@ namespace AbsoluteRoleplay
             try
             {
 
-                string connectionStatus = await ClientTCP.GetConnectionStatusAsync(ClientTCP.clientSocket);
+                string connectionStatus = ClientHTTP.GetWebSocketState().Item2;
                 MainPanel.serverStatus = connectionStatus;
                 if (ClientState.IsLoggedIn && ClientState.LocalPlayer != null)
                 {

@@ -54,7 +54,7 @@ namespace AbsoluteRoleplay.Windows
                     if (reportInfo.Length > 15)
                     {
                         //report the currently viewed profile to the moderators
-                        DataSender.ReportProfile(pg.username, reportCharacterName, reportCharacterWorld, reportInfo);
+                        DataSender.SendReportProfileAsync(pg.username, reportCharacterName, reportCharacterWorld, reportInfo).GetAwaiter().GetResult();
                     }
                     else
                     {

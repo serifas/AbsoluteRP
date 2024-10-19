@@ -41,7 +41,7 @@ namespace AbsoluteRoleplay.Windows
                 if(pg.IsOnline())
                 {
                     //submit our verification key for verification
-                    DataSender.SendVerification(pg.username.ToString(), verificationKey);
+                    DataSender.SendVerificationKeyAsync(pg.username.ToString(), verificationKey).GetAwaiter().GetResult();
                 }
                 
             }
