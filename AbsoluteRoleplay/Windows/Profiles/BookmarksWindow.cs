@@ -66,7 +66,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             TargetWindow.characterWorldVal = profiles.Values[i];
                             //DisableBookmarkSelection = true;
                             plugin.OpenTargetWindow();
-                            DataSender.SendRequestTargetProfileAsync(profiles.Keys[i], profiles.Values[i], plugin.username).GetAwaiter().GetResult();
+                            DataSender.SendRequestTargetProfileAsync(profiles.Keys[i], profiles.Values[i], plugin.username);
 
                         }
                         ImGui.SameLine();
@@ -74,7 +74,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Remove##Removal" + i))
                             {
-                                DataSender.SendRequestTargetProfileAsync(plugin.username.ToString(), profiles.Keys[i], profiles.Values[i]).GetAwaiter().GetResult();
+                                DataSender.SendRequestTargetProfileAsync(plugin.username.ToString(), profiles.Keys[i], profiles.Values[i]);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

@@ -14,6 +14,8 @@ using System.Diagnostics;
 using Dalamud.Plugin.Services;
 using Dalamud.Interface.Textures.TextureWraps;
 using AbsoluteRoleplay.Windows.Profiles;
+using System.Threading.Tasks;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
@@ -112,7 +114,25 @@ public class MainPanel : Window, IDisposable
                 if (plugin.IsOnline() && ClientHTTP.GetWebSocketState().Item1 == true)
                 {
                     SaveLoginPreferences(this.username.ToString(), this.password.ToString());
-                    DataSender.SendLoginAsync(this.username, this.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
+                   
+                    Task.Run(async () =>
+                    {
+                        try
+                        {
+
+                            await DataSender.SendLoginAsync(
+                                this.username,
+                                this.password,
+                                Plugin.ClientState.LocalPlayer?.Name?.ToString(),  // Ensure these are not null
+                                Plugin.ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString()
+                            );
+                        }
+                        catch (Exception ex)
+                        {
+                            plugin.logger.Error($"Error in Task: {ex.Message}");
+                        }
+                    });
+
                 }
             }
             ImGui.SameLine();
@@ -155,7 +175,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (plugin.IsOnline())
                 {
-                    DataSender.SendRestorationRequestAsync(this.restorationEmail).GetAwaiter().GetResult();
+                    DataSender.SendRestorationRequestAsync(this.restorationEmail);
                 }
             }
 
@@ -190,7 +210,7 @@ public class MainPanel : Window, IDisposable
                         {
                             SaveLoginPreferences(registerUser, registerPassword);
                             plugin.username = registerUser.ToString();
-                            DataSender.SendRegisterAsync(registerUser.ToString(), registerPassword, email).GetAwaiter().GetResult();
+                            DataSender.SendRegisterAsync(registerUser.ToString(), registerPassword, email);
                         }
                     }
                     else
@@ -228,7 +248,7 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                DataSender.SendConnectionsRequestAsync(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
+                DataSender.SendConnectionsRequestAsync(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
 
             }
             if (ImGui.IsItemHovered())
@@ -300,7 +320,7 @@ public class MainPanel : Window, IDisposable
                     ProfileWindow.TabOpen[TabValue.Gallery] = true;
                     plugin.OpenProfileWindow();
                     //FETCH USER AND PASS ASEWLL
-                    DataSender.SendFetchProfilesAsync(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
+                    DataSender.SendFetchProfilesAsync(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
                     ProfileWindow.ClearUI();
                 }
             }
@@ -313,7 +333,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (plugin.IsOnline())
                 {
-                    DataSender.SendBookmarkRequestAsync(plugin.username).GetAwaiter().GetResult();
+                    DataSender.SendBookmarkRequestAsync(plugin.username);
                 }
                
             }
@@ -370,9 +390,11 @@ public class MainPanel : Window, IDisposable
         ImGui.SameLine();
         if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(18, 18)))
         {
-            ClientHTTP.ConnectWebSocketAsync("wss://infinite-roleplay.net/ws").GetAwaiter().GetResult();
+            ClientHTTP.EnsureWebSocketInitialized();  // Ensure the WebSocket is initialized
+            ClientHTTP.ConnectWebSocketAsync().GetAwaiter().GetResult();
             plugin.UpdateStatus();
         }
+
         ImGui.TextColored(statusColor, status);
 
         
@@ -400,7 +422,7 @@ public class MainPanel : Window, IDisposable
         {
             plugin.username = username;
             plugin.password = password;
-            DataSender.SendLoginAsync(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult();
+            Task.Run(async () => await DataSender.SendLoginAsync(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()));
         }
         plugin.LoadConnection();
         plugin.CloseAllWindows();

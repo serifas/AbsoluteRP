@@ -168,12 +168,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (ImGui.Checkbox("Set Private", ref privateProfile))
                     {
                         //send our privacy settings to the server
-                        DataSender.SendProfileStatusAsync(pluginInstance.username.ToString(), player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), privateProfile).GetAwaiter().GetResult();
+                        DataSender.SendProfileStatusAsync(pluginInstance.username.ToString(), player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), privateProfile);
                     }
                 }
                 if (ExistingProfile == false) //else create our add profile button to create a new profile
                 {
-                    if (ImGui.Button("Add Profile", new Vector2(100, 20))) { DataSender.SendCreateProfileAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString()).GetAwaiter().GetResult(); }
+                    if (ImGui.Button("Add Profile", new Vector2(100, 20))) { DataSender.SendCreateProfileAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString()); }
                 }
                 else
                 {
@@ -299,11 +299,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (TabOpen[TabValue.OOC])
                     {
                         ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));
-                        if (ImGui.Button("Submit OOC"))
-                        {
-                            //send the OOC info to the server, just a string really
-                            DataSender.SendOOCAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo).GetAwaiter().GetResult();
-                        }
                     }
                     #endregion
                     if (loadPreview == true)
@@ -628,7 +623,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
                             DataSender.SendGalleryImageAsync(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                              imageURLs[g], NSFW[g], TRIGGER[g], g).GetAwaiter().GetResult();
+                                              imageURLs[g], NSFW[g], TRIGGER[g], g);
 
                         }
                     }
@@ -639,7 +634,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             //same for triggering, we don't want to lose this info if the user is forgetful
                             DataSender.SendGalleryImageAsync(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                              imageURLs[g], NSFW[g], TRIGGER[g],g).GetAwaiter().GetResult();
+                                              imageURLs[g], NSFW[g], TRIGGER[g],g);
                         }
                     }
                     ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
@@ -668,7 +663,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     ImageExists[i] = false;
                                     ReorderGallery = true;
                                     //remove the image immediately once pressed
-                                    DataSender.SendGalleryRemoveRequestAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), i, galleryImageCount).GetAwaiter().GetResult();
+                                    DataSender.SendGalleryRemoveRequestAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), i, galleryImageCount);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -694,7 +689,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static async void SaveProfile(IPlayerCharacter player, Plugin plugin)
         {
             //BIO
-            DataSender.SendCreateProfileBioAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
+                DataSender.SendCreateProfileBioAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
                                                    avatarBytes,
                                                    bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
                                                    bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
@@ -703,7 +698,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                                    bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
                                                    bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
                                                    bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
-                                                   currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3).GetAwaiter().GetResult();
+                                                   currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
 
             //HOOKS
             //create a new List to hold our hook values
@@ -715,7 +710,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 hooks.Add(hook);
             }
             //send the data to the server
-            DataSender.SendHooksAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), hooks).GetAwaiter().GetResult();
+            DataSender.SendHooksAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), hooks);
 
 
             //STORY
@@ -730,7 +725,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 storyChapters.Add(chapter);
             }
             //finally send the story data to the server
-            DataSender.SendStoryAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), storyTitle, storyChapters).GetAwaiter().GetResult();
+            DataSender.SendStoryAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), storyTitle, storyChapters);
 
 
             //GALLERY
@@ -739,13 +734,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 //pretty simple stuff, just send the gallery related array values to the server
                 DataSender.SendGalleryImageAsync(plugin.username, player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(),
-                                    imageURLs[i], NSFW[i], TRIGGER[i], i).GetAwaiter().GetResult();
+                                    imageURLs[i], NSFW[i], TRIGGER[i], i);
 
             }
 
 
             //OOC 
-            DataSender.SendOOCAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo).GetAwaiter().GetResult();
+            DataSender.SendOOCAsync(player.Name.ToString(), player.HomeWorld.GameData.Name.ToString(), oocInfo);
 
 
         }

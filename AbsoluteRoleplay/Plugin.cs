@@ -32,7 +32,7 @@ namespace AbsoluteRoleplay
         private const string CommandName = "/arp";
         //WIP
         private const string ChatToggleCommand = "/arpchat";
-      
+        
         public bool loggedIn;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
@@ -125,7 +125,6 @@ namespace AbsoluteRoleplay
             }); 
             //WIP
             
-            
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -153,7 +152,6 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
-
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
 
@@ -167,7 +165,7 @@ namespace AbsoluteRoleplay
             MainPanel.plugin = this;
             Framework.Update += OnUpdate;
         }
-
+       
         public async void LoadConnection()
         {
             Connect();
@@ -180,13 +178,30 @@ namespace AbsoluteRoleplay
         }
         public async void Connect()
         {
-            LoadStatusBarEntry();
+            LoadStatusBarEntry(); // Ensure the DTR bar is loaded before connecting
+
             if (IsOnline())
             {
-                bool connected = ClientHTTP.GetWebSocketState().Item1;
-                if (!connected)
+                plugin.logger?.Error("Attempting WebSocket connection");
+
+                bool isConnected = ClientHTTP.GetWebSocketState().Item1;
+                if (isConnected)
                 {
-                    await ClientHTTP.ConnectWebSocketAsync("wss://infinite-roleplay.net/ws");
+                    plugin.logger?.Error("WebSocket is already connected.");
+                }
+                else
+                {
+                    plugin.logger?.Error("WebSocket not connected. Attempting to connect...");
+
+                    bool connectionResult = await ClientHTTP.ConnectWebSocketAsync();
+                    if (connectionResult)
+                    {
+                        plugin.logger?.Error("WebSocket connection successfully established.");
+                    }
+                    else
+                    {
+                        plugin.logger?.Error("Failed to connect to WebSocket server.");
+                    }
                 }
             }
         }
@@ -273,7 +288,7 @@ namespace AbsoluteRoleplay
                     TargetWindow.ReloadTarget();
                     OpenTargetWindow();
                     //send a request to the server for the target profile info
-                    await DataSender.SendRequestTargetProfileAsync(characterName, characterWorld, plugin.username);
+                    DataSender.SendRequestTargetProfileAsync(characterName, characterWorld, plugin.username);
                 }
 
             }
@@ -289,35 +304,45 @@ namespace AbsoluteRoleplay
                 //fetch target player once more
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
                 //send a bookmark message to the server
-                await DataSender.SendPlayerBookmarkAsync(plugin.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.SendPlayerBookmarkAsync(plugin.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
             }
         }
 
         //server connection status dtrBarEntry
         public void LoadStatusBarEntry()
         {
-            var entry = dtrBar.Get("AbsoluteRoleplay");
-            statusBarEntry = entry;
-            string icon = "\uE03E"; //dice icon
-            statusBarEntry.Text = icon; //set text to icon
-            //set base tooltip value
-            statusBarEntry.Tooltip = "Absolute Roleplay";                
-            //assign on click to toggle the main ui
-            entry.OnClick = () => ToggleMainUI();
+            // Ensure the status bar entry is only created once
+            if (statusBarEntry == null)
+            {
+                var entry = dtrBar.Get("AbsoluteRoleplay");  // Get or create the status bar entry
+                statusBarEntry = entry;  // Assign it to the global statusBarEntry variable
+
+                string icon = "\uE03E";  // Example icon (Unicode for dice)
+                statusBarEntry.Text = icon;  // Set the text to the icon
+                statusBarEntry.Tooltip = "Absolute Roleplay";  // Set a tooltip
+                statusBarEntry.OnClick = () => ToggleMainUI();  // Handle click events
+
+                plugin.logger?.Error("DTR bar entry initialized.");
+            }
+            else
+            {
+                plugin.logger?.Error("statusBarEntry is already initialized.");
+            }
         }
+
         //WIP
-       /* public void LoadChatBarEntry()
-        {
-            
-            var entry = dtrBar.Get("AbsoluteChat");
-            chatBarEntry = entry;
-            string icon = "\uE0BB"; //link icon
-            chatBarEntry.Text = icon; //set text to icon
-            //set base tooltip value
-            chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
-            //assign on click to toggle the main ui
-        }
-        */
+        /* public void LoadChatBarEntry()
+         {
+
+             var entry = dtrBar.Get("AbsoluteChat");
+             chatBarEntry = entry;
+             string icon = "\uE0BB"; //link icon
+             chatBarEntry.Text = icon; //set text to icon
+             //set base tooltip value
+             chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
+             //assign on click to toggle the main ui
+         }
+         */
         //used to alert people of incoming connection requests
         public async void LoadConnectionsBarEntry(float deltaTime)
         {
@@ -330,7 +355,7 @@ namespace AbsoluteRoleplay
             ConnectionsWindow.currentListing = 2; entry.OnClick = async () =>
             {
                 // Await the async method here
-                await DataSender.SendConnectionsRequestAsync(
+                DataSender.SendConnectionsRequestAsync(
                     plugin.username.ToString(),
                     ClientState.LocalPlayer.Name.ToString(),
                     ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()
@@ -355,6 +380,7 @@ namespace AbsoluteRoleplay
         }
         public void Dispose()
         {
+          
             WindowSystem?.RemoveAllWindows();
             statusBarEntry?.Remove();
             statusBarEntry = null;
@@ -381,6 +407,16 @@ namespace AbsoluteRoleplay
             ConnectionsWindow?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
+            try
+            {
+                // If you want to disconnect in Dispose, avoid using 'async' here
+                ClientHTTP.DisconnectWebSocketAsync().GetAwaiter().GetResult();  // Forcefully await the task
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions
+                plugin.logger.Error($"Error in Dispose: {ex.Message}");
+            }
         }
         public void CheckConnectionsRequestStatus()
         {
@@ -401,9 +437,24 @@ namespace AbsoluteRoleplay
 
         private void OnUpdate(IFramework framework)
         {
-           
+            bool connected = ClientHTTP.GetWebSocketState().Item1;
+            if (IsOnline() == true && connected == false && ConnectionLoaded == false)
+            {
+                LoadConnection();
+                ConnectionLoaded = true;
+            }
+            /* if(loggedIn == true && chatLoaded == false)
+             {
+                // LoadChatBarEntry();
+                 chatLoaded = true;
+             }*/
+            if (IsOnline() == true && connected == true && ControlsLogin == false)
+            {
+                // Auto login when first opening the plugin or logging in
+                MainPanel.AttemptLogin();
+                ControlsLogin = true;
+            }
         }
-
         private void OnCommand(string command, string args)
         {
             // in response to the slash command, just toggle the display status of our main ui
@@ -451,21 +502,41 @@ namespace AbsoluteRoleplay
         {
             try
             {
+                // Check WebSocket state
+                var (isConnected, connectionStatus) = ClientHTTP.GetWebSocketState();
 
-                string connectionStatus = ClientHTTP.GetWebSocketState().Item2;
-                MainPanel.serverStatus = connectionStatus;
-                if (ClientState.IsLoggedIn && ClientState.LocalPlayer != null)
+                if (ClientState == null)
                 {
-                    //set dtr bar entry for connection status to our current server connection status
-                    statusBarEntry.Tooltip = new SeStringBuilder().AddText($"Absolute Roleplay: {connectionStatus}").Build();
+                    plugin.logger?.Error("ClientState is null.");
+                    return;
                 }
 
+                if (ClientState.LocalPlayer == null)
+                {
+                    plugin.logger?.Error("LocalPlayer is null.");
+                    return;
+                }
+
+                // Update the UI with connection status
+                MainPanel.serverStatus = connectionStatus;
+
+                if (statusBarEntry != null)
+                {
+                    statusBarEntry.Tooltip = new SeStringBuilder().AddText($"Absolute Roleplay: {connectionStatus}").Build();
+                    plugin.logger?.Error($"DTR bar entry updated: {connectionStatus}");
+                }
+                else
+                {
+                    plugin.logger?.Error("statusBarEntry is null.");
+                }
             }
             catch (Exception ex)
             {
-                logger.Error("Error updating status: " + ex.ToString());
+                plugin.logger?.Error($"Error updating status: {ex}");
             }
         }
+
+
     }
-   
+
 }

@@ -16,6 +16,7 @@ using System.Numerics;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
+using AbsoluteRoleplay.Packets;
 
 namespace Networking
 {
@@ -46,169 +47,242 @@ namespace Networking
 
         public static async Task ReceivePacketsAsync()
         {
-            var buffer = new byte[1024];  // Buffer for receiving WebSocket data
-
-            while (_client.State == WebSocketState.Open)
+            if (_client == null || _client.State != WebSocketState.Open)
             {
-                // Receive data from WebSocket
-                WebSocketReceiveResult result = await _client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+                plugin.logger.Error("WebSocket is not initialized or not open.");
+                return;
+            }
 
-                if (result.MessageType == WebSocketMessageType.Close)
+            var buffer = new byte[8192];
+            var completeMessage = new List<byte>();
+
+            try
+            {
+                while (_client.State == WebSocketState.Open)
                 {
-                    // Handle WebSocket close
-                    await _client.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-                    Console.WriteLine("WebSocket closed.");
-                }
-                else
-                {
-                    // Only process data if it's not a close message
-                    if (result.Count > 0)
+                    WebSocketReceiveResult result;
+                    do
                     {
-                        // Copy the received data to a byte array of the correct size
-                        byte[] receivedData = new byte[result.Count];
-                        Array.Copy(buffer, 0, receivedData, 0, result.Count);
+                        result = await _client.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
 
-                        // Call HandleData with the byte array
-                        HandleData(receivedData);
+                        if (result == null || result.MessageType == WebSocketMessageType.Close)
+                        {
+                            await _client.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                            plugin.logger.Error("WebSocket closed or no data received.");
+                            return;
+                        }
+
+                        // Check if the received data is valid
+                        if (result.Count > 0)
+                        {
+                            completeMessage.AddRange(buffer.Take(result.Count));
+                        }
+                        else
+                        {
+                            plugin.logger.Error("No data received in this chunk.");
+                        }
+
+                    } while (!result.EndOfMessage);
+
+                    // Log the full received message
+                    var receivedData = Encoding.UTF8.GetString(completeMessage.ToArray());
+                    plugin.logger.Error($"Received message: {receivedData}");
+
+                    if (completeMessage.Count > 0)
+                    {
+                        HandleData(completeMessage.ToArray());
                     }
+                    else
+                    {
+                        plugin.logger.Error("Complete message is empty.");
+                    }
+
+                    completeMessage.Clear();
                 }
             }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error receiving WebSocket data: {ex.Message}");
+                plugin.logger.Error(ex.StackTrace);  // Log full stack trace for debugging
+            }
+        }
+
+
+
+
+
+        private static int GetPacketId(byte[] data)
+        {
+            // Ensure that we have at least 4 bytes to extract the packet ID
+            if (data.Length < 4)
+            {
+                throw new ArgumentException("Data too short to contain a packet ID.");
+            }
+
+            // Convert the first 4 bytes to an integer (assuming little-endian byte order)
+            return BitConverter.ToInt32(data, 0);
         }
 
         public static void HandleData(byte[] data)
         {
-            
-            var packetID = BitConverter.ToInt32(data, 0);
-            var packetType = (ReceveirPackets)packetID;
-            byte[] payloadData = data.Skip(4).ToArray();
-
-            switch (packetType)
+            try
             {
-                case ReceveirPackets.SWelcomeMessage:
-                    HandleWelcomeMessage(payloadData);
-                    break;
+                if (data == null || data.Length == 0)
+                {
+                    plugin.logger.Error("No data to handle.");
+                    return;
+                }
 
-                case ReceveirPackets.SRecLoginStatus:
-                    HandleLoginStatus(payloadData);
-                    break;
+                // Extract packet ID (first 4 bytes)
+                int packetId = BitConverter.ToInt32(data, 0);
+                byte[] payloadData = data.Skip(4).ToArray();
 
-                case ReceveirPackets.SRecProfileBio:
-                    ReceiveProfileBio(payloadData);
-                    break;
+                plugin.logger.Error($"Processing packet with ID: {packetId}");
 
-                case ReceveirPackets.SRecTargetBio:
-                    ReceiveTargetBio(payloadData);
-                    break;
+                // Assuming the payload is JSON, convert the payload bytes to a string
+                var json = Encoding.UTF8.GetString(payloadData);
+                plugin.logger.Error($"Received payload JSON: {json}");
 
-                case ReceveirPackets.SRecBookmarks:
-                    RecBookmarks(payloadData);
-                    break;
+                if (string.IsNullOrEmpty(json))
+                {
+                    plugin.logger.Error("Payload JSON is empty.");
+                    return;
+                }
 
-                case ReceveirPackets.SSendProfileHook:
-                    ReceiveProfileHooks(payloadData);
-                    break;
+                // Based on the packet ID, process the packet (e.g., handle login status)
+                switch ((ReceveirPackets)packetId)
+                {
+                    case ReceveirPackets.SWelcomeMessage:
+                        HandleWelcomeMessage(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecProfileStory:
-                    ReceiveProfileStory(payloadData);
-                    break;
+                    case ReceveirPackets.SRecLoginStatus:
+                        HandleLoginStatus(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecTargetStory:
-                    ReceiveTargetStory(payloadData);
-                    break;
+                    case ReceveirPackets.SRecProfileBio:
+                        ReceiveProfileBio(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecNoProfileStory:
-                    NoProfileStory(payloadData);
-                    break;
+                    case ReceveirPackets.SRecTargetBio:
+                        ReceiveTargetBio(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendNoAuthorization:
-                    ReceiveNoAuthorization(payloadData);
-                    break;
+                    case ReceveirPackets.SRecBookmarks:
+                        RecBookmarks(payloadData);
+                        break;
 
-                case ReceveirPackets.CProfileReportedSuccessfully:
-                    RecProfileReportedSuccessfully(payloadData);
-                    break;
+                    case ReceveirPackets.SSendProfileHook:
+                        ReceiveProfileHooks(payloadData);
+                        break;
 
-                case ReceveirPackets.SNoProfileBio:
-                    NoProfileBio(payloadData);
-                    break;
+                    case ReceveirPackets.SRecProfileStory:
+                        ReceiveProfileStory(payloadData);
+                        break;
 
-                case ReceveirPackets.SNoProfile:
-                    NoProfile(payloadData);
-                    break;
+                    case ReceveirPackets.SRecTargetStory:
+                        ReceiveTargetStory(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecNoTargetBio:
-                    NoTargetBio(payloadData);
-                    break;
+                    case ReceveirPackets.SRecNoProfileStory:
+                        NoProfileStory(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecNoTargetProfile:
-                    NoTargetProfile(payloadData);
-                    break;
+                    case ReceveirPackets.SSendNoAuthorization:
+                        ReceiveNoAuthorization(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecTargetHooks:
-                    ReceiveTargetHooks(payloadData);
-                    break;
+                    case ReceveirPackets.CProfileReportedSuccessfully:
+                        RecProfileReportedSuccessfully(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecNoTargetHooks:
-                    NoTargetHooks(payloadData);
-                    break;
+                    case ReceveirPackets.SNoProfileBio:
+                        NoProfileBio(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecGalleryImageLoaded:
-                    ReceiveGalleryImageLoaded(payloadData);
-                    break;
+                    case ReceveirPackets.SNoProfile:
+                        NoProfile(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecNoTargetGallery:
-                    NoTargetGallery(payloadData);
-                    break;
+                    case ReceveirPackets.SRecNoTargetBio:
+                        NoTargetBio(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecProfileGallery:
-                    ReceiveProfileGallery(payloadData);
-                    break;
+                    case ReceveirPackets.SRecNoTargetProfile:
+                        NoTargetProfile(payloadData);
+                        break;
 
-                case ReceveirPackets.SRecNoProfileGallery:
-                    NoProfileGallery(payloadData);
-                    break;
+                    case ReceveirPackets.SRecTargetHooks:
+                        ReceiveTargetHooks(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendProfileNotes:
-                    ReceiveProfileNotes(payloadData);
-                    break;
+                    case ReceveirPackets.SRecNoTargetHooks:
+                        NoTargetHooks(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendNoProfileNotes:
-                    NoProfileNotes(payloadData);
-                    break;
+                    case ReceveirPackets.SRecGalleryImageLoaded:
+                        ReceiveGalleryImageLoaded(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendVerificationMessage:
-                    ReceiveVerificationMessage(payloadData);
-                    break;
+                    case ReceveirPackets.SRecNoTargetGallery:
+                        NoTargetGallery(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendPasswordModificationForm:
-                    ReceivePasswordModificationForm(payloadData);
-                    break;
+                    case ReceveirPackets.SRecProfileGallery:
+                        ReceiveProfileGallery(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendOOC:
-                    ReceiveProfileOOC(payloadData);
-                    break;
+                    case ReceveirPackets.SRecNoProfileGallery:
+                        NoProfileGallery(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendTargetOOC:
-                    ReceiveTargetOOCInfo(payloadData);
-                    break;
+                    case ReceveirPackets.SSendProfileNotes:
+                        ReceiveProfileNotes(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendNoOOCInfo:
-                    ReceiveNoOOCInfo(payloadData);
-                    break;
+                    case ReceveirPackets.SSendNoProfileNotes:
+                        NoProfileNotes(payloadData);
+                        break;
 
-                case ReceveirPackets.SSendNoTargetOOCInfo:
-                    ReceiveNoTargetOOCInfo(payloadData);
-                    break;
+                    case ReceveirPackets.SSendVerificationMessage:
+                        ReceiveVerificationMessage(payloadData);
+                        break;
 
-                case ReceveirPackets.ReceiveConnections:
-                    ReceiveConnections(payloadData);
-                    break;
+                    case ReceveirPackets.SSendPasswordModificationForm:
+                        ReceivePasswordModificationForm(payloadData);
+                        break;
 
-                default:
-                    Console.WriteLine($"Unhandled packet type: {packetType}");
-                    break;
+                    case ReceveirPackets.SSendOOC:
+                        ReceiveProfileOOC(payloadData);
+                        break;
+
+                    case ReceveirPackets.SSendTargetOOC:
+                        ReceiveTargetOOCInfo(payloadData);
+                        break;
+
+                    case ReceveirPackets.SSendNoOOCInfo:
+                        ReceiveNoOOCInfo(payloadData);
+                        break;
+
+                    case ReceveirPackets.SSendNoTargetOOCInfo:
+                        ReceiveNoTargetOOCInfo(payloadData);
+                        break;
+
+                    case ReceveirPackets.ReceiveConnections:
+                        ReceiveConnections(payloadData);
+                        break;
+
+                    default:
+                        plugin.logger.Error($"Unhandled packet type: {packetId}");
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling data: {ex.Message}");
             }
         }
+
 
         private static void HandleWelcomeMessage(byte[] data)
         {
@@ -219,13 +293,92 @@ namespace Networking
                 Console.WriteLine($"Received Welcome Message: {payload.Message}");
             }
         }
-
         private static void HandleLoginStatus(byte[] data)
         {
+            plugin.logger.Error("Recieved Login packet");
             var payload = DeserializePayload<SendStatusMessagePayload>(data);
-            if (payload != null)
+            var status = payload.Status;
+            if (status == (int)Defines.StatusMessages.LOGIN_BANNED)
             {
-                Console.WriteLine($"Login Status for {payload.Username}: {payload.Status}");
+                MainPanel.statusColor = new Vector4(255, 0, 0, 255);
+                MainPanel.status = "Account Banned";
+            }
+            if (status == (int)Defines.StatusMessages.LOGIN_UNVERIFIED)
+            {
+                plugin.loggedIn = false;
+                MainPanel.statusColor = new Vector4(255, 255, 0, 255);
+                MainPanel.status = "Unverified Account";
+            }
+            if (status == (int)Defines.StatusMessages.LOGIN_VERIFIED)
+            {
+                plugin.loggedIn = true;
+                MainPanel.status = "Logged In";
+                MainPanel.statusColor = new Vector4(0, 255, 0, 255);
+                MainPanel.viewMainWindow = true;
+            }
+            if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
+            {
+                MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
+                MainPanel.status = "Incorrect login details";
+            }
+            if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
+            {
+                MainPanel.statusColor = new Vector4(255, 255, 0, 255);
+                MainPanel.status = "Username already in use.";
+            }
+
+            if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_EMAIL)
+            {
+                MainPanel.statusColor = new Vector4(255, 255, 0, 255);
+                MainPanel.status = "Email already in use.";
+            }
+            if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
+            {
+                MainPanel.statusColor = new Vector4(255, 255, 0, 255);
+                MainPanel.status = "Incorrect Account Info";
+                MainPanel.viewMainWindow = false;
+            }
+            if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_RECEIVED)
+            {
+                MainPanel.statusColor = new Vector4(0, 255, 0, 255);
+                MainPanel.status = "Request received, please stand by...";
+            }
+            if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_INCORRECT)
+            {
+                MainPanel.statusColor = new Vector4(255, 255, 0, 255);
+                MainPanel.status = "There is no account with this email.";
+            }
+            //Restoration window
+            if (status == (int)Defines.StatusMessages.PASSCHANGE_INCORRECT_RESTORATION_KEY)
+            {
+                RestorationWindow.restorationCol = new Vector4(255, 0, 0, 255);
+                RestorationWindow.restorationStatus = "Incorrect Key.";
+            }
+            if (status == (int)Defines.StatusMessages.PASSCHANGE_PASSWORD_CHANGED)
+            {
+                RestorationWindow.restorationCol = new Vector4(0, 255, 0, 255);
+                RestorationWindow.restorationStatus = "Password updated, you may close this window.";
+            }
+            //Verification window
+            if (status == (int)Defines.StatusMessages.VERIFICATION_KEY_VERIFIED)
+            {
+                VerificationWindow.verificationCol = new Vector4(0, 255, 0, 255);
+                VerificationWindow.verificationStatus = "Account Verified! you may now log in.";
+                MainPanel.statusColor = new Vector4(255, 0, 0, 255);
+                MainPanel.status = "Logged Out";
+                MainPanel.login = true;
+                MainPanel.register = false;
+
+            }
+            if (status == (int)Defines.StatusMessages.VERIFICATION_INCORRECT_KEY)
+            {
+                VerificationWindow.verificationCol = new Vector4(255, 0, 0, 255);
+                VerificationWindow.verificationStatus = "Incorrect verification key.";
+            }
+            if (status == (int)Defines.StatusMessages.REGISTRATION_INSUFFICIENT_DATA)
+            {
+                MainPanel.statusColor = new Vector4(255, 0, 0, 255);
+                MainPanel.status = "Please fill all fields.";
             }
         }
         public static void ReceiveProfileBio(byte[] data)

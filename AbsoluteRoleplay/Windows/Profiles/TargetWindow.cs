@@ -174,7 +174,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             if (ImGui.Button("Request access"))
                             {
                                 //send a new request to the server and then the profile owner if pressed
-                                DataSender.SendProfileAccessUpdateAsync(plugin.username, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString(), characterName, characterWorld, (int)Defines.ConnectionStatus.pending).GetAwaiter().GetResult();
+                                DataSender.SendProfileAccessUpdateAsync(plugin.username, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString(), characterName, characterWorld, (int)Defines.ConnectionStatus.pending);
                             }
                         }
                         else
@@ -322,7 +322,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 {
                                     if (plugin.IsOnline())
                                     {
-                                        DataSender.SendProfileNotesAsync(plugin.username, characterNameVal, characterWorldVal, profileNotes).GetAwaiter().GetResult();
+                                        DataSender.SendProfileNotesAsync(plugin.username, characterNameVal, characterWorldVal, profileNotes);
                                     }
 
                                 }
