@@ -13,6 +13,7 @@ using Dalamud.Interface.Internal;
 using AbsoluteRoleplay.Helpers;
 using Microsoft.VisualBasic;
 using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Utility;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -168,7 +169,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         if (ExistingBio == false && ExistingHooks == false && ExistingStory == false && ExistingOOC == false && ExistingOOC == false && ExistingGallery == false)
                         {
                             //inform the viewer that there is no profile to view
-                            ImGui.TextWrapped("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
+                            ImGuiHelpers.SafeTextWrapped("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
 
                             //but incase the profile is set to private, give the user a request button to ask for access
                             if (ImGui.Button("Request access"))
@@ -185,19 +186,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 Misc.SetTitle(plugin, true, characterEditName);
                                 ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(100, 100)); //display avatar image
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("NAME:   " + characterEditName); // display character name
+                                ImGuiHelpers.SafeTextWrapped("NAME:   " + characterEditName); // display character name
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("RACE:   " + characterEditRace); // race
+                                ImGuiHelpers.SafeTextWrapped("RACE:   " + characterEditRace); // race
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("GENDER:   " + characterEditGender); //and so on
+                                ImGuiHelpers.SafeTextWrapped("GENDER:   " + characterEditGender); //and so on
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("AGE:   " + characterEditAge);
+                                ImGuiHelpers.SafeTextWrapped("AGE:   " + characterEditAge);
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("HEIGHT:   " + characterEditHeight);
+                                ImGuiHelpers.SafeTextWrapped("HEIGHT:   " + characterEditHeight);
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("WEIGHT:   " + characterEditWeight);
+                                ImGuiHelpers.SafeTextWrapped("WEIGHT:   " + characterEditWeight);
                                 ImGui.Spacing();
-                                ImGui.TextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
+                                ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
                                 ImGui.Spacing();
                                 if (showAlignment == true)
                                 {
@@ -260,8 +261,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 for (var h = 0; h < hookEditCount; h++)
                                 {
                                     Misc.SetCenter(plugin, HookNames[h].ToString()); // set the position to the center of the window
-                                    ImGui.TextWrapped(HookNames[h].ToUpper()); //display the title in the center
-                                    ImGui.TextWrapped(HookContents[h]); //display the content
+                                    ImGuiHelpers.SafeTextWrapped(HookNames[h].ToUpper()); //display the title in the center
+                                    ImGuiHelpers.SafeTextWrapped(HookContents[h]); //display the content
                                 }
 
                             }
@@ -275,10 +276,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 for (var h = 0; h < chapterCount; h++)
                                 {
                                     Misc.SetCenter(plugin, ChapterTitle[h]);
-                                    ImGui.TextWrapped(ChapterTitle[h].ToUpper());
+                                    ImGuiHelpers.SafeTextWrapped(ChapterTitle[h].ToUpper());
                                     ImGui.Spacing();
                                     using var defInfFontDen = ImRaii.DefaultFont();
-                                    ImGui.TextWrapped(ChapterContent[h]);
+                                    ImGuiHelpers.SafeTextWrapped(ChapterContent[h]);
                                 }
 
 
@@ -286,7 +287,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             if (viewOOC == true)
                             {
                                 Misc.SetTitle(plugin, true, "OOC Information");
-                                ImGui.TextWrapped(oocInfo);
+                                ImGuiHelpers.SafeTextWrapped(oocInfo);
                             }
                             if (viewGallery == true)
                             {
