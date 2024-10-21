@@ -177,15 +177,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         //send our privacy settings to the server
                         DataSender.SetProfileStatus(plugin.username.ToString(), plugin.playername, plugin.playerworld, privateProfile);
                     }
-                    if(ImGui.Button("Create Backup"))
-                    {
-                        SaveBackupFile();
-                    }
-                    ImGui.SameLine();
-                    if(ImGui.Button("Load Backup"))
-                    {
-                        LoadBackupFile();
-                    }
                     if(ImGui.Button("Save Profile"))
                     {
                         SubmitProfileData();

@@ -7,6 +7,8 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using AbsoluteRoleplay;
 using System.IO;
+using System.Net.Http;
+using AbsoluteRoleplay.Windows;
 
 namespace Networking
 {
@@ -120,8 +122,21 @@ namespace Networking
         }
 
 
+      
+        public static void UpdateConnectionStatus(TcpClient client)
+        {
 
-
+            if(client.Connected)
+            {
+                MainPanel.serverStatusColor = new System.Numerics.Vector4(0, 255, 0, 255);
+                MainPanel.serverStatus = "Connected";
+            }
+            else
+            {
+                MainPanel.serverStatusColor = new System.Numerics.Vector4(255, 0, 0, 255);
+                MainPanel.serverStatus = "Disconnected";
+            }
+        }
 
         // Get the current connection status
         public static async Task<string> GetConnectionStatusAsync(TcpClient _tcpClient)
@@ -176,18 +191,18 @@ namespace Networking
 
 
         public static void StartReceiving()
-{
-    // Ensure sslStream is authenticated and can read
-    if (sslStream != null && sslStream.CanRead)
-    {
-        sslStream.BeginRead(recBuffer, 0, recBuffer.Length, OnReceiveData, sslStream);
-        plugin.logger.Error("Started reading from SSL/TLS stream.");
-    }
-    else
-    {
-        plugin.logger.Error("SSL/TLS stream is not readable after handshake.");
-    }
-}
+        {
+            // Ensure sslStream is authenticated and can read
+            if (sslStream != null && sslStream.CanRead)
+            {
+                sslStream.BeginRead(recBuffer, 0, recBuffer.Length, OnReceiveData, sslStream);
+                //plugin.logger.Error("Started reading from SSL/TLS stream.");
+            }
+            else
+            {
+                plugin.logger.Error("SSL/TLS stream is not readable after handshake.");
+            }
+        }
 
         // Establish the actual connection to the server using SSL/TLS
         public static async Task EstablishConnectionAsync()
@@ -195,9 +210,9 @@ namespace Networking
             try
             {
                 clientSocket = new TcpClient();
-                plugin.logger.Error("Attempting to connect to server...");
+                //plugin.logger.Error("Attempting to connect to server...");
                 await clientSocket.ConnectAsync(server, port);
-                plugin.logger.Error("Connected to server.");
+               // plugin.logger.Error("Connected to server.");
 
                 // Initialize SslStream and authenticate with the server
                 sslStream = new SslStream(clientSocket.GetStream(), false, ValidateServerCertificate);
@@ -208,7 +223,7 @@ namespace Networking
                 // Check if the stream is authenticated and writable
                 if (sslStream.IsAuthenticated && sslStream.CanRead && sslStream.CanWrite)
                 {
-                    plugin.logger.Error("SSL/TLS handshake completed and stream is ready for reading.");
+                    //plugin.logger.Error("SSL/TLS handshake completed and stream is ready for reading.");
                     StartReceiving();  // Call to start reading data
                 }
                 else
@@ -323,6 +338,7 @@ namespace Networking
                 if (!Connected)
                 {
                     await EstablishConnectionAsync();
+                    UpdateConnectionStatus(clientSocket);
                 }
             }
             catch (Exception ex)
@@ -369,7 +385,7 @@ namespace Networking
                     // Send the message
                     await sslStream.WriteAsync(message, 0, message.Length);
                     await sslStream.FlushAsync();
-                    plugin.logger.Error($"Data sent to the server successfully. Total length: {message.Length}");
+                    //plugin.logger.Error($"Data sent to the server successfully. Total length: {message.Length}");
                 }
                 else
                 {
