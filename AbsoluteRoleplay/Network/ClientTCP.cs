@@ -9,6 +9,9 @@ using AbsoluteRoleplay;
 using System.IO;
 using System.Net.Http;
 using AbsoluteRoleplay.Windows;
+using static AbsoluteRoleplay.Defines;
+using System.Collections.Generic;
+using System.Numerics;
 
 namespace Networking
 {
@@ -139,15 +142,16 @@ namespace Networking
         }
 
         // Get the current connection status
-        public static async Task<string> GetConnectionStatusAsync(TcpClient _tcpClient)
+        public static async Task<Tuple<Vector4, string>> GetConnectionStatusAsync(TcpClient _tcpClient)
         {
+            Tuple<Vector4, string> connected = Tuple.Create(new Vector4(0, 255, 0, 255), "Connected");
+            Tuple<Vector4, string> disconnected = Tuple.Create(new Vector4(255, 0, 0, 255), "Disconnected");
             try
             {
                 if (_tcpClient != null && _tcpClient.Client != null && _tcpClient.Client.Connected)
                 {
                     bool isSocketReadable = _tcpClient.Client.Poll(0, SelectMode.SelectRead);
                     bool isSocketWritable = _tcpClient.Client.Poll(0, SelectMode.SelectWrite);
-
                     plugin.logger.Error($"Poll status - Readable: {isSocketReadable}, Writable: {isSocketWritable}");
 
                     if (isSocketReadable)
@@ -159,32 +163,33 @@ namespace Networking
                         if (bytesRead == 0)
                         {
                             plugin.logger.Error("No data received (0 bytes), connection likely closed.");
-                            return "Disconnected";
+
+                            return disconnected;
                         }
-                        return "Connected";
+                        return connected;
                     }
 
                     if (isSocketWritable && !isSocketReadable)
                     {
-                        return "Connected";
+                        return connected;
                     }
 
                     plugin.logger.Error("Socket is neither readable nor writable, returning Disconnected.");
-                    return "Disconnected";
+                    return disconnected;
                 }
 
                 plugin.logger.Error("TcpClient is null or not connected.");
-                return "Disconnected";
+                return disconnected;
             }
             catch (SocketException ex)
             {
                 plugin.logger.Error($"SocketException during connection check: {ex.Message}");
-                return "Disconnected";
+                return disconnected;
             }
             catch (Exception ex)
             {
                 plugin.logger.Error($"Exception during connection check: {ex.Message}");
-                return "Disconnected";
+                return disconnected;
             }
         }
 
@@ -196,7 +201,7 @@ namespace Networking
             if (sslStream != null && sslStream.CanRead)
             {
                 sslStream.BeginRead(recBuffer, 0, recBuffer.Length, OnReceiveData, sslStream);
-                //plugin.logger.Error("Started reading from SSL/TLS stream.");
+                //plugin.logger.Error("Started reading from SSL/TLS stream.
             }
             else
             {
@@ -225,6 +230,7 @@ namespace Networking
                 {
                     //plugin.logger.Error("SSL/TLS handshake completed and stream is ready for reading.");
                     StartReceiving();  // Call to start reading data
+                    MainPanel.AttemptLogin();
                 }
                 else
                 {

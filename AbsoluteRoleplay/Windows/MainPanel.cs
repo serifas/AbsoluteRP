@@ -51,7 +51,7 @@ public class MainPanel : Window, IDisposable
                                  //systems
                                  combatImage, statSystemImage,
                                  reconnectImage;
-    public Plugin plugin;
+    public static Plugin pluginInstance;
     public static bool LoggedIN = false;
 
     public MainPanel(Plugin plugin) : base(
@@ -61,7 +61,7 @@ public class MainPanel : Window, IDisposable
     {
         this.Size = new Vector2(250, 340);
         this.SizeCondition = ImGuiCond.Always;
-        this.plugin = plugin;
+        pluginInstance = plugin;
         this.username = plugin.Configuration.username;
         this.password = plugin.Configuration.password;
        
@@ -109,10 +109,10 @@ public class MainPanel : Window, IDisposable
 
             if (ImGui.Button("Login"))
             {
-                if (plugin.IsOnline() && ClientTCP.IsConnected() == true)
+                if (pluginInstance.IsOnline() && ClientTCP.IsConnected() == true)
                 {
                     SaveLoginPreferences(this.username.ToString(), this.password.ToString());
-                    DataSender.Login(this.username, this.password, plugin.playername, plugin.playerworld);
+                    DataSender.Login(this.username, this.password, pluginInstance.playername, pluginInstance.playerworld);
                 }
             }
             ImGui.SameLine();
@@ -121,24 +121,21 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.Button("Forgot"))
             {
-                login = false;
-                register = false;
-                forgot = true;
+                forgot = CurrentElement();
             }
             ImGui.SameLine();
             if (ImGui.Button("Register"))
             {
-                login = false;
-                register = true;
+                register = CurrentElement();
             }
-            if (plugin.Configuration.showKofi == true)
+            if (pluginInstance.Configuration.showKofi == true)
             {
                 if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(172, 27)))
                 {
                     Util.OpenLink("https://ko-fi.com/infiniteroleplay");
                 }
             }
-            if (plugin.Configuration.showDisc == true)
+            if (pluginInstance.Configuration.showDisc == true)
             {
                 if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(172, 27)))
                 {
@@ -153,7 +150,7 @@ public class MainPanel : Window, IDisposable
             ImGui.InputTextWithHint("##RegisteredEmail", $"Email", ref this.restorationEmail, 100);
             if (ImGui.Button("Submit Request"))
             {
-                if (plugin.IsOnline())
+                if (pluginInstance.IsOnline())
                 {
                     DataSender.SendRestorationRequest(this.restorationEmail);
                 }
@@ -161,9 +158,7 @@ public class MainPanel : Window, IDisposable
 
             if (ImGui.Button("Back"))
             {
-                login = true;
-                register = false;
-                forgot = false;
+                login = CurrentElement();
             }
 
         }
@@ -178,7 +173,7 @@ public class MainPanel : Window, IDisposable
             ImGui.Checkbox("I agree to the TOS.", ref AgreeTOS);
             if (ImGui.Button("View ToS & Rules"))
             {
-                plugin.OpenTermsWindow();
+                pluginInstance.OpenTermsWindow();
             }
             if (Agree18 == true && AgreeTOS == true)
             {
@@ -186,10 +181,10 @@ public class MainPanel : Window, IDisposable
                 {
                     if (registerPassword == registerVerPassword)
                     {
-                        if (plugin.IsOnline())
+                        if (pluginInstance.IsOnline())
                         {
                             SaveLoginPreferences(registerUser, registerPassword);
-                            plugin.username = registerUser.ToString();
+                            pluginInstance.username = registerUser.ToString();
                             DataSender.Register(registerUser.ToString(), registerPassword, email);
                         }
                     }
@@ -203,22 +198,18 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.Button("Back"))
             {
-                login = true;
-                register = false;
+                login = CurrentElement();
             }
 
         }
         if (viewMainWindow == true)
         {
-            login = false;
-            forgot = false;
-            register = false;
+            viewMainWindow = CurrentElement();
             
             #region PROFILES
             if (ImGui.ImageButton(this.profileSectionImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                viewProfile = true;
-                viewMainWindow = false;
+                viewProfile = CurrentElement();
             }
             if (ImGui.IsItemHovered())
             {
@@ -228,7 +219,7 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                DataSender.RequestConnections(plugin.username.ToString(), plugin.playername, plugin.playerworld);
+                DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.playername, pluginInstance.playerworld);
 
             }
             if (ImGui.IsItemHovered())
@@ -272,17 +263,15 @@ public class MainPanel : Window, IDisposable
 
             if (ImGui.Button("Options", new Vector2(225, 25)))
             {
-                plugin.OpenOptionsWindow();
+                pluginInstance.OpenOptionsWindow();
             }
             if (ImGui.Button("Logout", new Vector2(225, 25)))
             {
-                plugin.ControlsLogin = true;
-                plugin.newConnection = false;
-                plugin.CloseAllWindows();
-                plugin.OpenMainPanel();
-                switchUI();
-                login = true;
-                viewMainWindow = false;
+                pluginInstance.ControlsLogin = true;
+                pluginInstance.newConnection = false;
+                pluginInstance.CloseAllWindows();
+                pluginInstance.OpenMainPanel();               
+                login = CurrentElement();
                 status = "Logged Out";
                 statusColor = new Vector4(255, 0, 0, 255);
             }
@@ -291,16 +280,16 @@ public class MainPanel : Window, IDisposable
         {
             if (ImGui.ImageButton(this.profileImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                if (plugin.IsOnline())
+                if (pluginInstance.IsOnline())
                 {
                     ProfileWindow.TabOpen[TabValue.Bio] = true;
                     ProfileWindow.TabOpen[TabValue.Hooks] = true;
                     ProfileWindow.TabOpen[TabValue.Story] = true;
                     ProfileWindow.TabOpen[TabValue.OOC] = true;
                     ProfileWindow.TabOpen[TabValue.Gallery] = true;
-                    plugin.OpenProfileWindow();
+                    pluginInstance.OpenProfileWindow();
                     //FETCH USER AND PASS ASEWLL
-                    DataSender.FetchProfile(plugin.playername, plugin.playerworld);
+                    DataSender.FetchProfile(pluginInstance.playername, pluginInstance.playerworld);
                     ProfileWindow.ClearUI();
                 }
             }
@@ -311,9 +300,9 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.profileBookmarkImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                if (plugin.IsOnline())
+                if (pluginInstance.IsOnline())
                 {
-                    DataSender.RequestBookmarks(plugin.username);
+                    DataSender.RequestBookmarks(pluginInstance.username);
                 }
                
             }
@@ -362,8 +351,7 @@ public class MainPanel : Window, IDisposable
         {
             if (ImGui.Button("Back"))
             {
-                switchUI();
-                viewMainWindow = true;
+                viewMainWindow = CurrentElement();
             }
         }
         ImGui.TextColored(serverStatusColor, serverStatus);
@@ -371,39 +359,51 @@ public class MainPanel : Window, IDisposable
         if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(18, 18)))
         {
             ClientTCP.AttemptConnect();
-            plugin.UpdateStatus();
+            pluginInstance.UpdateStatus();
         }
         ImGui.TextColored(statusColor, status);
 
         
     }
+    public bool CurrentElement()
+    {
+        login = false;
+        forgot = false;
+        register = false;
+        viewProfile = false;
+        viewSystems = false;
+        viewEvents = false;
+        viewConnections = false;
+        viewMainWindow = false;
+        return true;
+    }
     public void SaveLoginPreferences(string username, string password)
     {
-        plugin.Configuration.rememberInformation = Remember;
-        if (plugin.Configuration.rememberInformation == true)
+        pluginInstance.Configuration.rememberInformation = Remember;
+        if (pluginInstance.Configuration.rememberInformation == true)
         {
-            plugin.Configuration.username = username;
-            plugin.Configuration.password = password;
+            pluginInstance.Configuration.username = username;
+            pluginInstance.Configuration.password = password;
         }
         else
         {
-            plugin.Configuration.username = string.Empty;
-            plugin.Configuration.password = string.Empty;
+            pluginInstance.Configuration.username = string.Empty;
+            pluginInstance.Configuration.password = string.Empty;
         }
-        plugin.username = username;
-        plugin.password = password;
-        plugin.Configuration.Save();
+        pluginInstance.username = username;
+        pluginInstance.password = password;
+        pluginInstance.Configuration.Save();
     }
-    public void AttemptLogin()
+    public static void AttemptLogin()
     {
-        if(ClientTCP.IsConnected() && plugin.Configuration.username != string.Empty && plugin.Configuration.password != string.Empty)
+        if(ClientTCP.IsConnected() && pluginInstance.Configuration.username != string.Empty && pluginInstance.Configuration.password != string.Empty)
         {
-            plugin.username = username;
-            plugin.password = password;
-            DataSender.Login(plugin.Configuration.username, plugin.Configuration.password, plugin.playername, plugin.playerworld);
+            DataSender.Login(pluginInstance.Configuration.username, pluginInstance.Configuration.password, pluginInstance.playername, pluginInstance.playerworld);
         }
-        plugin.LoadConnection();
-        plugin.CloseAllWindows();
+        if (pluginInstance.Configuration.closeAfterConnection)
+        {
+            pluginInstance.CloseAllWindows();
+        }
     }
     public void switchUI()
     {

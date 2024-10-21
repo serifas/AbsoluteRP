@@ -12,6 +12,7 @@ public class Configuration : IPluginConfiguration
     public string username { get; set; } = "";
     public string password { get; set; } = "";
     public bool rememberInformation { get; set; }
+    public bool closeAfterConnection { get; set; }
 
     //Config options
     public bool showKofi { get; set; } = true;

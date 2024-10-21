@@ -15,6 +15,7 @@ namespace AbsoluteRoleplay.Windows
         public static bool showKofi;
         public static bool showDisc;
         public static bool showWIP;
+        public static bool closeAfterConnection;
         public OptionsWindow(Plugin plugin) : base(
        "OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -27,6 +28,7 @@ namespace AbsoluteRoleplay.Windows
             showWIP = plugin.Configuration.showWIP;
             showKofi = plugin.Configuration.showKofi;
             showDisc = plugin.Configuration.showDisc;
+           closeAfterConnection = plugin.Configuration.closeAfterConnection;
         }
         public override void Draw()
         {
@@ -43,6 +45,15 @@ namespace AbsoluteRoleplay.Windows
             {
                 pg.Configuration.showDisc = showDisc;
                 pg.Configuration.Save();
+            }
+            if (ImGui.Checkbox("Close plugin after new connectoin", ref closeAfterConnection))
+            {
+                pg.Configuration.closeAfterConnection = closeAfterConnection;
+                pg.Configuration.Save();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Good to set for annoying behavior (Mainly just nice for closing the window on login)");
             }
         }
         public void Dispose()

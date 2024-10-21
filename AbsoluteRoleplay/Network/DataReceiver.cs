@@ -263,7 +263,7 @@ namespace Networking
                     TargetWindow.ClearUI();
                     BookmarksWindow.DisableBookmarkSelection = false;
                     ReportWindow.reportStatus = "";
-
+                    plugin.OpenTargetWindow();
                 }
             }
             catch (Exception ex)
