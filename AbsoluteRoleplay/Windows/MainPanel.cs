@@ -112,7 +112,7 @@ public class MainPanel : Window, IDisposable
                 if (plugin.IsOnline() && ClientTCP.IsConnected() == true)
                 {
                     SaveLoginPreferences(this.username.ToString(), this.password.ToString());
-                    DataSender.Login(this.username, this.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                    DataSender.Login(this.username, this.password, plugin.playername, plugin.playerworld);
                 }
             }
             ImGui.SameLine();
@@ -142,7 +142,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(172, 27)))
                 {
-                    Util.OpenLink("https://discord.gg/wQ43RrEx7m");
+                    Util.OpenLink("https://discord.gg/absolute-roleplay");
                 }
             }
 
@@ -228,7 +228,7 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
             {
-                DataSender.RequestConnections(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.RequestConnections(plugin.username.ToString(), plugin.playername, plugin.playerworld);
 
             }
             if (ImGui.IsItemHovered())
@@ -300,7 +300,7 @@ public class MainPanel : Window, IDisposable
                     ProfileWindow.TabOpen[TabValue.Gallery] = true;
                     plugin.OpenProfileWindow();
                     //FETCH USER AND PASS ASEWLL
-                    DataSender.FetchProfile(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                    DataSender.FetchProfile(plugin.playername, plugin.playerworld);
                     ProfileWindow.ClearUI();
                 }
             }
@@ -400,7 +400,7 @@ public class MainPanel : Window, IDisposable
         {
             plugin.username = username;
             plugin.password = password;
-            DataSender.Login(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+            DataSender.Login(plugin.Configuration.username, plugin.Configuration.password, plugin.playername, plugin.playerworld);
         }
         plugin.LoadConnection();
         plugin.CloseAllWindows();

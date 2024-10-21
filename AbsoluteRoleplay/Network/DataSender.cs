@@ -69,8 +69,6 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.CLogin);
                         buffer.WriteString(username);
                         buffer.WriteString(password);
-                        buffer.WriteString(playerName);
-                        buffer.WriteString(playerWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

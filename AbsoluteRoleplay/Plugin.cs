@@ -29,6 +29,8 @@ namespace AbsoluteRoleplay
         public static Plugin plugin;
         public string username = "";
         public string password = "";
+        public string playername = "";
+        public string playerworld = "";
         private const string CommandName = "/arp";
         //WIP
         private const string ChatToggleCommand = "/arpchat";
@@ -48,6 +50,7 @@ namespace AbsoluteRoleplay
         [PluginService] internal static IClientState ClientState { get; private set; } = null;
         [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
         [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
+        [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -108,7 +111,7 @@ namespace AbsoluteRoleplay
             Condition = condition;
             ContextMenu = contextMenu;
             Framework = framework;
-
+            ClientTCP.plugin = this;
             
             //unhandeled exception handeling - probably not really needed anymore.
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
@@ -168,9 +171,13 @@ namespace AbsoluteRoleplay
             MainPanel.plugin = this;
             Framework.Update += OnUpdate;
         }
-
+        
         public async void LoadConnection()
         {
+            if (ClientHandleData.packets.Count < 30)
+            {
+                ClientHandleData.InitializePackets(true);
+            }
             Connect();
             //update the statusBarEntry with out connection status
             UpdateStatus();
@@ -181,6 +188,8 @@ namespace AbsoluteRoleplay
         }
         public async void Connect()
         {
+            playername = ClientState.LocalPlayer.Name.ToString();
+            playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
             LoadStatusBarEntry();
             if (IsOnline())
             {
@@ -224,33 +233,65 @@ namespace AbsoluteRoleplay
                 logger.Error("Exception handled" + exception.Message);
             });
         }
-        public void AddContextMenu(IMenuOpenedArgs args)
+       
+        /// <summary>
+        /// 
+        /// 
+        private unsafe void AddContextMenu(IMenuOpenedArgs args)
         {
-            if (IsOnline())
+            var ctx = AgentContext.Instance();
+            if (args.AgentPtr != (nint)ctx)
             {
-                var targetPlayer = TargetManager.Target as IPlayerCharacter;
-                if (args.AddonPtr == (nint)0 && targetPlayer != null && loggedIn == true)
-                {
-                    //if we are right clicking a player and are logged into hte plugin, add our contextMenu items.
-                    MenuItem view = new MenuItem();
-                    MenuItem bookmark = new MenuItem();
-                    view.Name = "View Absolute Profile";
-                    view.PrefixColor = 56;
-                    view.Prefix = SeIconChar.BoxedQuestionMark;
-                    bookmark.Name = "Bookmark Absolute Profile";
-                    bookmark.PrefixColor = 56;
-                    bookmark.Prefix = SeIconChar.BoxedPlus;
-                    //assign on click actions
-                    view.OnClicked += ViewProfile;
-                    bookmark.OnClicked += BookmarkProfile;
-                    //add the menu item
-                    args.AddMenuItem(view);
-                    args.AddMenuItem(bookmark);
-
-                }
+                return;
             }
 
+            if (ctx->TargetObjectId.ObjectId != 0xE000_0000)
+            {
+                ViewContextMenu(args, ctx->TargetObjectId.ObjectId);
+                return;
+            }
+            MenuItem view = new MenuItem();
+            MenuItem bookmark = new MenuItem();
+            view.Name = "View Absolute Profile";
+            view.PrefixColor = 56;
+            view.Prefix = SeIconChar.BoxedQuestionMark;
+            bookmark.Name = "Bookmark Absolute Profile";
+            bookmark.PrefixColor = 56;
+            bookmark.Prefix = SeIconChar.BoxedPlus;
+            //assign on click actions
+            view.OnClicked += ViewProfile;
+            bookmark.OnClicked += BookmarkProfile;
+            //add the menu item
+            args.AddMenuItem(view);
+            args.AddMenuItem(bookmark);
         }
+
+        private void ViewContextMenu(IMenuOpenedArgs args, uint objectId)
+        {
+            var obj = ObjectTable.SearchById(objectId);
+            if (obj is not IPlayerCharacter chara)
+            {
+                return;
+            }
+
+            MenuItem view = new MenuItem();
+            MenuItem bookmark = new MenuItem();
+            view.Name = "View Absolute Profile";
+            view.PrefixColor = 56;
+            view.Prefix = SeIconChar.BoxedQuestionMark;
+            bookmark.Name = "Bookmark Absolute Profile";
+            bookmark.PrefixColor = 56;
+            bookmark.Prefix = SeIconChar.BoxedPlus;
+            //assign on click actions
+            view.OnClicked += ViewProfile;
+            bookmark.OnClicked += BookmarkProfile;
+            //add the menu item
+            args.AddMenuItem(view);
+            args.AddMenuItem(bookmark);
+        }
+
+        /// </summary>
+        /// <param name="args"></param>
 
         private void ViewProfile(IMenuItemClickedArgs args)
         {
@@ -328,7 +369,7 @@ namespace AbsoluteRoleplay
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
             ConnectionsWindow.currentListing = 2;
-            entry.OnClick = () => DataSender.RequestConnections(plugin.username.ToString(), ClientState.LocalPlayer.Name.ToString(), ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());                 
+            entry.OnClick = () => DataSender.RequestConnections(plugin.username.ToString(), playername, playerworld);                 
             
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
@@ -358,7 +399,6 @@ namespace AbsoluteRoleplay
             PluginInterface.UiBuilder.Draw -= DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUI;
-            ClientState.Login -= LoadConnection;
             ClientState.Logout -= Logout;
             Framework.Update -= OnUpdate;
             // Dispose all windows

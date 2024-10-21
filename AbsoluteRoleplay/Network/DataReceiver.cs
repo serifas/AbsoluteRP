@@ -1,4 +1,5 @@
 
+
 using FFXIVClientStructs.FFXIV.Common.Math;
 using AbsoluteRoleplay;
 using AbsoluteRoleplay.Windows;
@@ -438,9 +439,9 @@ namespace Networking
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.viewMainWindow = true;
                     }
-                    if(status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
+                    if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
-                        MainPanel.statusColor = new System.Numerics.Vector4(255,0,0,255);   
+                        MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
                         MainPanel.status = "Incorrect login details";
                     }
                     if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
@@ -638,8 +639,8 @@ namespace Networking
                     if (personality_1 == 26) { TargetWindow.showPersonality1 = false; } else { TargetWindow.showPersonality1 = true; }
                     if (personality_2 == 26) { TargetWindow.showPersonality2 = false; } else { TargetWindow.showPersonality2 = true; }
                     if (personality_3 == 26) { TargetWindow.showPersonality3 = false; } else { TargetWindow.showPersonality3 = true; }
-                    if(personality_1 == 26 && personality_2 == 26 && personality_3 == 26){TargetWindow.showPersonality = false;}
-                    else{TargetWindow.showPersonality = true; }
+                    if (personality_1 == 26 && personality_2 == 26 && personality_3 == 26) { TargetWindow.showPersonality = false; }
+                    else { TargetWindow.showPersonality = true; }
 
                     TargetWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     TargetWindow.characterEditName = name.Replace("''", "'"); TargetWindow.characterEditRace = race.Replace("''", "'"); TargetWindow.characterEditGender = gender.Replace("''", "'");
@@ -752,7 +753,7 @@ namespace Networking
                     ProfileWindow.ExistingProfile = true;
                     ProfileWindow.ReloadProfile();
                     ProfileWindow.ClearOnLoad();
-                    
+
                 }
             }
             catch (Exception ex)
@@ -1163,7 +1164,7 @@ namespace Networking
                     plugin.OpenConnectionsWindow();
                     plugin.newConnection = false;
                     plugin.CheckConnectionsRequestStatus();
-                    
+
 
                 }
             }

@@ -174,7 +174,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             if (ImGui.Button("Request access"))
                             {
                                 //send a new request to the server and then the profile owner if pressed
-                                DataSender.SendProfileAccessUpdate(plugin.username, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString(), characterName, characterWorld, (int)Defines.ConnectionStatus.pending);
+                                DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)Defines.ConnectionStatus.pending);
                             }
                         }
                         else

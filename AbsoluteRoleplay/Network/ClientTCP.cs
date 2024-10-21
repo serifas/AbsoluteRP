@@ -1,11 +1,12 @@
 using System;
 using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Text;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using AbsoluteRoleplay.Windows;
 using AbsoluteRoleplay;
-using Dalamud.Plugin.Services;
-using System.Drawing;
-using System.Numerics;
+using System.IO;
 
 namespace Networking
 {
@@ -13,103 +14,264 @@ namespace Networking
     {
         public static bool Connected;
         public static TcpClient clientSocket;
-        private static NetworkStream myStream;
-        private static byte[] recBuffer;
-        private static readonly string server = "join.infinite-roleplay.net";
-        private static readonly int port = 25565;
-        private static readonly int bufferSize = 8192;
+        public static SslStream sslStream;
+        private static byte[] recBuffer = new byte[8192];
+        private static readonly string server = "join.infinite-roleplay.net"; // Replace with your server IP if necessary
+        private static readonly int port = 5392; // Ensure this matches the server port
         public static Plugin plugin;
-        public static Vector4 Green = new Vector4(0, 255, 0, 255);
-        public static Vector4 Red = new Vector4(255, 0, 0, 255);
-        public static void StartReceiving()
+        // Start receiving data from the server asynchronously
+     
+        private static void OnReceiveData(IAsyncResult result)
         {
-            Task.Run(ReceiveDataAsync);
+            try
+            {
+                // Retrieve the SslStream from the AsyncState
+                SslStream sslStream = (SslStream)result.AsyncState;
+
+                // Complete the asynchronous read operation
+                int bytesRead = sslStream.EndRead(result);
+                if (bytesRead <= 0)
+                {
+                    plugin.logger.Error("No data received or connection closed by the server.");
+                    Disconnect();
+                    return;
+                }
+
+                // Log the received data length
+                plugin.logger.Error($"Received {bytesRead} bytes from the server.");
+
+                // Create a buffer to hold the new bytes
+                byte[] newBytes = new byte[bytesRead];
+                Array.Copy(recBuffer, newBytes, bytesRead);
+
+                // Process the received data
+                ClientHandleData.HandleData(newBytes);
+
+                // Continue reading more data asynchronously from the stream
+                sslStream.BeginRead(recBuffer, 0, recBuffer.Length, OnReceiveData, sslStream);
+            }
+            catch (IOException ioEx)
+            {
+                plugin.logger.Error("IO error during data reception: " + ioEx.Message);
+                Disconnect();
+            }
+            catch (ObjectDisposedException ex)
+            {
+                plugin.logger.Error("SslStream has been disposed: " + ex.Message);
+                Disconnect();
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error during data reception: {ex.Message}");
+                Disconnect();
+            }
         }
 
+
+        // Asynchronously receive data from the server
         private static async Task ReceiveDataAsync()
         {
             try
             {
-                while (Connected)
+                while (Connected && sslStream != null && sslStream.CanRead)
                 {
-                    int length = await myStream.ReadAsync(recBuffer, 0, recBuffer.Length);
-                    if (length <= 0) break;
+                    try
+                    {
+                        // Read the data asynchronously from the SSL stream
+                        int length = await sslStream.ReadAsync(recBuffer, 0, recBuffer.Length);
 
-                    var newBytes = new byte[length];
-                    Array.Copy(recBuffer, newBytes, length);
-                    ClientHandleData.HandleData(newBytes);
+                        // Check if no data is received, which could indicate the connection is closed
+                        if (length <= 0)
+                        {
+                            plugin.logger.Error("Server closed the connection.");
+                            Disconnect();
+                            break;
+                        }
+
+                        // Log the length of data received for debugging purposes
+                        plugin.logger.Error($"Received {length} bytes from the server.");
+
+                        // Create a new byte array to store the actual data read from the buffer
+                        var newBytes = new byte[length];
+                        Array.Copy(recBuffer, newBytes, length);
+
+                        // Process the data received by passing it to the client-side handler
+                        ClientHandleData.HandleData(newBytes);
+                    }
+                    catch (IOException ioEx)
+                    {
+                        plugin.logger.Error("IO error during data reception: " + ioEx.Message);
+                        Disconnect();
+                        break;
+                    }
+                    catch (ObjectDisposedException ex)
+                    {
+                        plugin.logger.Error("SslStream has been disposed: " + ex.Message);
+                        Disconnect();
+                        break;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 plugin.logger.Error("Error receiving data: " + ex.ToString());
-                Connected = false;
+                Disconnect();
             }
         }
 
+
+
+
+
+        // Get the current connection status
         public static async Task<string> GetConnectionStatusAsync(TcpClient _tcpClient)
         {
-
             try
             {
                 if (_tcpClient != null && _tcpClient.Client != null && _tcpClient.Client.Connected)
                 {
-                    if (_tcpClient.Client.Poll(0, SelectMode.SelectRead))
+                    bool isSocketReadable = _tcpClient.Client.Poll(0, SelectMode.SelectRead);
+                    bool isSocketWritable = _tcpClient.Client.Poll(0, SelectMode.SelectWrite);
+
+                    plugin.logger.Error($"Poll status - Readable: {isSocketReadable}, Writable: {isSocketWritable}");
+
+                    if (isSocketReadable)
                     {
-                        byte[] buff = new byte[1];
-                        if (await _tcpClient.Client.ReceiveAsync(new ArraySegment<byte>(buff), SocketFlags.Peek) == 0)
+                        byte[] buffer = new byte[1];
+                        int bytesRead = await _tcpClient.Client.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.Peek);
+                        plugin.logger.Error($"Bytes peeked: {bytesRead}");
+
+                        if (bytesRead == 0)
                         {
-                            MainPanel.serverStatusColor = Red;
+                            plugin.logger.Error("No data received (0 bytes), connection likely closed.");
                             return "Disconnected";
                         }
-                        MainPanel.serverStatusColor = Green;
                         return "Connected";
                     }
-                    MainPanel.serverStatusColor = Green;
-                    return "Connected";
+
+                    if (isSocketWritable && !isSocketReadable)
+                    {
+                        return "Connected";
+                    }
+
+                    plugin.logger.Error("Socket is neither readable nor writable, returning Disconnected.");
+                    return "Disconnected";
                 }
-                MainPanel.serverStatusColor = Red;
+
+                plugin.logger.Error("TcpClient is null or not connected.");
                 return "Disconnected";
             }
-            catch
+            catch (SocketException ex)
             {
-                MainPanel.serverStatusColor = Red;
+                plugin.logger.Error($"SocketException during connection check: {ex.Message}");
                 return "Disconnected";
-            }
-        }
-        public static async Task<bool> PingHostAsync(string host, int port, int timeout = 1000)
-        {
-            try
-            {
-                using (var tcpClient = new TcpClient())
-                {
-                    var connectTask = tcpClient.ConnectAsync(host, port);
-                    var delayTask = Task.Delay(timeout);
-
-                    var completedTask = await Task.WhenAny(connectTask, delayTask);
-
-                    if (completedTask == connectTask)
-                    {
-                        return tcpClient.Connected;
-                    }
-                    else
-                    {
-                        return false; // Timed out
-                    }
-                }
             }
             catch (Exception ex)
             {
-                // Log the exception if necessary
-                // PluginLog.LogError(ex, "Error pinging host");
-                return false;
+                plugin.logger.Error($"Exception during connection check: {ex.Message}");
+                return "Disconnected";
             }
         }
+
+
+
+        public static void StartReceiving()
+{
+    // Ensure sslStream is authenticated and can read
+    if (sslStream != null && sslStream.CanRead)
+    {
+        sslStream.BeginRead(recBuffer, 0, recBuffer.Length, OnReceiveData, sslStream);
+        plugin.logger.Error("Started reading from SSL/TLS stream.");
+    }
+    else
+    {
+        plugin.logger.Error("SSL/TLS stream is not readable after handshake.");
+    }
+}
+
+        // Establish the actual connection to the server using SSL/TLS
+        public static async Task EstablishConnectionAsync()
+        {
+            try
+            {
+                clientSocket = new TcpClient();
+                plugin.logger.Error("Attempting to connect to server...");
+                await clientSocket.ConnectAsync(server, port);
+                plugin.logger.Error("Connected to server.");
+
+                // Initialize SslStream and authenticate with the server
+                sslStream = new SslStream(clientSocket.GetStream(), false, ValidateServerCertificate);
+
+                // Perform the SSL handshake
+                sslStream.AuthenticateAsClient(server, null, SslProtocols.Tls12 | SslProtocols.Tls13, false);
+
+                // Check if the stream is authenticated and writable
+                if (sslStream.IsAuthenticated && sslStream.CanRead && sslStream.CanWrite)
+                {
+                    plugin.logger.Error("SSL/TLS handshake completed and stream is ready for reading.");
+                    StartReceiving();  // Call to start reading data
+                }
+                else
+                {
+                    plugin.logger.Error("SSL/TLS stream is not authenticated or readable.");
+                    Disconnect();
+                }
+
+            }
+            catch (AuthenticationException authEx)
+            {
+                plugin.logger.Error("SSL/TLS authentication failed: " + authEx.Message);
+                if (authEx.InnerException != null)
+                    plugin.logger.Error("Inner exception: " + authEx.InnerException.Message);
+                Disconnect();
+            }
+            catch (SocketException sockEx)
+            {
+                plugin.logger.Error("Socket error during connection: " + sockEx.Message);
+                Disconnect();
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error("Connection error: " + ex.ToString());
+                Disconnect();
+            }
+        }
+
+
+
+
+        // Validate the server certificate (can be customized for production)
+        public static bool ValidateServerCertificate(
+        object sender, X509Certificate certificate,
+        X509Chain chain,
+        SslPolicyErrors sslPolicyErrors)
+        {
+            if (sslPolicyErrors == SslPolicyErrors.None)
+                return true;
+
+            Console.WriteLine("SSL certificate error: " + sslPolicyErrors);
+            return false; // Set to true for testing only to bypass errors
+        }
+
+
+        // Disconnect from the server and clean up resources
+        public static void Disconnect()
+        {
+            Connected = false;
+            sslStream?.Close();
+            sslStream?.Dispose();
+            clientSocket?.Close();
+            clientSocket?.Dispose();
+            plugin.logger.Error("Disconnected from server.");
+        }
+
+        // Check if the client is currently connected to the server
         public static bool IsConnected()
         {
-            bool isConnected = Task.Run(async () => await IsConnectedToServerAsync(clientSocket)).GetAwaiter().GetResult();
-            return isConnected;
+            return Task.Run(async () => await IsConnectedToServerAsync(clientSocket)).GetAwaiter().GetResult();
         }
+
+        // Asynchronously check if the TCP client is still connected to the server
         public static async Task<bool> IsConnectedToServerAsync(TcpClient tcpClient)
         {
             try
@@ -136,106 +298,82 @@ namespace Networking
             }
         }
 
-        private static void UpdateServerStatus(string status, System.Numerics.Vector4 color)
-        {
-            // Ensure thread safety if this method updates UI elements
-            // Assuming MainPanel updates must be done on the main/UI thread
-            Task.Run(() =>
-            {
-                MainPanel.serverStatus = status;
-                MainPanel.serverStatusColor = color;
-            });
-        }
-
+        // Check the connection status of the server and reconnect if necessary
         public static async void CheckStatus()
         {
             try
             {
                 bool pinged = await PingHostAsync(server, port);
-                if(pinged)
+                if (pinged && !Connected)
                 {
-                    bool connected = await IsConnectedToServerAsync(clientSocket);
-                    if (!connected)
-                    {
-                        ConnectToServer();
-                    }
+                    await EstablishConnectionAsync();
                 }
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("Error checking status: " + ex.ToString());
+                plugin.logger.Error("Error checking server status: " + ex.ToString());
             }
         }
 
-        public static void ConnectToServer()
+        // Asynchronously attempt to connect to the server
+        public static async void AttemptConnect()
         {
             try
             {
-                if (ClientHandleData.packets.Count < 30)
+                if (!Connected)
                 {
-                    ClientHandleData.InitializePackets(true);
+                    await EstablishConnectionAsync();
                 }
-                EstablishConnection();
-                myStream = clientSocket.GetStream();
-                recBuffer = new byte[bufferSize];
-
-                Connected = true;
-                StartReceiving();
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("Could not connect to server: " + ex.ToString());
-                Disconnect();
-            }
-        }
-
-        public static void EstablishConnection()
-        {
-            try
-            {
-                clientSocket = new TcpClient();
-                clientSocket.ReceiveBufferSize = bufferSize;
-                clientSocket.SendBufferSize = bufferSize;
-                clientSocket.Connect(server, port);
-            }
-            catch (Exception ex)
-            {
-                
                 plugin.logger.Error("Could not establish connection: " + ex.ToString());
-                clientSocket?.Dispose();
             }
         }
 
-        public static void Disconnect()
-        {
-            Connected = false;
-            myStream?.Close();
-            myStream?.Dispose();
-            clientSocket?.Close();
-            clientSocket?.Dispose();
-            MainPanel.serverStatus = "Disconnected";
-            MainPanel.serverStatusColor = new System.Numerics.Vector4(255, 0, 0, 255);
-        }
-        public static void AttemptConnect()
+        // Ping the server to check if it is reachable
+        public static async Task<bool> PingHostAsync(string host, int port, int timeout = 1000)
         {
             try
             {
-                CheckStatus();
+                using (var tcpClient = new TcpClient())
+                {
+                    var connectTask = tcpClient.ConnectAsync(host, port);
+                    var delayTask = Task.Delay(timeout);
+
+                    var completedTask = await Task.WhenAny(connectTask, delayTask);
+                    return completedTask == connectTask && tcpClient.Connected;
+                }
             }
-            catch (Exception ex)
+            catch
             {
-                plugin.logger.Error("Could not establish reconnect: " + ex);
+                return false;
             }
         }
+
+        // Send data to the server asynchronously
         public static async Task SendDataAsync(byte[] data)
         {
             try
             {
-                using (var buffer = new ByteBuffer())
+                if (sslStream != null && sslStream.IsAuthenticated && sslStream.CanWrite)
                 {
-                    buffer.WriteInt(data.GetUpperBound(0) - data.GetLowerBound(0) + 1);
-                    buffer.WriteBytes(data);
-                    await myStream.WriteAsync(buffer.ToArray(), 0, buffer.ToArray().Length);
+                    // Prepare the message length (4 bytes for an int)
+                    byte[] lengthPrefix = BitConverter.GetBytes(data.Length);
+
+                    // Combine length prefix and actual data
+                    byte[] message = new byte[lengthPrefix.Length + data.Length];
+                    Array.Copy(lengthPrefix, 0, message, 0, lengthPrefix.Length);
+                    Array.Copy(data, 0, message, lengthPrefix.Length, data.Length);
+
+                    // Send the message
+                    await sslStream.WriteAsync(message, 0, message.Length);
+                    await sslStream.FlushAsync();
+                    plugin.logger.Error($"Data sent to the server successfully. Total length: {message.Length}");
+                }
+                else
+                {
+                    plugin.logger.Error("Error: SSL/TLS stream is not authenticated or writable.");
                 }
             }
             catch (Exception ex)
@@ -243,5 +381,8 @@ namespace Networking
                 plugin.logger.Error("Error sending data: " + ex.ToString());
             }
         }
+
+
+
     }
 }

@@ -54,8 +54,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             AddConnectionListingOptions();
             Vector2 windowSize = ImGui.GetWindowSize();
             var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
-            localPlayerName = Plugin.ClientState.LocalPlayer.Name.ToString();
-            localPlayerWorld = Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
+            localPlayerName = plugin.playername;
+            localPlayerWorld = plugin.playerworld;
             if (currentListing == 2)
             {
                 using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
