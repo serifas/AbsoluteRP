@@ -53,6 +53,7 @@ namespace Networking
         SSendProfileStatus = 41,
         SSendChatMessage = 42,
         SCreateGroupChat = 43,
+        SRequestPlayerTooltip = 44,
     }
     public class DataSender
     {
@@ -648,6 +649,28 @@ namespace Networking
                         buffer.WriteString(username);
                         buffer.WriteString(password);
                         buffer.WriteString(groupName);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendRequestPlayerTooltip(string username, string playerName, string playerWorld)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SRequestPlayerTooltip);
+                        buffer.WriteString(username);
+                        buffer.WriteString(playerName);
+                        buffer.WriteString(playerWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

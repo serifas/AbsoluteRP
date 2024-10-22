@@ -267,7 +267,6 @@ public class MainPanel : Window, IDisposable
             }
             if (ImGui.Button("Logout", new Vector2(225, 25)))
             {
-                pluginInstance.ControlsLogin = true;
                 pluginInstance.newConnection = false;
                 pluginInstance.CloseAllWindows();
                 pluginInstance.OpenMainPanel();               
@@ -361,6 +360,11 @@ public class MainPanel : Window, IDisposable
             ClientTCP.AttemptConnect();
             pluginInstance.UpdateStatus();
         }
+        if (ImGui.Checkbox("Auto Me Login", ref Remember))
+        {
+            pluginInstance.Configuration.autologin = Remember;
+            pluginInstance.Configuration.Save();
+        }
         ImGui.TextColored(statusColor, status);
 
         
@@ -399,10 +403,6 @@ public class MainPanel : Window, IDisposable
         if(ClientTCP.IsConnected() && pluginInstance.Configuration.username != string.Empty && pluginInstance.Configuration.password != string.Empty)
         {
             DataSender.Login(pluginInstance.Configuration.username, pluginInstance.Configuration.password, pluginInstance.playername, pluginInstance.playerworld);
-        }
-        if (pluginInstance.Configuration.closeAfterConnection)
-        {
-            pluginInstance.CloseAllWindows();
         }
     }
     public void switchUI()

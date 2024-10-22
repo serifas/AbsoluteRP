@@ -29,11 +29,18 @@ using Lumina;
 using Lumina.Excel;
 using FFXIVClientStructs.FFXIV.Common.Component.Excel;
 using System.Xml.Linq;
+using Dalamud.Game.ClientState.Objects.Types;
+using FFXIVClientStructs.STD;
+using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
+using Dalamud.Game.ClientState.Objects.Enums;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
     public partial class Plugin : IDalamudPlugin
     {
+        public static IGameObject? LastMouseOverTarget;
+        public float tooltipAlpha;
         public static Plugin plugin;
         public string username = "";
         public string password = "";
@@ -67,13 +74,17 @@ namespace AbsoluteRoleplay
         //used for making sure click happy people don't mess up their hard work
         public static bool CtrlPressed() => (GetKeyState(0xA2) & 0x8000) != 0 || (GetKeyState(0xA3) & 0x8000) != 0;
         public Configuration Configuration { get; init; }
-
-
+        private Stopwatch _fadeTimer;
+        private Stopwatch _uiSpeedTimer;
+        private double _uiSpeed;
+        public static bool tooltipLoaded = false;
+        public static Plugin? Ui { get; private set; }
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         //Windows
         private OptionsWindow OptionsWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
+        private ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
         private ProfileWindow ProfileWindow { get; init; }
@@ -90,10 +101,9 @@ namespace AbsoluteRoleplay
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
-        public bool ControlsLogin = false;
         private bool shouldCheckTarget = true;
         private bool isWindowOpen;
-       // private bool chatLoaded = false;
+        // private bool chatLoaded = false;
 
 
         //initialize our plugin
@@ -124,7 +134,7 @@ namespace AbsoluteRoleplay
             ContextMenu = contextMenu;
             Framework = framework;
             ClientTCP.plugin = this;
-            
+
             //unhandeled exception handeling - probably not really needed anymore.
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
@@ -138,10 +148,12 @@ namespace AbsoluteRoleplay
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "opens the plugin window."
-            }); 
+            });
             //WIP
-            
-            
+
+            _fadeTimer = new Stopwatch();
+            _uiSpeedTimer = Stopwatch.StartNew();
+
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -154,6 +166,7 @@ namespace AbsoluteRoleplay
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
+            TooltipWindow = new ARPTooltipWindow(this);
 
             Configuration.Initialize(PluginInterface);
 
@@ -169,10 +182,11 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
+            WindowSystem.AddWindow(TooltipWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
-
+            
             // Subscribe to condition change events
             PluginInterface.UiBuilder.Draw += DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
@@ -184,9 +198,25 @@ namespace AbsoluteRoleplay
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
             ClientState.Logout += OnLogout;
             ClientState.Login += OnLogin;
+            Framework.Update += Update;
             MainPanel.pluginInstance = this;
-        }
 
+        }
+        public void DrawTooltipInfo(IGameObject? mouseOverTarget)
+        {
+            if(mouseOverTarget.ObjectKind == ObjectKind.Player)
+            {
+                IPlayerCharacter playerTarget = (IPlayerCharacter)mouseOverTarget;
+                if (tooltipLoaded == false)
+                {
+                    tooltipLoaded = true;
+                    logger.Error(playerTarget.Name.TextValue.ToString());
+                    logger.Error(playerTarget.HomeWorld.GameData.Name.ToString());
+                    DataSender.SendRequestPlayerTooltip("Lynie", playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
+                }
+            }
+
+        }
 
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
@@ -297,8 +327,6 @@ namespace AbsoluteRoleplay
       
         private void OnLogout()
         {
-            //set our bool back to false to let update re instantiate our login attempt and dtrbar entries
-            ControlsLogin = false;
             //remove our bar entries
             connectionsBarEntry = null;
             statusBarEntry = null;
@@ -456,6 +484,7 @@ namespace AbsoluteRoleplay
             BookmarksWindow?.Dispose();
             VerificationWindow?.Dispose();
             RestorationWindow?.Dispose();
+            TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
             Misc.Jupiter?.Dispose();
@@ -482,12 +511,6 @@ namespace AbsoluteRoleplay
             {
                 LoadConnection();
                 ConnectionLoaded = true;
-            }
-            if (IsOnline() == true && ClientTCP.IsConnected() == true && ControlsLogin == false)
-            {
-                // Auto login when first opening the plugin or logging in
-                MainPanel.AttemptLogin();
-                ControlsLogin = true;
             }
         }
 
@@ -517,7 +540,7 @@ namespace AbsoluteRoleplay
             }
             return loggedIn; //return our logged in status
         }
-    
+
         private void DrawUI() => WindowSystem.Draw();
         public void ToggleConfigUI() => OptionsWindow.Toggle();
         public void ToggleMainUI() => MainPanel.Toggle();
@@ -533,6 +556,8 @@ namespace AbsoluteRoleplay
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
+        public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
+        public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
 
         internal async void UpdateStatus()
         {
@@ -553,6 +578,18 @@ namespace AbsoluteRoleplay
             catch (Exception ex)
             {
                 logger.Error("Error updating status: " + ex.ToString());
+            }
+        }
+        public void Update(IFramework framework)
+        {
+            if (TargetManager.MouseOverTarget != null)
+            {
+                DrawTooltipInfo(TargetManager.MouseOverTarget);
+            }
+            else
+            {
+                TooltipWindow.IsOpen = false;
+                tooltipLoaded = false;
             }
         }
     }

@@ -13,6 +13,8 @@ using Dalamud.Interface.Textures;
 using AbsoluteRoleplay.Windows.Profiles;
 //using AbsoluteRoleplay.Windows.Chat;
 using Dalamud.Interface.Textures.TextureWraps;
+using static AbsoluteRoleplay.Defines;
+using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 
 namespace Networking
 {
@@ -67,6 +69,7 @@ namespace Networking
         ReceiveNewConnectionRequest = 56,
         ReceiveChatMessage = 57,
         ReceiveGroupMemberships = 58,
+        RecieveTargetTooltip = 59,
     }
     class DataReceiver
     {
@@ -1192,8 +1195,8 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
-        /*
-        internal static void ReceiveChatMessage(byte[] data)
+
+        internal static void ReceiveTargetTooltip(byte[] data)
         {
             try
             {
@@ -1201,45 +1204,53 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    string profileName = buffer.ReadString();
                     int avatarLen = buffer.ReadInt();
                     byte[] avatarBytes = buffer.ReadBytes(avatarLen);
-                    string message = buffer.ReadString();
-                    int groupID = buffer.ReadInt();
-                    IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    Tuple<int, string, IDalamudTextureWrap, string> messageContent = Tuple.Create(groupID, profileName, avatar, message);
-                    ChatWindow.messages.Add(messageContent);
+                    string Name = buffer.ReadString();
+                    string Race = buffer.ReadString();
+                    string Gender = buffer.ReadString();
+                    string Age = buffer.ReadString();
+                    string Height = buffer.ReadString();
+                    string Weight = buffer.ReadString();
+                    int Alignment = buffer.ReadInt();
+                    int Personality_1 = buffer.ReadInt();
+                    int Personality_2 = buffer.ReadInt();
+                    int Personality_3 = buffer.ReadInt();
+
+                    PlayerProfile profile = new PlayerProfile();
+                    profile.avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    profile.Name = Name.Replace("''", "'");
+                    profile.Race = Race.Replace("''", "'");
+                    profile.Gender = Gender.Replace("''", "'");
+                    profile.Age = Age.Replace("''", "'");
+                    profile.Height = Height.Replace("''", "'");
+                    profile.Weight = Weight.Replace("''", "'");
+                    profile.Alignment = Alignment;
+                    profile.Personality_1 = Personality_1;
+                    profile.Personality_2 = Personality_2;
+                    profile.Personality_3 = Personality_3;
+                    profile.hasGallery = true;
+                    profile.hasOOC = true;
+                    profile.hasHooks = true;
+                    profile.hasStory = true;
+                    ARPTooltipWindow.profile = profile;
+
+                    ARPTooltipWindow.AlignmentImg = Defines.AlignementIcon(Alignment);
+                    ARPTooltipWindow.personality_1Img = Defines.PersonalityIcon(Personality_1);
+                    ARPTooltipWindow.personality_2Img = Defines.PersonalityIcon(Personality_2);
+                    ARPTooltipWindow.personality_3Img = Defines.PersonalityIcon(Personality_3);
+
+                    Plugin.tooltipLoaded = true;
+                    plugin.OpenARPTooltip();
+
                 }
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Error handling ReceiveChatMessage message: {ex}");
+                plugin.logger.Error($"Error handling ReceiveTooltip message: {ex}");
             }
         }
-        public static void ReceiveGroupMemberships(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int groupCount = buffer.ReadInt();
-
-                    ChatWindow.groups.Clear();
-                    for (int i = 0; i < groupCount; i++)
-                    {
-                        string groupName = buffer.ReadString();
-                        string groupDescription = buffer.ReadString();                  
-                        ChatWindow.groups.Add(Tuple.Create(groupName, groupDescription));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveGroupMemberships message: {ex}");
-            }
-        }*/
+ 
 
 
     }

@@ -9,6 +9,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
@@ -16,8 +17,38 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace AbsoluteRoleplay
 {
+    public class PlayerProfile
+    {
+        public IDalamudTextureWrap avatar;
+        public string Name { get; set; }
+        public string Race { get; set; }
+        public string Gender { get; set; }
+        public string Age { get; set; }
+        public string Height { get; set; }
+        public string Weight { get; set; }
+        public int Alignment { get; set; }
+        public int Personality_1 { get; set; }
+        public int Personality_2 { get; set; }
+        public int Personality_3 { get; set; }
+        public bool hasHooks { get; set; }
+        public bool hasStory { get; set; }
+        public bool hasOOC {  get; set; }
+        public bool hasGallery {  get; set; }
+    }
     internal class Defines
     {
+        public enum WindowAlignment
+        {
+            Center,
+            TopLeft,
+            TopRight,
+            BottomLeft,
+            BottomRight,
+            Top,
+            Left,
+            Right,
+            Bottom
+        }
         public enum StatusMessages
         {
             //Login
@@ -338,7 +369,31 @@ namespace AbsoluteRoleplay
 
         };
 
+        public static Vector2 PivotAlignment(WindowAlignment alignment)
+        {
+            switch (alignment)
+            {
+                case WindowAlignment.Center:
+                    return new Vector2(0.5f, 0.5f);
+                case WindowAlignment.TopRight:
+                    return new Vector2(1, 0);
+                case WindowAlignment.BottomLeft:
+                    return new Vector2(0, 1);
+                case WindowAlignment.BottomRight:
+                    return new Vector2(1, 1);
+                case WindowAlignment.Top:
+                    return new Vector2(0.5f, 0);
+                case WindowAlignment.Left:
+                    return new Vector2(0, 0.5f);
+                case WindowAlignment.Right:
+                    return new Vector2(1, 0.5f);
+                case WindowAlignment.Bottom:
+                    return new Vector2(0.5f, 1);
+                default:
+                    return new Vector2(0, 0);
 
+            }
+        }
         public static readonly (string, string)[] PersonalityValues =
         {
             

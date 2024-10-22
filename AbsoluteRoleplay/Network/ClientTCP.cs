@@ -152,7 +152,7 @@ namespace Networking
                 {
                     bool isSocketReadable = _tcpClient.Client.Poll(0, SelectMode.SelectRead);
                     bool isSocketWritable = _tcpClient.Client.Poll(0, SelectMode.SelectWrite);
-                    plugin.logger.Error($"Poll status - Readable: {isSocketReadable}, Writable: {isSocketWritable}");
+                    //plugin.logger.Error($"Poll status - Readable: {isSocketReadable}, Writable: {isSocketWritable}");
 
                     if (isSocketReadable)
                     {
@@ -230,7 +230,11 @@ namespace Networking
                 {
                     //plugin.logger.Error("SSL/TLS handshake completed and stream is ready for reading.");
                     StartReceiving();  // Call to start reading data
-                    MainPanel.AttemptLogin();
+                    if(plugin.Configuration.autologin == true)
+                    {
+                        MainPanel.AttemptLogin();
+                    }
+                    
                 }
                 else
                 {
@@ -285,6 +289,7 @@ namespace Networking
             clientSocket?.Dispose();
             plugin.logger.Error("Disconnected from server.");
         }
+    
 
         // Check if the client is currently connected to the server
         public static bool IsConnected()
