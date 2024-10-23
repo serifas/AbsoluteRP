@@ -36,6 +36,7 @@ public class MainPanel : Window, IDisposable
     public bool AgreeTOS = false;
     public bool Agree18 = false;
     public bool Remember = false;
+    public bool AutoLogin = true;
     //duh
     //server status label stuff
     public static string serverStatus = "Connection Status...";
@@ -359,11 +360,6 @@ public class MainPanel : Window, IDisposable
         {
             ClientTCP.AttemptConnect();
             pluginInstance.UpdateStatus();
-        }
-        if (ImGui.Checkbox("Auto Me Login", ref Remember))
-        {
-            pluginInstance.Configuration.autologin = Remember;
-            pluginInstance.Configuration.Save();
         }
         ImGui.TextColored(statusColor, status);
 

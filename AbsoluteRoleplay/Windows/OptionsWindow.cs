@@ -83,6 +83,12 @@ namespace AbsoluteRoleplay.Windows
                 }
                 if(ImGui.CollapsingHeader("Display"))
                 {
+                    var showTooltip = Configuration.tooltip_Enabled;
+                    if (ImGui.Checkbox("Show Tooltip", ref showTooltip))
+                    {
+                        Configuration.tooltip_Enabled = showTooltip;
+                        Configuration.Save();
+                    }
                     var showAvatar = Configuration.tooltip_showAvatar;
                     if (ImGui.Checkbox("Show Avatar", ref showAvatar))
                     {

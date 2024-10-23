@@ -18,6 +18,7 @@ public class Configuration : IPluginConfiguration
     public bool showWIP { get; set; } = true;
     public bool showDisc { get; set; } = true;
 
+    public bool tooltip_Enabled { get; set; } = true;
     public bool tooltip_showAvatar { get; set; } = true;
     public bool tooltip_showName { get; set; } = true;
     public bool tooltip_showPersonalityTraits { get; set; } = true;

@@ -25,7 +25,7 @@ namespace Networking
         private static readonly int port = 5392; // Ensure this matches the server port
         public static Plugin plugin;
         // Start receiving data from the server asynchronously
-     
+        
         private static void OnReceiveData(IAsyncResult result)
         {
             try

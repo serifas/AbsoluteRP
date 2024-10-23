@@ -204,15 +204,18 @@ namespace AbsoluteRoleplay
         }
         public void DrawTooltipInfo(IGameObject? mouseOverTarget)
         {
-            if(mouseOverTarget.ObjectKind == ObjectKind.Player)
+            if (Configuration.tooltip_Enabled)
             {
-                IPlayerCharacter playerTarget = (IPlayerCharacter)mouseOverTarget;
-                if (tooltipLoaded == false)
+                if (mouseOverTarget.ObjectKind == ObjectKind.Player)
                 {
-                    tooltipLoaded = true;
-                    logger.Error(playerTarget.Name.TextValue.ToString());
-                    logger.Error(playerTarget.HomeWorld.GameData.Name.ToString());
-                    DataSender.SendRequestPlayerTooltip("Lynie", playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
+                    IPlayerCharacter playerTarget = (IPlayerCharacter)mouseOverTarget;
+                    if (tooltipLoaded == false)
+                    {
+                        tooltipLoaded = true;
+                        logger.Error(playerTarget.Name.TextValue.ToString());
+                        logger.Error(playerTarget.HomeWorld.GameData.Name.ToString());
+                        DataSender.SendRequestPlayerTooltip(username, playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
+                    }
                 }
             }
 
