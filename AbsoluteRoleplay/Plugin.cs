@@ -82,6 +82,7 @@ namespace AbsoluteRoleplay
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         //Windows
         private OptionsWindow OptionsWindow { get; init; }
+        private NotesWindow NotesWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
         private ARPTooltipWindow TooltipWindow { get; init; }
@@ -167,6 +168,7 @@ namespace AbsoluteRoleplay
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
             TooltipWindow = new ARPTooltipWindow(this);
+            NotesWindow = new NotesWindow(this);
 
             Configuration.Initialize(PluginInterface);
 
@@ -183,6 +185,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
             WindowSystem.AddWindow(TooltipWindow);
+            WindowSystem.AddWindow(NotesWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -191,9 +194,10 @@ namespace AbsoluteRoleplay
             PluginInterface.UiBuilder.Draw += DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
-            if (ClientState.IsLoggedIn)
+            if (IsOnline())
             {
                 OnLogin();
+                MainPanel.AttemptLogin();
             }
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
             ClientState.Logout += OnLogout;
@@ -256,6 +260,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
                     DataSender.BookmarkPlayer(username, name, worldname);
+
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -302,22 +307,18 @@ namespace AbsoluteRoleplay
 
         public async void LoadConnection()
         {
-            if (ClientHandleData.packets.Count < 30)
-            {
-                ClientHandleData.InitializePackets();
-            }
+            ClientHandleData.InitializePackets();
             Connect();
             //update the statusBarEntry with out connection status
             UpdateStatus();
             //self explanitory
-            ToggleMainUI();
+            OpenMainPanel();
+
             //check for existing connection requests
             CheckConnectionsRequestStatus();
         }
         public async void Connect()
         {
-            playername = ClientState.LocalPlayer.Name.ToString();
-            playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
             LoadStatusBarEntry();
             if (IsOnline())
             {
@@ -369,36 +370,7 @@ namespace AbsoluteRoleplay
         /// </summary>
         /// <param name="args"></param>
 
-        private void ViewProfile(IMenuItemClickedArgs args)
-        {
-            try
-            {
-
-                if (IsOnline()) //may not even need this, but whatever
-                {
-                    //get our current target player
-                    var targetPlayer = TargetManager.Target as IPlayerCharacter;
-                    //fetch the player name and home world name
-                    string characterName = targetPlayer.Name.ToString();
-                    string characterWorld = targetPlayer.HomeWorld.GameData.Name.ToString();
-                    //set values for windows that need the name and home world aswell
-                    ReportWindow.reportCharacterName = characterName;
-                    ReportWindow.reportCharacterWorld = characterWorld;
-                    TargetWindow.characterNameVal = characterName;
-                    TargetWindow.characterWorldVal = characterWorld;
-                    //reload our target window so we don't get the wrong info then open it
-                    TargetWindow.ReloadTarget();
-                    OpenTargetWindow();
-                    //send a request to the server for the target profile info
-                    DataSender.RequestTargetProfile(characterName, characterWorld, plugin.username);
-                }
-
-            }
-            catch (Exception ex)
-            {
-                logger.Error("Error when viewing profile from context " + ex.ToString());
-            }
-        }
+        
         private void BookmarkProfile(IMenuItemClickedArgs args)
         {
             if (IsOnline()) //once again may not need this
@@ -510,11 +482,14 @@ namespace AbsoluteRoleplay
 
         public void OnLogin()
         {
+            playername = ClientState.LocalPlayer.Name.ToString();
+            playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
             if (IsOnline() == true && ClientTCP.IsConnected() == false && ConnectionLoaded == false)
             {
                 LoadConnection();
                 ConnectionLoaded = true;
             }
+
         }
 
         private void OnCommand(string command, string args)
@@ -547,6 +522,7 @@ namespace AbsoluteRoleplay
         private void DrawUI() => WindowSystem.Draw();
         public void ToggleConfigUI() => OptionsWindow.Toggle();
         public void ToggleMainUI() => MainPanel.Toggle();
+
         public void OpenMainPanel() => MainPanel.IsOpen = true;
         public void OpenTermsWindow() => TermsWindow.IsOpen = true;
         public void OpenImagePreview() => ImagePreview.IsOpen = true;
@@ -561,6 +537,7 @@ namespace AbsoluteRoleplay
         public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
+        public void OpenProfileNotes() => NotesWindow.IsOpen = true;
 
         internal async void UpdateStatus()
         {
@@ -574,7 +551,8 @@ namespace AbsoluteRoleplay
                 if (ClientState.IsLoggedIn && ClientState.LocalPlayer != null)
                 {
                     //set dtr bar entry for connection status to our current server connection status
-                    statusBarEntry.Tooltip = new SeStringBuilder().AddText($"Absolute Roleplay: {connectionStatus}").Build();
+                    statusBarEntry.Tooltip = new SeStringBuilder().AddText($"Absolute Roleplay").Build();
+                    MainPanel.AttemptLogin();
                 }
 
             }

@@ -223,6 +223,12 @@ namespace Networking
                     StoryLoadStatus = 0;
                     OOCLoadStatus = 0;
                     GalleryLoadStatus = 0;
+                    ProfileWindow.storyTitle = string.Empty;
+                    for (int i = 0; i < ProfileWindow.galleryThumbs.Length; i++)
+                    {
+                        ProfileWindow.galleryThumbs[i] = Defines.UICommonImage(CommonImageTypes.blankPictureTab);
+                    }
+                    ProfileWindow.galleryImageCount = 0;
                     BookmarkLoadStatus = 0;
                     ProfileWindow.addProfile = false;
                     ProfileWindow.editProfile = false;
@@ -942,7 +948,7 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    TargetWindow.profileNotes = string.Empty;
+                    NotesWindow.profileNotes = string.Empty;
                     TargetNotesLoadStatus = 0;
                 }
             }
@@ -960,7 +966,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     string notes = buffer.ReadString();
-                    TargetWindow.profileNotes = notes;
+                    NotesWindow.profileNotes = notes;
                     TargetNotesLoadStatus = 1;
                 }
             }
@@ -1229,10 +1235,6 @@ namespace Networking
                     profile.Personality_1 = Personality_1;
                     profile.Personality_2 = Personality_2;
                     profile.Personality_3 = Personality_3;
-                    profile.hasGallery = true;
-                    profile.hasOOC = true;
-                    profile.hasHooks = true;
-                    profile.hasStory = true;
                     ARPTooltipWindow.profile = profile;
 
                     ARPTooltipWindow.AlignmentImg = Defines.AlignementIcon(Alignment);

@@ -230,16 +230,16 @@ namespace Networking
                 {
                     //plugin.logger.Error("SSL/TLS handshake completed and stream is ready for reading.");
                     StartReceiving();  // Call to start reading data
-                    if(plugin.Configuration.autologin == true)
-                    {
-                        MainPanel.AttemptLogin();
-                    }
+                    
                     
                 }
                 else
                 {
                     plugin.logger.Error("SSL/TLS stream is not authenticated or readable.");
                     Disconnect();
+                    plugin.CloseAllWindows();
+                    plugin.OpenMainPanel();
+                    MainPanel.login = MainPanel.CurrentElement();
                 }
 
             }

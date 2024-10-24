@@ -12,7 +12,7 @@ public class Configuration : IPluginConfiguration
     public string username { get; set; } = "";
     public string password { get; set; } = "";
     public bool rememberInformation { get; set; }
-    internal bool autologin { get; set; }
+    internal bool autologin { get; set; } = false;
     //Config options
     public bool showKofi { get; set; } = true;
     public bool showWIP { get; set; } = true;

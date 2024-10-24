@@ -14,6 +14,8 @@ using System.Diagnostics;
 using Dalamud.Plugin.Services;
 using Dalamud.Interface.Textures.TextureWraps;
 using AbsoluteRoleplay.Windows.Profiles;
+using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
+using System.Security.Cryptography;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
@@ -27,11 +29,13 @@ public class MainPanel : Window, IDisposable
     public string email = string.Empty;
     public string restorationEmail = string.Empty;
     //window state toggles
-    private bool viewProfile, viewSystems, viewEvents, viewConnections;
+    private static bool viewProfile, viewSystems, viewEvents, viewConnections;
     public static bool login = true;
     public static bool forgot = false;
     public static bool register = false;
     public static bool viewMainWindow = false;
+    //width and height values scaling the elements
+    public static int width = 0, height = 0;
     //registration agreement
     public bool AgreeTOS = false;
     public bool Agree18 = false;
@@ -95,13 +99,17 @@ public class MainPanel : Window, IDisposable
         if (npcBookmarkImg != null) { npcBookmarkImage = npcBookmarkImg; }
         if (reconnectImg != null) { reconnectImage = reconnectImg; }
     }
-
+ 
     public void Dispose()
     {
        
     }
     public override void Draw()
     {
+        float paddingX = ImGui.GetWindowSize().X / 12;
+        float buttonWidth = ImGui.GetWindowSize().X / 2 - paddingX;
+        float buttonHeight = ImGui.GetWindowSize().Y / 6f;
+        
         // can't ref a property, so use a local copy
         if (login == true)
         {
@@ -208,7 +216,7 @@ public class MainPanel : Window, IDisposable
             viewMainWindow = CurrentElement();
             
             #region PROFILES
-            if (ImGui.ImageButton(this.profileSectionImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.profileSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
                 viewProfile = CurrentElement();
             }
@@ -218,7 +226,7 @@ public class MainPanel : Window, IDisposable
                 #endregion
             }
             ImGui.SameLine();
-            if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
                 DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.playername, pluginInstance.playerworld);
 
@@ -229,7 +237,7 @@ public class MainPanel : Window, IDisposable
             }
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.eventsSectionImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -248,7 +256,7 @@ public class MainPanel : Window, IDisposable
 
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.systemsSectionImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.systemsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -262,11 +270,11 @@ public class MainPanel : Window, IDisposable
             }
 
 
-            if (ImGui.Button("Options", new Vector2(225, 25)))
+            if (ImGui.Button("Options", new Vector2(buttonWidth * 2f + paddingX, buttonHeight / 2.5f)))
             {
                 pluginInstance.OpenOptionsWindow();
             }
-            if (ImGui.Button("Logout", new Vector2(225, 25)))
+            if (ImGui.Button("Logout", new Vector2(buttonWidth * 2f + paddingX, buttonHeight / 2.5f)))
             {
                 pluginInstance.newConnection = false;
                 pluginInstance.CloseAllWindows();
@@ -278,7 +286,7 @@ public class MainPanel : Window, IDisposable
         }
         if (viewProfile == true)
         {
-            if (ImGui.ImageButton(this.profileImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.profileImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
                 if (pluginInstance.IsOnline())
                 {
@@ -298,7 +306,7 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetTooltip("Manage your profile");
             }
             ImGui.SameLine();
-            if (ImGui.ImageButton(this.profileBookmarkImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.profileBookmarkImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
                 if (pluginInstance.IsOnline())
                 {
@@ -312,7 +320,7 @@ public class MainPanel : Window, IDisposable
             }
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.npcImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -331,7 +339,7 @@ public class MainPanel : Window, IDisposable
 
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.npcBookmarkImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.npcBookmarkImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -356,7 +364,7 @@ public class MainPanel : Window, IDisposable
         }
         ImGui.TextColored(serverStatusColor, serverStatus);
         ImGui.SameLine();
-        if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(18, 18)))
+        if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(buttonHeight / 3.5f, buttonHeight / 3.5f)))
         {
             ClientTCP.AttemptConnect();
             pluginInstance.UpdateStatus();
@@ -365,7 +373,7 @@ public class MainPanel : Window, IDisposable
 
         
     }
-    public bool CurrentElement()
+    public static bool CurrentElement()
     {
         login = false;
         forgot = false;

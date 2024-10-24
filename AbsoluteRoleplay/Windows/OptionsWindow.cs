@@ -16,8 +16,7 @@ namespace AbsoluteRoleplay.Windows
         public static bool showDisc;
         public static bool showWIP;
         public Configuration Configuration;
-        public static bool closeAfterConnection;
-
+        public static bool autoLogIn;
         public OptionsWindow(Plugin plugin) : base(
        "OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -43,6 +42,7 @@ namespace AbsoluteRoleplay.Windows
             ImGui.BeginTabBar("MouseTargetTooltipOptions");
             if (ImGui.BeginTabItem("General"))
             {
+                
                 if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
                 {
                     plugin.Configuration.showKofi = showKofi;

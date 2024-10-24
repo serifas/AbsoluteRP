@@ -22,6 +22,10 @@ using static Lumina.Data.Parsing.Layer.LayerCommon;
 using Dalamud.Hooking;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using static FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.VertexShader;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Lumina.Excel.GeneratedSheets;
+using OtterGui.Tasks;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -177,27 +181,61 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         //send our privacy settings to the server
                         DataSender.SetProfileStatus(plugin.username.ToString(), plugin.playername, plugin.playerworld, privateProfile);
                     }
-                    if(ImGui.Button("Save Profile"))
+                    if (ImGui.Button("Save Profile"))
                     {
                         SubmitProfileData();
+                    }
+                    if (ImGui.Button("Backup"))
+                    {
+                        SaveBackupFile();
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Save a local backup of your profile.");
+                    }
+                    ImGui.SameLine();
+                    if (ProfileHasContent() == true)
+                    {
+                        using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+                        {
+                            if (ImGui.Button("Delete Profile"))
+                            {
+                                DataSender.DeleteProfile(plugin.username, plugin.password, plugin.playername, plugin.playerworld);
+                            }
+
+                        }
+                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                        {
+                            ImGui.SetTooltip("Delete your profile (This is a destructive action!)");
+                        }
+                    }
+                    using (OtterGui.Raii.ImRaii.Disabled(ProfileHasContent()))
+                    {
+                        if (ImGui.Button("Load Backup"))
+                        {
+                            LoadBackupFile();
+                        }
+
+                    }
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    {
+                        ImGui.SetTooltip("To load a backup file you must have no existing data in your profile.");
                     }
                 }
                 if (ExistingProfile == false) //else create our add profile button to create a new profile
                 {
-                    if (ImGui.Button("Add Profile", new Vector2(100, 20))) { DataSender.CreateProfile(plugin.playername, plugin.playerworld); }
+                    if (ImGui.Button("Add Profile")) { DataSender.CreateProfile(plugin.playername, plugin.playerworld); }
                 }
                 else
                 {
                     ImGui.Spacing();
-                    if (ImGui.Button("Edit Bio", new Vector2(100, 20))) { ClearUI(); TabOpen[TabValue.Bio] = true; }
-                    ImGui.SameLine();
-                    if (ImGui.Button("Edit Hooks", new Vector2(100, 20))) { ClearUI(); TabOpen[TabValue.Hooks] = true; }
-                    ImGui.SameLine();
-                    if (ImGui.Button("Edit Story", new Vector2(100, 20))) { ClearUI(); TabOpen[TabValue.Story] = true; }
-                    ImGui.SameLine();
-                    if (ImGui.Button("Edit OOC Info", new Vector2(100, 20))) { ClearUI(); TabOpen[TabValue.OOC] = true; }
-                    ImGui.SameLine();
-                    if (ImGui.Button("Edit Gallery", new Vector2(100, 20))) { ClearUI(); TabOpen[TabValue.Gallery] = true; }
+                    ImGui.BeginTabBar("ProfileNavigation");
+                    if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+                    ImGui.EndTabBar();
 
                 }
 
@@ -427,6 +465,55 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
 
         }
+
+        private bool ProfileHasContent()
+        {
+            
+            for (int i = 0; i < bioFieldsArr.Length; i++)
+            {
+                if(bioFieldsArr[i] != string.Empty)
+                {
+                    return true;
+                }
+            }
+            if(oocInfo != string.Empty ||  storyTitle != string.Empty) { return true; }
+
+            for (int i = 0; i < ChapterNames.Length; i++)
+            {
+                if(ChapterNames[i] != string.Empty) return true;
+
+            }
+            for (int i = 0; i < ChapterContents.Length; i++)
+            {
+                if (ChapterContents[i] != string.Empty)
+                {
+                    return true;
+                }
+            }
+            for (int i = 0; i < HookNames.Length; i++)
+            {
+                if (HookNames[i] != string.Empty)
+                {
+                    return true;
+                }
+            }
+            for (int i = 0; i < HookContents.Length; i++)
+            {
+                if (HookContents[i] != string.Empty)
+                {
+                    return true;
+                }
+            }
+            for (int i = 0; i < imageURLs.Length; i++)
+            {
+                if (imageURLs[i] != string.Empty)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public void CreateChapter()
         {
             if (storyChapterCount < 30)
@@ -933,128 +1020,213 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                     try
                     {
-                        using (StreamReader reader = new StreamReader($"{dataPath}.dat"))
+
+                        using (StreamReader reader = new StreamReader($"{dataPath}"))
                         {
+                            string backupContent = File.ReadAllText(dataPath);
                             // Read avatar bytes
-                            string avatarBts = await reader.ReadLineAsync();
-                            avatarBytes = Convert.FromBase64String(avatarBts); // Convert back to byte array
-                            currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                            string avatarByteString = Misc.ExtractTextBetweenTags(backupContent, "avatar"); 
+                            byte[] avatarBytesData = Convert.FromBase64String(avatarByteString); // Convert back to byte array
 
-                            // Initialize Bio Fields
-                            bioFieldsArr[(int)Defines.BioFieldTypes.name] = await ExtractTagFromFile(dataPath, "name");
-                            bioFieldsArr[(int)Defines.BioFieldTypes.race] = await ExtractTagFromFile(dataPath, "race");
-                            bioFieldsArr[(int)Defines.BioFieldTypes.gender] = await ExtractTagFromFile(dataPath, "gender");
-                            bioFieldsArr[(int)Defines.BioFieldTypes.age] = await ExtractTagFromFile(dataPath, "age");
-                            bioFieldsArr[(int)Defines.BioFieldTypes.height] = await ExtractTagFromFile(dataPath, "height");
-                            bioFieldsArr[(int)Defines.BioFieldTypes.weight] = await ExtractTagFromFile(dataPath, "weight");
-                            bioFieldsArr[(int)Defines.BioFieldTypes.afg] = await ExtractTagFromFile(dataPath, "afg");
+                            string name= Misc.ExtractTextBetweenTags(backupContent, "name");
+                            string race = Misc.ExtractTextBetweenTags(backupContent, "race");
+                            string gender = Misc.ExtractTextBetweenTags(backupContent, "gender");
+                            string age = Misc.ExtractTextBetweenTags(backupContent, "age");
+                            string height = Misc.ExtractTextBetweenTags(backupContent, "height");
+                            string weight = Misc.ExtractTextBetweenTags(backupContent, "weight");
+                            string afg = Misc.ExtractTextBetweenTags(backupContent, "afg");
 
-                            // For alignment and personality
-                            currentAlignment = SafeParseInt(await ExtractTagFromFile(dataPath, "alignment"));
-                            currentPersonality_1 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_1"));
-                            currentPersonality_2 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_2"));
-                            currentPersonality_3 = SafeParseInt(await ExtractTagFromFile(dataPath, "personality_3"));
+                            int alignment = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "alignment"));
+                            int pers1 = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "personality_1"));
+                            int pers2 = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "personality_2"));
+                            int pers3 = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "personality_3"));
 
-                            // Hooks section
-                            List<string> hookNames = new List<string>();
-                            List<string> hookContents = new List<string>();
 
-                            string line;
-                            bool inHooksSection = false;
+                            Story storyData = new Story();
+                            List<ProfileGalleryImage> galleryimagedata = new List<ProfileGalleryImage>();
+                            List<Chapter> chapterData = new List<Chapter>();   
+                            List<Hooks> hookData = new List<Hooks>();
 
-                            while ((line = await reader.ReadLineAsync()) != null)
+                            //get hooks
+                            string hookPattern = @"<hooks>(.*?)</hooks>";
+                            Regex hookRegex = new Regex(hookPattern, RegexOptions.Singleline);
+
+                            string hooknamePattern = @"<hookname>(.*?)</hookname>";
+                            string hookcontentPattern = @"<hookcontent>(.*?)</hookcontent>";
+
+                            MatchCollection hookMatches = hookRegex.Matches(backupContent);
+
+                            foreach (Match hookMatch in hookMatches)
                             {
-                                if (line.Trim() == "<hooks>")
+                                string hookContent = hookMatch.Groups[1].Value; // Content inside <hooks>...</hooks>
+
+                                // Extract all <hookname> and <hookcontent> tags, even if they are empty
+                                MatchCollection hookNameMatches = Regex.Matches(hookContent, hooknamePattern);
+                                MatchCollection hookContentMatches = Regex.Matches(hookContent, hookcontentPattern);
+
+                                // Get the maximum count of occurrences between hook names and hook content
+                                int hookCount = Math.Max(hookNameMatches.Count, hookContentMatches.Count);
+
+                                for (int i = 0; i < hookCount; i++)
                                 {
-                                    inHooksSection = true;
-                                    continue; // Start processing after finding <hooks> tag
-                                }
-                                if (inHooksSection)
-                                {
-                                    if (line.Trim() == "</hooks>") break;
+                                    // Check if the current index is within bounds for hookNameMatches
+                                    string hookName = i < hookNameMatches.Count ? hookNameMatches[i].Groups[1].Value : string.Empty;
 
-                                    if (line.Contains("<hookname>"))
-                                    {
-                                        hookNames.Add(await ExtractTagFromFile(dataPath, "hookname"));
-                                    }
-                                    if (line.Contains("<hookcontent>"))
-                                    {
-                                        hookContents.Add(await ExtractTagFromFile(dataPath, "hookcontent"));
-                                    }
-                                }
-                            }
+                                    // Check if the current index is within bounds for hookContentMatches
+                                    string hookContentValue = i < hookContentMatches.Count ? hookContentMatches[i].Groups[1].Value : string.Empty;
 
-                            for (int i = 0; i < hookNames.Count; i++)
-                            {
-                                hookCount = i;
-                                hookExists[i] = true;
-                            }
-
-                            if (hookNames.Count > 0 && hookContents.Count > 0)
-                            {
-                                HookNames = hookNames.ToArray();
-                                HookContents = hookContents.ToArray();
-                            }
-
-                            // Story section
-                            storyTitle = await ExtractTagFromFile(dataPath, "storytitle");
-                            List<string> chapterNames = new List<string>();
-                            List<string> chapterContents = new List<string>();
-
-                            while ((line = await reader.ReadLineAsync()) != null)
-                            {
-                                if (line.Trim() == "<storychapters>") break;
-
-                                if (!string.IsNullOrWhiteSpace(line))
-                                {
-                                    chapterNames.Add(await ExtractTagFromFile(dataPath, "chaptername"));
-                                    chapterContents.Add(await ExtractTagFromFile(dataPath, "chaptercontent"));
+                                    // Add to hookData even if the name or content is empty
+                                    hookData.Add(new Hooks { name = hookName, content = hookContentValue });
                                 }
                             }
-                            for (int i = 0; i < chapterNames.Count; i++)
+
+                            plugin.logger.Error($"Total hooks loaded: {hookData.Count}");
+
+
+                            string storytitle = Misc.ExtractTextBetweenTags(backupContent, "storytitle");
+                            // Story section with chapter extraction logic
+                            string chapterPattern = @"<storychapters>(.*?)</storychapters>";
+                            Regex chapterRegex = new Regex(chapterPattern, RegexOptions.Singleline);  // Ensure multiline content is captured
+
+                            string chapterNamePattern = @"<chaptername>(.*?)</chaptername>";
+                            string chapterContentPattern = @"<chaptercontent>(.*?)</chaptercontent>";
+
+                            // Match the entire story chapters block
+                            MatchCollection chapterTagMatches = chapterRegex.Matches(backupContent);
+
+                            plugin.logger.Error($"Chapter tag matches found: {chapterTagMatches.Count}");
+
+                            foreach (Match chapterMatch in chapterTagMatches)
                             {
-                                storyChapterCount = i;
-                                storyChapterExists[i] = true;
-                            }
-                            if (chapterNames.Count > 0 && chapterContents.Count > 0)
-                            {
-                                ChapterNames = chapterNames.ToArray();
-                                ChapterContents = chapterContents.ToArray();
+                                string chapterTagContent = chapterMatch.Groups[1].Value; // Content inside <storychapters>...</storychapters>
+
+                                // Extract all <chaptername> and <chaptercontent> tags, even if they contain multiline content
+                                MatchCollection chapterNameMatches = Regex.Matches(chapterTagContent, chapterNamePattern, RegexOptions.Singleline);
+                                MatchCollection chapterContentMatches = Regex.Matches(chapterTagContent, chapterContentPattern, RegexOptions.Singleline);
+
+                                // Get the maximum count of occurrences between chapter names and contents
+                                int chaptersCount = Math.Max(chapterNameMatches.Count, chapterContentMatches.Count);
+
+                                for (int i = 0; i < chaptersCount; i++)
+                                {
+                                    // Safe access: Check if the current index is within bounds for chapterNameMatches
+                                    string chapterName = i < chapterNameMatches.Count ? chapterNameMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Safe access: Check if the current index is within bounds for chapterContentMatches
+                                    string chapterContent = i < chapterContentMatches.Count ? chapterContentMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Always add the chapter data even if name or content is null/empty
+                                    chapterData.Add(new Chapter { name = chapterName, content = chapterContent });
+                                }
                             }
 
+                            plugin.logger.Error($"Total chapters loaded: {chapterData.Count}");
+
+
+                            storyData.chapters = chapterData;
                             // OOC Info
-                            oocInfo = await ExtractTagFromFile(dataPath, "ooc");
+                            string OOC = Misc.ExtractTextBetweenTags(backupContent, "ooc");
 
-                            // Gallery section
-                            List<bool> nsfwList = new List<bool>();
-                            List<bool> triggerList = new List<bool>();
-                            List<string> imageURLList = new List<string>();
+                            // Gallery section with logic to extract info for the images and nsfw / trigger data
+                            string galleryPattern = @"<gallery>(.*?)</gallery>";
+                            Regex galleryRegex = new Regex(galleryPattern, RegexOptions.Singleline);
 
-                            while ((line = await reader.ReadLineAsync()) != null)
+                            string galleryNSFWPattern = @"<nsfw>(.*?)</nsfw>";
+                            string galleryTRIGGERPattern = @"<trigger>(.*?)</trigger>";
+                            string galleryUrlPattern = @"<url>(.*?)</url>";
+
+                            MatchCollection galleryMatches = galleryRegex.Matches(backupContent);
+
+                            // Loop through each <gallery> block (we expect only one, but handling as a collection)
+                            foreach (Match galleryMatch in galleryMatches)
                             {
-                                if (line.Trim() == "<gallery>") break;
+                                string galleryContent = galleryMatch.Groups[1].Value; // Content inside <gallery>...</gallery>
 
-                                if (!string.IsNullOrWhiteSpace(line))
+                                // Extract all <nsfw>, <trigger>, and <url> within the single gallery block
+                                MatchCollection nsfwMatches = Regex.Matches(galleryContent, galleryNSFWPattern);
+                                MatchCollection triggerMatches = Regex.Matches(galleryContent, galleryTRIGGERPattern);
+                                MatchCollection urlMatches = Regex.Matches(galleryContent, galleryUrlPattern);
+
+                                for (int i = 0; i < urlMatches.Count; i++)
                                 {
-                                        nsfwList.Add(bool.Parse(await ExtractTagFromFile(dataPath, "nsfw")));
-                                        triggerList.Add(bool.Parse(await ExtractTagFromFile(dataPath, "trigger")));
-                                        imageURLList.Add(await ExtractTagFromFile(dataPath, "url"));
+                                    bool nsfw = bool.TryParse(nsfwMatches[i].Groups[1].Value, out bool nsfwResult) ? nsfwResult : false;
+                                    bool trigger = bool.TryParse(triggerMatches[i].Groups[1].Value, out bool triggerResult) ? triggerResult : false;
+                                    string url = urlMatches[i].Groups[1].Value;
+
+                                    if (!string.IsNullOrWhiteSpace(url))
+                                    {
+                                        galleryimagedata.Add(new ProfileGalleryImage { url = url, nsfw = nsfw, trigger = trigger });
+                                    }
                                 }
                             }
-                            for (int i = 0; i < imageURLList.Count; i++)
+
+                            plugin.logger.Error($"Total images loaded: {galleryimagedata.Count}");
+
+                            PlayerProfile profile = new PlayerProfile()
                             {
-                                galleryImageCount = i;
-                                ImageExists[i] = true;
-                            }
-                            if (nsfwList.Count > 0 && triggerList.Count > 0 && imageURLList.Count > 0)
+                                //bio
+                                Name = name,
+                                Race = race,
+                                Age = age,
+                                Gender = gender,
+                                Height = height,
+                                Weight = weight,
+                                AFG = afg,
+                                Alignment = alignment,
+                                Personality_1 = pers1,
+                                Personality_2 = pers2,
+                                Personality_3 = pers3,
+                                //ooc
+                                OOC = OOC,
+                                //story
+                                Story = storyData,
+                                //hooks
+                                Hooks = hookData,
+                                //gallery
+                                GalleryImages = galleryimagedata                                
+                            };
+
+                            //send data to server
+                            DataSender.SubmitProfileBio(plugin.playername, plugin.playerworld,
+                                                  avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3);
+                            var hooks = new List<Tuple<int, string, string>>();
+                            for (var i = 0; i < hookData.Count; i++)
                             {
-                                NSFW = nsfwList.ToArray();
-                                TRIGGER = triggerList.ToArray();
-                                imageURLs = imageURLList.ToArray();
+                                //create a new hook tuple to add to the list
+                                var hook = Tuple.Create(i, hookData[i].name, hookData[i].content);
+                                hooks.Add(hook);
                             }
+                            DataSender.SendHooks(plugin.playername, plugin.playerworld, hooks);
+
+                            //create a new list for our stories to be held in
+                            var storyChapters = new List<Tuple<string, string>>();
+                            for (var i = 0; i < chapterData.Count; i++)
+                            {
+                                //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
+                                var chapterName = chapterData[i].name;
+                                var chapterContent = chapterData[i].content;
+                                var chapter = Tuple.Create(chapterName, chapterContent);
+                                storyChapters.Add(chapter);
+                            }
+                            //finally send the story data to the server
+                            DataSender.SendStory(plugin.playername, plugin.playerworld, storytitle, storyChapters);
+
+                            for (var i = 0; i < galleryimagedata.Count; i++)
+                            {
+                                //pretty simple stuff, just send the gallery related array values to the server
+                                DataSender.SendGalleryImage(plugin.username, plugin.playername, plugin.playerworld,
+                                                    galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, i);
+
+                            }
+                            //send the OOC info to the server, just a string really
+                            DataSender.SendOOCInfo(plugin.playername, plugin.playerworld, OOC);
+
+                            DataSender.FetchProfile(plugin.playername, plugin.playerworld);
+
+
+
 
                             // Redraw the window to ensure content is visible
-                            plugin.logger.Error("Profile loaded successfully.");
                         }
                     }
                     catch (Exception ex)
@@ -1069,7 +1241,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
         }
 
+        // Helper function to extract values between tags
+       
 
+        public async Task DeleteProfile(string password)
+        {
+            DataSender.DeleteProfile(plugin.username, password, plugin.playername, plugin.playerworld);
+        }
 
 
 
@@ -1118,7 +1296,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             string line = reader.ReadLine();
             return ExtractTagContent(line, tag);
         }
-
+        
         public void SubmitProfileData()
         {
             DataSender.SubmitProfileBio(plugin.playername, plugin.playerworld,
@@ -1174,13 +1352,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     return;
                 var dataPath = f.ToString();
 
-                using (StreamWriter writer = new StreamWriter($"{dataPath}.dat"))
+                using (StreamWriter writer = new StreamWriter($"{dataPath}"))
                 {
                     // Write avatarBytes as base64
                     string avatarBts = Convert.ToBase64String(avatarBytes);
-                    writer.WriteLine(avatarBts);
-
                     // Bio fields
+                    writer.WriteLine($"<avatar>{avatarBts}</avatar>");
                     writer.WriteLine($"<name>{EscapeTagContent(bioFieldsArr[(int)Defines.BioFieldTypes.name])}</name>");
                     writer.WriteLine($"<race>{EscapeTagContent(bioFieldsArr[(int)Defines.BioFieldTypes.race])}</race>");
                     writer.WriteLine($"<gender>{EscapeTagContent(bioFieldsArr[(int)Defines.BioFieldTypes.gender])}</gender>");
@@ -1197,27 +1374,25 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine("<hooks>");
                     for (int i = 0; i < hookCount; i++)
                     {
+                        plugin.logger.Error($"saving hook {i} with name{HookNames[i]} and content {HookContents[i]}");
                         writer.WriteLine($"<hookname>{EscapeTagContent(HookNames[i])}</hookname>");
                         writer.WriteLine($"<hookcontent>{EscapeTagContent(HookContents[i])}</hookcontent>");
                     }
                     writer.WriteLine("</hooks>");
 
                     // Story chapters
-                    writer.WriteLine("<storytitle>");
-                    writer.WriteLine(storyTitle); // Assuming this isn't inside a tag
-                    writer.WriteLine("</storytitle>");
+                    writer.WriteLine($"<storytitle>{storyTitle}</storytitle>");      
                     writer.WriteLine("<storychapters>");
-                    for (int i = 0; i < storyChapterCount; i++)
+                    for (int i = 0; i <= storyChapterCount; i++)
                     {
+                        plugin.logger.Error($"saving chapter {i} with name{ChapterNames[i]} and content {ChapterContents[i]}");
                         writer.WriteLine($"<chaptername>{EscapeTagContent(ChapterNames[i])}</chaptername>");
                         writer.WriteLine($"<chaptercontent>{EscapeTagContent(ChapterContents[i])}</chaptercontent>");
                     }
                     writer.WriteLine("</storychapters>");
 
                     // OOC info
-                    writer.WriteLine("<ooc>");
-                    writer.WriteLine(EscapeTagContent(oocInfo));
-                    writer.WriteLine("</ooc>");
+                    writer.WriteLine($"<ooc>{EscapeTagContent(oocInfo)}</ooc>");
 
                     // Gallery
                     writer.WriteLine("<gallery>");

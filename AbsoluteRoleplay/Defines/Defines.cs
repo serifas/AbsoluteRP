@@ -26,16 +26,45 @@ namespace AbsoluteRoleplay
         public string Age { get; set; }
         public string Height { get; set; }
         public string Weight { get; set; }
+        public string AFG { get; set; }
         public int Alignment { get; set; }
         public int Personality_1 { get; set; }
         public int Personality_2 { get; set; }
         public int Personality_3 { get; set; }
-        public bool hasHooks { get; set; }
-        public bool hasStory { get; set; }
-        public bool hasOOC {  get; set; }
-        public bool hasGallery {  get; set; }
+        public List<Hooks> Hooks { get; set; }
+        public List<ProfileGalleryImage> GalleryImages { get; set; }
+        public Story Story { get; set; }
+        public string OOC { get; set; }
+
     }
-    internal class Defines
+    public class ProfileGalleryImage
+    {
+        public string url;
+        public bool nsfw;
+        public bool trigger;
+    }
+    public class Story
+    {
+        public List<Chapter> chapters { get; set; }
+    }
+    public class Chapter
+    {
+        public string name { get; set; }
+        public string content { get; set; }
+    }
+    public class Hooks
+    {
+        public string name { get; set; }
+        public string content { get; set; }
+    }
+    public class ProfileTab
+    {
+        public string name { set; get; }
+        public string tooltip { set; get; }
+        public bool showValue { set; get; }
+        public Action action { set; get; }
+    }
+        internal class Defines
     {
         public enum WindowAlignment
         {

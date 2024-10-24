@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace AbsoluteRoleplay
@@ -62,6 +63,68 @@ namespace AbsoluteRoleplay
                     ImGui.SetCursorPosX(offset);
                 }
         }
+        public static string ExtractTextBetweenTags(string input, string tag)
+        {
+            if (string.IsNullOrEmpty(input) || string.IsNullOrEmpty(tag))
+                return null;
+
+            string pattern = $@"<{tag}>(.*?)</{tag}>";
+            Match match = Regex.Match(input, pattern, RegexOptions.Singleline);
+
+            if (match.Success)
+            {
+                return match.Groups[1].Value;
+            }
+
+            return null; // Return null if the tag is not found
+        }
+        public static void DrawCenteredButtonTable(int rows, List<ProfileTab> profileTabs)
+        {
+            int columns = profileTabs.Count;
+            // Get window size
+            var windowSize = ImGui.GetWindowSize();
+
+            // Define button size (width and height)
+            var buttonSize = new System.Numerics.Vector2(100, 50);
+
+            // Calculate total width of the button table (button width + padding between buttons)
+            float totalTableWidth = (buttonSize.X * columns) + (ImGui.GetStyle().ItemSpacing.X * (columns - 1));
+
+            // Calculate the X position to start drawing the table (centered horizontally)
+            float startX = (windowSize.X - totalTableWidth) / 2;
+
+            // Set cursor position to center the table horizontally
+            ImGui.SetCursorPosX(startX);
+
+            // Create a table layout for the buttons
+            if (ImGui.BeginTable("ButtonTable", columns))
+            {
+                int buttonIndex = 0;
+                for (int row = 0; row < rows; row++)
+                {
+                    ImGui.TableNextRow(); // Move to the next row in the table
+
+                    for (int column = 0; column < columns; column++)
+                    {
+                        ImGui.TableSetColumnIndex(column); // Move to the next column in the table
+
+                        if (buttonIndex < profileTabs.Count)
+                        {
+                            // Draw a button
+                            if (ImGui.Button(profileTabs[buttonIndex].name, buttonSize))
+                            {
+                                profileTabs[buttonIndex].action();
+                                profileTabs[buttonIndex].showValue = true;
+                            }
+                            buttonIndex++;
+                        }
+                    }
+                }
+                ImGui.EndTable();
+            }
+        }
+
+        
         //sets a title at the center of the window and resets the font back to default afterwards
         public static void SetTitle(Plugin plugin, bool center, string title)
         {

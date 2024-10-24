@@ -5,6 +5,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
+using AbsoluteRoleplay.Windows;
+using System.Xml.Linq;
 
 namespace Networking
 {
@@ -53,7 +55,8 @@ namespace Networking
         SSendProfileStatus = 41,
         SSendChatMessage = 42,
         SCreateGroupChat = 43,
-        SRequestPlayerTooltip = 44,
+        SRequestTooltip = 44,
+        SDeleteProfile = 45,
     }
     public class DataSender
     {
@@ -417,6 +420,9 @@ namespace Networking
                         buffer.WriteString(targetPlayerName);
                         buffer.WriteString(targetPlayerWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
+
+                        NotesWindow.characterNameVal = targetPlayerName;
+                        NotesWindow.characterWorldVal = targetPlayerWorld;
                     }
                 }
                 catch (Exception ex)
@@ -667,10 +673,33 @@ namespace Networking
                 {
                     using (var buffer = new ByteBuffer())
                     {
-                        buffer.WriteInt((int)ClientPackets.SRequestPlayerTooltip);
+                        buffer.WriteInt((int)ClientPackets.SRequestTooltip);
                         buffer.WriteString(username);
                         buffer.WriteString(playerName);
                         buffer.WriteString(playerWorld);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteProfile(string username, string password, string playername, string playerworld)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SDeleteProfile);
+                        buffer.WriteString(username);
+                        buffer.WriteString(password);
+                        buffer.WriteString(playername);
+                        buffer.WriteString(playerworld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
