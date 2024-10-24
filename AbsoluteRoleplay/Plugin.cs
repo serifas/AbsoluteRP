@@ -339,7 +339,7 @@ namespace AbsoluteRoleplay
             MainPanel.statusColor = new Vector4(255, 0, 0, 255);
             //remove the current windows and switch back to login window.
             MainPanel.switchUI();
-            MainPanel.login = true;
+            MainPanel.login = MainPanel.CurrentElement();
         }
         private void UnobservedTaskExceptionHandler(object sender, UnobservedTaskExceptionEventArgs e)
         {
