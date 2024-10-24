@@ -75,7 +75,7 @@ namespace Networking
     {
         public static string restorationStatus = "";
         public static bool LoadedSelf = false;
-        public static int BioLoadStatus = -1, HooksLoadStatus = -1, StoryLoadStatus = -1, OOCLoadStatus = -1, GalleryLoadStatus = -1, BookmarkLoadStatus = -1, ListingsLoadStatus = -1,
+        public static int BioLoadStatus = -1, HooksLoadStatus = -1, StoryLoadStatus = -1, OOCLoadStatus = -1, GalleryLoadStatus = -1, BookmarkLoadStatus = -1,
                           TargetBioLoadStatus = -1, TargetHooksLoadStatus = -1, TargetStoryLoadStatus = -1, TargetOOCLoadStatus = -1, TargetGalleryLoadStatus = -1, TargetNotesLoadStatus = -1,
                           targetHookEditCount, ExistingGalleryImageCount, ExistingGalleryThumbCount,
                           lawfulGoodEditVal, neutralGoodEditVal, chaoticGoodEditVal,
@@ -224,11 +224,11 @@ namespace Networking
                     OOCLoadStatus = 0;
                     GalleryLoadStatus = 0;
                     ProfileWindow.storyTitle = string.Empty;
+                    ProfileWindow.galleryImageCount = 0; 
                     for (int i = 0; i < ProfileWindow.galleryThumbs.Length; i++)
                     {
                         ProfileWindow.galleryThumbs[i] = Defines.UICommonImage(CommonImageTypes.blankPictureTab);
                     }
-                    ProfileWindow.galleryImageCount = 0;
                     BookmarkLoadStatus = 0;
                     ProfileWindow.addProfile = false;
                     ProfileWindow.editProfile = false;

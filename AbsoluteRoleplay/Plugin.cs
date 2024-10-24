@@ -34,7 +34,6 @@ using FFXIVClientStructs.STD;
 using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
 using Dalamud.Game.ClientState.Objects.Enums;
-using AbsoluteRoleplay.Windows.Listings;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -93,7 +92,6 @@ namespace AbsoluteRoleplay
         private BookmarksWindow BookmarksWindow { get; init; }
         private TargetWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
-        private ListingWindow ListingWindow { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
         public bool ConnectionLoaded = false;
@@ -171,7 +169,6 @@ namespace AbsoluteRoleplay
             ConnectionsWindow = new ConnectionsWindow(this);
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
-            ListingWindow = new ListingWindow(this);
 
             Configuration.Initialize(PluginInterface);
 
@@ -189,7 +186,6 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ConnectionsWindow);
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
-            WindowSystem.AddWindow(ListingWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -541,7 +537,6 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
-        public void OpenListingWIndow() => ListingWindow.IsOpen = true;
 
         internal async void UpdateStatus()
         {
