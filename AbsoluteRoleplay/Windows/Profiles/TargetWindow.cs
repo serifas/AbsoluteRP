@@ -41,7 +41,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool ExistingGallery;
         public static bool ExistingProfile;
         public static string storyTitle = "";
-        public static byte[] existingAvatarBytes;
+        public static byte[] existingAvatarBytes; 
+        public string currentTab = null;
         //BIO VARS
         public static IDalamudTextureWrap alignmentImg, personalityImg1, personalityImg2, personalityImg3;
         public static IDalamudTextureWrap[] galleryImages, galleryThumbs = new IDalamudTextureWrap[30];
@@ -114,41 +115,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     //if we receive that there is an existing profile that we can view show the available view buttons
                     if (ExistingProfile == true)
                     {
-                        if (ExistingBio == true)
-                        {
-                            if (ImGui.Button("Bio", new Vector2(100, 20))) { ClearUI(); viewBio = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View bio section of this profile."); }
-                        }
-                        if (ExistingHooks == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("Hooks", new Vector2(100, 20))) { ClearUI(); viewHooks = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View hooks section of this profile."); }
-                        }
-                        if (ExistingStory == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("Story", new Vector2(100, 20))) { ClearUI(); viewStory = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View story section to your profile."); }
-                        }
-                        if (ExistingOOC == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("OOC Info", new Vector2(100, 20))) { ClearUI(); viewOOC = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View OOC section of this profile."); }
-                        }
-                        if (ExistingGallery == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("Gallery", new Vector2(100, 20))) { ClearUI(); viewGallery = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View gallery section of this profile."); }
-                        }
-
+                        ImGui.BeginTabBar("TargetNavigation");
+                        if (ExistingBio == true) { if (ImGui.BeginTabItem("Bio")) { if (currentTab != "Bio") { ClearUI(); currentTab = "Bio"; viewBio = true; } ImGui.EndTabItem(); } }
+                        if (ExistingHooks == true) { if (ImGui.BeginTabItem("Hooks")) { if (currentTab != "Hooks") { ClearUI(); currentTab = "Hooks"; viewHooks = true; } ImGui.EndTabItem(); } }
+                        if (ExistingStory == true) { if (ImGui.BeginTabItem("Story")) { if (currentTab != "Story") { ClearUI(); currentTab = "Story"; viewStory = true; } ImGui.EndTabItem(); } }
+                        if (ExistingOOC == true) { if (ImGui.BeginTabItem("OOC")) { if (currentTab != "OOC") { ClearUI(); currentTab = "OOC"; viewOOC = true; } ImGui.EndTabItem(); } }
+                        if (ExistingGallery == true) { if (ImGui.BeginTabItem("Gallery")) { if (currentTab != "Gallery") { ClearUI(); currentTab = "Gallery"; viewGallery = true; } ImGui.EndTabItem(); } }
+                        ImGui.EndTabBar();
 
                         //personal controls for viewing user
                         ImGui.Text("Controls");
-                        if (ImGui.Button("Notes", new Vector2(100, 20))) { ClearUI(); addNotes = true; }
-                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile or the user."); }
+                        if (ImGui.Button("Notes")) { addNotes = true; }
+                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
 
                         ImGui.SameLine();
 
@@ -314,20 +292,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                             if (addNotes == true)
                             {
-
-                                Misc.SetTitle(plugin, true, "Personal Notes");
-
-                                ImGui.Text("Here you can add personal notes about this player or profile");
-                                ImGui.InputTextMultiline("##info", ref profileNotes, 500, new Vector2(400, 100));
-                                if (ImGui.Button("Add Notes"))
-                                {
-                                    if (plugin.IsOnline())
-                                    {
-                                        DataSender.AddProfileNotes(plugin.username, characterNameVal, characterWorldVal, profileNotes);
-                                    }
-
-                                }
-
+                                plugin.OpenProfileNotes();
+                                addNotes = false;
                             }
                             if (loadPreview == true)
                             {
