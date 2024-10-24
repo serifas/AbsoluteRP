@@ -57,6 +57,8 @@ namespace Networking
         SCreateGroupChat = 43,
         SRequestTooltip = 44,
         SDeleteProfile = 45,
+        SCreateListing = 46,
+        SRequestListing = 47,
     }
     public class DataSender
     {
@@ -574,7 +576,7 @@ namespace Networking
         }
 
 
-        internal static async void RequestConnections(string username, string receiverName, string receiverWorld)
+        internal static async void RequestConnections(string username, string password)
         {
             if (ClientTCP.IsConnected())
             {
@@ -584,8 +586,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SSendConnectionsRequest);
                         buffer.WriteString(username);
-                        buffer.WriteString(receiverName);
-                        buffer.WriteString(receiverWorld);
+                        buffer.WriteString(password);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -686,7 +687,74 @@ namespace Networking
                 }
             }
         }
+        internal static async void SubmitListing(string username, string password, byte[] bannerBytes, string listingName, string listingDescription, string listingRules, int inclusion, int currentCategory, int currentType, int currentFocus, int currentSetting, bool nsfw, string triggers,
+                                         int selectedStartYear, int selectedStartMonth, int selectedStartDay, int selectedStartHour, int selectedStartMinute, int selectedStartAmPm, int selectedStartTimezone,
+                                         int selectedEndYear, int selectedEndMonth, int selectedEndDay, int selectedEndHour, int selectedEndMinute, int selectedEndAmPm, int selectedEndTimezone)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SCreateListing);
+                        buffer.WriteString(username);
+                        buffer.WriteString(password);
+                        buffer.WriteInt(bannerBytes.Length);
+                        buffer.WriteBytes(bannerBytes);
+                        buffer.WriteString(listingName);
+                        buffer.WriteString(listingDescription);
+                        buffer.WriteString(listingRules);
+                        buffer.WriteInt(inclusion);
+                        buffer.WriteInt(currentCategory);
+                        buffer.WriteInt(currentType);
+                        buffer.WriteInt(currentFocus);
+                        buffer.WriteInt(currentSetting);
+                        buffer.WriteBool(nsfw);
+                        buffer.WriteString(triggers);
+                        buffer.WriteInt(selectedStartYear);
+                        buffer.WriteInt(selectedStartMonth);
+                        buffer.WriteInt(selectedStartDay);
+                        buffer.WriteInt(selectedStartHour);
+                        buffer.WriteInt(selectedStartMinute);
+                        buffer.WriteInt(selectedStartAmPm);
+                        buffer.WriteInt(selectedStartTimezone);
+                        buffer.WriteInt(selectedEndYear);
+                        buffer.WriteInt(selectedEndMonth);
+                        buffer.WriteInt(selectedEndDay);
+                        buffer.WriteInt(selectedEndHour);
+                        buffer.WriteInt(selectedEndMinute);
+                        buffer.WriteInt(selectedEndAmPm);
+                        buffer.WriteInt(selectedEndTimezone);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SubmitListing: " + ex.ToString());
+                }
+            }
+        }
 
+        internal static async void RequestListingsSection(int id)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SRequestListing);
+                        buffer.WriteInt(id);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in RequestListing: " + ex.ToString());
+                }
+            }
+        }
         internal static async void DeleteProfile(string username, string password, string playername, string playerworld)
         {
             if (ClientTCP.IsConnected())

@@ -34,6 +34,9 @@ public class Configuration : IPluginConfiguration
     public bool tooltip_showHasOOC { get; set; } = true;
     public bool tooltip_showHasGallery { get; set; } = true;
     public bool tooltip_draggable { get; set; } = true;
+    public int tooltip_PosX { get; set; }
+    public int tooltip_PosY { get; set; }
+    public bool tooltip_LockOnClick { get; set; }
 
     // the below exist just to make saving less cumbersome
     [NonSerialized]

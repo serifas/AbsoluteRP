@@ -2,7 +2,7 @@
     "Author": "Lynie",
     "Name": "Absolute Roleplay",
     "Punchline": "A plugin for creating profiles and sharing them, with more to come!",
-    "Description": "Use /absolute or the settings button to open.",
+    "Description": "Allows users to create, manage, view and bookmark roleplay profiles with FF.",
     "InternalName": "AbsoluteRoleplay",
     "ApplicableVersion": "any",
     "Tags": [

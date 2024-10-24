@@ -2,6 +2,7 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Lumina.Data;
 using Microsoft.VisualBasic;
 using System;
 using System.Collections.Generic;
@@ -12,6 +13,7 @@ using System.Net;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
+using System.Xml.Linq;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -114,6 +116,11 @@ namespace AbsoluteRoleplay
             afg = 6,
         }
         public static bool nameLoaded = false, raceLoaded = false, genderLoaded = false, ageLoaded = false, heightLoaded = false, weightLoaded = false, afgLoaded = false;
+        public static string[] amPmOptions = { "AM", "PM" };
+        public static string[] inclusions = { "Public", "Server Only", "FC Only", "Connections Only", "Invite Only" };
+        public static string[] months = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
+        public static string[] timezones = { "Eastern Standard Time (EST)", "Eastern Daylight Time (EDT)", "Central Standard Time (CST)", "Central Daylight Time (CDT)", "Mountain Standard Time (MST)", "Mountain Daylight Time (MDT)", "Pacific Standard Time (PST)", "Pacific Daylight Time (PDT)" };
+
         public enum InputTypes
         {
             multiline = 1,
@@ -216,7 +223,48 @@ namespace AbsoluteRoleplay
             NSFWTRIGGER = 23,
             //Connection Button
             reconnect = 24,
+            eventsBanner = 25,
+        }
+        public enum ListingCategory
+        {
+            Event = 1,
+            Campaign = 2,
+            Venue = 3,
+            Group = 4,
+            FC = 5,
+            Personal = 6,
+        }
 
+        public enum ListingType
+        {
+            Casual = 1,
+            StoryBased = 2,
+            DarkMature = 3,
+        }
+
+        public enum ListingFocus
+        {
+            SliceOfLife = 1,
+            Social = 2,
+            Adventure = 3,
+            Combat = 4,
+            Crime = 5,
+            Humanitarian = 6,
+            Worship = 7,
+            Mercenary = 8,
+        }
+        public enum ListingSetting
+        {
+            Shop = 1,
+            Restaurant = 2,
+            Library = 3,
+            Inn = 4,
+            School = 5,
+            Home = 6,
+            Shrine = 7,
+            Coven = 8,
+            Bathhouse = 9,
+            Other = 10,
         }
         public static IDalamudTextureWrap UICommonImage(CommonImageTypes imageType)
         {
@@ -245,6 +293,8 @@ namespace AbsoluteRoleplay
                 if (imageType == CommonImageTypes.targetGroupInvite) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result;}
                 if (imageType == CommonImageTypes.targetViewProfile) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result;}
                 if (imageType == CommonImageTypes.reconnect) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result;}
+                if (imageType == CommonImageTypes.eventsBanner) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/banner.png"))).Result; }
+
             }
 
             return commonImage;
@@ -648,11 +698,12 @@ namespace AbsoluteRoleplay
 
             ("None",            "Not Specified"),
         };
-        public static readonly (string, string)[] ConnectionListingVals =
-                {
-            ("Connected",     "Hidden profiles you have access to."),
 
-            ("Sent",    "Sent requests to view hidden profiles"),
+        public static readonly (string, string)[] ConnectionListingVals =
+              {
+            ("Connected",     "Private profiles you have access to."),
+
+            ("Sent",    "Sent requests to view private profiles"),
 
             ("Received",    "Received requests to see your profile"),
 
@@ -660,9 +711,166 @@ namespace AbsoluteRoleplay
         };
 
 
+        public static readonly (int, string)[] ListingNavigationVals =
+        {
+            (0, "Events"),
+
+            (1, "Campaigns"),
+
+            (2, "Venues"),
+
+            (3, "Groups"),
+
+            (4, "FCs"),
+
+            (5, "Personals"),
+
+        };
+        public static readonly (string, string)[] ListingCategoryVals =
+        {
+            ("Event",     "A one time event, for advertising parts of a campaign or short term RPs."),
+
+            ("Campaign",    "For an ongoing roleplay campaign, used for advertising long term Rps or a list of events."),
+
+            ("Venue",    "Mostly for RP held at estates."),
+
+            ("Group",  "For forming groups to roleplay with."),
+
+            ("FC",  "Mainly for advertising Free Companies / FC recruitment."),
+
+            ("Personal",  "For trying to find any of the above as a single player or to find like-minded players to RP with."),
+        };
+        public static readonly (string, string)[] ListingTypeVals =
+        {
+            ("Casual",     "Simple mindless RP for taking things easy."),
+
+            ("Story Based",    "Set base narrative, usually taken more seriously."),
+
+            ("Dark",    "More heavy settings such as crime, drug use or the like."),
+        };
+
+        public static readonly (string, string)[] ListingFocusVals =
+        {
+            ("Slice of Life",     "For the simple things, everyday life and interactions."),
+
+            ("Social",    "For mingling and companionship among friends or partners."),
+
+            ("Adventure",    "Exploring the unknown or venturing into far away lands."),
+
+            ("Combat",  "For settling differences or defeating enemies, or simply testing your prowess."),
+
+            ("Crime",  "Focused on criminal activities and the life of crime."),
+
+            ("Humanitarian",  "Caring for others is any way possible. / Providing support to those in need."),
+
+            ("Worship",  "Focused on the worship of any entity, fitting for shrines and covens."),
+
+            ("Mercenary",  "Blades for hire, focused on a soldiers of fortune narrative"),
+        };
+
+        public static readonly (string, string)[] ListingSettingVals =
+    {
+            ("Shop",     "Setting takes place in a public store."),
+
+            ("Restaurant",    "Setting that takes place in a diner or food oriented market."),
+
+            ("Library",    "Setting takes place in a book store, library or archive."),
+
+            ("Inn",  "Setting takes place in a hotel of respite and possibly a vacation home."),
+
+            ("School",  "Setting takes place in a public or private school."),
+
+            ("Home",  "Setting takes place in a personal or company owned home."),
+
+            ("Shrine",  "Setting takes place at a place of worship."),
+
+            ("Coven",  "Setting takes place in a place of magic practice or mystical happenings."),
+
+            ("Bathhouse",  "Setting takes place in a public or private bathing area."),
+
+            ("Other",  "Setting unspecified."),
+        };
+
+
+        public static string ListingCategoryNames(int category)
+        {
+            string CategoryName = string.Empty;
+            if (category == (int)ListingCategory.Event) { CategoryName = "Event"; };
+            if (category == (int)ListingCategory.Campaign) { CategoryName = "Campaign"; };
+            if (category == (int)ListingCategory.Venue) { CategoryName = "Venue"; };
+            if (category == (int)ListingCategory.Group) { CategoryName = "Group"; };
+            if (category == (int)ListingCategory.FC) { CategoryName = "FC"; };
+            if (category == (int)ListingCategory.Personal) { CategoryName = "Personal"; };
+            return CategoryName;
+        }
+        public static string ListingTypeNames(int type)
+        {
+            string TypeName = string.Empty;
+            if (type == (int)ListingType.Casual) { TypeName = "Casual"; };
+            if (type == (int)ListingType.StoryBased) { TypeName = "Story Based"; };
+            if (type == (int)ListingType.DarkMature) { TypeName = "Dark / Mature"; };
+            return TypeName;
+        }
+        public static string ListingFocusNames(int focus)
+        {
+            string FocusName = string.Empty;
+            if (focus == (int)ListingFocus.SliceOfLife) { FocusName = "Slice of Life"; };
+            if (focus == (int)ListingFocus.Social) { FocusName = "Social"; };
+            if (focus == (int)ListingFocus.Adventure) { FocusName = "Adventure"; };
+            if (focus == (int)ListingFocus.Combat) { FocusName = "Combat"; };
+            if (focus == (int)ListingFocus.Crime) { FocusName = "Crime"; };
+            if (focus == (int)ListingFocus.Humanitarian) { FocusName = "Humanitarian"; };
+            if (focus == (int)ListingFocus.Worship) { FocusName = "Worship"; };
+            if (focus == (int)ListingFocus.Mercenary) { FocusName = "Mercinary"; };
+            return FocusName;
+        }
+        public static string ListingSettingNames(int setting)
+        {
+            string SettingName = string.Empty;
+            if (setting == (int)ListingSetting.Shop) { SettingName = "Shop"; };
+            if (setting == (int)ListingSetting.Restaurant) { SettingName = "Restaurant"; };
+            if (setting == (int)ListingSetting.Library) { SettingName = "Library"; };
+            if (setting == (int)ListingSetting.Inn) { SettingName = "Inn"; };
+            if (setting == (int)ListingSetting.School) { SettingName = "School"; };
+            if (setting == (int)ListingSetting.Home) { SettingName = "Home"; };
+            if (setting == (int)ListingSetting.Shrine) { SettingName = "Shrine"; };
+            if (setting == (int)ListingSetting.Coven) { SettingName = "Coven"; };
+            if (setting == (int)ListingSetting.Bathhouse) { SettingName = "Bathhouse"; };
+            if (setting == (int)ListingSetting.Other) { SettingName = "Other"; };
+            return SettingName;
+        }
 
 
 
+    }
+    public class Listing
+    {
+        public string name { get; set; }
+        public string description { get; set; }
+        public string rules { get; set; }
+        public int category { get; set; }
+        public int type { get; set; }
+        public int focus { get; set; }
+        public int setting { get; set; }
+        public IDalamudTextureWrap banner { get; set; }
+        public int inclusion { get; set; }
+        public string startDate { get; set; }
+        public string endDate { get; set; }
+
+        public Listing(string Name, string Description, string Rules, int Category, int Type, int Focus, int Setting, IDalamudTextureWrap Banner, int Inclusion, string StartDate, string EndDate)
+        {
+            name = Name;
+            description = Description;
+            rules = Rules;
+            category = Category;
+            type = Type;
+            focus = Focus;
+            setting = Setting;
+            banner = Banner;
+            inclusion = Inclusion;
+            startDate = StartDate;
+            endDate = EndDate;
+        }
     }
 
 }

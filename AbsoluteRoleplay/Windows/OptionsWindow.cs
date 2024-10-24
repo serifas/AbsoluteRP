@@ -67,19 +67,6 @@ namespace AbsoluteRoleplay.Windows
                         Configuration.Save();
                     }
                    
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.Begin("FadStartTooltip", ImGuiWindowFlags.Tooltip | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar);
-                        ImGui.Text("Number of seconds to start fading");
-                        ImGui.End();
-                    }
-                  
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.Begin("FadeFinsihTooltip", ImGuiWindowFlags.Tooltip | ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoTitleBar);
-                        ImGui.Text("Number of seconds for fade to finish");
-                        ImGui.End();
-                    }
                 }
                 if(ImGui.CollapsingHeader("Display"))
                 {

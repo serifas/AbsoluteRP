@@ -228,7 +228,7 @@ public class MainPanel : Window, IDisposable
             ImGui.SameLine();
             if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.playername, pluginInstance.playerworld);
+                DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.password.ToString());
 
             }
             if (ImGui.IsItemHovered())
