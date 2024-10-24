@@ -185,14 +185,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         SubmitProfileData();
                     }
-                    if (ImGui.Button("Backup"))
-                    {
-                        SaveBackupFile();
-                    }
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.SetTooltip("Save a local backup of your profile.");
-                    }
                     ImGui.SameLine();
                     if (ProfileHasContent() == true)
                     {
@@ -209,6 +201,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             ImGui.SetTooltip("Delete your profile (This is a destructive action!)");
                         }
                     }
+                    if (ImGui.Button("Backup"))
+                    {
+                        SaveBackupFile();
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Save a local backup of your profile.");
+                    }
+                    ImGui.SameLine();
                     using (OtterGui.Raii.ImRaii.Disabled(ProfileHasContent()))
                     {
                         if (ImGui.Button("Load Backup"))
