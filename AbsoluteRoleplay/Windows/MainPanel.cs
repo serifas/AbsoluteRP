@@ -16,6 +16,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using AbsoluteRoleplay.Windows.Profiles;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using System.Security.Cryptography;
+using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
@@ -290,15 +291,9 @@ public class MainPanel : Window, IDisposable
             {
                 if (pluginInstance.IsOnline())
                 {
-                    ProfileWindow.TabOpen[TabValue.Bio] = true;
-                    ProfileWindow.TabOpen[TabValue.Hooks] = true;
-                    ProfileWindow.TabOpen[TabValue.Story] = true;
-                    ProfileWindow.TabOpen[TabValue.OOC] = true;
-                    ProfileWindow.TabOpen[TabValue.Gallery] = true;
-                    pluginInstance.OpenProfileWindow();
-                    //FETCH USER AND PASS ASEWLL
-                    DataSender.FetchProfile(pluginInstance.playername, pluginInstance.playerworld);
-                    ProfileWindow.ClearUI();
+                    ProfileWindow.storyTitle = string.Empty;
+                    ProfileWindow.oocInfo = string.Empty;
+                    pluginInstance.OpenAndLoadProfileWindow();
                 }
             }
             if (ImGui.IsItemHovered())

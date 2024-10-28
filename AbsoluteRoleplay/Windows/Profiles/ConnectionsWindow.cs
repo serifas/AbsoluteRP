@@ -44,8 +44,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(300, 500),
-                MaximumSize = new Vector2(500, 800)
+                MinimumSize = new Vector2(300, 300),
+                MaximumSize = new Vector2(950, 950)
             };
             this.plugin = plugin;
         }
@@ -122,7 +122,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Remove##Remove" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.removed);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -162,7 +162,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Cancel##Cancel" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)Defines.ConnectionStatus.canceled);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)Defines.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -188,7 +188,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Unblock##Unblock" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)Defines.ConnectionStatus.removed);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)Defines.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

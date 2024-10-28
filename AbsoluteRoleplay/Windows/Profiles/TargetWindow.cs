@@ -41,8 +41,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool ExistingGallery;
         public static bool ExistingProfile;
         public static string storyTitle = "";
-        public static byte[] existingAvatarBytes; 
-        public string currentTab = null;
+        public static byte[] existingAvatarBytes;
+        public static string currentTab = null;
+        public static bool isActive = currentTab == "Bio";
         //BIO VARS
         public static IDalamudTextureWrap alignmentImg, personalityImg1, personalityImg2, personalityImg3;
         public static IDalamudTextureWrap[] galleryImages, galleryThumbs = new IDalamudTextureWrap[30];
@@ -69,14 +70,16 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool[] ChapterExists = new bool[30];
         internal static string characterName;
         internal static string characterWorld;
+        public static bool firstDraw = true;
+        public static string activeTab;
 
         public TargetWindow(Plugin plugin) : base(
        "TARGET", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(600, 400),
-                MaximumSize = new Vector2(750, 950)
+                MinimumSize = new Vector2(300, 300),
+                MaximumSize = new Vector2(950, 950)
             };
             this.plugin = plugin;
             pg = Plugin.PluginInterface;
@@ -115,14 +118,27 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     //if we receive that there is an existing profile that we can view show the available view buttons
                     if (ExistingProfile == true)
                     {
-                        ImGui.BeginTabBar("TargetNavigation");
-                        if (ExistingBio == true) { if (ImGui.BeginTabItem("Bio")) { if (currentTab != "Bio") { ClearUI(); currentTab = "Bio"; viewBio = true; } ImGui.EndTabItem(); } }
-                        if (ExistingHooks == true) { if (ImGui.BeginTabItem("Hooks")) { if (currentTab != "Hooks") { ClearUI(); currentTab = "Hooks"; viewHooks = true; } ImGui.EndTabItem(); } }
-                        if (ExistingStory == true) { if (ImGui.BeginTabItem("Story")) { if (currentTab != "Story") { ClearUI(); currentTab = "Story"; viewStory = true; } ImGui.EndTabItem(); } }
-                        if (ExistingOOC == true) { if (ImGui.BeginTabItem("OOC")) { if (currentTab != "OOC") { ClearUI(); currentTab = "OOC"; viewOOC = true; } ImGui.EndTabItem(); } }
-                        if (ExistingGallery == true) { if (ImGui.BeginTabItem("Gallery")) { if (currentTab != "Gallery") { ClearUI(); currentTab = "Gallery"; viewGallery = true; } ImGui.EndTabItem(); } }
-                        ImGui.EndTabBar();
+                        if (firstDraw)
+                        {
+                            currentTab = "Bio";
+                            ClearUI();
+                            viewBio = true;
+                            firstDraw = false;
+                        }
 
+                        ImGui.BeginTabBar("TargetNavigation");
+
+                        if(activeTab == "BIO")
+                        {
+                            ClearUI(); currentTab = "Bio"; viewBio = true;
+                        }
+                        ImGui.BeginTabBar("TargetNavigation");
+                        if (ExistingBio) { if (ImGui.BeginTabItem("Bio")) { if (currentTab != "Bio") { ClearUI(); currentTab = "Bio"; viewBio = true; } ImGui.EndTabItem(); } }
+                        if (ExistingHooks) { if (ImGui.BeginTabItem("Hooks")) { if (currentTab != "Hooks") { ClearUI(); currentTab = "Hooks"; viewHooks = true; } ImGui.EndTabItem(); } }
+                        if (ExistingStory) { if (ImGui.BeginTabItem("Story")) { if (currentTab != "Story") { ClearUI(); currentTab = "Story"; viewStory = true; } ImGui.EndTabItem(); } }
+                        if (oocInfo != string.Empty) { if (ImGui.BeginTabItem("OOC")) { if (currentTab != "OOC") { ClearUI(); currentTab = "OOC"; viewOOC = true; } ImGui.EndTabItem(); } }
+                        if (ExistingGallery) { if (ImGui.BeginTabItem("Gallery")) { if (currentTab != "Gallery") { ClearUI(); currentTab = "Gallery"; viewGallery = true; } ImGui.EndTabItem(); } }
+                        ImGui.EndTabBar();
                         //personal controls for viewing user
                         ImGui.Text("Controls");
                         if (ImGui.Button("Notes")) { addNotes = true; }
@@ -320,6 +336,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             viewOOC = false;
             viewGallery = false;
             addNotes = false;
+           
         }
         public static void ReloadTarget()
         {

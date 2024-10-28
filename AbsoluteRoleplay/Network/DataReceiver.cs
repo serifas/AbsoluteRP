@@ -70,6 +70,8 @@ namespace Networking
         ReceiveChatMessage = 57,
         ReceiveGroupMemberships = 58,
         RecieveTargetTooltip = 59,
+        ReceiveProfiles = 60,
+        SSendProfilesList = 61,
     }
     class DataReceiver
     {
@@ -154,6 +156,30 @@ namespace Networking
                 plugin.logger.Error($"Error handling BadLogin message: {ex}");
             }
         }
+        public static void ExistingProfileList(byte[] data)
+        {
+            try
+            {
+                BookmarksWindow.profileList.Clear();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profilesCount = buffer.ReadInt();
+                    for(int i =0; i< profilesCount; i++)
+                    {
+                        int index = buffer.ReadInt();
+                        string profileName = buffer.ReadString();
+                        BookmarksWindow.profileList.Add(Tuple.Create(index, profileName));
+                    }
+                    plugin.OpenBookmarksWindow();
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ExistingProfileList message: {ex}");
+            }
+        }
         public static void ExistingTargetProfile(byte[] data)
         {
             try
@@ -168,6 +194,7 @@ namespace Networking
                     TargetWindow.ReloadTarget();
                     TargetWindow.viewBio = true;
                     plugin.OpenTargetWindow();
+                    TargetWindow.currentTab = "Bio"; // Set the "Bio" tab as active
                 }
             }
             catch (Exception ex)
@@ -223,6 +250,7 @@ namespace Networking
                     StoryLoadStatus = 0;
                     OOCLoadStatus = 0;
                     GalleryLoadStatus = 0;
+
                     ProfileWindow.storyTitle = string.Empty;
                     ProfileWindow.galleryImageCount = 0; 
                     for (int i = 0; i < ProfileWindow.galleryThumbs.Length; i++)
@@ -230,9 +258,11 @@ namespace Networking
                         ProfileWindow.galleryThumbs[i] = Defines.UICommonImage(CommonImageTypes.blankPictureTab);
                     }
                     BookmarkLoadStatus = 0;
+                    
                     ProfileWindow.addProfile = false;
                     ProfileWindow.editProfile = false;
                     ProfileWindow.ClearUI();
+                    ProfileWindow.ExistingProfile = false;
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = false;
                     ProfileWindow.ClearOnLoad();
@@ -408,6 +438,7 @@ namespace Networking
                     string profileName = buffer.ReadString();
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = true;
+                    ProfileWindow.ClearOnLoad();
                     loggedIn = true;
                 }
             }
@@ -426,9 +457,7 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    string username = buffer.ReadString();
                     int status = buffer.ReadInt();
-                    plugin.username = username;
                     //account window
                     if (status == (int)Defines.StatusMessages.LOGIN_BANNED)
                     {
@@ -565,6 +594,7 @@ namespace Networking
                     for (int i = 0; i < 30; i++)
                     {
                         ProfileWindow.galleryImages[i] = ProfileWindow.pictureTab;
+                        ProfileWindow.galleryThumbs[i] = ProfileWindow.pictureTab;
                         ProfileWindow.imageURLs[i] = string.Empty;
                     }
                     ProfileWindow.ImageExists[0] = true;
@@ -595,15 +625,15 @@ namespace Networking
                         string url = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(true, url, profileID, nsfw, trigger, plugin, i);
+                        Imaging.DownloadProfileImage(true, url, profileID, nsfw, trigger, plugin, i);                        
                         ProfileWindow.galleryImageCount = i + 1;
                         ProfileWindow.ImageExists[i] = true;
-                        ProfileWindow.loading = "Gallery Image: " + i;
+                        ProfileWindow.loading = "Loading Gallery Image: " + i;
                         ProfileWindow.loaderInd = i;
                     }
-                    ProfileWindow.ExistingGallery = true;
-                    ProfileWindow.ClearOnLoad();
 
+                    ProfileWindow.ExistingGallery = true;
+                    
                     GalleryLoadStatus = 1;
                 }
             }
@@ -757,10 +787,11 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     bool status = buffer.ReadBool();
+                    bool tooltipStatus = buffer.ReadBool();
                     plugin.OpenProfileWindow();
-                    ProfileWindow.privateProfile = status;
+                    ProfileWindow.isPrivate = status;
+                    ProfileWindow.activeTooltip = tooltipStatus;
                     ProfileWindow.ExistingProfile = true;
-                    ProfileWindow.ReloadProfile();
                     ProfileWindow.ClearOnLoad();
 
                 }
@@ -801,7 +832,31 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveProfileHooks message: {ex}");
             }
         }
-
+        public static void ReceiveProfiles(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileCount = buffer.ReadInt();
+                    ProfileWindow.ProfileBaseData.Clear();
+                    for (int i =0; i < profileCount; i++)
+                    {
+                        
+                        int index = buffer.ReadInt();
+                        string name = buffer.ReadString();
+                        bool active = buffer.ReadBool();
+                        ProfileWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveProfileHooks message: {ex}");
+            }
+        }
         public static void ReceiveProfileStory(byte[] data)
         {
             try
@@ -926,6 +981,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     ProfileWindow.ExistingStory = false;
+                    ProfileWindow.storyTitle = string.Empty;
                     for (int i = 0; i < ProfileWindow.ChapterNames.Count(); i++)
                     {
                         ProfileWindow.ChapterNames[i] = string.Empty;
@@ -1166,7 +1222,7 @@ namespace Networking
                             }
                             if (status == (int)Defines.ConnectionStatus.refused)
                             {
-                                ConnectionsWindow.sentProfileRequests.Add(receiver);
+                                //ConnectionsWindow.sentProfileRequests.Add(receiver);
                             }
                         }
                     }
@@ -1244,6 +1300,7 @@ namespace Networking
 
                     Plugin.tooltipLoaded = true;
                     plugin.OpenARPTooltip();
+
 
                 }
             }

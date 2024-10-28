@@ -4,7 +4,7 @@ using ImGuiNET;
 using System;
 using Networking;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class NotesWindow : Window, IDisposable
     {
@@ -15,11 +15,12 @@ namespace AbsoluteRoleplay.Windows
         public static string profileNotes;
         public static string characterNameVal;
         public static string characterWorldVal;
+        public static int characterIndex;
         public static Plugin pg;
         public NotesWindow(Plugin plugin) : base(
        "NOTES", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(400, 400),
                 MaximumSize = new Vector2(1200, 950)
@@ -39,7 +40,7 @@ namespace AbsoluteRoleplay.Windows
                 {
                     if (pg.IsOnline())
                     {
-                        DataSender.AddProfileNotes(pg.username, characterNameVal, characterWorldVal, profileNotes);
+                        DataSender.AddProfileNotes(characterIndex, profileNotes);
                     }
                 }
             }

@@ -26,6 +26,11 @@ using static FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.VertexShader;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using Lumina.Excel.GeneratedSheets;
 using OtterGui.Tasks;
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay;
+using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
+using FFXIVClientStructs.Havok.Common.Base.Container.String;
+using Lumina.Excel.GeneratedSheets2;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -61,12 +66,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool[] hookExists = new bool[31]; //same as ImageExists but for hooks
         public static bool[] storyChapterExists = new bool[31]; //same again but for story chapters
         public static SortedList<TabValue, bool> TabOpen = new SortedList<TabValue, bool>(); //what part of the profile we have open
-        public static bool editAvatar, addProfile, editProfile, ReorderGallery, addGalleryImageGUI, alignmentHidden, personalityHidden, loadPreview = false;
-        public static string oocInfo, storyTitle = string.Empty;
-        public static bool ExistingProfile, ExistingStory, ExistingOOC, ExistingHooks, ExistingGallery, ExistingBio, ReorderHooks, ReorderChapters, AddHooks, AddStoryChapter; //to check if we have data from the DataReceiver for the respective fields or to reorder the gallery or hooks after deletion
+        public static bool editAvatar, addProfile, editProfile, ReorderGallery, addGalleryImageGUI, alignmentHidden, personalityHidden, loadPreview;
+        public static string storyTitle = string.Empty;
+        public static string oocInfo = string.Empty;
+        public static bool ExistingProfile = false;
+        private bool reloadProfiles = false;
+        public static bool ExistingStory, ExistingOOC, ExistingHooks, ExistingGallery, ExistingBio, ReorderHooks, ReorderChapters, AddHooks, AddStoryChapter; //to check if we have data from the DataReceiver for the respective fields or to reorder the gallery or hooks after deletion
         public static int chapterCount, currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3, hookCount = 0; //values changed by DataReceiver as well
         public static byte[] avatarBytes; //avatar image in a byte array
-        public static float loaderInd; //used for the gallery loading bar
+        public static float loaderInd =  -1; //used for the gallery loading bar
         public static IDalamudTextureWrap avatarHolder, currentAvatarImg;
         public static List<IDalamudTextureWrap> galleryThumbsList = new List<IDalamudTextureWrap>();
         public static List<IDalamudTextureWrap> galleryImagesList = new List<IDalamudTextureWrap>();
@@ -76,16 +84,23 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool drawChapter;
         public static int storyChapterCount = -1;
         public static int currentChapter;
-        public static bool privateProfile; //sets whether the profile is allowed to be publicly viewed
-
+        public static int profileIndex = 0;
+        public static bool isPrivate;
+        public static bool activeTooltip;
+        public static int currentProfile = 0;
+        public static bool profileListSelectable = true;
+        public static List<string> profileName = new List<string>();
+        public static List<Tuple<int, string, bool>> ProfileBaseData = new List<Tuple<int, string, bool>>();
+        public static bool noprofiles = false;
+        
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
 
-                MinimumSize = new Vector2(600, 400),
-                MaximumSize = new Vector2(750, 950)
+                MinimumSize = new Vector2(300, 300),
+                MaximumSize = new Vector2(950, 950)
             };
 
             this.plugin = plugin;
@@ -97,12 +112,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void OnOpen()
         {
+            ProfileBaseData.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
             var avatarHolderImage = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
             if (avatarHolderImage != null)
             {
                 avatarHolder = avatarHolderImage; //set our avatarHolder ot the same TextureWrap
             }
+
+            currentAvatarImg = avatarHolderImage;
             //same for pictureTab
             var pictureTabImage = Defines.UICommonImage(Defines.CommonImageTypes.blankPictureTab);
             if (pictureTabImage != null)
@@ -155,90 +173,129 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         }
         //method to check if we have loaded our data received from the server
-        public static bool AllLoaded()
+      
+        public static void ClearLoaded()
         {
-            if (DataReceiver.StoryLoadStatus != -1 &&
-                   DataReceiver.HooksLoadStatus != -1 &&
-                   DataReceiver.BioLoadStatus != -1 &&
-                   DataReceiver.GalleryLoadStatus != -1)
-            {
-                return true;
-            }
-            return false;
+            DataReceiver.StoryLoadStatus = -1;
+            DataReceiver.HooksLoadStatus = -1;
+            DataReceiver.BioLoadStatus = -1;
+            DataReceiver.GalleryLoadStatus = -1;           
         }
+
+        public void UpdateProfileData(int profileIndex)
+        {
+            ClearLoaded();
+            SubmitProfileData();
+            DataSender.FetchProfiles();
+        }
+
         public override void Draw()
         {
-            //if we have loaded all the data received from the server and we are logged in game
-            if (AllLoaded() == true && plugin.IsOnline())
+            if (plugin.IsOnline())
             {
+                //if we have loaded all
+                //the data received from the server and we are logged in game
+               
                 _fileDialogManager.Draw(); //file dialog mainly for avatar atm. galleries later possibly.
 
-
-                if (ExistingProfile == true)//if we have a profile add the edit profile button
+                ImGui.SameLine();
+                if (ImGui.Button("Add Profile"))
                 {
-                    if (ImGui.Checkbox("Set Private", ref privateProfile))
-                    {
-                        //send our privacy settings to the server
-                        DataSender.SetProfileStatus(plugin.username.ToString(), plugin.playername, plugin.playerworld, privateProfile);
-                    }
-                    if (ImGui.Button("Save Profile"))
-                    {
-                        SubmitProfileData();
-                    }
-                    ImGui.SameLine();
-                    if (ProfileHasContent() == true)
-                    {
-                        using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
-                        {
-                            if (ImGui.Button("Delete Profile"))
-                            {
-                                DataSender.DeleteProfile(plugin.username, plugin.password, plugin.playername, plugin.playerworld);
-                            }
-
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Delete your profile (This is a destructive action!)");
-                        }
-                    }
-                    if (ImGui.Button("Backup"))
-                    {
-                        SaveBackupFile();
-                    }
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.SetTooltip("Save a local backup of your profile.");
-                    }
-                    ImGui.SameLine();
-                    using (OtterGui.Raii.ImRaii.Disabled(ProfileHasContent()))
-                    {
-                        if (ImGui.Button("Load Backup"))
-                        {
-                            LoadBackupFile();
-                        }
-
-                    }
-                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                    {
-                        ImGui.SetTooltip("To load a backup file you must have no existing data in your profile.");
-                    }
+                    DataSender.CreateProfile(plugin.playername, plugin.playerworld, ProfileBaseData.Count);
+                    ExistingProfile = true;
                 }
-                if (ExistingProfile == false) //else create our add profile button to create a new profile
+                if (ProfileBaseData.Count >= 0 && ExistingProfile == true)
                 {
-                    if (ImGui.Button("Add Profile")) { DataSender.CreateProfile(plugin.playername, plugin.playerworld); }
+                    AddProfileSelection();
+                    DrawProfile();
+                }
+                if(ProfileBaseData.Count < 0)
+                {
+                    ExistingProfile = false;
                 }
                 else
                 {
-                    ImGui.Spacing();
-                    ImGui.BeginTabBar("ProfileNavigation");
-                    if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
-                    if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
-                    if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
-                    if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
-                    if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
-                    ImGui.EndTabBar();
-
+                    ExistingProfile = true;
                 }
+                
+            }
+        }
+        public void DrawProfile()
+        {
+            if (percentage == loaderInd + 1)
+            {
+
+                if (ImGui.Checkbox("Set Private", ref isPrivate))
+                {
+                    //send our privacy settings to the server
+                    DataSender.SetProfileStatus(isPrivate, activeTooltip, currentProfile);
+                }
+                ImGui.SameLine();
+                if(ImGui.Checkbox("Set As Tooltip", ref activeTooltip))
+                {
+                    DataSender.SetProfileStatus(isPrivate, activeTooltip, currentProfile);
+                }
+                if (ImGui.Button("Save Profile"))
+                {
+                    SubmitProfileData();
+                }
+                ImGui.SameLine();
+                if (ProfileHasContent() == true)
+                {
+                    using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+                    {
+                        if (ImGui.Button("Delete Profile"))
+                        {
+                            ClearLoaded();
+                            DataSender.DeleteProfile(currentProfile);
+                            DataSender.FetchProfiles();
+                        
+                            currentProfile -= 1;
+                            if(currentProfile < 0)
+                            {
+                                currentProfile = 0;
+                            }
+                            DataSender.FetchProfile(currentProfile);
+
+                        }
+                    }
+                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    {
+                        ImGui.SetTooltip("Delete your profile (This is a destructive action!)");
+                    }
+                }
+
+
+                if (ImGui.Button("Backup"))
+                {
+                    SaveBackupFile();
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Save a local backup of your profile.");
+                }
+                ImGui.SameLine();
+                using (OtterGui.Raii.ImRaii.Disabled(ProfileHasContent()))
+                {
+                    if (ImGui.Button("Load Backup"))
+                    {
+                        LoadBackupFile();
+                    }
+                }
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    ImGui.SetTooltip("To load a backup file you must have no existing data in your profile.");
+                }
+
+                ImGui.Spacing();
+                ImGui.BeginTabBar("ProfileNavigation");
+                if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+                ImGui.EndTabBar();
+
 
                 using var ProfileTable = ImRaii.Child("PROFILE");
                 if (ProfileTable)
@@ -290,7 +347,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         AddPersonalitySelection_1();
                         AddPersonalitySelection_2();
                         AddPersonalitySelection_3();
-                      
+
                     }
                     #endregion
                     #region HOOKS
@@ -303,7 +360,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 hookCount++;
                             }
                         }
-                       
+
                         ImGui.NewLine();
                         AddHooks = true;
                         hookExists[hookCount] = true;
@@ -326,7 +383,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             CreateChapter();
                         }
 
-                        
+
                         ImGui.NewLine();
 
                     }
@@ -342,7 +399,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 galleryImageCount++;
                             }
                         }
-                        
+
                         ImGui.NewLine();
                         addGalleryImageGUI = true;
                         ImageExists[galleryImageCount] = true;
@@ -353,7 +410,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (TabOpen[TabValue.OOC])
                     {
                         ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));
-                       
+
                     }
                     #endregion
                     if (loadPreview == true)
@@ -452,19 +509,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             }
                         }
 
+                
+
 
                     }
 
-
-
                 }
+
             }
             else
             {
-                //if our content is not all loaded use the loader
+
                 Misc.StartLoader(loaderInd, percentage, loading);
             }
-
         }
 
         private bool ProfileHasContent()
@@ -724,8 +781,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         for (var g = 0; g < galleryImageCount; g++)
                         {
                             //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
-                            DataSender.SendGalleryImage(plugin.username, plugin.playername, plugin.playerworld,
-                                              NSFW[g], TRIGGER[g], imageURLs[g], g);
+                            DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
 
                         }
                     }
@@ -735,8 +791,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         for (var g = 0; g < galleryImageCount; g++)
                         {
                             //same for triggering, we don't want to lose this info if the user is forgetful
-                            DataSender.SendGalleryImage(plugin.username, plugin.playername, plugin.playerworld,
-                                              NSFW[g], TRIGGER[g], imageURLs[g], g);
+                            DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
                         }
                     }
                     ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
@@ -765,7 +820,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     ImageExists[i] = false;
                                     ReorderGallery = true;
                                     //remove the image immediately once pressed
-                                    DataSender.RemoveGalleryImage(plugin.playername, plugin.playerworld, i, galleryImageCount);
+                                    DataSender.RemoveGalleryImage(profileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -864,7 +919,27 @@ namespace AbsoluteRoleplay.Windows.Profiles
             TabOpen[TabValue.OOC] = false;
             TabOpen[TabValue.Gallery] = false;
         }
-
+        public static void ResetOnChangeOrRemoval()
+        {
+            ProfileBaseData.Clear();
+            for(int i = 0; i < hookCount; i++)
+            {
+                hookExists[i] = false;
+                HookNames[i] = string.Empty;
+                HookContents[i] = string.Empty;
+            }
+            ResetGallery();
+            ResetStory();
+            oocInfo = string.Empty;
+            for(int i = 0; i < bioFieldsArr.Length; i++)
+            {
+                bioFieldsArr[i] = string.Empty;
+            }
+            currentAlignment = 0;
+            currentPersonality_1 = 0;
+            currentPersonality_2 = 0;
+            currentPersonality_3 = 0;
+        }
         public void Dispose()
         {
             avatarHolder?.Dispose();
@@ -913,6 +988,61 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
             }
         }
+
+        public void AddProfileSelection()
+        { 
+            List<string> profileNames = new List<string>();
+            for(int i = 0; i < ProfileBaseData.Count; i++)
+            {
+                profileNames.Add(ProfileBaseData[i].Item2);
+            }
+            string[] ProfileNames = new string[profileNames.Count];
+            ProfileNames = profileNames.ToArray();
+            var profileName = ProfileNames[currentProfile];
+
+            using var combo = OtterGui.Raii.ImRaii.Combo("##Profiles", profileName);
+            if (!combo)
+                return;
+            foreach (var (newText, idx) in ProfileNames.WithIndex())
+            {
+                if(ProfileBaseData.Count > 0)
+                {
+                    var label = newText;
+                    if (label == string.Empty)
+                    {
+                        label = "New Profile";
+                    }
+                    if (newText != string.Empty)
+                    {
+                        if (ImGui.Selectable(label + "##" + idx, idx == currentProfile))
+                        {
+                            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+                            {
+                                avatarBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/profiles/avatar_holder.png"));
+                            }
+                            for (int i = 0; i < bioFieldsArr.Count(); i++)
+                            {
+                                bioFieldsArr[i] = string.Empty;
+                            }
+                            currentProfile = idx;
+
+                            ClearLoaded();
+                            DataSender.FetchProfile(currentProfile);
+                            DataSender.FetchProfiles();
+                        }
+                        ImGuiUtil.SelectableHelpMarker("Select to edit profile");
+                    }
+
+                }
+            }
+        }
+
+
+
+
+
+
+
         public void AddAlignmentSelection()
         {
             var (text, desc) = Defines.AlignmentVals[currentAlignment];
@@ -1026,10 +1156,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             string backupContent = File.ReadAllText(dataPath);
                             // Read avatar bytes
-                            string avatarByteString = Misc.ExtractTextBetweenTags(backupContent, "avatar"); 
+                            string avatarByteString = Misc.ExtractTextBetweenTags(backupContent, "avatar");
                             byte[] avatarBytesData = Convert.FromBase64String(avatarByteString); // Convert back to byte array
 
-                            string name= Misc.ExtractTextBetweenTags(backupContent, "name");
+                            string name = Misc.ExtractTextBetweenTags(backupContent, "name");
                             string race = Misc.ExtractTextBetweenTags(backupContent, "race");
                             string gender = Misc.ExtractTextBetweenTags(backupContent, "gender");
                             string age = Misc.ExtractTextBetweenTags(backupContent, "age");
@@ -1045,7 +1175,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                             Story storyData = new Story();
                             List<ProfileGalleryImage> galleryimagedata = new List<ProfileGalleryImage>();
-                            List<Chapter> chapterData = new List<Chapter>();   
+                            List<Chapter> chapterData = new List<Chapter>();
                             List<Hooks> hookData = new List<Hooks>();
 
                             //get hooks
@@ -1184,12 +1314,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 //hooks
                                 Hooks = hookData,
                                 //gallery
-                                GalleryImages = galleryimagedata                                
+                                GalleryImages = galleryimagedata
                             };
 
                             //send data to server
-                            DataSender.SubmitProfileBio(plugin.playername, plugin.playerworld,
-                                                  avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3);
+                            DataSender.SubmitProfileBio(currentProfile, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3, activeTooltip);
                             var hooks = new List<Tuple<int, string, string>>();
                             for (var i = 0; i < hookData.Count; i++)
                             {
@@ -1197,7 +1326,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 var hook = Tuple.Create(i, hookData[i].name, hookData[i].content);
                                 hooks.Add(hook);
                             }
-                            DataSender.SendHooks(plugin.playername, plugin.playerworld, hooks);
+                            DataSender.SendHooks(currentProfile, hooks);
 
                             //create a new list for our stories to be held in
                             var storyChapters = new List<Tuple<string, string>>();
@@ -1210,20 +1339,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 storyChapters.Add(chapter);
                             }
                             //finally send the story data to the server
-                            DataSender.SendStory(plugin.playername, plugin.playerworld, storytitle, storyChapters);
+                            DataSender.SendStory(currentProfile, storytitle, storyChapters);
 
                             for (var i = 0; i < galleryimagedata.Count; i++)
                             {
                                 //pretty simple stuff, just send the gallery related array values to the server
-                                DataSender.SendGalleryImage(plugin.username, plugin.playername, plugin.playerworld,
-                                                    galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, i);
+                                DataSender.SendGalleryImage(currentProfile, galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, i);
 
                             }
                             //send the OOC info to the server, just a string really
-                            DataSender.SendOOCInfo(plugin.playername, plugin.playerworld, OOC);
+                            DataSender.SendOOCInfo(currentProfile, OOC);
 
-                            DataSender.FetchProfile(plugin.playername, plugin.playerworld);
-
+                            DataSender.FetchProfile(currentProfile);
 
 
 
@@ -1242,13 +1369,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
         }
 
-        // Helper function to extract values between tags
-       
 
-        public async Task DeleteProfile(string password)
-        {
-            DataSender.DeleteProfile(plugin.username, password, plugin.playername, plugin.playerworld);
-        }
+        // Helper function to extract values between tags
 
 
 
@@ -1300,7 +1422,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
         
         public void SubmitProfileData()
         {
-            DataSender.SubmitProfileBio(plugin.playername, plugin.playerworld,
+            try
+            {
+
+            DataSender.SubmitProfileBio(currentProfile,
                                                   avatarBytes,
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
@@ -1309,7 +1434,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
-                                                  currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3);
+                                                  currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3,
+                                                  activeTooltip);
             var hooks = new List<Tuple<int, string, string>>();
             for (var i = 0; i < hookCount; i++)
             {
@@ -1317,7 +1443,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 var hook = Tuple.Create(i, HookNames[i], HookContents[i]);
                 hooks.Add(hook);
             }
-            DataSender.SendHooks(plugin.playername, plugin.playerworld, hooks);
+            DataSender.SendHooks(currentProfile, hooks);
 
             //create a new list for our stories to be held in
             var storyChapters = new List<Tuple<string, string>>();
@@ -1330,20 +1456,27 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 storyChapters.Add(chapter);
             }
             //finally send the story data to the server
-            DataSender.SendStory(plugin.playername, plugin.playerworld, storyTitle, storyChapters);
+            DataSender.SendStory(currentProfile, storyTitle, storyChapters);
 
             for (var i = 0; i < galleryImageCount; i++)
             {
                 //pretty simple stuff, just send the gallery related array values to the server
-                DataSender.SendGalleryImage(plugin.username, plugin.playername, plugin.playerworld,
-                                    NSFW[i], TRIGGER[i], imageURLs[i], i);
+                DataSender.SendGalleryImage(currentProfile, NSFW[i], TRIGGER[i], imageURLs[i], i);
 
             }
             //send the OOC info to the server, just a string really
-            DataSender.SendOOCInfo(plugin.playername, plugin.playerworld, oocInfo);
+            DataSender.SendOOCInfo(currentProfile, oocInfo);
 
-            DataSender.FetchProfile(plugin.playername, plugin.playerworld);
-
+            }
+            catch(Exception ex)
+            {
+                plugin.logger.Error("Received exception in SubmitProfileBio " + ex.Message);
+            }
+            finally
+            {
+                DataSender.FetchProfiles();
+                DataSender.FetchProfile(currentProfile);
+            }
         }
         public void SaveBackupFile()
         {
@@ -1406,7 +1539,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine("</gallery>");
                 }
             });
-        }
+        }   
 
 
          private string ExtractValue(string line, string tag)
@@ -1472,19 +1605,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }, 0, null, configuration.AlwaysOpenDefaultImport);
 
         }
-        public static void ReloadProfile()
-        {
-            DataReceiver.BioLoadStatus = -1;
-            DataReceiver.GalleryLoadStatus = -1;
-            DataReceiver.HooksLoadStatus = -1;
-            DataReceiver.StoryLoadStatus = -1;
-        }
         public static void ClearOnLoad()
         {
-            if (AllLoaded())
-            {
-                ClearUI();
-            }
+            ClearUI();
         }
     }
 }

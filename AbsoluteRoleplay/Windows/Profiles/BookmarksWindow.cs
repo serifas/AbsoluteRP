@@ -32,69 +32,107 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static SortedList<string, string> profiles = new SortedList<string, string>();
         private IDalamudPluginInterface pg;
         public static bool DisableBookmarkSelection = false;
+        internal static List<Tuple<int, string>> profileList = new System.Collections.Generic.List<Tuple<int, string>>();
+
         public BookmarksWindow(Plugin plugin) : base(
-       "BOOKMARKS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+       "PROFILE LIST", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(300, 500),
-                MaximumSize = new Vector2(500, 800)
+                MinimumSize = new Vector2(300, 300),
+                MaximumSize = new Vector2(800, 800)
             };
             this.plugin = plugin;
         }
         public override void Draw()
         {
-
             Vector2 windowSize = ImGui.GetWindowSize();
-            var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
-            using var profileTable = ImRaii.Child("Profiles", childSize, true);
-            if (profileTable)
+            float padding = 10f; // Padding between the two columns
+            float childWidth = (windowSize.X - padding * 3) / 2; // Divide width between two children with padding
+            float childHeight = windowSize.Y - 80; // Subtract space for top text
+            Vector2 childSize = new Vector2(childWidth, childHeight);
+            // Start grouping for Bookmarks section
+            ImGui.BeginGroup();
+            ImGui.Text("Bookmarks");
+
+            using (var profileTable = ImRaii.Child("Profiles", childSize, true))
             {
-                if (plugin.IsOnline())
+                if (profileTable)
                 {
-                    for (var i = 1; i < profiles.Count; i++)
+                    if (plugin.IsOnline())
                     {
-                        if (DisableBookmarkSelection == true)
+                        for (var i = 1; i < profiles.Count; i++)
                         {
-                            ImGui.BeginDisabled();
-                        }
-                        if (ImGui.Button(profiles.Keys[i] + " @ " + profiles.Values[i]))
-                        {
-                            ReportWindow.reportCharacterName = profiles.Keys[i];
-                            ReportWindow.reportCharacterWorld = profiles.Values[i];
-                            TargetWindow.characterNameVal = profiles.Keys[i];
-                            TargetWindow.characterWorldVal = profiles.Values[i];
-                            //DisableBookmarkSelection = true;
-                            plugin.OpenTargetWindow();
-                            DataSender.RequestTargetProfile(profiles.Keys[i], profiles.Values[i], plugin.username);
+                            if (DisableBookmarkSelection)
+                                ImGui.BeginDisabled();
 
-                        }
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
-                        {
-                            if (ImGui.Button("Remove##Removal" + i))
+                            if (ImGui.Button(profiles.Keys[i] + " @ " + profiles.Values[i]))
                             {
-                                DataSender.RemoveBookmarkedPlayer(plugin.username.ToString(), profiles.Keys[i], profiles.Values[i]);
+                                ReportWindow.reportCharacterName = profiles.Keys[i];
+                                ReportWindow.reportCharacterWorld = profiles.Values[i];
+                                TargetWindow.characterNameVal = profiles.Keys[i];
+                                TargetWindow.characterWorldVal = profiles.Values[i];
+                                DataSender.RequestTargetProfiles(profiles.Keys[i], profiles.Values[i]);
                             }
+
+                            ImGui.SameLine();
+
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ImGui.Button("Remove##Removal" + i))
+                                {
+                                    DataSender.RemoveBookmarkedPlayer(profiles.Keys[i], profiles.Values[i]);
+                                }
+                            }
+
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+
+                            if (DisableBookmarkSelection)
+                                ImGui.EndDisabled();
                         }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
-                        }
 
-
-
-
-                        if (DisableBookmarkSelection == true)
-                        {
-                            ImGui.EndDisabled();
-                        }
                     }
                 }
-
             }
+            ImGui.EndGroup();
+            ImGui.SameLine();
+            // Start grouping for Profiles Available section
+            ImGui.BeginGroup();
+            ImGui.Text("Profiles");
 
+            using (var availableProfiles = ImRaii.Child("Profiles Available", childSize, true))
+            {
+                if (availableProfiles)
+                {
+                    if (plugin.IsOnline())
+                    {
+                        for (var i = 0; i < profileList.Count; i++)
+                        {
+                            string name = profileList[i].Item2;
+                            if (name == string.Empty)
+                            {
+                                name = "Unknown";
+                            }
+                            if (ImGui.Button(profileList[i].Item2))
+                            {
+                                DataSender.RequestTargetProfile(profileList[i].Item1);
+                            }
+                        }
+                    }
+                    
+                }
+            }
+            ImGui.EndGroup();
+
+            // Position cursor to the right of the Profiles Available section for Bookmarks
+
+          
         }
+
+
 
         public void Dispose()
         {

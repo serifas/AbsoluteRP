@@ -135,7 +135,6 @@ namespace AbsoluteRoleplay
             ContextMenu = contextMenu;
             Framework = framework;
             ClientTCP.plugin = this;
-
             //unhandeled exception handeling - probably not really needed anymore.
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
@@ -145,7 +144,7 @@ namespace AbsoluteRoleplay
 
             //need this to interact with the plugin from the datareceiver.
             DataReceiver.plugin = this;
-
+            DataSender.plugin = this;
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "opens the plugin window."
@@ -216,15 +215,25 @@ namespace AbsoluteRoleplay
                     if (tooltipLoaded == false)
                     {
                         tooltipLoaded = true;
-                        logger.Error(playerTarget.Name.TextValue.ToString());
-                        logger.Error(playerTarget.HomeWorld.GameData.Name.ToString());
-                        DataSender.SendRequestPlayerTooltip(username, playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
+                        DataSender.SendRequestPlayerTooltip(playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
                     }
                 }
             }
 
         }
+        public void OpenAndLoadProfileWindow()
+        {
 
+            ProfileWindow.TabOpen[TabValue.Bio] = true;
+            ProfileWindow.TabOpen[TabValue.Hooks] = true;
+            ProfileWindow.TabOpen[TabValue.Story] = true;
+            ProfileWindow.TabOpen[TabValue.OOC] = true;
+            ProfileWindow.TabOpen[TabValue.Gallery] = true;
+            ProfileWindow.ResetOnChangeOrRemoval();
+            OpenProfileWindow();
+            DataSender.FetchProfiles();
+            DataSender.FetchProfile(0);
+        }
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
         {
@@ -259,7 +268,7 @@ namespace AbsoluteRoleplay
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(username, name, worldname);
+                    DataSender.BookmarkPlayer(name, worldname);
 
                 },
             });
@@ -270,7 +279,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
 
-                    DataSender.RequestTargetProfile(name, worldname, username);
+                    DataSender.RequestTargetProfiles(name, worldname);
                 },
             });
         }
@@ -289,7 +298,7 @@ namespace AbsoluteRoleplay
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(username, chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
+                    DataSender.BookmarkPlayer(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -299,7 +308,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
 
-                    DataSender.RequestTargetProfile(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString(), username);
+                    DataSender.RequestTargetProfiles(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
                 },
             });
         }
@@ -378,7 +387,7 @@ namespace AbsoluteRoleplay
                 //fetch target player once more
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
                 //send a bookmark message to the server
-                DataSender.BookmarkPlayer(plugin.username.ToString(), targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.BookmarkPlayer(targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
             }
         }
 
