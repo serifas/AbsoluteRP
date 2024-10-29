@@ -71,7 +71,6 @@ namespace Networking
         ReceiveGroupMemberships = 58,
         RecieveTargetTooltip = 59,
         ReceiveProfiles = 60,
-        SSendProfilesList = 61,
     }
     class DataReceiver
     {
@@ -102,23 +101,19 @@ namespace Networking
             var buffer = new ByteBuffer();
             buffer.WriteBytes(data);
             var packetID = buffer.ReadInt();
-            string bookmarkVals = buffer.ReadString();
-
-            plugin.OpenBookmarksWindow();
-
-            Regex nameRx = new Regex(@"<bookmarkName>(.*?)</bookmarkName>");
-            Regex worldRx = new Regex(@"<bookmarkWorld>(.*?)</bookmarkWorld>");
-            string[] bookmarkSplit = bookmarkVals.Replace("|||", "~").Split('~');
-            BookmarksWindow.profiles.Clear();
-            for (int i = 0; i < bookmarkSplit.Count(); i++)
+            int bookmarkCount = buffer.ReadInt();  
+            BookmarksWindow.profileList.Clear();
+            for (int i = 0; i < bookmarkCount; i++)
             {
-                string characterName = nameRx.Match(bookmarkSplit[i]).Groups[1].Value;
-                string characterWorld = worldRx.Match(bookmarkSplit[i]).Groups[1].Value;
-
-                BookmarksWindow.profiles.Add(characterName, characterWorld);
+                int profileIndex = buffer.ReadInt();
+                string profileName = buffer.ReadString();
+                string playerName = buffer.ReadString();
+                string playerWorld = buffer.ReadString();
+                Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
+                BookmarksWindow.profileList.Add(bookmark);
             }
+            plugin.OpenBookmarksWindow();
             BookmarkLoadStatus = 1;
-
         }
 
         public static void HandleWelcomeMessage(byte[] data)
@@ -156,30 +151,8 @@ namespace Networking
                 plugin.logger.Error($"Error handling BadLogin message: {ex}");
             }
         }
-        public static void ExistingProfileList(byte[] data)
-        {
-            try
-            {
-                BookmarksWindow.profileList.Clear();
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int profilesCount = buffer.ReadInt();
-                    for(int i =0; i< profilesCount; i++)
-                    {
-                        int index = buffer.ReadInt();
-                        string profileName = buffer.ReadString();
-                        BookmarksWindow.profileList.Add(Tuple.Create(index, profileName));
-                    }
-                    plugin.OpenBookmarksWindow();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ExistingProfileList message: {ex}");
-            }
-        }
+     
+     
         public static void ExistingTargetProfile(byte[] data)
         {
             try
@@ -242,6 +215,7 @@ namespace Networking
             {
                 using (var buffer = new ByteBuffer())
                 {
+                    ProfileWindow.ProfileBaseData.Clear();
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     loggedIn = true;
@@ -408,7 +382,7 @@ namespace Networking
                 plugin.logger.Error($"Error handling NoTargetBio message: {ex}");
             }
         }
-
+        
         public static void NoTargetHooks(byte[] data)
         {
             try
@@ -438,6 +412,7 @@ namespace Networking
                     string profileName = buffer.ReadString();
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = true;
+                    ProfileWindow.ResetOnChangeOrRemoval();
                     ProfileWindow.ClearOnLoad();
                     loggedIn = true;
                 }
@@ -463,24 +438,26 @@ namespace Networking
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account Banned";
+                        plugin.loginAttempted = true;
                     }
                     if (status == (int)Defines.StatusMessages.LOGIN_UNVERIFIED)
                     {
-                        plugin.loggedIn = false;
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Unverified Account";
+                        plugin.loginAttempted = true;
                     }
                     if (status == (int)Defines.StatusMessages.LOGIN_VERIFIED)
                     {
-                        plugin.loggedIn = true;
                         MainPanel.status = "Logged In";
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.viewMainWindow = true;
+                        plugin.loginAttempted = true;
                     }
                     if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
                         MainPanel.status = "Incorrect login details";
+                        plugin.loginAttempted = true;
                     }
                     if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
                     {
@@ -540,6 +517,12 @@ namespace Networking
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Please fill all fields.";
+                    }
+                    if (status == (int)Defines.StatusMessages.NO_AVAILABLE_PROFILE)
+                    {
+                        AlertWindow.alertColor = new Vector4(255, 0, 0, 255);
+                        AlertWindow.alertStatus = "No profile available.";
+                        plugin.OpenAlertWindow();
                     }
                 }
             }

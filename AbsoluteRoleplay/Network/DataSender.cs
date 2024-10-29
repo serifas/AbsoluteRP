@@ -64,6 +64,7 @@ namespace Networking
         RenameProfile = 49,
         RequestTargetProfiles = 50,
         SetAsTooltip = 51,
+        Logout = 52,
     }
     public class DataSender
     {
@@ -89,9 +90,31 @@ namespace Networking
                 }
 
             }
-        
+
         }
-      
+        public static async void Logout(string username, string password, string playerName, string playerWorld)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.Logout);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in Logout: " + ex.ToString());
+                }
+
+            }
+
+        }
+
         public static async void Register(string username, string password, string email)
         {
             if (ClientTCP.IsConnected())
@@ -341,7 +364,7 @@ namespace Networking
             }
 
         }
-        public static async void RemoveBookmarkedPlayer(string playerName, string playerWorld)
+        public static async void RemoveBookmarkedPlayer(string playerName, int profileID)
         {
             if (ClientTCP.IsConnected())
             {
@@ -352,8 +375,7 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.CSendRemovePlayerBookmark);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
-                        buffer.WriteString(playerName);
-                        buffer.WriteString(playerWorld);
+                        buffer.WriteInt(profileID);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -484,6 +506,8 @@ namespace Networking
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
                         buffer.WriteInt(currentIndex);
+
+                        plugin.logger.Error("Current profile is " + currentIndex);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                         NotesWindow.characterIndex = currentIndex;
                     }
@@ -834,6 +858,8 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.SFetchProfiles);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

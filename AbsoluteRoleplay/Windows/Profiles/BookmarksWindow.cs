@@ -29,10 +29,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
     public class BookmarksWindow : Window, IDisposable
     {
         private Plugin plugin;
-        public static SortedList<string, string> profiles = new SortedList<string, string>();
         private IDalamudPluginInterface pg;
         public static bool DisableBookmarkSelection = false;
-        internal static List<Tuple<int, string>> profileList = new System.Collections.Generic.List<Tuple<int, string>>();
+        internal static List<Bookmark> profileList = new List<Bookmark>();
 
         public BookmarksWindow(Plugin plugin) : base(
        "PROFILE LIST", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -48,7 +47,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             Vector2 windowSize = ImGui.GetWindowSize();
             float padding = 10f; // Padding between the two columns
-            float childWidth = (windowSize.X - padding * 3) / 2; // Divide width between two children with padding
+            float childWidth = (windowSize.X - padding * 3); // Divide width between two children with padding
             float childHeight = windowSize.Y - 80; // Subtract space for top text
             Vector2 childSize = new Vector2(childWidth, childHeight);
             // Start grouping for Bookmarks section
@@ -61,18 +60,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     if (plugin.IsOnline())
                     {
-                        for (var i = 1; i < profiles.Count; i++)
+                        for (var i = 0; i < profileList.Count; i++)
                         {
                             if (DisableBookmarkSelection)
                                 ImGui.BeginDisabled();
 
-                            if (ImGui.Button(profiles.Keys[i] + " @ " + profiles.Values[i]))
+                            if (ImGui.Button(profileList[i].ProfileName))
                             {
-                                ReportWindow.reportCharacterName = profiles.Keys[i];
-                                ReportWindow.reportCharacterWorld = profiles.Values[i];
-                                TargetWindow.characterNameVal = profiles.Keys[i];
-                                TargetWindow.characterWorldVal = profiles.Values[i];
-                                DataSender.RequestTargetProfiles(profiles.Keys[i], profiles.Values[i]);
+                                ReportWindow.reportCharacterName = profileList[i].PlayerName;
+                                ReportWindow.reportCharacterWorld = profileList[i].PlayerWorld;
+                                TargetWindow.characterNameVal = profileList[i].PlayerName;
+                                TargetWindow.characterWorldVal = profileList[i].PlayerWorld;
+                                DataSender.RequestTargetProfile(profileList[i].profileIndex);
                             }
 
                             ImGui.SameLine();
@@ -81,7 +80,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 if (ImGui.Button("Remove##Removal" + i))
                                 {
-                                    DataSender.RemoveBookmarkedPlayer(profiles.Keys[i], profiles.Values[i]);
+                                    DataSender.RemoveBookmarkedPlayer(profileList[i].PlayerName, profileList[i].profileIndex);
                                 }
                             }
 
@@ -98,35 +97,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
             }
             ImGui.EndGroup();
-            ImGui.SameLine();
-            // Start grouping for Profiles Available section
-            ImGui.BeginGroup();
-            ImGui.Text("Profiles");
-
-            using (var availableProfiles = ImRaii.Child("Profiles Available", childSize, true))
-            {
-                if (availableProfiles)
-                {
-                    if (plugin.IsOnline())
-                    {
-                        for (var i = 0; i < profileList.Count; i++)
-                        {
-                            string name = profileList[i].Item2;
-                            if (name == string.Empty)
-                            {
-                                name = "Unknown";
-                            }
-                            if (ImGui.Button(profileList[i].Item2))
-                            {
-                                DataSender.RequestTargetProfile(profileList[i].Item1);
-                            }
-                        }
-                    }
-                    
-                }
-            }
-            ImGui.EndGroup();
-
             // Position cursor to the right of the Profiles Available section for Bookmarks
 
           
@@ -138,5 +108,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
 
         }
+    }
+    public class Bookmark
+    {
+        public int profileIndex { get; set; }
+        public string ProfileName { get; set; }
+        public string PlayerName { get; set; }
+        public string PlayerWorld { get; set; }
     }
 }

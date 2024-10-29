@@ -50,7 +50,7 @@ namespace AbsoluteRoleplay
         //WIP
         private const string ChatToggleCommand = "/arpchat";
       
-        public bool loggedIn;
+        public bool loginAttempted = false;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
         private IDtrBarEntry? connectionsBarEntry;
@@ -84,6 +84,7 @@ namespace AbsoluteRoleplay
         private OptionsWindow OptionsWindow { get; init; }
         private NotesWindow NotesWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
+        private AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
         private ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
@@ -94,7 +95,6 @@ namespace AbsoluteRoleplay
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
-        public bool ConnectionLoaded = false;
 
         //logger for printing errors and such
         public Logger logger = new Logger();
@@ -168,7 +168,7 @@ namespace AbsoluteRoleplay
             ConnectionsWindow = new ConnectionsWindow(this);
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
-
+            AlertWindow = new AlertWindow(this);
             Configuration.Initialize(PluginInterface);
 
             //add the windows to the windowsystem
@@ -185,6 +185,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ConnectionsWindow);
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
+            WindowSystem.AddWindow(AlertWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -196,7 +197,6 @@ namespace AbsoluteRoleplay
             if (IsOnline())
             {
                 OnLogin();
-                MainPanel.AttemptLogin();
             }
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
             ClientState.Logout += OnLogout;
@@ -232,7 +232,7 @@ namespace AbsoluteRoleplay
             ProfileWindow.ResetOnChangeOrRemoval();
             OpenProfileWindow();
             DataSender.FetchProfiles();
-            DataSender.FetchProfile(0);
+            DataSender.FetchProfile(ProfileWindow.currentProfile);
         }
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
@@ -349,6 +349,7 @@ namespace AbsoluteRoleplay
             //remove the current windows and switch back to login window.
             MainPanel.switchUI();
             MainPanel.login = MainPanel.CurrentElement();
+            loginAttempted = false;
         }
         private void UnobservedTaskExceptionHandler(object sender, UnobservedTaskExceptionEventArgs e)
         {
@@ -487,15 +488,13 @@ namespace AbsoluteRoleplay
                 UnloadConnectionsBar();
             }
         }
-
         public void OnLogin()
         {
             playername = ClientState.LocalPlayer.Name.ToString();
             playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
-            if (IsOnline() == true && ClientTCP.IsConnected() == false && ConnectionLoaded == false)
+            if (IsOnline() == true)
             {
-                LoadConnection();
-                ConnectionLoaded = true;
+                LoadConnection();                
             }
 
         }
@@ -546,6 +545,7 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
+        public void OpenAlertWindow() => AlertWindow.IsOpen = true;
 
         internal async void UpdateStatus()
         {
@@ -560,9 +560,8 @@ namespace AbsoluteRoleplay
                 {
                     //set dtr bar entry for connection status to our current server connection status
                     statusBarEntry.Tooltip = new SeStringBuilder().AddText($"Absolute Roleplay").Build();
-                    MainPanel.AttemptLogin();
                 }
-
+               
             }
             catch (Exception ex)
             {
@@ -571,6 +570,15 @@ namespace AbsoluteRoleplay
         }
         public void Update(IFramework framework)
         {
+            if (!loginAttempted && MainPanel.serverStatus == "Connected")
+            {
+                username = Configuration.username;
+                password = Configuration.password;
+                playername = ClientState.LocalPlayer.Name.ToString();
+                playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
+                DataSender.Login(username, password, playername, playerworld);
+                loginAttempted = true;
+            }
             if (TargetManager.MouseOverTarget != null)
             {
                 DrawTooltipInfo(TargetManager.MouseOverTarget);

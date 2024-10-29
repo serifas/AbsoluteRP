@@ -201,10 +201,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.SameLine();
                 if (ImGui.Button("Add Profile"))
                 {
+                    ResetOnChangeOrRemoval();
                     DataSender.CreateProfile(plugin.playername, plugin.playerworld, ProfileBaseData.Count);
                     ExistingProfile = true;
                 }
-                if (ProfileBaseData.Count >= 0 && ExistingProfile == true)
+                if (ProfileBaseData.Count > 0 && ExistingProfile == true)
                 {
                     AddProfileSelection();
                     DrawProfile();
@@ -231,38 +232,44 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     DataSender.SetProfileStatus(isPrivate, activeTooltip, currentProfile);
                 }
                 ImGui.SameLine();
-                if(ImGui.Checkbox("Set As Tooltip", ref activeTooltip))
+                if(ImGui.Checkbox("Set As Profile", ref activeTooltip))
                 {
                     DataSender.SetProfileStatus(isPrivate, activeTooltip, currentProfile);
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Set this as your profile for the current character.");
                 }
                 if (ImGui.Button("Save Profile"))
                 {
                     SubmitProfileData();
                 }
                 ImGui.SameLine();
-                if (ProfileHasContent() == true)
+                using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
                 {
-                    using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+                    if (ImGui.Button("Delete Profile"))
                     {
-                        if (ImGui.Button("Delete Profile"))
+                        ClearLoaded();
+                        DataSender.DeleteProfile(currentProfile);
+                            
+                        currentProfile -= 1;
+                        if(currentProfile < 0)
                         {
-                            ClearLoaded();
-                            DataSender.DeleteProfile(currentProfile);
-                            DataSender.FetchProfiles();
-                        
-                            currentProfile -= 1;
-                            if(currentProfile < 0)
-                            {
-                                currentProfile = 0;
-                            }
-                            DataSender.FetchProfile(currentProfile);
-
+                            currentProfile = 0;
                         }
+                        DataSender.FetchProfiles();
+                        DataSender.FetchProfile(currentProfile);
+                        if (ProfileBaseData.Count == 0)
+                        {
+                            ExistingProfile = false;
+                        }
+                        plugin.logger.Error(ProfileBaseData.Count.ToString());
+
                     }
-                    if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                    {
-                        ImGui.SetTooltip("Delete your profile (This is a destructive action!)");
-                    }
+                }
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    ImGui.SetTooltip("Delete your profile (This is a destructive action!)");
                 }
 
 
@@ -820,7 +827,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     ImageExists[i] = false;
                                     ReorderGallery = true;
                                     //remove the image immediately once pressed
-                                    DataSender.RemoveGalleryImage(profileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
+                                    DataSender.RemoveGalleryImage(currentProfile, plugin.playername, plugin.playerworld, i, galleryImageCount);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -921,7 +928,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public static void ResetOnChangeOrRemoval()
         {
-            ProfileBaseData.Clear();
             for(int i = 0; i < hookCount; i++)
             {
                 hookExists[i] = false;
@@ -935,6 +941,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 bioFieldsArr[i] = string.Empty;
             }
+            currentAvatarImg = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
             currentAlignment = 0;
             currentPersonality_1 = 0;
             currentPersonality_2 = 0;
@@ -1016,16 +1023,25 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         if (ImGui.Selectable(label + "##" + idx, idx == currentProfile))
                         {
-                            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+                            for (int i = 0; i < hookCount; i++)
                             {
-                                avatarBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/profiles/avatar_holder.png"));
+                                hookExists[i] = false;
+                                HookNames[i] = string.Empty;
+                                HookContents[i] = string.Empty;
                             }
-                            for (int i = 0; i < bioFieldsArr.Count(); i++)
+                            ResetGallery();
+                            ResetStory();
+                            oocInfo = string.Empty;
+                            for (int i = 0; i < bioFieldsArr.Length; i++)
                             {
                                 bioFieldsArr[i] = string.Empty;
                             }
+                            currentAvatarImg = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
+                            currentAlignment = 0;
+                            currentPersonality_1 = 0;
+                            currentPersonality_2 = 0;
+                            currentPersonality_3 = 0;
                             currentProfile = idx;
-
                             ClearLoaded();
                             DataSender.FetchProfile(currentProfile);
                             DataSender.FetchProfiles();
@@ -1601,6 +1617,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (avatar == true)
                 {
                     avatarBytes = File.ReadAllBytes(imagePath);
+                    currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                 }
             }, 0, null, configuration.AlwaysOpenDefaultImport);
 

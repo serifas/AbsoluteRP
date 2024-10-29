@@ -43,7 +43,6 @@ namespace Networking
                 }
 
                 // Log the received data length
-                plugin.logger.Error($"Received {bytesRead} bytes from the server.");
 
                 // Create a buffer to hold the new bytes
                 byte[] newBytes = new byte[bytesRead];
@@ -171,6 +170,7 @@ namespace Networking
 
                     if (isSocketWritable && !isSocketReadable)
                     {
+                        plugin.logger.Error("Connected");
                         return connected;
                     }
 

@@ -306,6 +306,7 @@ public class MainPanel : Window, IDisposable
                 if (pluginInstance.IsOnline())
                 {
                     DataSender.RequestBookmarks(pluginInstance.username);
+                    pluginInstance.OpenBookmarksWindow();
                 }
                
             }
@@ -397,13 +398,7 @@ public class MainPanel : Window, IDisposable
         pluginInstance.password = password;
         pluginInstance.Configuration.Save();
     }
-    public static void AttemptLogin()
-    {
-        if(ClientTCP.IsConnected() && pluginInstance.Configuration.username != string.Empty && pluginInstance.Configuration.password != string.Empty)
-        {
-            DataSender.Login(pluginInstance.Configuration.username, pluginInstance.Configuration.password, pluginInstance.playername, pluginInstance.playerworld);
-        }
-    }
+  
     public void switchUI()
     {
         viewProfile = false;

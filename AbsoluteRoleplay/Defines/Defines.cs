@@ -103,6 +103,8 @@ namespace AbsoluteRoleplay
             GALLERY_INCORRECT_IMAGE = 11,
             //other
             REGISTRATION_INSUFFICIENT_DATA = 12,
+            //Profile Access
+            NO_AVAILABLE_PROFILE = 13,
 
         }
         public enum BioFieldTypes
