@@ -62,7 +62,7 @@ namespace Networking
         SRequestListing = 47,
         SFetchProfiles = 48,
         RenameProfile = 49,
-        RequestTargetProfiles = 50,
+        RequestTargetProfileByCharacter = 50,
         SetAsTooltip = 51,
         Logout = 52,
     }
@@ -478,7 +478,7 @@ namespace Networking
                     using (var buffer = new ByteBuffer())
                     {
                         BookmarksWindow.profileList.Clear();
-                        buffer.WriteInt((int)ClientPackets.RequestTargetProfiles);
+                        buffer.WriteInt((int)ClientPackets.RequestTargetProfileByCharacter);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(targetPlayerName);
@@ -885,6 +885,29 @@ namespace Networking
                         buffer.WriteString(playerworld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteBool(status);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void RequestTargetProfileByCharacter(string name, string worldname)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RequestTargetProfileByCharacter);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(name);
+                        buffer.WriteString(worldname);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

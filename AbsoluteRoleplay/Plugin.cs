@@ -279,7 +279,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
 
-                    DataSender.RequestTargetProfiles(name, worldname);
+                    DataSender.RequestTargetProfileByCharacter(name, worldname);
                 },
             });
         }
@@ -308,7 +308,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
 
-                    DataSender.RequestTargetProfiles(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
+                    DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
                 },
             });
         }

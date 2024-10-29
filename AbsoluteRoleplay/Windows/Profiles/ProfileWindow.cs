@@ -205,7 +205,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     DataSender.CreateProfile(plugin.playername, plugin.playerworld, ProfileBaseData.Count);
                     ExistingProfile = true;
                 }
-                if (ProfileBaseData.Count > 0 && ExistingProfile == true)
+                if (ProfileBaseData.Count > 1 && ExistingProfile == true)
                 {
                     AddProfileSelection();
                     DrawProfile();
