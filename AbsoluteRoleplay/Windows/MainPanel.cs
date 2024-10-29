@@ -149,7 +149,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(172, 27)))
                 {
-                    Util.OpenLink("https://discord.gg/absolute-roleplay");
+                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
                 }
             }
 
