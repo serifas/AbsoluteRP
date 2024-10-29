@@ -18,22 +18,11 @@ using AbsoluteRoleplay.Helpers;
 using System.Numerics;
 using OtterGui.Log;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using System.Threading.Channels;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
 using AbsoluteRoleplay.Windows.Profiles;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Render;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using FFXIVClientStructs.FFXIV.Client.UI.Misc;
-using OtterGui.Services;
-using Lumina;
-using Lumina.Excel;
-using FFXIVClientStructs.FFXIV.Common.Component.Excel;
-using System.Xml.Linq;
 using Dalamud.Game.ClientState.Objects.Types;
-using FFXIVClientStructs.STD;
-using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
 using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Conditions;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -350,6 +339,8 @@ namespace AbsoluteRoleplay
             MainPanel.switchUI();
             MainPanel.login = MainPanel.CurrentElement();
             loginAttempted = false;
+            playername = string.Empty;
+            playerworld = string.Empty;
         }
         private void UnobservedTaskExceptionHandler(object sender, UnobservedTaskExceptionEventArgs e)
         {
@@ -581,12 +572,28 @@ namespace AbsoluteRoleplay
             }
             if (TargetManager.MouseOverTarget != null)
             {
-                DrawTooltipInfo(TargetManager.MouseOverTarget);
+                if (!InCombatLock())
+                {
+                    DrawTooltipInfo(TargetManager.MouseOverTarget);
+                }
+                
             }
             else
             {
                 TooltipWindow.IsOpen = false;
                 tooltipLoaded = false;
+            }
+        }
+        public bool InCombatLock()
+        {
+
+            if (Condition[ConditionFlag.InCombat] && Configuration.tooltip_HideInCombat == true)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
     }

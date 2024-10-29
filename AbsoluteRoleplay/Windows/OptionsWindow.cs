@@ -76,6 +76,12 @@ namespace AbsoluteRoleplay.Windows
                         Configuration.tooltip_Enabled = showTooltip;
                         Configuration.Save();
                     }
+                    var hideTooltipInCombat = Configuration.tooltip_HideInCombat;
+                    if (ImGui.Checkbox("Hide in Combat", ref hideTooltipInCombat))
+                    {
+                        Configuration.tooltip_HideInCombat = hideTooltipInCombat;
+                        Configuration.Save();
+                    }
                     var showAvatar = Configuration.tooltip_showAvatar;
                     if (ImGui.Checkbox("Show Avatar", ref showAvatar))
                     {

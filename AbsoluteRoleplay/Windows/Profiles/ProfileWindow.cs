@@ -202,15 +202,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.Button("Add Profile"))
                 {
                     ResetOnChangeOrRemoval();
-                    DataSender.CreateProfile(plugin.playername, plugin.playerworld, ProfileBaseData.Count);
+                    DataSender.CreateProfile(ProfileBaseData.Count);
                     ExistingProfile = true;
                 }
-                if (ProfileBaseData.Count > 1 && ExistingProfile == true)
+                if (ProfileBaseData.Count > 0 && ExistingProfile == true)
                 {
                     AddProfileSelection();
                     DrawProfile();
                 }
-                if(ProfileBaseData.Count < 0)
+                if(ProfileBaseData.Count <= 0)
                 {
                     ExistingProfile = false;
                 }
@@ -399,6 +399,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                     if (TabOpen[TabValue.Gallery])
                     {
+                        if(galleryImageCount < 0)
+                        {
+                            galleryImageCount = 0;
+                        }
                         if (ImGui.Button("Add Image"))
                         {
                             if (galleryImageCount < 28)

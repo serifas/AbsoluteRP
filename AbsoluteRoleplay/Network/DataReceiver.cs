@@ -98,22 +98,31 @@ namespace Networking
 
         public static void RecBookmarks(byte[] data)
         {
-            var buffer = new ByteBuffer();
-            buffer.WriteBytes(data);
-            var packetID = buffer.ReadInt();
-            int bookmarkCount = buffer.ReadInt();  
-            BookmarksWindow.profileList.Clear();
-            for (int i = 0; i < bookmarkCount; i++)
+            try
             {
-                int profileIndex = buffer.ReadInt();
-                string profileName = buffer.ReadString();
-                string playerName = buffer.ReadString();
-                string playerWorld = buffer.ReadString();
-                Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
-                BookmarksWindow.profileList.Add(bookmark);
+                BookmarksWindow.profileList.Clear();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int bookmarkCount = buffer.ReadInt();
+                    for (int i = 0; i < bookmarkCount; i++)
+                    {
+                        int profileIndex = buffer.ReadInt();
+                        string profileName = buffer.ReadString();
+                        string playerName = buffer.ReadString();
+                        string playerWorld = buffer.ReadString();
+                        Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
+                        BookmarksWindow.profileList.Add(bookmark);
+                    }
+                    plugin.UpdateStatus();
+                    // Handle the message as needed
+                }
             }
-            plugin.OpenBookmarksWindow();
-            BookmarkLoadStatus = 1;
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling Bookmark message: {ex}");
+            }
         }
 
         public static void HandleWelcomeMessage(byte[] data)

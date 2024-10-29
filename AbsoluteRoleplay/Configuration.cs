@@ -37,6 +37,7 @@ public class Configuration : IPluginConfiguration
     public int tooltip_PosX { get; set; }
     public int tooltip_PosY { get; set; }
     public bool tooltip_LockOnClick { get; set; }
+    public bool tooltip_HideInCombat { get; set; }
 
     // the below exist just to make saving less cumbersome
     [NonSerialized]

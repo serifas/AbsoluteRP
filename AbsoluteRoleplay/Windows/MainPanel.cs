@@ -305,7 +305,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (pluginInstance.IsOnline())
                 {
-                    DataSender.RequestBookmarks(pluginInstance.username);
+                    DataSender.RequestBookmarks();
                     pluginInstance.OpenBookmarksWindow();
                 }
                
