@@ -116,6 +116,7 @@ namespace Networking
                         BookmarksWindow.profileList.Add(bookmark);
                     }
                     plugin.UpdateStatus();
+                    plugin.OpenBookmarksWindow();
                     // Handle the message as needed
                 }
             }

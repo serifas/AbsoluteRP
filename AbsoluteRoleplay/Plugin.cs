@@ -309,9 +309,6 @@ namespace AbsoluteRoleplay
             Connect();
             //update the statusBarEntry with out connection status
             UpdateStatus();
-            //self explanitory
-            OpenMainPanel();
-
             //check for existing connection requests
             CheckConnectionsRequestStatus();
         }

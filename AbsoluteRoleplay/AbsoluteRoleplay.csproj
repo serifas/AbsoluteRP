@@ -214,8 +214,4 @@
       
       
   </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Windows\Listings\" />
-    </ItemGroup>
 </Project>
