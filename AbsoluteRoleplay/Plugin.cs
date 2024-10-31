@@ -192,11 +192,11 @@ namespace AbsoluteRoleplay
             ClientState.Login += OnLogin;
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
-
+            plugin = this;
         }
         public void DrawTooltipInfo(IGameObject? mouseOverTarget)
         {
-            if (Configuration.tooltip_Enabled)
+            if (Configuration.tooltip_Enabled && !InCombatLock())
             {
                 if (mouseOverTarget.ObjectKind == ObjectKind.Player)
                 {
@@ -569,11 +569,7 @@ namespace AbsoluteRoleplay
             }
             if (TargetManager.MouseOverTarget != null)
             {
-                if (!InCombatLock())
-                {
                     DrawTooltipInfo(TargetManager.MouseOverTarget);
-                }
-                
             }
             else
             {
@@ -584,7 +580,7 @@ namespace AbsoluteRoleplay
         public bool InCombatLock()
         {
 
-            if (Condition[ConditionFlag.InCombat] && Configuration.tooltip_HideInCombat == true)
+            if (ClientState.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat)  && Configuration.tooltip_HideInCombat == true)
             {
                 return true;
             }

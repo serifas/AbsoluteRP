@@ -40,6 +40,7 @@ namespace AbsoluteRoleplay.Windows
 
 
             ImGui.BeginTabBar("MouseTargetTooltipOptions");
+
             if (ImGui.BeginTabItem("General"))
             {
                 
@@ -145,7 +146,7 @@ namespace AbsoluteRoleplay.Windows
 
                 ImGui.EndTabItem();
             }
-           
+          
             ImGui.EndTabBar();
 
         }
