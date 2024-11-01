@@ -169,6 +169,16 @@ namespace AbsoluteRoleplay
 
             return File.ReadAllBytes(imagePath);
         }
+        public static void AddIncrementBar(ImDrawListPtr drawList, float width, Vector4 color)
+        {
+            var cursorPos = ImGui.GetCursorScreenPos();
+            // Set the rectangle size and color
+            float height = 10;
+            uint colorVal = ImGui.GetColorU32(color); // Solid blue color (RGBA)
+
+            // Draw the outlined rectangle
+            drawList.AddRectFilled(new Vector2(cursorPos.X, cursorPos.Y), new Vector2(cursorPos.X + width, cursorPos.Y + height), colorVal);
+        }
         
     }
 }

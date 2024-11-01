@@ -23,6 +23,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using System.Diagnostics;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Conditions;
+using ImGuiNET;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -36,16 +37,20 @@ namespace AbsoluteRoleplay
         public string playername = "";
         public string playerworld = "";
         private const string CommandName = "/arp";
+        public static ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+
+        public float screenWidth = viewport.WorkSize.X;
+        public float screenHeight = viewport.WorkSize.Y;
         //WIP
         private const string ChatToggleCommand = "/arpchat";
-      
+
         public bool loginAttempted = false;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
         private IDtrBarEntry? connectionsBarEntry;
         private IDtrBarEntry? chatBarEntry;
         public static bool BarAdded = false;
-        internal static  float timer = 0f;
+        internal static float timer = 0f;
 
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
@@ -73,9 +78,9 @@ namespace AbsoluteRoleplay
         private OptionsWindow OptionsWindow { get; init; }
         private NotesWindow NotesWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
-        private AlertWindow AlertWindow { get; init; }
+        public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
-        private ARPTooltipWindow TooltipWindow { get; init; }
+        public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
         private ProfileWindow ProfileWindow { get; init; }
@@ -178,7 +183,7 @@ namespace AbsoluteRoleplay
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
-            
+
             // Subscribe to condition change events
             PluginInterface.UiBuilder.Draw += DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
@@ -323,7 +328,7 @@ namespace AbsoluteRoleplay
                 }
             }
         }
-      
+
         private void OnLogout()
         {
             //remove our bar entries
@@ -345,7 +350,7 @@ namespace AbsoluteRoleplay
             e.SetObserved();
             Framework.RunOnFrameworkThread(() =>
             {
-               logger.Error("Exception handled" + e.Exception.Message);
+                logger.Error("Exception handled" + e.Exception.Message);
             });
         }
         public void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -362,13 +367,13 @@ namespace AbsoluteRoleplay
         /// 
         /// 
 
-   
-   
+
+
 
         /// </summary>
         /// <param name="args"></param>
 
-        
+
         private void BookmarkProfile(IMenuItemClickedArgs args)
         {
             if (IsOnline()) //once again may not need this
@@ -388,23 +393,23 @@ namespace AbsoluteRoleplay
             string icon = "\uE03E"; //dice icon
             statusBarEntry.Text = icon; //set text to icon
             //set base tooltip value
-            statusBarEntry.Tooltip = "Absolute Roleplay";                
+            statusBarEntry.Tooltip = "Absolute Roleplay";
             //assign on click to toggle the main ui
             entry.OnClick = () => ToggleMainUI();
         }
         //WIP
-       /* public void LoadChatBarEntry()
-        {
-            
-            var entry = dtrBar.Get("AbsoluteChat");
-            chatBarEntry = entry;
-            string icon = "\uE0BB"; //link icon
-            chatBarEntry.Text = icon; //set text to icon
-            //set base tooltip value
-            chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
-            //assign on click to toggle the main ui
-        }
-        */
+        /* public void LoadChatBarEntry()
+         {
+
+             var entry = dtrBar.Get("AbsoluteChat");
+             chatBarEntry = entry;
+             string icon = "\uE0BB"; //link icon
+             chatBarEntry.Text = icon; //set text to icon
+             //set base tooltip value
+             chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
+             //assign on click to toggle the main ui
+         }
+         */
         //used to alert people of incoming connection requests
         public void LoadConnectionsBarEntry(float deltaTime)
         {
@@ -427,9 +432,9 @@ namespace AbsoluteRoleplay
         //used for when we need to remove the connection request status
         public void UnloadConnectionsBar()
         {
-            if(connectionsBarEntry != null)
+            if (connectionsBarEntry != null)
             {
-                connectionsBarEntry?.Remove();                
+                connectionsBarEntry?.Remove();
             }
         }
         public void Dispose()
@@ -482,7 +487,7 @@ namespace AbsoluteRoleplay
             playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
             if (IsOnline() == true)
             {
-                LoadConnection();                
+                LoadConnection();
             }
 
         }
@@ -492,7 +497,7 @@ namespace AbsoluteRoleplay
             // in response to the slash command, just toggle the display status of our main ui
             ToggleMainUI();
         }
-        
+
         public void CloseAllWindows()
         {
             foreach (Window window in WindowSystem.Windows)
@@ -533,7 +538,14 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
-        public void OpenAlertWindow() => AlertWindow.IsOpen = true;
+        public void OpenAlertWindow()
+        {
+
+            AlertWindow.increment = true;
+            AlertWindow.length = 0;
+            AlertWindow.IsOpen = true;
+        }
+        public void CloseAlertWIndow() => AlertWindow.IsOpen = false;
 
         internal async void UpdateStatus()
         {
@@ -567,15 +579,39 @@ namespace AbsoluteRoleplay
                 DataSender.Login(username, password, playername, playerworld);
                 loginAttempted = true;
             }
+            
             if (TargetManager.MouseOverTarget != null)
             {
-                    DrawTooltipInfo(TargetManager.MouseOverTarget);
+                DrawTooltipInfo(TargetManager.MouseOverTarget);
             }
-            else
+            if(TargetManager.Target != null)
+            {
+                DrawTooltipInfo(TargetManager.Target);
+            }
+            if(TargetManager.Target == null && TargetManager.MouseOverTarget == null)
             {
                 TooltipWindow.IsOpen = false;
                 tooltipLoaded = false;
             }
+            if(TargetManager.Target != TargetManager.PreviousTarget && TargetManager.Target != null)
+            {
+                DrawTooltipInfo(TargetManager.Target);
+            }
+        }
+        public Vector2 CalculateTooltipPos()
+        {
+            float positionX = plugin.Configuration.hPos;
+            float positionY = plugin.Configuration.vPos;
+            bool correctedPos = false;
+            if (positionX > plugin.screenWidth - ImGui.GetWindowSize().X)
+            {
+                positionX = plugin.screenWidth - ImGui.GetWindowSize().X;
+            }
+            if (positionY > plugin.screenHeight - ImGui.GetWindowSize().Y)
+            {
+                positionY = plugin.screenHeight - ImGui.GetWindowSize().Y;
+            }
+            return new Vector2(positionX, positionY);
         }
         public bool InCombatLock()
         {

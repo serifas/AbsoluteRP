@@ -1280,6 +1280,26 @@ namespace Networking
                     profile.Age = Age.Replace("''", "'");
                     profile.Height = Height.Replace("''", "'");
                     profile.Weight = Weight.Replace("''", "'");
+                    if(Alignment != 9)
+                    {
+                        ARPTooltipWindow.hasAlignment = true;
+                    }
+                    
+                    else
+                    {
+                        ARPTooltipWindow.hasAlignment = false;
+                    }
+                    if (Personality_1 == 26) { ARPTooltipWindow.showPersonality1 = false; } else { ARPTooltipWindow.showPersonality1 = true; }
+                    if (Personality_2 == 26) { ARPTooltipWindow.showPersonality2 = false; } else { ARPTooltipWindow.showPersonality2 = true; }
+                    if (Personality_3 == 26) { ARPTooltipWindow.showPersonality3 = false; } else { ARPTooltipWindow.showPersonality3 = true; }
+                    if(Personality_1 == 26 && Personality_2 == 26 && Personality_3 == 26)
+                    {
+                        ARPTooltipWindow.showPersonalities = false;
+                    }
+                    else
+                    {
+                        ARPTooltipWindow.showPersonalities = true;
+                    }
                     profile.Alignment = Alignment;
                     profile.Personality_1 = Personality_1;
                     profile.Personality_2 = Personality_2;

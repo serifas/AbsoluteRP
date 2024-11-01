@@ -5,6 +5,7 @@ using ImGuiNET;
 using System;
 using Dalamud.Interface.GameFonts;
 using AbsoluteRoleplay.Helpers;
+using OtterGui;
 namespace AbsoluteRoleplay.Windows
 {
     public class OptionsWindow : Window, IDisposable
@@ -17,6 +18,7 @@ namespace AbsoluteRoleplay.Windows
         public static bool showWIP;
         public Configuration Configuration;
         public static bool autoLogIn;
+        public static string[] alertPositions = { "Bottom Left", "Bottom Right", "Top Left", "Top Right", "Center" };
         public OptionsWindow(Plugin plugin) : base(
        "OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -54,6 +56,7 @@ namespace AbsoluteRoleplay.Windows
                     plugin.Configuration.showDisc = showDisc;
                     plugin.Configuration.Save();
                 }
+                //DrawAlertOptions();
                 ImGui.EndTabItem();
             }
             if (ImGui.BeginTabItem("Player Tooltips"))
@@ -67,7 +70,14 @@ namespace AbsoluteRoleplay.Windows
                         Configuration.tooltip_draggable = movable;
                         Configuration.Save();
                     }
-                   
+                    /*var locked = Configuration.tooltip_LockOnClick;
+                    if(ImGui.Checkbox("Keep Open On Target Select", ref locked))
+                    {
+                        Configuration.tooltip_LockOnClick = locked;
+                        Configuration.Save();
+                    }*/
+
+                    DrawTooltipPositionSliders();
                 }
                 if(ImGui.CollapsingHeader("Display"))
                 {
@@ -153,6 +163,29 @@ namespace AbsoluteRoleplay.Windows
         public void Dispose()
         {
 
+        }
+        public void DrawTooltipPositionSliders()
+        {
+            var hPos = Configuration.hPos;
+            var vPos = Configuration.vPos;
+
+            var viewport = ImGui.GetMainViewport();
+            float maxHVal = viewport.WorkSize.X - 100;
+            float maxVVal = viewport.WorkSize.Y - 100;
+
+            ImGui.Text("Static position: (Only works if draggable is disabled)");
+            if (ImGui.SliderFloat("Horizontal Position", ref hPos, 0, maxHVal))
+            {
+                Configuration.hPos = hPos;
+                Configuration.Save();
+                plugin.logger.Error(Configuration.hPos.ToString());
+            }
+            if (ImGui.SliderFloat("Vertical Position", ref vPos, 0, maxVVal))
+            {
+                Configuration.vPos = vPos;
+                Configuration.Save();
+                plugin.logger.Error(Configuration.vPos.ToString());
+            }
         }
     }
 

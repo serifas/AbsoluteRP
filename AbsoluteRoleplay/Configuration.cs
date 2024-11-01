@@ -1,6 +1,8 @@
 using Dalamud.Configuration;
 using Dalamud.Plugin;
+using ImGuiNET;
 using System;
+using System.Numerics;
 
 namespace AbsoluteRoleplay;
 
@@ -36,8 +38,16 @@ public class Configuration : IPluginConfiguration
     public bool tooltip_draggable { get; set; } = true;
     public int tooltip_PosX { get; set; }
     public int tooltip_PosY { get; set; }
-    public bool tooltip_LockOnClick { get; set; }
+    public bool tooltip_LockOnClick { get; set; } = false;
     public bool tooltip_HideInCombat { get; set; }
+    public int alert_position { get; set; } = (int)Defines.AlertPositions.BottomRight;
+
+    public float hPos {  get; set; }
+    public float vPos { get; set; }
+
+
+
+
     // the below exist just to make saving less cumbersome
     [NonSerialized]
     private IDalamudPluginInterface? PluginInterface;

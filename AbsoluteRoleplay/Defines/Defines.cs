@@ -19,6 +19,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace AbsoluteRoleplay
 {
+    
     public class PlayerProfile
     {
         public IDalamudTextureWrap avatar;
@@ -45,6 +46,7 @@ namespace AbsoluteRoleplay
         public bool nsfw;
         public bool trigger;
     }
+
     public class Story
     {
         public List<Chapter> chapters { get; set; }
@@ -66,8 +68,16 @@ namespace AbsoluteRoleplay
         public bool showValue { set; get; }
         public Action action { set; get; }
     }
-        internal class Defines
+    internal class Defines
     {
+        public enum AlertPositions
+        {
+            BottomLeft = 0, 
+            BottomRight = 1, 
+            TopLeft = 2,
+            TopRight = 3, 
+            Center = 4 
+        }
         public enum WindowAlignment
         {
             Center,
@@ -407,7 +417,8 @@ namespace AbsoluteRoleplay
             {
 
                 if (id == (int)Personalities.Abrasive) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/abrasive.png"))).Result;}
-                if (id == (int)Personalities.AbsentMinded) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/absentminded.png"))).Result;}
+                if (id == (int)Personalities.AbsentMinded) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/absentminded.png"))).Result; }
+                if (id == (int)Personalities.Aggressive) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/aggressive.png"))).Result; }
                 if (id == (int)Personalities.Artistic) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/artistic.png"))).Result;}
                 if (id == (int)Personalities.Cautious) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/cautious.png"))).Result;}
                 if (id == (int)Personalities.Charming) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/charming.png"))).Result;}

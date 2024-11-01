@@ -27,6 +27,7 @@ using Networking;
 using Dalamud.Plugin.Services;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -38,14 +39,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public string msg;
         public Vector2 windowPos;
         public bool openedProfile = false;
-        public static int width = 0, height = 0;
         public bool openedTargetProfile = false;
         public static IDalamudTextureWrap alignmentImg;
         public static IDalamudTextureWrap personality_1Img;
         public static IDalamudTextureWrap personality_2Img;
         public static IDalamudTextureWrap personality_3Img;
         public static IDalamudTextureWrap AlignmentImg;
+        
         public Plugin plugin;
+        internal static bool hasAlignment = false;
+        internal static bool showPersonality1 = false;
+        internal static bool showPersonality2 = false;
+        internal static bool showPersonality3 = false;
+        internal static bool showPersonalities = false;
+
         public ARPTooltipWindow(Plugin plugin) : base(
        "TOOLTIP", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoNav |
                                               ImGuiWindowFlags.NoMouseInputs
@@ -68,32 +75,64 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
             if (config.tooltip_showAlignment)
             {
-
+                if(hasAlignment == true)
+                {
                 ImGui.Text("Alignment:");
                 ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
                 ImGui.Text(Defines.AlignmentName(profile.Alignment));
+
+                }
             }
             if (config.tooltip_showPersonalityTraits)
             {
-                ImGui.Text("Personality Traits:");
-                ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
-                ImGui.SameLine();
-                ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
-                ImGui.SameLine();
-                ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
-                ImGui.Text(Defines.PersonalityNames(profile.Personality_1) + ",");
-                ImGui.SameLine();        
-                ImGui.Text(Defines.PersonalityNames(profile.Personality_3) + " and");
-                ImGui.SameLine();
-                ImGui.Text(Defines.PersonalityNames(profile.Personality_2));
-                ImGui.SameLine();
+                if(showPersonalities == true)
+                {
+                    ImGui.Text("Personality Traits:");
+                    if (showPersonality1 == true)
+                    {
+                        ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
+                        ImGui.SameLine();
+                    }
+                    if(showPersonality2 == true)
+                    {
+
+                        ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
+                        ImGui.SameLine();
+                    }
+                    if(showPersonality3 == true)
+                    {
+                        ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
+                    }
+                    if(showPersonality1 == true)
+                    {
+                        ImGui.Text(Defines.PersonalityNames(profile.Personality_1) + "||");
+                        ImGui.SameLine();
+                    }
+                    if(showPersonality2 == true)
+                    {
+                        ImGui.Text(Defines.PersonalityNames(profile.Personality_2)+ "||");
+                        ImGui.SameLine();
+                    }
+                    if(showPersonality3 == true)
+                    {
+                        ImGui.Text(Defines.PersonalityNames(profile.Personality_3));
+                        ImGui.SameLine();
+                    }
+                }
             }
             if (config.tooltip_draggable)
             {
                 windowPos = ImGui.GetMousePos();
                 ImGui.SetWindowPos(windowPos);
             }
+            else
+            {
+                Vector2 position = plugin.CalculateTooltipPos();
+                ImGui.SetWindowPos(position);
+            }
+           
         }
+     
         
 
 
