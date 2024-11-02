@@ -77,9 +77,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 if(hasAlignment == true)
                 {
-                ImGui.Text("Alignment:");
-                ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
-                ImGui.Text(Defines.AlignmentName(profile.Alignment));
+                    ImGui.Text("Alignment:");
+                    ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
+                    ImGui.SameLine();
+                    ImGui.Text(Defines.AlignmentName(profile.Alignment));
 
                 }
             }
@@ -92,31 +93,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
+                        ImGui.Text(Defines.PersonalityNames(profile.Personality_1));
+                        
                     }
-                    if(showPersonality2 == true)
+                    if (showPersonality2 == true)
                     {
-
                         ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
+                        ImGui.Text(Defines.PersonalityNames(profile.Personality_2));
                     }
                     if(showPersonality3 == true)
                     {
                         ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
-                    }
-                    if(showPersonality1 == true)
-                    {
-                        ImGui.Text(Defines.PersonalityNames(profile.Personality_1) + "||");
                         ImGui.SameLine();
-                    }
-                    if(showPersonality2 == true)
-                    {
-                        ImGui.Text(Defines.PersonalityNames(profile.Personality_2)+ "||");
-                        ImGui.SameLine();
-                    }
-                    if(showPersonality3 == true)
-                    {
                         ImGui.Text(Defines.PersonalityNames(profile.Personality_3));
-                        ImGui.SameLine();
                     }
                 }
             }

@@ -96,6 +96,8 @@ namespace Networking
         public static bool loggedIn;
         public static bool isAdmin;
 
+        public static int ListingsLoadStatus { get; internal set; }
+
         public static void RecBookmarks(byte[] data)
         {
             try

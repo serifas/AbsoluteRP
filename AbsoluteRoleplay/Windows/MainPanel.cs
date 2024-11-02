@@ -140,14 +140,14 @@ public class MainPanel : Window, IDisposable
             }
             if (pluginInstance.Configuration.showKofi == true)
             {
-                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(172, 27)))
+                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(ImGui.GetWindowSize().X / 2, ImGui.GetWindowSize().Y / 20)))
                 {
                     Util.OpenLink("https://ko-fi.com/infiniteroleplay");
                 }
             }
             if (pluginInstance.Configuration.showDisc == true)
             {
-                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(172, 27)))
+                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(ImGui.GetWindowSize().X / 2, ImGui.GetWindowSize().Y / 20)))
                 {
                     Util.OpenLink("https://discord.gg/hWprwTUwqj");
                 }

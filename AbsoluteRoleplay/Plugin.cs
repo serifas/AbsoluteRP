@@ -24,6 +24,7 @@ using System.Diagnostics;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Conditions;
 using ImGuiNET;
+using AbsoluteRoleplay.Windows.Listings;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -37,6 +38,7 @@ namespace AbsoluteRoleplay
         public string playername = "";
         public string playerworld = "";
         private const string CommandName = "/arp";
+        
         public static ImGuiViewportPtr viewport = ImGui.GetMainViewport();
 
         public float screenWidth = viewport.WorkSize.X;
@@ -80,6 +82,7 @@ namespace AbsoluteRoleplay
         private VerificationWindow VerificationWindow { get; init; }
         public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
+        private ListingWindow ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
@@ -201,7 +204,7 @@ namespace AbsoluteRoleplay
         }
         public void DrawTooltipInfo(IGameObject? mouseOverTarget)
         {
-            if (Configuration.tooltip_Enabled && !InCombatLock())
+            if (Configuration.tooltip_Enabled && !InCombatLock() && !ClientState.IsGPosing)
             {
                 if (mouseOverTarget.ObjectKind == ObjectKind.Player)
                 {

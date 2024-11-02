@@ -14,6 +14,7 @@ using AbsoluteRoleplay.Helpers;
 using Microsoft.VisualBasic;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
+using OtterGuiInternal.Enums;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -49,7 +50,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static IDalamudTextureWrap[] galleryImages, galleryThumbs = new IDalamudTextureWrap[30];
         public static List<IDalamudTextureWrap> galleryThumbsList = new List<IDalamudTextureWrap>();
         public static List<IDalamudTextureWrap> galleryImagesList = new List<IDalamudTextureWrap>();
-
+        public static Vector2 avatarSize = new Vector2(100,100);
         public static IDalamudTextureWrap currentAvatarImg, pictureTab;
         //profile vars
         public static string characterEditName,
@@ -85,7 +86,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             pg = Plugin.PluginInterface;
         }
         public override void OnOpen()
-        {
+        {  
             var blankPictureTab = Defines.UICommonImage(Defines.CommonImageTypes.blankPictureTab);
             if (blankPictureTab != null)
             {
@@ -146,7 +147,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                         ImGui.SameLine();
 
-                        if (ImGui.Button("Report!", new Vector2(100, 20)))
+                        Misc.RenderAlignmentToRight("Report");
+                        if (ImGui.Button("Report"))
                         {
                             ReportWindow.reportCharacterName = characterNameVal;
                             ReportWindow.reportCharacterWorld = characterWorldVal;
@@ -178,7 +180,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 //set bordered title at top of window and set fonts back to normal
                                 Misc.SetTitle(plugin, true, characterEditName);
-                                ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(100, 100)); //display avatar image
+                                ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f)); //display avatar image
                                 ImGui.Spacing();
                                 ImGuiHelpers.SafeTextWrapped("NAME:   " + characterEditName); // display character name
                                 ImGui.Spacing();
@@ -198,7 +200,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 {
                                     ImGui.TextColored(new Vector4(1, 1, 1, 1), "ALIGNMENT:");
 
-                                    ImGui.Image(alignmentImg.ImGuiHandle, new Vector2(32, 32));
+                                    ImGui.Image(alignmentImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 40));
 
                                     if (ImGui.IsItemHovered())
                                     {
@@ -209,10 +211,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 {
                                     ImGui.Spacing();
 
+                                    Vector2 alignmentSize = new Vector2(ImGui.GetIO().FontGlobalScale * 25, ImGui.GetIO().FontGlobalScale * 32);
                                     ImGui.TextColored(new Vector4(1, 1, 1, 1), "PERSONALITY TRAITS:");
                                     if(showPersonality1 == true)
                                     {
-                                        ImGui.Image(personalityImg1.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg1.ImGuiHandle, alignmentSize);
 
                                         if (ImGui.IsItemHovered())
                                         {
@@ -222,7 +225,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     }
                                     if (showPersonality2 == true)
                                     {
-                                        ImGui.Image(personalityImg2.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg2.ImGuiHandle, alignmentSize);
 
                                         if (ImGui.IsItemHovered())
                                         {
@@ -232,7 +235,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     }
                                     if(showPersonality3 == true)
                                     {
-                                        ImGui.Image(personalityImg3.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg3.ImGuiHandle, alignmentSize);
 
                                         if (ImGui.IsItemHovered())
                                         {
@@ -322,7 +325,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
                 else
                 {
-                    Misc.StartLoader(currentInd, max, loading);
+                    Misc.StartLoader(currentInd, max, loading, ImGui.GetWindowSize());
                 }
             }
         }

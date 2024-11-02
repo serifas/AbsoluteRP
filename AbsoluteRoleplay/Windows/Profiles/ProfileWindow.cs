@@ -31,6 +31,8 @@ using AbsoluteRoleplay;
 using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
 using FFXIVClientStructs.Havok.Common.Base.Container.String;
 using Lumina.Excel.GeneratedSheets2;
+using System.Text;
+using Lumina.Extensions;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -311,7 +313,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (TabOpen[TabValue.Bio])
                     {
                         //display for avatar
-                        ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(100, 100));
+                        ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f));
 
                         if (ImGui.Button("Edit Avatar"))
                         {
@@ -338,7 +340,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 //text must be multiline so add the multiline field/fields
                                 ImGui.Text(BioField.Item1);
-                                ImGui.InputTextMultiline(BioField.Item2, ref bioFieldsArr[i], 3100, new Vector2(500, 150));
+                                ImGui.InputTextMultiline(BioField.Item2, ref bioFieldsArr[i], 3100, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5));
                             }
                         }
                         ImGui.Spacing();
@@ -420,8 +422,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                     if (TabOpen[TabValue.OOC])
                     {
-                        ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, new Vector2(500, 600));
-
+                        Vector2 inputSize = new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - 20);
+                       // oocInfo = Misc.WrapTextToFit(oocInfo, inputSize.X);
+                        ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, inputSize);
                     }
                     #endregion
                     if (loadPreview == true)
@@ -531,7 +534,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             else
             {
 
-                Misc.StartLoader(loaderInd, percentage, loading);
+                Misc.StartLoader(loaderInd, percentage, loading, ImGui.GetWindowSize());
             }
         }
 
@@ -635,8 +638,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         ImGui.SameLine();
                         ImGui.InputText(string.Empty, ref ChapterNames[i], 100);
                         //set an input size for our input text as well to adjust with window scale
-                        var inputSize = new Vector2(windowSize.X - 30, windowSize.Y - 200); // Adjust as needed
-                        ImGui.InputTextMultiline("##ChapterContent" + i, ref ChapterContents[i], 5000, inputSize);
+                        var inputSize = new Vector2(windowSize.X - 30, windowSize.Y / 1.7f); // Adjust as needed
+                        //ChapterContents[i] = Misc.WrapTextToFit(ChapterContents[i], inputSize.X);
+                        ImGui.InputTextMultiline("##ChapterContent" + i, ref ChapterContents[i], 50000, inputSize);
+                        // Display InputTextMultiline and detect changes
+                        
 
                         using var chapterControlTable = ImRaii.Child("##ChapterControls" + i);
                         if (chapterControlTable)
@@ -662,17 +668,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
             }
         }
+
+       
+
         //simply draws the hook with the specified index and controls for said hook to the window
         public void DrawHook(int i, Plugin plugin)
         {
             if (hookExists[i] == true)
             {
 
-                using var hookChild = ImRaii.Child("##Hook" + i, new Vector2(550, 250));
+                using var hookChild = ImRaii.Child("##Hook" + i, new Vector2(ImGui.GetWindowSize().X, 350));
                 if (hookChild)
                 {
                     ImGui.InputTextWithHint("##HookName" + i, "Hook Name", ref HookNames[i], 300);
-                    ImGui.InputTextMultiline("##HookContent" + i, ref HookContents[i], 5000, new Vector2(500, 200));
+                    ImGui.InputTextMultiline("##HookContent" + i, ref HookContents[i], 5000, new Vector2(ImGui.GetWindowSize().X - 20, 200));
 
                     try
                     {
@@ -783,68 +792,66 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (ImageExists[i] == true)
             {
 
-                using var galleryImageChild = ImRaii.Child("##GalleryImage" + i, new Vector2(150, 280));
-                if (galleryImageChild)
+                ImGui.Text("Will this image be 18+ ?");
+                if (ImGui.Checkbox("Yes 18+", ref NSFW[i]))
                 {
-                    ImGui.Text("Will this image be 18+ ?");
-                    if (ImGui.Checkbox("Yes 18+", ref NSFW[i]))
+                    for (var g = 0; g < galleryImageCount; g++)
                     {
-                        for (var g = 0; g < galleryImageCount; g++)
-                        {
-                            //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
-                            DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
+                        //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
+                        DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
 
-                        }
-                    }
-                    ImGui.Text("Is this a possible trigger ?");
-                    if (ImGui.Checkbox("Yes Triggering", ref TRIGGER[i]))
-                    {
-                        for (var g = 0; g < galleryImageCount; g++)
-                        {
-                            //same for triggering, we don't want to lose this info if the user is forgetful
-                            DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
-                        }
-                    }
-                    ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
-                    try
-                    {
-                        //maximize the gallery image to preview it.
-                        ImGui.Image(galleryThumbs[i].ImGuiHandle, new Vector2(galleryThumbs[i].Width, galleryThumbs[i].Height));
-                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Click to enlarge"); }
-                        if (ImGui.IsItemClicked())
-                        {
-                            ImagePreview.width = galleryImages[i].Width;
-                            ImagePreview.height = galleryImages[i].Height;
-                            ImagePreview.PreviewImage = galleryImages[i];
-                            loadPreview = true;
-                        }
-
-
-                        using var galleryImageControlsTable = ImRaii.Child("##GalleryImageControls" + i);
-                        if (galleryImageControlsTable)
-                        {
-                            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
-                            {
-                                //button to remove the gallery image
-                                if (ImGui.Button("Remove##" + "gallery_remove" + i))
-                                {
-                                    ImageExists[i] = false;
-                                    ReorderGallery = true;
-                                    //remove the image immediately once pressed
-                                    DataSender.RemoveGalleryImage(currentProfile, plugin.playername, plugin.playerworld, i, galleryImageCount);
-                                }
-                            }
-                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                            {
-                                ImGui.SetTooltip("Ctrl Click to Enable");
-                            }
-
-                        }
-                    }
-                    catch (Exception ex)
-                    {
                     }
                 }
+                ImGui.Text("Is this a possible trigger ?");
+                if (ImGui.Checkbox("Yes Triggering", ref TRIGGER[i]))
+                {
+                    for (var g = 0; g < galleryImageCount; g++)
+                    {
+                        //same for triggering, we don't want to lose this info if the user is forgetful
+                        DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
+                    }
+                }
+                ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
+
+
+                //maximize the gallery image to preview it.
+                ImGui.Image(galleryThumbs[i].ImGuiHandle, new Vector2(galleryThumbs[i].Width, galleryThumbs[i].Height));
+                if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Click to enlarge"); }
+                if (ImGui.IsItemClicked())
+                {
+                    ImagePreview.width = galleryImages[i].Width;
+                    ImagePreview.height = galleryImages[i].Height;
+                    ImagePreview.PreviewImage = galleryImages[i];
+                    loadPreview = true;
+                }
+                using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+                {
+                    //button to remove the gallery image
+                    if (ImGui.Button("Remove##" + "gallery_remove" + i))
+                    {
+                        ImageExists[i] = false;
+                        ReorderGallery = true;
+                        //remove the image immediately once pressed
+                        DataSender.RemoveGalleryImage(currentProfile, plugin.playername, plugin.playerworld, i, galleryImageCount);
+                    }
+                }
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    ImGui.SetTooltip("Ctrl Click to Enable");
+                }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             }
 

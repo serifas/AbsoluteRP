@@ -100,7 +100,7 @@ namespace AbsoluteRoleplay.Helpers
                          else if (!nsfw && !trigger)
                          {
                              // Scale and create the thumbnail
-                             Image thumbImage = ScaleImage(baseImage, 120, 120);
+                             Image thumbImage = ScaleImage(baseImage, 200,200);
                              byte[] thumbImageBytes = ImageToByteArray(thumbImage);
     
                              var thumbTexture = Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes).Result;
