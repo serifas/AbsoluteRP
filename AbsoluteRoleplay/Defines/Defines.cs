@@ -454,7 +454,7 @@ namespace AbsoluteRoleplay
             ("NAME:   ", "##playername",  $"Character Name (The name or nickname of the character you are currently playing as)",  InputTypes.single),
             ("RACE:    ", "##race", $"The IC Race of your character", InputTypes.single),
             ("GENDER: ", "##gender", $"The IC gender of your character", InputTypes.single),
-            ("AGE:   ", "##age", $"If not 18+, do not put nsfw images in your gallery", InputTypes.single),
+            ("AGE:   ", "##age", $"Must be specified to post in nsfw. No nsfw if not 18+", InputTypes.single),
             ("HEIGHT:", "##height", $"Your OC's IC Height", InputTypes.single),
             ("WEIGHT:", "##weight", $"Your OC's IC Weight", InputTypes.single),
             ("AT FIRST GLANCE:", "##afg", $"What people see when they first glance at your character", InputTypes.multiline),

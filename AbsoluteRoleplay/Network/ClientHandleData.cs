@@ -56,6 +56,7 @@ namespace Networking
             packets.Add((int)ServerPackets.ReceiveNewConnectionRequest, DataReceiver.ReceiveConnectionsRequest);
             packets.Add((int)ServerPackets.RecieveTargetTooltip, DataReceiver.ReceiveTargetTooltip);
             packets.Add((int)ServerPackets.ReceiveProfiles, DataReceiver.ReceiveProfiles);
+            packets.Add((int)ServerPackets.ReceiveListingsByType, DataReceiver.ReceiveListingsByType);
             //packets.Add((int)ServerPackets.ReceiveChatMessage, DataReceiver.ReceiveChatMessage);
             // packets.Add((int)ServerPackets.ReceiveGroupMemberships, DataReceiver.ReceiveGroupMemberships);
 

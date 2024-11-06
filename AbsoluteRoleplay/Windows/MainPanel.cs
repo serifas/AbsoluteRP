@@ -238,18 +238,17 @@ public class MainPanel : Window, IDisposable
             }
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
+
                 if (ImGui.ImageButton(this.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
-                    //  viewConnections = true;
-                    // viewMainWindow = false;
-
+                    // pluginInstance.OpenListingsWindow();
                 }
 
             }
-            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            {
-                ImGui.SetTooltip("Events - WIP");
-            }
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                {
+                    ImGui.SetTooltip("Listings - WIP");
+                }
 
 
 

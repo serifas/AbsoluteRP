@@ -25,6 +25,11 @@ using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Conditions;
 using ImGuiNET;
 using AbsoluteRoleplay.Windows.Listings;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using static Lumina.Data.Parsing.Layer.LayerCommon;
+using Dalamud.Interface.Utility;
+using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -54,6 +59,7 @@ namespace AbsoluteRoleplay
         public static bool BarAdded = false;
         internal static float timer = 0f;
 
+        public static IGameGui GameGUI;
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
@@ -77,12 +83,12 @@ namespace AbsoluteRoleplay
         public static Plugin? Ui { get; private set; }
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         //Windows
-        private OptionsWindow OptionsWindow { get; init; }
-        private NotesWindow NotesWindow { get; init; }
+       public OptionsWindow OptionsWindow { get; init; }
+        public NotesWindow NotesWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
         public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
-        private ListingWindow ListingWindow { get; init; }
+        //private ListingWindow ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
@@ -101,6 +107,8 @@ namespace AbsoluteRoleplay
         public bool newConnection;
         private bool shouldCheckTarget = true;
         private bool isWindowOpen;
+        public static bool tooltipShown;
+
         // private bool chatLoaded = false;
 
 
@@ -116,7 +124,8 @@ namespace AbsoluteRoleplay
             IContextMenu contextMenu,
             IDataManager dataManager,
             IObjectTable objectTable,
-            IDtrBar dtrBar
+            IDtrBar dtrBar,
+            IGameGui gameGui
             )
         {
             // Wrap the original service
@@ -131,7 +140,9 @@ namespace AbsoluteRoleplay
             Condition = condition;
             ContextMenu = contextMenu;
             Framework = framework;
+            GameGUI = gameGui;
             ClientTCP.plugin = this;
+            WindowOperations.plugin = this;
             //unhandeled exception handeling - probably not really needed anymore.
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
@@ -183,12 +194,14 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
             WindowSystem.AddWindow(AlertWindow);
+            //WindowSystem.AddWindow(ListingWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
 
             // Subscribe to condition change events
             PluginInterface.UiBuilder.Draw += DrawUI;
+            //PluginInterface.UiBuilder.Draw += DrawHitboxes;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
             if (IsOnline())
@@ -202,22 +215,8 @@ namespace AbsoluteRoleplay
             MainPanel.pluginInstance = this;
             plugin = this;
         }
-        public void DrawTooltipInfo(IGameObject? mouseOverTarget)
-        {
-            if (Configuration.tooltip_Enabled && !InCombatLock() && !ClientState.IsGPosing)
-            {
-                if (mouseOverTarget.ObjectKind == ObjectKind.Player)
-                {
-                    IPlayerCharacter playerTarget = (IPlayerCharacter)mouseOverTarget;
-                    if (tooltipLoaded == false)
-                    {
-                        tooltipLoaded = true;
-                        DataSender.SendRequestPlayerTooltip(playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
-                    }
-                }
-            }
 
-        }
+      
         public void OpenAndLoadProfileWindow()
         {
 
@@ -240,45 +239,52 @@ namespace AbsoluteRoleplay
                 return;
             }
 
-            if (ctx->TargetObjectId.ObjectId != 0xE000_0000)
-            {
-                this.ObjectContext(args, ctx->TargetObjectId.ObjectId);
-                return;
-            }
+            var obj = ObjectTable.SearchById(ctx->TargetObjectId.ObjectId);
+            // Check if the object kind is Companion or Other, which are often used for minions
+            // Check if the object kind is Companion, which is often used for minions and pets
+            
+                if (ctx->TargetObjectId.ObjectId != 0xE000_0000)
+                {
+                    this.ObjectContext(args, ctx->TargetObjectId.ObjectId);
+                    return;
+                }
 
-            var world = ctx->TargetHomeWorldId;
-            if (world == 0)
-            {
-                return;
-            }
+                var world = ctx->TargetHomeWorldId;
+                if (world == 0)
+                {
+                    return;
+                }
 
-            var name = SeString.Parse(ctx->TargetName.AsSpan()).TextValue;
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return;
-            }
+                var name = SeString.Parse(ctx->TargetName.AsSpan()).TextValue;
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    return;
+                }
 
-            var worldname = DataManager.GetExcelSheet<Lumina.Excel.GeneratedSheets.World>()?.GetRow((uint)world)?.Name.ToString();
-            args.AddMenuItem(new MenuItem
-            {
-                Name = "Bookmark Absolute RP Profile",
-                PrefixColor = 56,
-                Prefix = SeIconChar.BoxedPlus,
-                OnClicked = _ => {
-                    DataSender.BookmarkPlayer(name, worldname);
+                var worldname = DataManager.GetExcelSheet<Lumina.Excel.GeneratedSheets.World>()?.GetRow((uint)world)?.Name.ToString();
 
-                },
-            });
-            args.AddMenuItem(new MenuItem
-            {
-                Name = "View Absolute RP Profile",
-                PrefixColor = 56,
-                Prefix = SeIconChar.BoxedQuestionMark,
-                OnClicked = _ => {
 
-                    DataSender.RequestTargetProfileByCharacter(name, worldname);
-                },
-            });
+                args.AddMenuItem(new MenuItem
+                {
+                    Name = "Bookmark Absolute RP Profile",
+                    PrefixColor = 56,
+                    Prefix = SeIconChar.BoxedPlus,
+                    OnClicked = _ => {
+                        DataSender.BookmarkPlayer(name, worldname);
+
+                    },
+                });
+                args.AddMenuItem(new MenuItem
+                {
+                    Name = "View Absolute RP Profile",
+                    PrefixColor = 56,
+                    Prefix = SeIconChar.BoxedQuestionMark,
+                    OnClicked = _ => {
+
+                        DataSender.RequestTargetProfileByCharacter(name, worldname);
+                    },
+                });
+
         }
 
         private void ObjectContext(IMenuOpenedArgs args, uint objectId)
@@ -288,7 +294,10 @@ namespace AbsoluteRoleplay
             {
                 return;
             }
-
+            if(obj == chara.CurrentMinion)
+            {
+                return;
+            }
             args.AddMenuItem(new MenuItem
             {
                 Name = "Bookmark Absolute RP Profile",
@@ -460,6 +469,7 @@ namespace AbsoluteRoleplay
             TermsWindow?.Dispose();
             ImagePreview?.Dispose();
             ProfileWindow?.Dispose();
+            NotesWindow?.Dispose();
             TargetWindow?.Dispose();
             BookmarksWindow?.Dispose();
             VerificationWindow?.Dispose();
@@ -467,6 +477,7 @@ namespace AbsoluteRoleplay
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
+           // ListingWindow?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -541,6 +552,7 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
+        //public void OpenListingsWindow() => ListingWindow.IsOpen = true;
         public void OpenAlertWindow()
         {
 
@@ -571,55 +583,45 @@ namespace AbsoluteRoleplay
                 logger.Error("Error updating status: " + ex.ToString());
             }
         }
+
+        private IntPtr lastTargetAddress = IntPtr.Zero;
+
         public void Update(IFramework framework)
         {
             if (!loginAttempted && MainPanel.serverStatus == "Connected")
             {
-                username = Configuration.username;
-                password = Configuration.password;
-                playername = ClientState.LocalPlayer.Name.ToString();
-                playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
-                DataSender.Login(username, password, playername, playerworld);
-                loginAttempted = true;
+                if (ClientState.LocalPlayer != null)
+                {
+                    username = Configuration.username;
+                    password = Configuration.password;
+                    playername = ClientState.LocalPlayer.Name.ToString();
+                    playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
+                    DataSender.Login(username, password, playername, playerworld);
+                    loginAttempted = true;
+                }
             }
-            
-            if (TargetManager.MouseOverTarget != null)
+
+            // Get the current target, prioritizing MouseOverTarget if available
+            var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
+
+            // Check if we have a new target by comparing addresses
+            if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress )
             {
-                DrawTooltipInfo(TargetManager.MouseOverTarget);
+                if (InCombatLock()) return;
+                WindowOperations.DrawTooltipInfo(gameObject);
+                lastTargetAddress = gameObject.Address;  // Update to the new target's address
             }
-            if(TargetManager.Target != null)
-            {
-                DrawTooltipInfo(TargetManager.Target);
-            }
-            if(TargetManager.Target == null && TargetManager.MouseOverTarget == null)
+            // If there's no target and a tooltip was open, close it
+            else if (currentTarget == null || currentTarget.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player && TooltipWindow.IsOpen )
             {
                 TooltipWindow.IsOpen = false;
-                tooltipLoaded = false;
+                lastTargetAddress = IntPtr.Zero;  // Reset the target address when no target
             }
-            if(TargetManager.Target != TargetManager.PreviousTarget && TargetManager.Target != null)
-            {
-                DrawTooltipInfo(TargetManager.Target);
-            }
-        }
-        public Vector2 CalculateTooltipPos()
-        {
-            float positionX = plugin.Configuration.hPos;
-            float positionY = plugin.Configuration.vPos;
-            bool correctedPos = false;
-            if (positionX > plugin.screenWidth - ImGui.GetWindowSize().X)
-            {
-                positionX = plugin.screenWidth - ImGui.GetWindowSize().X;
-            }
-            if (positionY > plugin.screenHeight - ImGui.GetWindowSize().Y)
-            {
-                positionY = plugin.screenHeight - ImGui.GetWindowSize().Y;
-            }
-            return new Vector2(positionX, positionY);
-        }
+        }      
+        
         public bool InCombatLock()
         {
-
-            if (ClientState.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat)  && Configuration.tooltip_HideInCombat == true)
+            if (ClientState.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat) || ClientState.IsPvP && Configuration.tooltip_HideInCombat == true)
             {
                 return true;
             }

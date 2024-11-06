@@ -15,6 +15,7 @@ using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
 using static AbsoluteRoleplay.Defines;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
+using AbsoluteRoleplay.Windows.Listings;
 
 namespace Networking
 {
@@ -71,6 +72,7 @@ namespace Networking
         ReceiveGroupMemberships = 58,
         RecieveTargetTooltip = 59,
         ReceiveProfiles = 60,
+        ReceiveListingsByType = 61,
     }
     class DataReceiver
     {
@@ -1134,6 +1136,43 @@ namespace Networking
             catch (Exception ex)
             {
                 plugin.logger.Error($"Error handling ReceiveTargetOOCInfo message: {ex}");
+            }
+        }
+        public static void ReceiveListingsByType(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int listingCount = buffer.ReadInt();
+                    ListingWindow.percentage = listingCount;
+                    for (int i = 0; i < listingCount; i++)
+                    {
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        string rules = buffer.ReadString();
+                        int category = buffer.ReadInt();
+                        int type = buffer.ReadInt();
+                        int focus = buffer.ReadInt();
+                        int setting = buffer.ReadInt();
+                        string bannerURL = buffer.ReadString();
+                        int inclusion = buffer.ReadInt();
+                        string startDate = buffer.ReadString();
+                        string endDate = buffer.ReadString();
+                        IDalamudTextureWrap banner = Imaging.DownloadListingImage(bannerURL, i);
+                        Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
+                        ListingWindow.listings.Add(listing);
+                        ListingWindow.loading = "Listing: " + i;
+                        ListingWindow.loaderInd = i;
+                    }
+                    ListingsLoadStatus = 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
             }
         }
         public static void ReceiveNoTargetOOCInfo(byte[] data)

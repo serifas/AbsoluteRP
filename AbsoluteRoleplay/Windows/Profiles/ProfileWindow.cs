@@ -793,7 +793,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
 
                 ImGui.Text("Will this image be 18+ ?");
-                if (ImGui.Checkbox("Yes 18+", ref NSFW[i]))
+                if (ImGui.Checkbox("Yes 18+##" + i , ref NSFW[i]))
                 {
                     for (var g = 0; g < galleryImageCount; g++)
                     {
@@ -803,7 +803,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     }
                 }
                 ImGui.Text("Is this a possible trigger ?");
-                if (ImGui.Checkbox("Yes Triggering", ref TRIGGER[i]))
+                if (ImGui.Checkbox("Yes Triggering##" + i, ref TRIGGER[i]))
                 {
                     for (var g = 0; g < galleryImageCount; g++)
                     {

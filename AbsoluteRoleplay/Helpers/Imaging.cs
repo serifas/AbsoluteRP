@@ -11,12 +11,36 @@ using JetBrains.Annotations;
 using System.Drawing.Imaging;
 using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Windows.Profiles;
+using Dalamud.Interface.Textures.TextureWraps;
 
 namespace AbsoluteRoleplay.Helpers
 {
     internal static class Imaging
     {
         public static Plugin plugin;
+        public static IDalamudTextureWrap DownloadListingImage(string url, int index)
+        {
+            IDalamudTextureWrap banner = Defines.UICommonImage(Defines.CommonImageTypes.eventsBanner);
+
+            using (WebClient webClient = new WebClient())
+            {
+                try
+                {
+                    // Download the image data as a byte array
+                    byte[] imageBytes = webClient.DownloadData(url);
+
+                    // Convert the byte array to a Dalamud texture
+                    banner = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
+                }
+                catch (Exception ex)
+                {
+                    // Handle exceptions, e.g., logging errors or falling back to default image
+                    plugin.logger.Error($"Failed to download image from {url}: {ex.Message}");
+                }
+            }
+
+            return banner;
+        }
         public static void DownloadProfileImage(bool self, string url, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
          {
          if (IsImageUrl(url))

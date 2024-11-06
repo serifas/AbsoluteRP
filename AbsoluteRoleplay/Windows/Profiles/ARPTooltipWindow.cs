@@ -28,6 +28,7 @@ using Dalamud.Plugin.Services;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using AbsoluteRoleplay.Helpers;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -117,7 +118,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             else
             {
-                Vector2 position = plugin.CalculateTooltipPos();
+                WindowOperations operations = new WindowOperations();
+                Vector2 position = operations.CalculateTooltipPos();
                 ImGui.SetWindowPos(position);
             }
            
