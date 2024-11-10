@@ -16,7 +16,7 @@ namespace AbsoluteRoleplay.Windows.Listings
 {
 
     //changed
-    public class ListingWindow : Window, IDisposable
+    public class ManageListings : Window, IDisposable
     {
         private string ListingName = string.Empty, ListingDescription = string.Empty, ListingRules = string.Empty, triggers = string.Empty;
         public static IDalamudTextureWrap banner;
@@ -64,14 +64,14 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static float loaderInd;
         internal static bool allLoaded = false;
 
-        public ListingWindow(Plugin plugin) : base(
+        public ManageListings(Plugin plugin) : base(
        "LISTINGS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
 
-                MinimumSize = new Vector2(600, 400),
-                MaximumSize = new Vector2(900, 950)
+                MinimumSize = new Vector2(200, 200),
+                MaximumSize = new Vector2(1000, 1000)
             };
 
             this.plugin = plugin;
@@ -205,7 +205,11 @@ namespace AbsoluteRoleplay.Windows.Listings
                 }
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(255, 0, 0, 255), "All images are scaled to 500x100 and may NOT contain NSFW content");
-                ImGui.Image(banner.ImGuiHandle, new Vector2(500, 100));
+                if(banner != null)
+                {
+                    ImGui.Image(banner.ImGuiHandle, new Vector2(500, 100));
+                }
+                
               
 
                 //Specifications
@@ -459,9 +463,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 if (!s)
                     return;
-                var imagePath = f[0].ToString();
-                var image = Path.GetFullPath(imagePath);
-                var imageBytes = File.ReadAllBytes(image);             
+                var imagePath = f[0].ToString();        
                 bannerBytes = File.ReadAllBytes(imagePath);
                 banner = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
             }, 0, null, configuration.AlwaysOpenDefaultImport);

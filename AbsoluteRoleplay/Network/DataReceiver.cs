@@ -360,11 +360,11 @@ namespace Networking
                     ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.height] = "";
                     ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = "";
                     ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = "";
-                    ProfileWindow.currentAlignment = 0;
+                    ProfileWindow.currentAlignment = 9;
 
-                    ProfileWindow.currentPersonality_1 = 0;
-                    ProfileWindow.currentPersonality_2 = 0;
-                    ProfileWindow.currentPersonality_3 = 0;
+                    ProfileWindow.currentPersonality_1 = 26;
+                    ProfileWindow.currentPersonality_2 = 26;
+                    ProfileWindow.currentPersonality_3 = 26;
                     loggedIn = true;
                     ProfileWindow.ExistingBio = false;
                     BioLoadStatus = 0;
@@ -561,9 +561,10 @@ namespace Networking
                     for (int i = 0; i < imageCount; i++)
                     {
                         string url = buffer.ReadString();
+                        string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(false, url, profileID, nsfw, trigger, plugin, i);
+                        Imaging.DownloadProfileImage(false, url, tooltip, profileID, nsfw, trigger, plugin, i);
                         TargetWindow.loading = "Gallery Image" + i;
                         TargetWindow.currentInd = i;
                     }
@@ -593,6 +594,7 @@ namespace Networking
                         ProfileWindow.galleryImages[i] = ProfileWindow.pictureTab;
                         ProfileWindow.galleryThumbs[i] = ProfileWindow.pictureTab;
                         ProfileWindow.imageURLs[i] = string.Empty;
+                        ProfileWindow.imageTooltips[i] = string.Empty;
                     }
                     ProfileWindow.ImageExists[0] = true;
                     ProfileWindow.galleryImageCount = 2;
@@ -620,9 +622,10 @@ namespace Networking
                     for (int i = 0; i < imageCount; i++)
                     {
                         string url = buffer.ReadString();
+                        string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(true, url, profileID, nsfw, trigger, plugin, i);                        
+                        Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, plugin, i);                        
                         ProfileWindow.galleryImageCount = i + 1;
                         ProfileWindow.ImageExists[i] = true;
                         ProfileWindow.loading = "Loading Gallery Image: " + i;
@@ -737,22 +740,6 @@ namespace Networking
 
                     ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     ProfileWindow.avatarBytes = avatarBytes;
-                    if (alignment == 9)
-                    {
-                        ProfileWindow.alignmentHidden = true;
-                    }
-                    else
-                    {
-                        ProfileWindow.alignmentHidden = false;
-                    }
-                    if (personality_1 == 26 && personality_2 == 26 && personality_3 == 26)
-                    {
-                        ProfileWindow.personalityHidden = true;
-                    }
-                    else
-                    {
-                        ProfileWindow.personalityHidden = false;
-                    }
                     ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.name] = name.Replace("''", "'");
                     ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.race] = race.Replace("''", "'");
                     ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = gender.Replace("''", "'");
@@ -787,7 +774,7 @@ namespace Networking
                     bool tooltipStatus = buffer.ReadBool();
                     plugin.OpenProfileWindow();
                     ProfileWindow.isPrivate = status;
-                    ProfileWindow.activeTooltip = tooltipStatus;
+                    ProfileWindow.activeProfile = tooltipStatus;
                     ProfileWindow.ExistingProfile = true;
                     ProfileWindow.ClearOnLoad();
 
@@ -1147,7 +1134,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
-                    ListingWindow.percentage = listingCount;
+                    ManageListings.percentage = listingCount;
                     for (int i = 0; i < listingCount; i++)
                     {
                         string name = buffer.ReadString();
@@ -1163,9 +1150,9 @@ namespace Networking
                         string endDate = buffer.ReadString();
                         IDalamudTextureWrap banner = Imaging.DownloadListingImage(bannerURL, i);
                         Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
-                        ListingWindow.listings.Add(listing);
-                        ListingWindow.loading = "Listing: " + i;
-                        ListingWindow.loaderInd = i;
+                        ManageListings.listings.Add(listing);
+                        ManageListings.loading = "Listing: " + i;
+                        ManageListings.loaderInd = i;
                     }
                     ListingsLoadStatus = 1;
                 }

@@ -26,7 +26,6 @@ namespace AbsoluteRoleplay.Helpers
                     //Hitboxes.DrawTooltipHitbox(player, GameGUI, 0.200f);
                     IPlayerCharacter playerTarget = (IPlayerCharacter)mouseOverTarget;
                     Plugin.tooltipLoaded = false;
-                    plugin.logger.Error(playerTarget.Name.ToString());
                     DataSender.SendRequestPlayerTooltip(playerTarget.Name.TextValue.ToString(), playerTarget.HomeWorld.GameData.Name.ToString());
                 }
             }

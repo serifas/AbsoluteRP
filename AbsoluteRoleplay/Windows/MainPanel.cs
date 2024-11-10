@@ -53,7 +53,7 @@ public class MainPanel : Window, IDisposable
                                  //profiles
                                  profileImage, npcImage, profileBookmarkImage, npcBookmarkImage,
                                  //events and venues
-                                 venueImage, eventImage, venueBookmarkImage, eventBookmarkImage,
+                                 listingImage, manageListingsImage, viewListingsImage,
                                  //systems
                                  combatImage, statSystemImage,
                                  reconnectImage;
@@ -238,18 +238,16 @@ public class MainPanel : Window, IDisposable
             }
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-
                 if (ImGui.ImageButton(this.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
-                    // pluginInstance.OpenListingsWindow();
+                    pluginInstance.OpenListingsWindow();
                 }
-
             }
-                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                {
-                    ImGui.SetTooltip("Listings - WIP");
-                }
 
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.SetTooltip("Listings - WIP ");
+            }
 
 
             ImGui.SameLine();

@@ -88,7 +88,7 @@ namespace AbsoluteRoleplay
         private VerificationWindow VerificationWindow { get; init; }
         public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
-        //private ListingWindow ListingWindow { get; init; }
+        private ManageListings ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
@@ -177,6 +177,7 @@ namespace AbsoluteRoleplay
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
             AlertWindow = new AlertWindow(this);
+            ListingWindow = new ManageListings(this);
             Configuration.Initialize(PluginInterface);
 
             //add the windows to the windowsystem
@@ -194,7 +195,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
             WindowSystem.AddWindow(AlertWindow);
-            //WindowSystem.AddWindow(ListingWindow);
+            WindowSystem.AddWindow(ListingWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -477,7 +478,7 @@ namespace AbsoluteRoleplay
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
-           // ListingWindow?.Dispose();
+            ListingWindow?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -552,7 +553,7 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
-        //public void OpenListingsWindow() => ListingWindow.IsOpen = true;
+        public void OpenListingsWindow() => ListingWindow.IsOpen = true;
         public void OpenAlertWindow()
         {
 
@@ -585,6 +586,7 @@ namespace AbsoluteRoleplay
         }
 
         private IntPtr lastTargetAddress = IntPtr.Zero;
+        public static bool lockedtarget = false;
 
         public void Update(IFramework framework)
         {
@@ -603,12 +605,21 @@ namespace AbsoluteRoleplay
 
             // Get the current target, prioritizing MouseOverTarget if available
             var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
-
+            if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
+            {
+                lockedtarget = true;
+            }
+            else
+            {
+                lockedtarget = false;
+            }
             // Check if we have a new target by comparing addresses
             if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress )
             {
                 if (InCombatLock()) return;
+               
                 WindowOperations.DrawTooltipInfo(gameObject);
+
                 lastTargetAddress = gameObject.Address;  // Update to the new target's address
             }
             // If there's no target and a tooltip was open, close it

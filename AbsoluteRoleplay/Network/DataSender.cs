@@ -161,7 +161,7 @@ namespace Networking
             }
 
         }
-        public static async void SendGalleryImage(int profileIndex, bool NSFW, bool TRIGGER, string url, int index)
+        public static async void SendGalleryImage(int profileIndex, bool NSFW, bool TRIGGER, string url, string tooltip, int index)
         {
             if (ClientTCP.IsConnected())
             {
@@ -177,6 +177,7 @@ namespace Networking
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteString(url);
+                        buffer.WriteString(tooltip);
                         buffer.WriteBool(NSFW);
                         buffer.WriteBool(TRIGGER);
                         buffer.WriteInt(index);

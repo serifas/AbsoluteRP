@@ -215,4 +215,8 @@
       
       
   </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="UI\common\listings\" />
+    </ItemGroup>
 </Project>

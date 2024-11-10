@@ -64,6 +64,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool[] NSFW = new bool[31]; //gallery images NSFW status
         public static bool[] TRIGGER = new bool[31]; //gallery images TRIGGER status
         public static bool[] ImageExists = new bool[31]; //used to check if an image exists in the gallery
+        public static string[] imageTooltips = new string[31];
         public static bool[] viewChapter = new bool[31]; //to check which chapter we are currently viewing
         public static bool[] hookExists = new bool[31]; //same as ImageExists but for hooks
         public static bool[] storyChapterExists = new bool[31]; //same again but for story chapters
@@ -73,6 +74,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static string oocInfo = string.Empty;
         public static bool ExistingProfile = false;
         private bool reloadProfiles = false;
+        public static List<Tuple<string, string>> customFields = new List<Tuple<string, string>>();
         public static bool ExistingStory, ExistingOOC, ExistingHooks, ExistingGallery, ExistingBio, ReorderHooks, ReorderChapters, AddHooks, AddStoryChapter; //to check if we have data from the DataReceiver for the respective fields or to reorder the gallery or hooks after deletion
         public static int chapterCount, currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3, hookCount = 0; //values changed by DataReceiver as well
         public static byte[] avatarBytes; //avatar image in a byte array
@@ -88,13 +90,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static int currentChapter;
         public static int profileIndex = 0;
         public static bool isPrivate;
-        public static bool activeTooltip;
+        public static bool activeProfile;
         public static int currentProfile = 0;
         public static bool profileListSelectable = true;
         public static List<string> profileName = new List<string>();
         public static List<Tuple<int, string, bool>> ProfileBaseData = new List<Tuple<int, string, bool>>();
         public static bool noprofiles = false;
-        
+        public static List<string> customAttributesList = new List<string>();
+
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -150,6 +153,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 NSFW[i] = false;
                 TRIGGER[i] = false;
                 storyChapterExists[i] = false;
+                imageTooltips[i] = string.Empty;
                 viewChapter[i] = false;
                 ImageExists[i] = false;
                 galleryImagesList.Add(pictureTab);
@@ -203,8 +207,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.SameLine();
                 if (ImGui.Button("Add Profile"))
                 {
+                    isPrivate = true;
                     ResetOnChangeOrRemoval();
                     DataSender.CreateProfile(ProfileBaseData.Count);
+                    currentProfile = ProfileBaseData.Count;
                     ExistingProfile = true;
                 }
                 if (ProfileBaseData.Count > 0 && ExistingProfile == true)
@@ -231,12 +237,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.Checkbox("Set Private", ref isPrivate))
                 {
                     //send our privacy settings to the server
-                    DataSender.SetProfileStatus(isPrivate, activeTooltip, currentProfile);
+                    DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile);
                 }
                 ImGui.SameLine();
-                if(ImGui.Checkbox("Set As Profile", ref activeTooltip))
+                if(ImGui.Checkbox("Set As Profile", ref activeProfile))
                 {
-                    DataSender.SetProfileStatus(isPrivate, activeTooltip, currentProfile);
+                    DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile);
                 }
                 if (ImGui.IsItemHovered())
                 {
@@ -343,6 +349,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 ImGui.InputTextMultiline(BioField.Item2, ref bioFieldsArr[i], 3100, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5));
                             }
                         }
+
                         ImGui.Spacing();
                         ImGui.Spacing();
 
@@ -798,7 +805,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     for (var g = 0; g < galleryImageCount; g++)
                     {
                         //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
-                        DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
+                        DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
 
                     }
                 }
@@ -808,11 +815,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     for (var g = 0; g < galleryImageCount; g++)
                     {
                         //same for triggering, we don't want to lose this info if the user is forgetful
-                        DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], g);
+                        DataSender.SendGalleryImage(currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
                     }
                 }
                 ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
-
+                ImGui.InputTextWithHint("##ImageInfo" + i, "Info", ref imageTooltips[i], 400);
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Tooltip of the image on hover");
+                }
 
                 //maximize the gallery image to preview it.
                 ImGui.Image(galleryThumbs[i].ImGuiHandle, new Vector2(galleryThumbs[i].Width, galleryThumbs[i].Height));
@@ -939,6 +950,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public static void ResetOnChangeOrRemoval()
         {
+            isPrivate = true;
+            
             for(int i = 0; i < hookCount; i++)
             {
                 hookExists[i] = false;
@@ -953,10 +966,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 bioFieldsArr[i] = string.Empty;
             }
             currentAvatarImg = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
-            currentAlignment = 0;
-            currentPersonality_1 = 0;
-            currentPersonality_2 = 0;
-            currentPersonality_3 = 0;
+            currentAlignment = 9;
+            currentPersonality_1 = 26;
+            currentPersonality_2 = 26;
+            currentPersonality_3 = 26;
         }
         public void Dispose()
         {
@@ -1048,10 +1061,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 bioFieldsArr[i] = string.Empty;
                             }
                             currentAvatarImg = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
-                            currentAlignment = 0;
-                            currentPersonality_1 = 0;
-                            currentPersonality_2 = 0;
-                            currentPersonality_3 = 0;
+                            currentAlignment = 9;
+                            currentPersonality_1 = 26;
+                            currentPersonality_2 = 26;
+                            currentPersonality_3 = 26;
                             currentProfile = idx;
                             ClearLoaded();
                             DataSender.FetchProfile(currentProfile);
@@ -1077,13 +1090,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
-
+            if (ImGui.Selectable("None", currentAlignment == 9))
+                currentAlignment = 9;
+            ImGuiUtil.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in Defines.AlignmentVals.WithIndex())
             {
-                if (ImGui.Selectable(newText, idx == currentAlignment))
-                    currentAlignment = idx;
+                if(idx != 9)
+                {
+                    if (ImGui.Selectable(newText, idx == currentAlignment))
+                        currentAlignment = idx;
 
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                }
+             
             }
         }
         public void AddPersonalitySelection_1()
@@ -1093,13 +1112,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
+            if (ImGui.Selectable("None", currentPersonality_1 == 26))
+                currentPersonality_1 = 26;
+            ImGuiUtil.SelectableHelpMarker("Undefined");
 
             foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
             {
-                if (ImGui.Selectable(newText, idx == currentPersonality_1))
-                    currentPersonality_1 = idx;
+                if (idx != (int)Defines.Personalities.None)
+                {
+                    if (ImGui.Selectable(newText, idx == currentPersonality_1))
+                        currentPersonality_1 = idx;
 
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                }
             }
         }
         public void AddPersonalitySelection_2()
@@ -1110,12 +1135,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (!combo)
                 return;
 
+            if (ImGui.Selectable("None", currentPersonality_2 == 26))
+                currentPersonality_2 = 26;
+            ImGuiUtil.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
             {
-                if (ImGui.Selectable(newText, idx == currentPersonality_2))
-                    currentPersonality_2 = idx;
+                if (idx != (int)Defines.Personalities.None)
+                {
+                    if (ImGui.Selectable(newText, idx == currentPersonality_2))
+                        currentPersonality_2 = idx;
 
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                }
             }
         }
         public void AddPersonalitySelection_3()
@@ -1126,12 +1157,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (!combo)
                 return;
 
+            if (ImGui.Selectable("None", currentPersonality_3 == 26))
+                currentPersonality_3 = 26;
+            ImGuiUtil.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
             {
-                if (ImGui.Selectable(newText, idx == currentPersonality_3))
-                    currentPersonality_3 = idx;
+                if (idx != (int)Defines.Personalities.None)
+                {
+                    if (ImGui.Selectable(newText, idx == currentPersonality_3))
+                        currentPersonality_3 = idx;
 
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                }
             }
         }
 
@@ -1292,6 +1329,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             string galleryNSFWPattern = @"<nsfw>(.*?)</nsfw>";
                             string galleryTRIGGERPattern = @"<trigger>(.*?)</trigger>";
                             string galleryUrlPattern = @"<url>(.*?)</url>";
+                            string galleryTooltipPattern = @"<tooltip>(.*?)</tooltip>";
 
                             MatchCollection galleryMatches = galleryRegex.Matches(backupContent);
 
@@ -1304,16 +1342,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 MatchCollection nsfwMatches = Regex.Matches(galleryContent, galleryNSFWPattern);
                                 MatchCollection triggerMatches = Regex.Matches(galleryContent, galleryTRIGGERPattern);
                                 MatchCollection urlMatches = Regex.Matches(galleryContent, galleryUrlPattern);
+                                MatchCollection tooltipMatches = Regex.Matches(galleryContent, galleryTooltipPattern);
 
                                 for (int i = 0; i < urlMatches.Count; i++)
                                 {
                                     bool nsfw = bool.TryParse(nsfwMatches[i].Groups[1].Value, out bool nsfwResult) ? nsfwResult : false;
                                     bool trigger = bool.TryParse(triggerMatches[i].Groups[1].Value, out bool triggerResult) ? triggerResult : false;
                                     string url = urlMatches[i].Groups[1].Value;
+                                    string tooltip = tooltipMatches[i].Groups[1].Value;
 
                                     if (!string.IsNullOrWhiteSpace(url))
                                     {
-                                        galleryimagedata.Add(new ProfileGalleryImage { url = url, nsfw = nsfw, trigger = trigger });
+                                        galleryimagedata.Add(new ProfileGalleryImage { url = url, nsfw = nsfw, trigger = trigger, tooltip = tooltip });
                                     }
                                 }
                             }
@@ -1345,7 +1385,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             };
 
                             //send data to server
-                            DataSender.SubmitProfileBio(currentProfile, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3, activeTooltip);
+                            DataSender.SubmitProfileBio(currentProfile, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3, activeProfile);
                             var hooks = new List<Tuple<int, string, string>>();
                             for (var i = 0; i < hookData.Count; i++)
                             {
@@ -1371,7 +1411,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             for (var i = 0; i < galleryimagedata.Count; i++)
                             {
                                 //pretty simple stuff, just send the gallery related array values to the server
-                                DataSender.SendGalleryImage(currentProfile, galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, i);
+                                DataSender.SendGalleryImage(currentProfile, galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, galleryimagedata[i].tooltip, i);
 
                             }
                             //send the OOC info to the server, just a string really
@@ -1462,7 +1502,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
                                                   bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
                                                   currentAlignment, currentPersonality_1, currentPersonality_2, currentPersonality_3,
-                                                  activeTooltip);
+                                                  activeProfile);
             var hooks = new List<Tuple<int, string, string>>();
             for (var i = 0; i < hookCount; i++)
             {
@@ -1488,7 +1528,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             for (var i = 0; i < galleryImageCount; i++)
             {
                 //pretty simple stuff, just send the gallery related array values to the server
-                DataSender.SendGalleryImage(currentProfile, NSFW[i], TRIGGER[i], imageURLs[i], i);
+                DataSender.SendGalleryImage(currentProfile, NSFW[i], TRIGGER[i], imageURLs[i], imageTooltips[i], i);
 
             }
             //send the OOC info to the server, just a string really
@@ -1562,6 +1602,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         writer.WriteLine($"<nsfw>{NSFW[i]}</nsfw>");
                         writer.WriteLine($"<trigger>{TRIGGER[i]}</trigger>");
                         writer.WriteLine($"<url>{EscapeTagContent(imageURLs[i])}</url>");
+                        writer.WriteLine($"<tooltip>{EscapeTagContent(imageTooltips[i])}</tooltip>");
                     }
                     writer.WriteLine("</gallery>");
                 }

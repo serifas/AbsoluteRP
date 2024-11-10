@@ -66,13 +66,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            if (config.tooltip_showName) Misc.SetTitle(this.plugin, false, profile.Name);
+            
+            if (config.tooltip_showName && profile.Name != string.Empty && profile.Name != "New Profile") Misc.SetTitle(this.plugin, false, profile.Name);
             if (config.tooltip_showAvatar)ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
-            if (config.tooltip_showRace) ImGui.Text($"Race: {profile.Race}");
-            if (config.tooltip_showGender) ImGui.Text($"Gender: {profile.Gender}");
-            if (config.tooltip_showAge) ImGui.Text($"Age: {profile.Age}");
-            if (config.tooltip_showHeight) ImGui.Text($"Height: {profile.Height}");
-            if (config.tooltip_showWeight) ImGui.Text($"Weight: {profile.Weight}");
+            if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"Race: {profile.Race}");
+            if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"Gender: {profile.Gender}");
+            if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"Age: {profile.Age}");
+            if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"Height: {profile.Height}");
+            if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"Weight: {profile.Weight}");
 
             if (config.tooltip_showAlignment)
             {
@@ -113,8 +114,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             if (config.tooltip_draggable)
             {
-                windowPos = ImGui.GetMousePos();
-                ImGui.SetWindowPos(windowPos);
+                if(Plugin.lockedtarget == false)
+                {
+                    windowPos = ImGui.GetMousePos();
+                    ImGui.SetWindowPos(windowPos);
+                }
             }
             else
             {

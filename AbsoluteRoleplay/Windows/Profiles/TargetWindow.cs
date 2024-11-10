@@ -45,6 +45,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static byte[] existingAvatarBytes;
         public static string currentTab = null;
         public static bool isActive = currentTab == "Bio";
+        public static string[] imageTooltips = new string[30];
         //BIO VARS
         public static IDalamudTextureWrap alignmentImg, personalityImg1, personalityImg2, personalityImg3;
         public static IDalamudTextureWrap[] galleryImages, galleryThumbs = new IDalamudTextureWrap[30];
@@ -181,20 +182,41 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 //set bordered title at top of window and set fonts back to normal
                                 Misc.SetTitle(plugin, true, characterEditName);
                                 ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f)); //display avatar image
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("NAME:   " + characterEditName); // display character name
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("RACE:   " + characterEditRace); // race
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("GENDER:   " + characterEditGender); //and so on
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("AGE:   " + characterEditAge);
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("HEIGHT:   " + characterEditHeight);
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("WEIGHT:   " + characterEditWeight);
-                                ImGui.Spacing();
-                                ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
+                                if (characterEditName != string.Empty && characterEditName != "New Profile")
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("NAME:   " + characterEditName); // display character name
+                                }
+                                if (characterEditRace != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("RACE:   " + characterEditRace); // race
+                                }
+                                if (characterEditGender != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("GENDER:   " + characterEditGender); //and so on
+                                }
+                                if (characterEditAge != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("AGE:   " + characterEditAge);
+                                }
+                                if (characterEditHeight != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("HEIGHT:   " + characterEditHeight);
+                                }
+                                if (characterEditWeight != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("WEIGHT:   " + characterEditWeight);
+                                }
+                                if (characterEditAfg != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
+                                }
                                 ImGui.Spacing();
                                 if (showAlignment == true)
                                 {
@@ -296,7 +318,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     {
                                         ImGui.TableNextColumn();
                                         ImGui.Image(galleryThumbs[i].ImGuiHandle, new Vector2(galleryThumbs[i].Width, galleryThumbs[i].Height));
-                                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Click to enlarge"); }
+                                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip(imageTooltips[i] + "\nClick to enlarge"); }
                                         if (ImGui.IsItemClicked())
                                         {
                                             ImagePreview.width = galleryImages[i].Width;

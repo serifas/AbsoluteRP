@@ -20,7 +20,8 @@ using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-
+using static AbsoluteRoleplay.PlayerProfile;
+using Status = Lumina.Excel.GeneratedSheets.Status;
 namespace AbsoluteRoleplay
 {
     public class Misc
@@ -41,6 +42,8 @@ namespace AbsoluteRoleplay
             return value / 100f * 100f;
         }
         //sets position of content to center
+
+       
         public static void SetCenter(Plugin plugin, string name)
         {
          

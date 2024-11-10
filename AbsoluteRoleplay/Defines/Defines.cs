@@ -38,11 +38,25 @@ namespace AbsoluteRoleplay
         public List<ProfileGalleryImage> GalleryImages { get; set; }
         public Story Story { get; set; }
         public string OOC { get; set; }
-
+   
     }
+    public enum StatusType
+    {
+        Positive, Negative, Special
+    }
+    public struct IconInfo
+    {
+        public string Name;
+        public uint IconID;
+        public StatusType Type;
+        public string Description;
+    }
+
+
     public class ProfileGalleryImage
     {
         public string url;
+        public string tooltip;
         public bool nsfw;
         public bool trigger;
     }

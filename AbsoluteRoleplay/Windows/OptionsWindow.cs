@@ -64,18 +64,18 @@ namespace AbsoluteRoleplay.Windows
                 if (ImGui.CollapsingHeader("Behavior"))
                 {
                     var movable = Configuration.tooltip_draggable;
-
                     if (ImGui.Checkbox("Draggable", ref movable))
                     {
                         Configuration.tooltip_draggable = movable;
                         Configuration.Save();
                     }
-                    /*var locked = Configuration.tooltip_LockOnClick;
-                    if(ImGui.Checkbox("Keep Open On Target Select", ref locked))
+                    var locked = Configuration.tooltip_LockOnClick;
+                    if(ImGui.Checkbox("Disable Dragging on Target Select", ref locked))
                     {
                         Configuration.tooltip_LockOnClick = locked;
                         Configuration.Save();
-                    }*/
+                    }
+
 
                     DrawTooltipPositionSliders();
                 }
