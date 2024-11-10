@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <Authors>Lynie</Authors>
-    <Version>0.0.0.10</Version>
+    <Version>0.0.0.11</Version>
     <Description>An all around Roleplay Plugin.</Description>
     <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
