@@ -1,9 +1,4 @@
 [submodule "OtterGui"]
 	path = OtterGui
 	url = https://github.com/Ottermandias/OtterGui.git
-[submodule "AbsoluteRoleplay/ECommons"]
-	path = AbsoluteRoleplay/ECommons
-	url = https://github.com/NightmareXIV/ECommons.git
-[submodule "ECommons"]
-	path = ECommons
-	url = https://github.com/NightmareXIV/ECommons.git
+
