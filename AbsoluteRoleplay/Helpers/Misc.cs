@@ -7,8 +7,6 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
-using Lumina.Excel.GeneratedSheets;
-using Lumina.Excel.GeneratedSheets2;
 using Newtonsoft.Json.Linq;
 using OtterGui;
 using System;
@@ -21,7 +19,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using static AbsoluteRoleplay.PlayerProfile;
-using Status = Lumina.Excel.GeneratedSheets.Status;
 namespace AbsoluteRoleplay
 {
     public class Misc

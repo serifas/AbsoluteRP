@@ -19,7 +19,6 @@ using Microsoft.VisualBasic;
 using Networking;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Internal;
-using Lumina.Excel.GeneratedSheets;
 
 namespace AbsoluteRoleplay.Windows
 {

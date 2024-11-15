@@ -217,7 +217,6 @@ namespace AbsoluteRoleplay
             plugin = this;
         }
 
-      
         public void OpenAndLoadProfileWindow()
         {
 
@@ -261,8 +260,7 @@ namespace AbsoluteRoleplay
                 {
                     return;
                 }
-
-                var worldname = DataManager.GetExcelSheet<Lumina.Excel.GeneratedSheets.World>()?.GetRow((uint)world)?.Name.ToString();
+                var worldname = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault((uint)world)?.Name.ToString();
 
 
                 args.AddMenuItem(new MenuItem
@@ -295,17 +293,14 @@ namespace AbsoluteRoleplay
             {
                 return;
             }
-            if(obj == chara.CurrentMinion)
-            {
-                return;
-            }
+            
             args.AddMenuItem(new MenuItem
             {
                 Name = "Bookmark Absolute RP Profile",
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
+                    DataSender.BookmarkPlayer(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -315,7 +310,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
 
-                    DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.GameData.Name.ToString());
+                    DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
         }
@@ -342,7 +337,7 @@ namespace AbsoluteRoleplay
             }
         }
 
-        private void OnLogout()
+        private void OnLogout(int type, int code)
         {
             //remove our bar entries
             connectionsBarEntry = null;
@@ -394,7 +389,7 @@ namespace AbsoluteRoleplay
                 //fetch target player once more
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
                 //send a bookmark message to the server
-                DataSender.BookmarkPlayer(targetPlayer.Name.ToString(), targetPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.BookmarkPlayer(targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
             }
         }
 
@@ -410,19 +405,6 @@ namespace AbsoluteRoleplay
             //assign on click to toggle the main ui
             entry.OnClick = () => ToggleMainUI();
         }
-        //WIP
-        /* public void LoadChatBarEntry()
-         {
-
-             var entry = dtrBar.Get("AbsoluteChat");
-             chatBarEntry = entry;
-             string icon = "\uE0BB"; //link icon
-             chatBarEntry.Text = icon; //set text to icon
-             //set base tooltip value
-             chatBarEntry.Tooltip = "Absolute Roleplay - Chat Messages";
-             //assign on click to toggle the main ui
-         }
-         */
         //used to alert people of incoming connection requests
         public void LoadConnectionsBarEntry(float deltaTime)
         {
@@ -499,7 +481,7 @@ namespace AbsoluteRoleplay
         public void OnLogin()
         {
             playername = ClientState.LocalPlayer.Name.ToString();
-            playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
+            playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
             if (IsOnline() == true)
             {
                 LoadConnection();
@@ -597,7 +579,7 @@ namespace AbsoluteRoleplay
                     username = Configuration.username;
                     password = Configuration.password;
                     playername = ClientState.LocalPlayer.Name.ToString();
-                    playerworld = ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString();
+                    playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
                     DataSender.Login(username, password, playername, playerworld);
                     loginAttempted = true;
                 }

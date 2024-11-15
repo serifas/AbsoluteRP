@@ -24,13 +24,11 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.VertexShader;
 using static System.Runtime.InteropServices.JavaScript.JSType;
-using Lumina.Excel.GeneratedSheets;
 using OtterGui.Tasks;
 using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay;
 using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
 using FFXIVClientStructs.Havok.Common.Base.Container.String;
-using Lumina.Excel.GeneratedSheets2;
 using System.Text;
 using Lumina.Extensions;
 
@@ -271,7 +269,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             ExistingProfile = false;
                         }
-                        plugin.logger.Error(ProfileBaseData.Count.ToString());
 
                     }
                 }
@@ -1275,7 +1272,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 }
                             }
 
-                            plugin.logger.Error($"Total hooks loaded: {hookData.Count}");
 
 
                             string storytitle = Misc.ExtractTextBetweenTags(backupContent, "storytitle");
@@ -1289,7 +1285,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             // Match the entire story chapters block
                             MatchCollection chapterTagMatches = chapterRegex.Matches(backupContent);
 
-                            plugin.logger.Error($"Chapter tag matches found: {chapterTagMatches.Count}");
 
                             foreach (Match chapterMatch in chapterTagMatches)
                             {
@@ -1314,8 +1309,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     chapterData.Add(new Chapter { name = chapterName, content = chapterContent });
                                 }
                             }
-
-                            plugin.logger.Error($"Total chapters loaded: {chapterData.Count}");
 
 
                             storyData.chapters = chapterData;
@@ -1357,8 +1350,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     }
                                 }
                             }
-
-                            plugin.logger.Error($"Total images loaded: {galleryimagedata.Count}");
 
                             PlayerProfile profile = new PlayerProfile()
                             {

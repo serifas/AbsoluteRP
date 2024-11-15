@@ -517,8 +517,6 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(currentIndex);
-
-                        plugin.logger.Error("Current profile is " + currentIndex);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                         NotesWindow.characterIndex = currentIndex;
                     }

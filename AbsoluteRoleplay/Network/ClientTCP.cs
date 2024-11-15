@@ -12,11 +12,13 @@ using AbsoluteRoleplay.Windows;
 using static AbsoluteRoleplay.Defines;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 
 namespace Networking
 {
     public class ClientTCP
     {
+        private static readonly SemaphoreSlim writeSemaphore = new SemaphoreSlim(1, 1);
         public static bool Connected;
         public static TcpClient clientSocket;
         public static SslStream sslStream;
@@ -379,8 +381,10 @@ namespace Networking
         }
 
         // Send data to the server asynchronously
+
         public static async Task SendDataAsync(byte[] data)
         {
+            await writeSemaphore.WaitAsync();
             try
             {
                 if (sslStream != null && sslStream.IsAuthenticated && sslStream.CanWrite)
@@ -396,7 +400,6 @@ namespace Networking
                     // Send the message
                     await sslStream.WriteAsync(message, 0, message.Length);
                     await sslStream.FlushAsync();
-                    //plugin.logger.Error($"Data sent to the server successfully. Total length: {message.Length}");
                 }
                 else
                 {
@@ -407,7 +410,12 @@ namespace Networking
             {
                 plugin.logger.Error("Error sending data: " + ex.ToString());
             }
+            finally
+            {
+                writeSemaphore.Release();
+            }
         }
+
 
 
 

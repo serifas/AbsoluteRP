@@ -14,7 +14,6 @@ using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Status = Lumina.Excel.GeneratedSheets.Status;
 using System.Collections.Generic;
 
 namespace AbsoluteRoleplay.Helpers

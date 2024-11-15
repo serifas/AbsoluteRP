@@ -278,8 +278,6 @@ namespace AbsoluteRoleplay.Windows.Listings
                 ImGui.SameLine();
                 if (ImGui.Button("Submit Listing"))
                 {
-                    plugin.logger.Error(plugin.Configuration.username);
-                    plugin.logger.Error(plugin.Configuration.password);
 
                     DataSender.SubmitListing(bannerBytes, ListingName, ListingDescription, ListingRules, inclusion,
                         currentCategory, currentType, currentFocus, currentSetting, IsNSFW, triggers,

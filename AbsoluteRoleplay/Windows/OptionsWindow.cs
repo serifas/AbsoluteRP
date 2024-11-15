@@ -178,13 +178,11 @@ namespace AbsoluteRoleplay.Windows
             {
                 Configuration.hPos = hPos;
                 Configuration.Save();
-                plugin.logger.Error(Configuration.hPos.ToString());
             }
             if (ImGui.SliderFloat("Vertical Position", ref vPos, 0, maxVVal))
             {
                 Configuration.vPos = vPos;
                 Configuration.Save();
-                plugin.logger.Error(Configuration.vPos.ToString());
             }
         }
     }
