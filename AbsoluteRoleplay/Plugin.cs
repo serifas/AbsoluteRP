@@ -316,24 +316,23 @@ namespace AbsoluteRoleplay
         }
 
 
-        public async void LoadConnection()
+        public void LoadConnection()
         {
             ClientHandleData.InitializePackets();
-            Connect();
+            Connect();            
             //update the statusBarEntry with out connection status
             UpdateStatus();
             //check for existing connection requests
             CheckConnectionsRequestStatus();
+
         }
-        public async void Connect()
+        public void Connect()
         {
             LoadStatusBarEntry();
-            if (IsOnline())
+            
+            if (!ClientTCP.IsConnected())
             {
-                if (!ClientTCP.IsConnected())
-                {
-                    ClientTCP.AttemptConnect();
-                }
+                ClientTCP.AttemptConnect();
             }
         }
 
@@ -480,13 +479,7 @@ namespace AbsoluteRoleplay
         }
         public void OnLogin()
         {
-            playername = ClientState.LocalPlayer.Name.ToString();
-            playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
-            if (IsOnline() == true)
-            {
-                LoadConnection();
-            }
-
+            LoadConnection();            
         }
 
         private void OnCommand(string command, string args)
@@ -511,6 +504,8 @@ namespace AbsoluteRoleplay
             //if player is online in game and player is present
             if (ClientState.IsLoggedIn == true && ClientState.LocalPlayer != null)
             {
+                playername = ClientState.LocalPlayer.Name.ToString();
+                playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
                 loggedIn = true;
             }
             return loggedIn; //return our logged in status
@@ -545,7 +540,7 @@ namespace AbsoluteRoleplay
         }
         public void CloseAlertWIndow() => AlertWindow.IsOpen = false;
 
-        internal async void UpdateStatus()
+        internal void UpdateStatus()
         {
             try
             {
@@ -553,13 +548,7 @@ namespace AbsoluteRoleplay
                 Vector4 connectionStatusColor = ClientTCP.GetConnectionStatusAsync(ClientTCP.clientSocket).Result.Item1;
                 string connectionStatus = ClientTCP.GetConnectionStatusAsync(ClientTCP.clientSocket).Result.Item2;
                 MainPanel.serverStatus = connectionStatus;
-                MainPanel.serverStatusColor = connectionStatusColor;
-                if (ClientState.IsLoggedIn && ClientState.LocalPlayer != null)
-                {
-                    //set dtr bar entry for connection status to our current server connection status
-                    statusBarEntry.Tooltip = new SeStringBuilder().AddText($"Absolute Roleplay").Build();
-                }
-               
+                MainPanel.serverStatusColor = connectionStatusColor;               
             }
             catch (Exception ex)
             {
@@ -572,9 +561,10 @@ namespace AbsoluteRoleplay
 
         public void Update(IFramework framework)
         {
+          
             if (!loginAttempted && MainPanel.serverStatus == "Connected")
             {
-                if (ClientState.LocalPlayer != null)
+                if (IsOnline())
                 {
                     username = Configuration.username;
                     password = Configuration.password;
