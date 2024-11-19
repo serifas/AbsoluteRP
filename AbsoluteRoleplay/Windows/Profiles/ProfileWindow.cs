@@ -209,6 +209,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     ResetOnChangeOrRemoval();
                     DataSender.CreateProfile(ProfileBaseData.Count);
                     currentProfile = ProfileBaseData.Count;
+                    DataSender.FetchProfile(currentProfile);
                     ExistingProfile = true;
                 }
                 if (ProfileBaseData.Count > 0 && ExistingProfile == true)
@@ -257,7 +258,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         ClearLoaded();
                         DataSender.DeleteProfile(currentProfile);
-                            
                         currentProfile -= 1;
                         if(currentProfile < 0)
                         {
@@ -269,6 +269,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             ExistingProfile = false;
                         }
+                        ResetOnChangeOrRemoval();
 
                     }
                 }
@@ -921,13 +922,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
         //method ot reset the entire story section
         public static void ResetStory()
         {
-            for (var s = 0; s < storyChapterCount; s++)
+            for (var s = 0; s <= storyChapterCount; s++)
             {
                 ChapterNames[s] = string.Empty;
                 ChapterContents[s] = string.Empty;
                 chapterCount = 0;
                 storyChapterExists[s] = false;
             }
+            
 
 
             currentChapter = 0;
