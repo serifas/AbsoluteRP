@@ -25,6 +25,12 @@
       <EmbeddedResource Remove="UI\common\listings\**" />
       <None Remove="UI\common\listings\**" />
     </ItemGroup>
+    <ItemGroup>
+      <Compile Remove="Helpers\Timer.cs" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="Helpers\Timer.cs" />
+    </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Lumina" Version="5.3.0" />

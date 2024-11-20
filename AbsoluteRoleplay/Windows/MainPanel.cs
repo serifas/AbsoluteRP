@@ -17,6 +17,8 @@ using AbsoluteRoleplay.Windows.Profiles;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using System.Security.Cryptography;
 using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
+using OtterGui.OtterGuiInternal.Enums;
+using static FFXIVClientStructs.FFXIV.Component.GUI.AtkUIColorHolder.Delegates;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
@@ -59,7 +61,8 @@ public class MainPanel : Window, IDisposable
                                  reconnectImage;
     public static Plugin pluginInstance;
     public static bool LoggedIN = false;
-
+    public static Vector2 ButtonSize = new Vector2();
+    public static float centeredX = 0f;
     public MainPanel(Plugin plugin) : base(
         "ABSOLUTE ROLEPLAY",
         ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
@@ -110,14 +113,16 @@ public class MainPanel : Window, IDisposable
         float paddingX = ImGui.GetWindowSize().X / 12;
         float buttonWidth = ImGui.GetWindowSize().X / 2 - paddingX;
         float buttonHeight = ImGui.GetWindowSize().Y / 6f;
-        
+
+        ButtonSize = new Vector2(ImGui.GetWindowSize().X / 2, ImGui.GetWindowSize().Y / 20);
+        centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
         // can't ref a property, so use a local copy
         if (login == true)
         {
-            ImGui.InputTextWithHint("##username", $"Username", ref this.username, 100);
-            ImGui.InputTextWithHint("##password", $"Password", ref this.password, 100, ImGuiInputTextFlags.Password);
 
-            if (ImGui.Button("Login"))
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##username", $"Username", ref this.username, 100, ImGuiInputTextFlags.None);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##password", $"Password", ref this.password, 100, ImGuiInputTextFlags.Password);
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Login"))
             {
                 if (pluginInstance.IsOnline() && ClientTCP.IsConnected() == true)
                 {
@@ -129,7 +134,8 @@ public class MainPanel : Window, IDisposable
             if(ImGui.Checkbox("Remember Me", ref Remember)){
                 SaveLoginPreferences(this.username.ToString(), this.password.ToString());
             }
-            if (ImGui.Button("Forgot"))
+
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize,"Forgot"))
             {
                 forgot = CurrentElement();
             }
@@ -138,27 +144,14 @@ public class MainPanel : Window, IDisposable
             {
                 register = CurrentElement();
             }
-            if (pluginInstance.Configuration.showKofi == true)
-            {
-                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(ImGui.GetWindowSize().X / 2, ImGui.GetWindowSize().Y / 20)))
-                {
-                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
-                }
-            }
-            if (pluginInstance.Configuration.showDisc == true)
-            {
-                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(ImGui.GetWindowSize().X / 2, ImGui.GetWindowSize().Y / 20)))
-                {
-                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
-                }
-            }
+           
 
 
         }
         if (forgot == true)
         {
-            ImGui.InputTextWithHint("##RegisteredEmail", $"Email", ref this.restorationEmail, 100);
-            if (ImGui.Button("Submit Request"))
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##RegisteredEmail", $"Email", ref this.restorationEmail, 100, ImGuiInputTextFlags.None);
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Submit Request"))
             {
                 if (pluginInstance.IsOnline())
                 {
@@ -166,7 +159,7 @@ public class MainPanel : Window, IDisposable
                 }
             }
 
-            if (ImGui.Button("Back"))
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Back"))
             {
                 login = CurrentElement();
             }
@@ -175,19 +168,23 @@ public class MainPanel : Window, IDisposable
         if (register == true)
         {
 
-            ImGui.InputTextWithHint("##username", $"Username", ref registerUser, 100);
-            ImGui.InputTextWithHint("##passver", $"Password", ref registerPassword, 100, ImGuiInputTextFlags.Password);
-            ImGui.InputTextWithHint("##regpassver", $"Verify Password", ref this.registerVerPassword, 100, ImGuiInputTextFlags.Password);
-            ImGui.InputTextWithHint("##email", $"Email", ref this.email, 100);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##username", $"Username", ref registerUser, 100, ImGuiInputTextFlags.None);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##passver", $"Password", ref registerPassword, 100, ImGuiInputTextFlags.Password);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##regpassver", $"Verify Password", ref this.registerVerPassword, 100, ImGuiInputTextFlags.Password);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##email", $"Email", ref this.email, 100, ImGuiInputTextFlags.None);
+            var Pos18 = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, Pos18));
             ImGui.Checkbox("I am atleast 18 years of age", ref Agree18);
+            var agreePos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, agreePos));
             ImGui.Checkbox("I agree to the TOS.", ref AgreeTOS);
-            if (ImGui.Button("View ToS & Rules"))
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "View ToS & Rules"))
             {
                 pluginInstance.OpenTermsWindow();
             }
             if (Agree18 == true && AgreeTOS == true)
             {
-                if (ImGui.Button("Register Account"))
+                if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Register Account"))
                 {
                     if (registerPassword == registerVerPassword)
                     {
@@ -206,7 +203,7 @@ public class MainPanel : Window, IDisposable
 
                 }
             }
-            if (ImGui.Button("Back"))
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Back"))
             {
                 login = CurrentElement();
             }
@@ -268,11 +265,15 @@ public class MainPanel : Window, IDisposable
             }
 
 
-            if (ImGui.Button("Options", new Vector2(buttonWidth * 2f + paddingX, buttonHeight / 2.5f)))
+            var optionPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 10, optionPos));
+            if (ImGui.Button("Options", new Vector2(buttonWidth * 2f, buttonHeight / 2.5f)))
             {
                 pluginInstance.OpenOptionsWindow();
             }
-            if (ImGui.Button("Logout", new Vector2(buttonWidth * 2f + paddingX, buttonHeight / 2.5f)))
+            var logoutPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 10, logoutPos));
+            if (ImGui.Button("Logout", new Vector2(buttonWidth * 2f, buttonHeight / 2.5f)))
             {
                 pluginInstance.newConnection = false;
                 pluginInstance.CloseAllWindows();
@@ -346,7 +347,51 @@ public class MainPanel : Window, IDisposable
             }
 
         }
+        
+        if (pluginInstance.Configuration.showKofi)
+        {
+            if (viewMainWindow == false && viewProfile == false)
+            {
 
+                var currentCursorY = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(centeredX, currentCursorY));
+                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, ButtonSize))
+                {
+                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
+                }
+            }
+            else
+            {
+                var kofiPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 10, kofiPos));
+                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 1.95f, buttonHeight / 2.5f)))
+                {
+                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
+                }
+            }
+        }
+        if (pluginInstance.Configuration.showDisc == true)
+        {
+            if (viewMainWindow == false && viewProfile == false)
+            {
+
+                var discPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(centeredX, discPos));
+                if (ImGui.ImageButton(discoBtn.ImGuiHandle, ButtonSize))
+                {
+                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                }
+            }
+            else
+            {
+                var discPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 10, discPos));
+                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(buttonWidth * 1.95f, buttonHeight / 2.5f)))
+                {
+                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                }
+            }
+        }
 
         if (viewProfile == true || viewSystems == true || viewEvents == true || viewConnections == true)
         {
@@ -355,6 +400,12 @@ public class MainPanel : Window, IDisposable
                 viewMainWindow = CurrentElement();
             }
         }
+
+        if (viewMainWindow == false && viewProfile == false)
+        {
+            var serverStatusPosY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
+        }
         ImGui.TextColored(serverStatusColor, serverStatus);
         ImGui.SameLine();
         if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(buttonHeight / 3.5f, buttonHeight / 3.5f)))
@@ -362,9 +413,16 @@ public class MainPanel : Window, IDisposable
             ClientTCP.AttemptConnect();
             pluginInstance.UpdateStatus();
         }
-        ImGui.TextColored(statusColor, status);
+        if (viewMainWindow == false && viewProfile == false)
+        {
+            var statusPosY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, statusPosY));
+        }
+        ImGui.PushStyleColor(ImGuiCol.Text, statusColor);
+        ImGui.TextWrapped(status);
+        ImGui.PopStyleColor();
 
-        
+
     }
     public static bool CurrentElement()
     {

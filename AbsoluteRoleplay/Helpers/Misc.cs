@@ -71,6 +71,23 @@ namespace AbsoluteRoleplay
 
             return null; // Return null if the tag is not found
         }
+        public static void DrawCenteredInput(float center, Vector2 size, string label, string hint, ref string input, uint length, ImGuiInputTextFlags flags)
+        {
+            var currentCursorY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(center, currentCursorY));
+            ImGui.PushItemWidth(size.X);
+            ImGui.InputTextWithHint(label, hint, ref input, length, flags);
+            ImGui.PopItemWidth();
+        }
+        public static bool DrawCenteredButton(float center, Vector2 size, string label)
+        {
+            var currentCursorY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(center, currentCursorY));
+            ImGui.PushItemWidth(size.X);
+            var button  = ImGui.Button(label);
+            ImGui.PopItemWidth();
+            return button;
+        }
         public static void DrawCenteredButtonTable(int rows, List<ProfileTab> profileTabs)
         {
             int columns = profileTabs.Count;

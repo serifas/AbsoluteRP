@@ -30,6 +30,7 @@ using static Lumina.Data.Parsing.Layer.LayerCommon;
 using Dalamud.Interface.Utility;
 using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using System.Timers;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -38,10 +39,10 @@ namespace AbsoluteRoleplay
         public static IGameObject? LastMouseOverTarget;
         public float tooltipAlpha;
         public static Plugin plugin;
-        public string username = "";
-        public string password = "";
-        public string playername = "";
-        public string playerworld = "";
+        public string username = string.Empty;
+        public string password = string.Empty;
+        public string playername = string.Empty;
+        public string playerworld = string.Empty;
         private const string CommandName = "/arp";
         
         public static ImGuiViewportPtr viewport = ImGui.GetMainViewport();
@@ -58,7 +59,7 @@ namespace AbsoluteRoleplay
         private IDtrBarEntry? chatBarEntry;
         public static bool BarAdded = false;
         internal static float timer = 0f;
-
+        public static Timer connectionTimer = new Timer(5000);
         public static IGameGui GameGUI;
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
@@ -207,14 +208,32 @@ namespace AbsoluteRoleplay
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
             if (IsOnline())
             {
-                OnLogin();
+                LoadConnection();
             }
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
             ClientState.Logout += OnLogout;
-            ClientState.Login += OnLogin;
+            ClientState.Login += LoadConnection;
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
             plugin = this;
+            connectionTimer.Elapsed += CheckConnection;
+            connectionTimer.Start();
+        }
+
+        private void CheckConnection(object? sender, ElapsedEventArgs e)
+        {
+            if (IsOnline() && !ClientTCP.IsConnected())
+            {
+                LoadConnection();
+                loginAttempted = false;
+            }
+            if (IsOnline() && ClientTCP.IsConnected() && loginAttempted == false)
+            {
+                if (username != string.Empty && password != string.Empty)
+                {
+                    DataSender.Login(username, password, playername, playerworld);
+                }
+            }
         }
 
         public void OpenAndLoadProfileWindow()
@@ -324,7 +343,6 @@ namespace AbsoluteRoleplay
             UpdateStatus();
             //check for existing connection requests
             CheckConnectionsRequestStatus();
-
         }
         public void Connect()
         {
@@ -433,6 +451,8 @@ namespace AbsoluteRoleplay
         }
         public void Dispose()
         {
+            connectionTimer?.Stop();
+            connectionTimer?.Dispose();
             WindowSystem?.RemoveAllWindows();
             statusBarEntry?.Remove();
             statusBarEntry = null;
@@ -444,7 +464,7 @@ namespace AbsoluteRoleplay
             PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUI;
             ClientState.Logout -= OnLogout;
-            ClientState.Login -= OnLogin;
+            ClientState.Login -= LoadConnection;
             // Dispose all windows
             OptionsWindow?.Dispose();
             MainPanel?.Dispose();
@@ -476,10 +496,6 @@ namespace AbsoluteRoleplay
             {
                 UnloadConnectionsBar();
             }
-        }
-        public void OnLogin()
-        {
-            LoadConnection();            
         }
 
         private void OnCommand(string command, string args)
@@ -570,8 +586,11 @@ namespace AbsoluteRoleplay
                     password = Configuration.password;
                     playername = ClientState.LocalPlayer.Name.ToString();
                     playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
-                    DataSender.Login(username, password, playername, playerworld);
-                    loginAttempted = true;
+                    if(Configuration.rememberInformation == true && username != string.Empty && password != string.Empty)
+                    {
+                        DataSender.Login(username, password, playername, playerworld);
+                        loginAttempted = true;
+                    }
                 }
             }
 
