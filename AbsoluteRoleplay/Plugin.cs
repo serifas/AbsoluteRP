@@ -59,7 +59,6 @@ namespace AbsoluteRoleplay
         private IDtrBarEntry? chatBarEntry;
         public static bool BarAdded = false;
         internal static float timer = 0f;
-        public static Timer connectionTimer = new Timer(5000);
         public static IGameGui GameGUI;
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
@@ -216,8 +215,6 @@ namespace AbsoluteRoleplay
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
             plugin = this;
-            connectionTimer.Elapsed += CheckConnection;
-            connectionTimer.Start();
         }
 
         private void CheckConnection(object? sender, ElapsedEventArgs e)
@@ -451,8 +448,6 @@ namespace AbsoluteRoleplay
         }
         public void Dispose()
         {
-            connectionTimer?.Stop();
-            connectionTimer?.Dispose();
             WindowSystem?.RemoveAllWindows();
             statusBarEntry?.Remove();
             statusBarEntry = null;
