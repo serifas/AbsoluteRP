@@ -446,6 +446,7 @@ namespace AbsoluteRoleplay
                 connectionsBarEntry?.Remove();
             }
         }
+
         public void Dispose()
         {
             WindowSystem?.RemoveAllWindows();
