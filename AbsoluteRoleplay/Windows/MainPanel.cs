@@ -358,7 +358,7 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetCursorPos(new Vector2(centeredX, currentCursorY));
                 if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, ButtonSize))
                 {
-                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
+                    Util.OpenLink("https://ko-fi.com/absoluteroleplay");
                 }
             }
             else
@@ -367,7 +367,7 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 10, kofiPos));
                 if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 1.95f, buttonHeight / 2.5f)))
                 {
-                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
+                    Util.OpenLink("https://ko-fi.com/absoluteroleplay");
                 }
             }
         }
