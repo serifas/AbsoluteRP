@@ -1,5 +1,8 @@
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.GameFonts;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Interface.Utility;
@@ -7,6 +10,7 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 using OtterGui;
 using System;
@@ -79,6 +83,24 @@ namespace AbsoluteRoleplay
             ImGui.InputTextWithHint(label, hint, ref input, length, flags);
             ImGui.PopItemWidth();
         }
+        public static void EditImage(Plugin plugin, FileDialogManager _fileDialogManager, bool avatar, int imageIndex)
+        {
+            _fileDialogManager.OpenFileDialog("Select Image", "Image{.png,.jpg}", (s, f) =>
+            {
+                if (!s)
+                    return;
+                var imagePath = f[0].ToString();
+                var image = Path.GetFullPath(imagePath);
+                var imageBytes = File.ReadAllBytes(image);
+                if (avatar == true)
+                {
+                    BioTab.avatarBytes = File.ReadAllBytes(imagePath);
+                    BioTab.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(BioTab.avatarBytes).Result;
+                }
+            }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
+
+        }
+      
         public static bool DrawCenteredButton(float center, Vector2 size, string label)
         {
             var currentCursorY = ImGui.GetCursorPosY();

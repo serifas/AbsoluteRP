@@ -16,6 +16,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using static AbsoluteRoleplay.Defines;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using AbsoluteRoleplay.Windows.Listings;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 
 namespace Networking
 {
@@ -239,11 +240,11 @@ namespace Networking
                     OOCLoadStatus = 0;
                     GalleryLoadStatus = 0;
 
-                    ProfileWindow.storyTitle = string.Empty;
-                    ProfileWindow.galleryImageCount = 0; 
-                    for (int i = 0; i < ProfileWindow.galleryThumbs.Length; i++)
+                    StoryTab.storyTitle = string.Empty;
+                    GalleryTab.galleryImageCount = 0; 
+                    for (int i = 0; i < GalleryTab.galleryThumbs.Length; i++)
                     {
-                        ProfileWindow.galleryThumbs[i] = Defines.UICommonImage(CommonImageTypes.blankPictureTab);
+                        GalleryTab.galleryThumbs[i] = Defines.UICommonImage(CommonImageTypes.blankPictureTab);
                     }
                     BookmarkLoadStatus = 0;
                     
@@ -350,23 +351,22 @@ namespace Networking
                     var currentAvatar = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
                     if (currentAvatar != null)
                     {
-                        ProfileWindow.currentAvatarImg = currentAvatar;
+                        BioTab.currentAvatarImg = currentAvatar;
                     }
 
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.name] = "";
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.race] = "";
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = "";
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.age] = "";
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.height] = "";
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = "";
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = "";
-                    ProfileWindow.currentAlignment = 9;
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.name] = "";
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.race] = "";
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = "";
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.age] = "";
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.height] = "";
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = "";
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = "";
+                    BioTab.currentAlignment = 9;
 
-                    ProfileWindow.currentPersonality_1 = 26;
-                    ProfileWindow.currentPersonality_2 = 26;
-                    ProfileWindow.currentPersonality_3 = 26;
+                    BioTab.currentPersonality_1 = 26;
+                    BioTab.currentPersonality_2 = 26;
+                    BioTab.currentPersonality_3 = 26;
                     loggedIn = true;
-                    ProfileWindow.ExistingBio = false;
                     BioLoadStatus = 0;
                     ProfileWindow.ClearOnLoad();
                 }
@@ -591,15 +591,14 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     for (int i = 0; i < 30; i++)
                     {
-                        ProfileWindow.galleryImages[i] = ProfileWindow.pictureTab;
-                        ProfileWindow.galleryThumbs[i] = ProfileWindow.pictureTab;
-                        ProfileWindow.imageURLs[i] = string.Empty;
-                        ProfileWindow.imageTooltips[i] = string.Empty;
+                        GalleryTab.galleryImages[i] = ProfileWindow.pictureTab;
+                        GalleryTab.galleryThumbs[i] = ProfileWindow.pictureTab;
+                        GalleryTab.imageURLs[i] = string.Empty;
+                        GalleryTab.imageTooltips[i] = string.Empty;
                     }
-                    ProfileWindow.ImageExists[0] = true;
-                    ProfileWindow.galleryImageCount = 2;
+                    GalleryTab.ImageExists[0] = true;
+                    GalleryTab.galleryImageCount = 2;
                     GalleryLoadStatus = 0;
-                    ProfileWindow.ExistingGallery = false;
                     ProfileWindow.ClearOnLoad();
                 }
             }
@@ -625,15 +624,13 @@ namespace Networking
                         string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, plugin, i);                        
-                        ProfileWindow.galleryImageCount = i + 1;
-                        ProfileWindow.ImageExists[i] = true;
+                        Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, plugin, i);
+                        GalleryTab.galleryImageCount = i + 1;
+                        GalleryTab.ImageExists[i] = true;
                         ProfileWindow.loading = "Loading Gallery Image: " + i;
                         ProfileWindow.loaderInd = i;
                     }
 
-                    ProfileWindow.ExistingGallery = true;
-                    
                     GalleryLoadStatus = 1;
                 }
             }
@@ -736,22 +733,21 @@ namespace Networking
                     int personality_1 = buffer.ReadInt();
                     int personality_2 = buffer.ReadInt();
                     int personality_3 = buffer.ReadInt();
-                    ProfileWindow.ExistingBio = true;
 
-                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    ProfileWindow.avatarBytes = avatarBytes;
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.name] = name.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.race] = race.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = gender.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.age] = age.ToString().Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.height] = height.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = weight.Replace("''", "'");
-                    ProfileWindow.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
-                    ProfileWindow.currentAlignment = alignment;
+                    BioTab.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    BioTab.avatarBytes = avatarBytes;
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.name] = name.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.race] = race.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = gender.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.age] = age.ToString().Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.height] = height.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = weight.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
+                    BioTab.currentAlignment = alignment;
 
-                    ProfileWindow.currentPersonality_1 = personality_1;
-                    ProfileWindow.currentPersonality_2 = personality_2;
-                    ProfileWindow.currentPersonality_3 = personality_3;
+                    BioTab.currentPersonality_1 = personality_1;
+                    BioTab.currentPersonality_2 = personality_2;
+                    BioTab.currentPersonality_3 = personality_3;
 
                     BioLoadStatus = 1;
                     ProfileWindow.ClearOnLoad();
@@ -795,18 +791,17 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int hookCount = buffer.ReadInt();
-                    ProfileWindow.ExistingHooks = true;
 
                     for (int i = 0; i < hookCount; i++)
                     {
                         string hookName = buffer.ReadString();
                         string hookContent = buffer.ReadString();
-                        ProfileWindow.hookExists[i] = true;
-                        ProfileWindow.HookNames[i] = hookName;
-                        ProfileWindow.HookContents[i] = hookContent;
+                        HooksTab.hookExists[i] = true;
+                        HooksTab.HookNames[i] = hookName;
+                        HooksTab.HookContents[i] = hookContent;
 
                     }
-                    ProfileWindow.hookCount = hookCount;
+                    HooksTab.hookCount = hookCount;
                     HooksLoadStatus = 1;
                     ProfileWindow.ClearOnLoad();
                 }
@@ -851,17 +846,16 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int chapterCount = buffer.ReadInt();
                     string storyTitle = buffer.ReadString();
-                    ProfileWindow.ResetStory();
-                    ProfileWindow.ExistingStory = true;
-                    ProfileWindow.storyTitle = storyTitle;
+                    StoryTab.ResetStory();
+                    StoryTab.storyTitle = storyTitle;
                     for (int i = 0; i < chapterCount; i++)
                     {
                         string chapterName = buffer.ReadString();
                         string chapterContent = buffer.ReadString();
-                        ProfileWindow.storyChapterCount = i;
-                        ProfileWindow.ChapterNames[i] = chapterName;
-                        ProfileWindow.ChapterContents[i] = chapterContent;
-                        ProfileWindow.storyChapterExists[i] = true;
+                        StoryTab.storyChapterCount = i;
+                        StoryTab.ChapterNames[i] = chapterName;
+                        StoryTab.ChapterContents[i] = chapterContent;
+                        StoryTab.storyChapterExists[i] = true;
                     }
                     StoryLoadStatus = 1;
                     ProfileWindow.ClearOnLoad();
@@ -937,15 +931,14 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    ProfileWindow.ExistingHooks = false;
-                    ProfileWindow.hookCount = 0;
-                    for (int i = 0; i < ProfileWindow.HookContents.Length; i++)
+                    HooksTab.hookCount = 0;
+                    for (int i = 0; i < HooksTab.HookContents.Length; i++)
                     {
-                        ProfileWindow.HookContents[i] = string.Empty;
+                        HooksTab.HookContents[i] = string.Empty;
                     }
-                    for (int f = 0; f < ProfileWindow.HookNames.Length; f++)
+                    for (int f = 0; f < HooksTab.HookNames.Length; f++)
                     {
-                        ProfileWindow.HookNames[f] = string.Empty;
+                        HooksTab.HookNames[f] = string.Empty;
                     }
                     HooksLoadStatus = 0;
                     ProfileWindow.ClearOnLoad();
@@ -964,12 +957,11 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    ProfileWindow.ExistingStory = false;
-                    ProfileWindow.storyTitle = string.Empty;
-                    for (int i = 0; i < ProfileWindow.ChapterNames.Count(); i++)
+                    StoryTab.storyTitle = string.Empty;
+                    for (int i = 0; i < StoryTab.ChapterNames.Count(); i++)
                     {
-                        ProfileWindow.ChapterNames[i] = string.Empty;
-                        ProfileWindow.ChapterContents[i] = string.Empty;
+                        StoryTab.ChapterNames[i] = string.Empty;
+                        StoryTab.ChapterContents[i] = string.Empty;
                     }
                     StoryLoadStatus = 0;
                     ProfileWindow.ClearOnLoad();
@@ -1078,7 +1070,6 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     string ooc = buffer.ReadString();
-                    ProfileWindow.ExistingOOC = true;
                     ProfileWindow.oocInfo = ooc;
                     OOCLoadStatus = 1;
                     ProfileWindow.ClearOnLoad();
@@ -1098,7 +1089,6 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     ProfileWindow.oocInfo = string.Empty;
-                    ProfileWindow.ExistingOOC = false;
                     ProfileWindow.ClearOnLoad();
                 }
             }

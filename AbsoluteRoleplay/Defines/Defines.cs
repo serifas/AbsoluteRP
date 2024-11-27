@@ -40,6 +40,17 @@ namespace AbsoluteRoleplay
         public string OOC { get; set; }
    
     }
+    public enum SpoilerTypes
+    {
+        None = 0,
+        ARR = 1,
+        HW = 2,
+        SB = 3,
+        SHB = 4,
+        EW = 5,
+        DT = 6,
+    }
+
     public enum StatusType
     {
         Positive, Negative, Special
@@ -870,35 +881,41 @@ namespace AbsoluteRoleplay
 
 
     }
-    public class Listing
+
+    public class Attribute()
     {
-        public string name { get; set; }
-        public string description { get; set; }
-        public string rules { get; set; }
-        public int category { get; set; }
-        public int type { get; set; }
-        public int focus { get; set; }
-        public int setting { get; set; }
-        public IDalamudTextureWrap banner { get; set; }
-        public int inclusion { get; set; }
-        public string startDate { get; set; }
-        public string endDate { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
 
-        public Listing(string Name, string Description, string Rules, int Category, int Type, int Focus, int Setting, IDalamudTextureWrap Banner, int Inclusion, string StartDate, string EndDate)
-        {
-            name = Name;
-            description = Description;
-            rules = Rules;
-            category = Category;
-            type = Type;
-            focus = Focus;
-            setting = Setting;
-            banner = Banner;
-            inclusion = Inclusion;
-            startDate = StartDate;
-            endDate = EndDate;
-        }
     }
+    public class Listing
+        {
+            public string name { get; set; }
+            public string description { get; set; }
+            public string rules { get; set; }
+            public int category { get; set; }
+            public int type { get; set; }
+            public int focus { get; set; }
+            public int setting { get; set; }
+            public IDalamudTextureWrap banner { get; set; }
+            public int inclusion { get; set; }
+            public string startDate { get; set; }
+            public string endDate { get; set; }
 
+            public Listing(string Name, string Description, string Rules, int Category, int Type, int Focus, int Setting, IDalamudTextureWrap Banner, int Inclusion, string StartDate, string EndDate)
+            {
+                name = Name;
+                description = Description;
+                rules = Rules;
+                category = Category;
+                type = Type;
+                focus = Focus;
+                setting = Setting;
+                banner = Banner;
+                inclusion = Inclusion;
+                startDate = StartDate;
+                endDate = EndDate;
+            }
+        }
 }
 

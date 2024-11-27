@@ -15,6 +15,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using System.Collections.Generic;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 
 namespace AbsoluteRoleplay.Helpers
 {
@@ -74,12 +75,12 @@ namespace AbsoluteRoleplay.Helpers
                                  var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
                                  if (image != null)
                                  {
-                                     ProfileWindow.galleryImages[index] = image;
+                                    GalleryTab.galleryImages[index] = image;
                                  }
-                                 ProfileWindow.imageURLs[index] = url;
-                                 ProfileWindow.NSFW[index] = nsfw;
-                                 ProfileWindow.TRIGGER[index] = trigger;
-                                 ProfileWindow.imageTooltips[index] = tooltip;
+                                 GalleryTab.imageURLs[index] = url;
+                                 GalleryTab.NSFW[index] = nsfw;
+                                 GalleryTab.TRIGGER[index] = trigger;
+                                 GalleryTab.imageTooltips[index] = tooltip;
                              }
                              else
                              {
@@ -97,7 +98,7 @@ namespace AbsoluteRoleplay.Helpers
                                  var triggerImage = Defines.UICommonImage(Defines.CommonImageTypes.TRIGGER);
                                  if (self)
                                  {
-                                     ProfileWindow.galleryThumbs[index] = triggerImage;
+                                     GalleryTab.galleryThumbs[index] = triggerImage;
                                  }
                                  else
                                  {
@@ -109,7 +110,7 @@ namespace AbsoluteRoleplay.Helpers
                                  var nsfwImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFW);
                                  if (self)
                                  {
-                                     ProfileWindow.galleryThumbs[index] = nsfwImage;
+                                     GalleryTab.galleryThumbs[index] = nsfwImage;
                                  }
                                  else
                                  {
@@ -121,7 +122,7 @@ namespace AbsoluteRoleplay.Helpers
                                  var nsfwTriggerImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFWTRIGGER);
                                  if (self)
                                  {
-                                     ProfileWindow.galleryThumbs[index] = nsfwTriggerImage;
+                                     GalleryTab.galleryThumbs[index] = nsfwTriggerImage;
                                  }
                                  else
                                  {
@@ -137,7 +138,7 @@ namespace AbsoluteRoleplay.Helpers
                                  var thumbTexture = Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes).Result;
                                  if (self)
                                  {
-                                     ProfileWindow.galleryThumbs[index] = thumbTexture;
+                                    GalleryTab.galleryThumbs[index] = thumbTexture;
                                  }
                                  else
                                  {

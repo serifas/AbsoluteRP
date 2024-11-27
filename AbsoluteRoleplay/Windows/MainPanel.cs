@@ -19,6 +19,7 @@ using System.Security.Cryptography;
 using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
 using OtterGui.OtterGuiInternal.Enums;
 using static FFXIVClientStructs.FFXIV.Component.GUI.AtkUIColorHolder.Delegates;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
@@ -289,7 +290,7 @@ public class MainPanel : Window, IDisposable
             {
                 if (pluginInstance.IsOnline())
                 {
-                    ProfileWindow.storyTitle = string.Empty;
+                    StoryTab.storyTitle = string.Empty;
                     ProfileWindow.oocInfo = string.Empty;
                     pluginInstance.OpenAndLoadProfileWindow();
                 }

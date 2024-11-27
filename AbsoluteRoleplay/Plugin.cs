@@ -76,9 +76,6 @@ namespace AbsoluteRoleplay
         //used for making sure click happy people don't mess up their hard work
         public static bool CtrlPressed() => (GetKeyState(0xA2) & 0x8000) != 0 || (GetKeyState(0xA3) & 0x8000) != 0;
         public Configuration Configuration { get; init; }
-        private Stopwatch _fadeTimer;
-        private Stopwatch _uiSpeedTimer;
-        private double _uiSpeed;
         public static bool tooltipLoaded = false;
         public static Plugin? Ui { get; private set; }
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
@@ -157,10 +154,6 @@ namespace AbsoluteRoleplay
             {
                 HelpMessage = "opens the plugin window."
             });
-            //WIP
-
-            _fadeTimer = new Stopwatch();
-            _uiSpeedTimer = Stopwatch.StartNew();
 
             //init our windows
             OptionsWindow = new OptionsWindow(this);
@@ -205,16 +198,17 @@ namespace AbsoluteRoleplay
             //PluginInterface.UiBuilder.Draw += DrawHitboxes;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
-            if (IsOnline())
-            {
-                LoadConnection();
-            }
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
             ClientState.Logout += OnLogout;
             ClientState.Login += LoadConnection;
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
             plugin = this;
+
+            if (IsOnline())
+            {
+                LoadConnection();
+            }
         }
 
         private void CheckConnection(object? sender, ElapsedEventArgs e)
