@@ -11,117 +11,149 @@ using JetBrains.Annotations;
 using System.Drawing.Imaging;
 using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Windows.Profiles;
+using Dalamud.Interface.Textures.TextureWraps;
+using FFXIVClientStructs.FFXIV.Client.UI.Info;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+using System.Collections.Generic;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 
 namespace AbsoluteRoleplay.Helpers
 {
     internal static class Imaging
     {
         public static Plugin plugin;
-        public static void DownloadProfileImage(bool self, string url, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
+        private static Dictionary<uint, IconInfo?> IconInfoCache = [];
+     
+        public static IDalamudTextureWrap DownloadListingImage(string url, int index)
+        {
+            IDalamudTextureWrap banner = Defines.UICommonImage(Defines.CommonImageTypes.eventsBanner);
+
+            using (WebClient webClient = new WebClient())
+            {
+                try
+                {
+                    // Download the image data as a byte array
+                    byte[] imageBytes = webClient.DownloadData(url);
+
+                    // Convert the byte array to a Dalamud texture
+                    banner = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
+                }
+                catch (Exception ex)
+                {
+                    // Handle exceptions, e.g., logging errors or falling back to default image
+                    plugin.logger.Error($"Failed to download image from {url}: {ex.Message}");
+                }
+            }
+
+            return banner;
+        }
+        public static void DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
          {
-         if (IsImageUrl(url))
-         {
-             try
+             if (IsImageUrl(url))
              {
-                 using (WebClient webClient = new WebClient())
+                 try
                  {
-                     // Get image data as byte array
-                     byte[] imageBytes = webClient.DownloadData(url);
-    
-                     using (MemoryStream ms = new MemoryStream(imageBytes))
+                     using (WebClient webClient = new WebClient())
                      {
-                         // Load the image from the memory stream
-                         Image baseImage = Image.FromStream(ms);
+                         // Get image data as byte array
+                         byte[] imageBytes = webClient.DownloadData(url);
     
-                         // Scale the image
-                         Image scaledImage = ScaleImage(baseImage, 1000, 800);
-    
-                         // Convert scaled image to byte array
-                         byte[] scaledImageBytes = ImageToByteArray(scaledImage);
-    
-                         // If self is true, process for ProfileWindow, else for TargetWindow
-                         if (self)
+                         using (MemoryStream ms = new MemoryStream(imageBytes))
                          {
-                             var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
-                             if (image != null)
-                             {
-                                 ProfileWindow.galleryImages[index] = image;
-                             }
-                             ProfileWindow.imageURLs[index] = url;
-                             ProfileWindow.NSFW[index] = nsfw;
-                             ProfileWindow.TRIGGER[index] = trigger;
-                         }
-                         else
-                         {
-                             var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
-                             if (image != null)
-                             {
-                                 TargetWindow.galleryImages[index] = image;
-                             }
-                         }
+                             // Load the image from the memory stream
+                             Image baseImage = Image.FromStream(ms);
     
-                         // Handle NSFW/trigger thumbnail logic
-                         if (trigger && !nsfw)
-                         {
-                             var triggerImage = Defines.UICommonImage(Defines.CommonImageTypes.TRIGGER);
+                             // Scale the image
+                             Image scaledImage = ScaleImage(baseImage, 1000, 800);
+    
+                             // Convert scaled image to byte array
+                             byte[] scaledImageBytes = ImageToByteArray(scaledImage);
+    
+                             // If self is true, process for ProfileWindow, else for TargetWindow
                              if (self)
                              {
-                                 ProfileWindow.galleryThumbs[index] = triggerImage;
+                                 var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
+                                 if (image != null)
+                                 {
+                                    GalleryTab.galleryImages[index] = image;
+                                 }
+                                 GalleryTab.imageURLs[index] = url;
+                                 GalleryTab.NSFW[index] = nsfw;
+                                 GalleryTab.TRIGGER[index] = trigger;
+                                 GalleryTab.imageTooltips[index] = tooltip;
                              }
                              else
                              {
-                                 TargetWindow.galleryThumbs[index] = triggerImage;
+                                 var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
+                                 if (image != null)
+                                 {
+                                    TargetWindow.galleryImages[index] = image;
+                                    TargetWindow.imageTooltips[index] = tooltip;
+                                 }
                              }
-                         }
-                         else if (nsfw && !trigger)
-                         {
-                             var nsfwImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFW);
-                             if (self)
-                             {
-                                 ProfileWindow.galleryThumbs[index] = nsfwImage;
-                             }
-                             else
-                             {
-                                 TargetWindow.galleryThumbs[index] = nsfwImage;
-                             }
-                         }
-                         else if (nsfw && trigger)
-                         {
-                             var nsfwTriggerImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFWTRIGGER);
-                             if (self)
-                             {
-                                 ProfileWindow.galleryThumbs[index] = nsfwTriggerImage;
-                             }
-                             else
-                             {
-                                 TargetWindow.galleryThumbs[index] = nsfwTriggerImage;
-                             }
-                         }
-                         else if (!nsfw && !trigger)
-                         {
-                             // Scale and create the thumbnail
-                             Image thumbImage = ScaleImage(baseImage, 120, 120);
-                             byte[] thumbImageBytes = ImageToByteArray(thumbImage);
     
-                             var thumbTexture = Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes).Result;
-                             if (self)
+                             // Handle NSFW/trigger thumbnail logic
+                             if (trigger && !nsfw)
                              {
-                                 ProfileWindow.galleryThumbs[index] = thumbTexture;
+                                 var triggerImage = Defines.UICommonImage(Defines.CommonImageTypes.TRIGGER);
+                                 if (self)
+                                 {
+                                     GalleryTab.galleryThumbs[index] = triggerImage;
+                                 }
+                                 else
+                                 {
+                                     TargetWindow.galleryThumbs[index] = triggerImage;
+                                 }
                              }
-                             else
+                             else if (nsfw && !trigger)
                              {
-                                 TargetWindow.galleryThumbs[index] = thumbTexture;
+                                 var nsfwImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFW);
+                                 if (self)
+                                 {
+                                     GalleryTab.galleryThumbs[index] = nsfwImage;
+                                 }
+                                 else
+                                 {
+                                     TargetWindow.galleryThumbs[index] = nsfwImage;
+                                 }
+                             }
+                             else if (nsfw && trigger)
+                             {
+                                 var nsfwTriggerImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFWTRIGGER);
+                                 if (self)
+                                 {
+                                     GalleryTab.galleryThumbs[index] = nsfwTriggerImage;
+                                 }
+                                 else
+                                 {
+                                     TargetWindow.galleryThumbs[index] = nsfwTriggerImage;
+                                 }
+                             }
+                             else if (!nsfw && !trigger)
+                             {
+                                 // Scale and create the thumbnail
+                                 Image thumbImage = ScaleImage(baseImage, 200,200);
+                                 byte[] thumbImageBytes = ImageToByteArray(thumbImage);
+    
+                                 var thumbTexture = Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes).Result;
+                                 if (self)
+                                 {
+                                    GalleryTab.galleryThumbs[index] = thumbTexture;
+                                 }
+                                 else
+                                 {
+                                     TargetWindow.galleryThumbs[index] = thumbTexture;
+                                 }
                              }
                          }
                      }
                  }
-             }
-             catch (Exception ex)
-             {
-                 plugin.logger.Error($"Unable to Read or Process Image: {ex.Message}");
+                 catch (Exception ex)
+                 {
+                     plugin.logger.Error($"Unable to Read or Process Image: {ex.Message}");
+                 }
              }
          }
-     }
 
      
 

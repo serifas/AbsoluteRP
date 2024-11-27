@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <Authors>Lynie</Authors>
-    <Version>0.0.0.1</Version>
+    <Version>0.0.0.15</Version>
     <Description>An all around Roleplay Plugin.</Description>
     <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
@@ -20,9 +20,20 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
+    <ItemGroup>
+      <Compile Remove="UI\common\listings\**" />
+      <EmbeddedResource Remove="UI\common\listings\**" />
+      <None Remove="UI\common\listings\**" />
+    </ItemGroup>
+    <ItemGroup>
+      <Compile Remove="Helpers\Timer.cs" />
+    </ItemGroup>
+    <ItemGroup>
+      <None Include="Helpers\Timer.cs" />
+    </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Lumina" Version="4.1.0" />
+      <PackageReference Include="Lumina" Version="5.3.0" />
       <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
       <PackageReference Include="System.Drawing.Common" Version="8.0.6" />
       <ProjectReference Include="..\OtterGui\OtterGui.csproj" />
@@ -74,7 +85,7 @@
       <None Update="UI\common\profiles\alignments\lawful_neutral.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="UI\common\profiles\alignments\lawful_good.png">
+      <None Update="UI\common\profiles\alignments\lawful_evil.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="UI\common\profiles\alignments\neutral_good.png">
@@ -113,7 +124,7 @@
       <None Update="UI\common\profiles\personalities\absentminded.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="UI\common\profiles\personalities\agressive.png">
+      <None Update="UI\common\profiles\personalities\aggressive.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <None Update="UI\common\profiles\personalities\artistic.png">

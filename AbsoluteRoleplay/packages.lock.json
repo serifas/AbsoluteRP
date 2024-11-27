@@ -4,17 +4,17 @@
     "net8.0-windows8.0": {
       "DalamudPackager": {
         "type": "Direct",
-        "requested": "[2.1.13, )",
-        "resolved": "2.1.13",
-        "contentHash": "rMN1omGe8536f4xLMvx9NwfvpAc9YFFfeXJ1t4P4PE6Gu8WCIoFliR1sh07hM+bfODmesk/dvMbji7vNI+B/pQ=="
+        "requested": "[11.0.0, )",
+        "resolved": "11.0.0",
+        "contentHash": "bjT7XUlhIJSmsE/O76b7weUX+evvGQctbQB8aKXt94o+oPWxHpCepxAGMs7Thow3AzCyqWs7cOpp9/2wcgRRQA=="
       },
       "Lumina": {
         "type": "Direct",
-        "requested": "[4.1.0, )",
-        "resolved": "4.1.0",
-        "contentHash": "bl+CdE2TXGU6aUCiqcrqiiiXJ0eGpfK0c+CwvCL+SY78ydV/zMqLH61XsU1+4CsjSU1+jDiRlLw2/0bIIE6guQ==",
+        "requested": "[5.3.0, )",
+        "resolved": "5.3.0",
+        "contentHash": "W9d48gPLYZFWY0EDp1n4n9rfnmLBfnb7q3yFEKy2hqPXnz8zR074TyhLFyGdlJUYbtfLWCPwyWjT0Gq1To0ptw==",
         "dependencies": {
-          "Microsoft.Extensions.ObjectPool": "9.0.0-preview.1.24081.5"
+          "Microsoft.Extensions.ObjectPool": "8.0.7"
         }
       },
       "Microsoft.Extensions.Hosting.Abstractions": {
@@ -93,8 +93,8 @@
       },
       "Microsoft.Extensions.ObjectPool": {
         "type": "Transitive",
-        "resolved": "9.0.0-preview.1.24081.5",
-        "contentHash": "aAR7YW+pUUdvHk3vj7GtAi71dWGDIuY9270lsmQ6lKw23zzY+r8pLP3cGNbJdlnA9VWl+S+gnIVkBCqj2ROlEg=="
+        "resolved": "8.0.7",
+        "contentHash": "2yLweyqmpuuFSRo+I3sLHMxmnAgNcI537kBJiyv49U2ZEqo00jZcG8lrnD8uCiOJp9IklYyTZULtbsXoFVzsjQ=="
       },
       "Microsoft.Extensions.Options": {
         "type": "Transitive",

@@ -14,8 +14,12 @@ using System.Diagnostics;
 using Dalamud.Plugin.Services;
 using Dalamud.Interface.Textures.TextureWraps;
 using AbsoluteRoleplay.Windows.Profiles;
-using System.Threading.Tasks;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
+using System.Security.Cryptography;
+using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
+using OtterGui.OtterGuiInternal.Enums;
+using static FFXIVClientStructs.FFXIV.Component.GUI.AtkUIColorHolder.Delegates;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 namespace AbsoluteRoleplay.Windows;
 
 public class MainPanel : Window, IDisposable
@@ -29,15 +33,18 @@ public class MainPanel : Window, IDisposable
     public string email = string.Empty;
     public string restorationEmail = string.Empty;
     //window state toggles
-    private bool viewProfile, viewSystems, viewEvents, viewConnections;
+    private static bool viewProfile, viewSystems, viewEvents, viewConnections;
     public static bool login = true;
     public static bool forgot = false;
     public static bool register = false;
     public static bool viewMainWindow = false;
+    //width and height values scaling the elements
+    public static int width = 0, height = 0;
     //registration agreement
     public bool AgreeTOS = false;
     public bool Agree18 = false;
     public bool Remember = false;
+    public bool AutoLogin = true;
     //duh
     //server status label stuff
     public static string serverStatus = "Connection Status...";
@@ -49,13 +56,14 @@ public class MainPanel : Window, IDisposable
                                  //profiles
                                  profileImage, npcImage, profileBookmarkImage, npcBookmarkImage,
                                  //events and venues
-                                 venueImage, eventImage, venueBookmarkImage, eventBookmarkImage,
+                                 listingImage, manageListingsImage, viewListingsImage,
                                  //systems
                                  combatImage, statSystemImage,
                                  reconnectImage;
-    public Plugin plugin;
+    public static Plugin pluginInstance;
     public static bool LoggedIN = false;
-
+    public static Vector2 ButtonSize = new Vector2();
+    public static float centeredX = 0f;
     public MainPanel(Plugin plugin) : base(
         "ABSOLUTE ROLEPLAY",
         ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
@@ -63,7 +71,7 @@ public class MainPanel : Window, IDisposable
     {
         this.Size = new Vector2(250, 340);
         this.SizeCondition = ImGuiCond.Always;
-        this.plugin = plugin;
+        pluginInstance = plugin;
         this.username = plugin.Configuration.username;
         this.password = plugin.Configuration.password;
        
@@ -96,121 +104,96 @@ public class MainPanel : Window, IDisposable
         if (npcBookmarkImg != null) { npcBookmarkImage = npcBookmarkImg; }
         if (reconnectImg != null) { reconnectImage = reconnectImg; }
     }
-
+ 
     public void Dispose()
     {
        
     }
     public override void Draw()
     {
+        float paddingX = ImGui.GetWindowSize().X / 12;
+        float buttonWidth = ImGui.GetWindowSize().X / 2 - paddingX;
+        float buttonHeight = ImGui.GetWindowSize().Y / 6f;
+
+        ButtonSize = new Vector2(ImGui.GetWindowSize().X / 2, ImGui.GetWindowSize().Y / 20);
+        centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
         // can't ref a property, so use a local copy
         if (login == true)
         {
-            ImGui.InputTextWithHint("##username", $"Username", ref this.username, 100);
-            ImGui.InputTextWithHint("##password", $"Password", ref this.password, 100, ImGuiInputTextFlags.Password);
 
-            if (ImGui.Button("Login"))
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##username", $"Username", ref this.username, 100, ImGuiInputTextFlags.None);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##password", $"Password", ref this.password, 100, ImGuiInputTextFlags.Password);
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Login"))
             {
-                if (plugin.IsOnline() && ClientHTTP.GetWebSocketState().Item1 == true)
+                if (pluginInstance.IsOnline() && ClientTCP.IsConnected() == true)
                 {
                     SaveLoginPreferences(this.username.ToString(), this.password.ToString());
-                   
-                    Task.Run(async () =>
-                    {
-                        try
-                        {
-
-                            await DataSender.SendLoginAsync(
-                                this.username,
-                                this.password,
-                                Plugin.ClientState.LocalPlayer?.Name?.ToString(),  // Ensure these are not null
-                                Plugin.ClientState.LocalPlayer?.HomeWorld?.GameData?.Name?.ToString()
-                            );
-                        }
-                        catch (Exception ex)
-                        {
-                            plugin.logger.Error($"Error in Task: {ex.Message}");
-                        }
-                    });
-
+                    DataSender.Login(this.username, this.password, pluginInstance.playername, pluginInstance.playerworld);
                 }
             }
             ImGui.SameLine();
             if(ImGui.Checkbox("Remember Me", ref Remember)){
                 SaveLoginPreferences(this.username.ToString(), this.password.ToString());
             }
-            if (ImGui.Button("Forgot"))
+
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize,"Forgot"))
             {
-                login = false;
-                register = false;
-                forgot = true;
+                forgot = CurrentElement();
             }
             ImGui.SameLine();
             if (ImGui.Button("Register"))
             {
-                login = false;
-                register = true;
+                register = CurrentElement();
             }
-            if (plugin.Configuration.showKofi == true)
-            {
-                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(172, 27)))
-                {
-                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
-                }
-            }
-            if (plugin.Configuration.showDisc == true)
-            {
-                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(172, 27)))
-                {
-                    Util.OpenLink("https://discord.gg/wQ43RrEx7m");
-                }
-            }
+           
 
 
         }
         if (forgot == true)
         {
-            ImGui.InputTextWithHint("##RegisteredEmail", $"Email", ref this.restorationEmail, 100);
-            if (ImGui.Button("Submit Request"))
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##RegisteredEmail", $"Email", ref this.restorationEmail, 100, ImGuiInputTextFlags.None);
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Submit Request"))
             {
-                if (plugin.IsOnline())
+                if (pluginInstance.IsOnline())
                 {
-                    DataSender.SendRestorationRequestAsync(this.restorationEmail);
+                    DataSender.SendRestorationRequest(this.restorationEmail);
                 }
             }
 
-            if (ImGui.Button("Back"))
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Back"))
             {
-                login = true;
-                register = false;
-                forgot = false;
+                login = CurrentElement();
             }
 
         }
         if (register == true)
         {
 
-            ImGui.InputTextWithHint("##username", $"Username", ref registerUser, 100);
-            ImGui.InputTextWithHint("##passver", $"Password", ref registerPassword, 100, ImGuiInputTextFlags.Password);
-            ImGui.InputTextWithHint("##regpassver", $"Verify Password", ref this.registerVerPassword, 100, ImGuiInputTextFlags.Password);
-            ImGui.InputTextWithHint("##email", $"Email", ref this.email, 100);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##username", $"Username", ref registerUser, 100, ImGuiInputTextFlags.None);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##passver", $"Password", ref registerPassword, 100, ImGuiInputTextFlags.Password);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##regpassver", $"Verify Password", ref this.registerVerPassword, 100, ImGuiInputTextFlags.Password);
+            Misc.DrawCenteredInput(centeredX, ButtonSize, "##email", $"Email", ref this.email, 100, ImGuiInputTextFlags.None);
+            var Pos18 = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, Pos18));
             ImGui.Checkbox("I am atleast 18 years of age", ref Agree18);
+            var agreePos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, agreePos));
             ImGui.Checkbox("I agree to the TOS.", ref AgreeTOS);
-            if (ImGui.Button("View ToS & Rules"))
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "View ToS & Rules"))
             {
-                plugin.OpenTermsWindow();
+                pluginInstance.OpenTermsWindow();
             }
             if (Agree18 == true && AgreeTOS == true)
             {
-                if (ImGui.Button("Register Account"))
+                if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Register Account"))
                 {
                     if (registerPassword == registerVerPassword)
                     {
-                        if (plugin.IsOnline())
+                        if (pluginInstance.IsOnline())
                         {
                             SaveLoginPreferences(registerUser, registerPassword);
-                            plugin.username = registerUser.ToString();
-                            DataSender.SendRegisterAsync(registerUser.ToString(), registerPassword, email);
+                            pluginInstance.username = registerUser.ToString();
+                            DataSender.Register(registerUser.ToString(), registerPassword, email);
                         }
                     }
                     else
@@ -221,24 +204,20 @@ public class MainPanel : Window, IDisposable
 
                 }
             }
-            if (ImGui.Button("Back"))
+            if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Back"))
             {
-                login = true;
-                register = false;
+                login = CurrentElement();
             }
 
         }
         if (viewMainWindow == true)
         {
-            login = false;
-            forgot = false;
-            register = false;
+            viewMainWindow = CurrentElement();
             
             #region PROFILES
-            if (ImGui.ImageButton(this.profileSectionImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.profileSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                viewProfile = true;
-                viewMainWindow = false;
+                viewProfile = CurrentElement();
             }
             if (ImGui.IsItemHovered())
             {
@@ -246,9 +225,9 @@ public class MainPanel : Window, IDisposable
                 #endregion
             }
             ImGui.SameLine();
-            if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.connectionsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                DataSender.SendConnectionsRequestAsync(plugin.username.ToString(), Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
+                DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.password.ToString());
 
             }
             if (ImGui.IsItemHovered())
@@ -257,26 +236,23 @@ public class MainPanel : Window, IDisposable
             }
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.eventsSectionImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
-                    //  viewConnections = true;
-                    // viewMainWindow = false;
-
+                    pluginInstance.OpenListingsWindow();
                 }
-
             }
+
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("Events - WIP");
+                ImGui.SetTooltip("Listings - WIP ");
             }
-
 
 
             ImGui.SameLine();
 
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.systemsSectionImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.systemsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -290,38 +266,33 @@ public class MainPanel : Window, IDisposable
             }
 
 
-            if (ImGui.Button("Options", new Vector2(225, 25)))
+            var optionPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 10, optionPos));
+            if (ImGui.Button("Options", new Vector2(buttonWidth * 2f, buttonHeight / 2.5f)))
             {
-                plugin.OpenOptionsWindow();
+                pluginInstance.OpenOptionsWindow();
             }
-            if (ImGui.Button("Logout", new Vector2(225, 25)))
+            var logoutPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 10, logoutPos));
+            if (ImGui.Button("Logout", new Vector2(buttonWidth * 2f, buttonHeight / 2.5f)))
             {
-                plugin.ControlsLogin = true;
-                plugin.newConnection = false;
-                plugin.CloseAllWindows();
-                plugin.OpenMainPanel();
-                switchUI();
-                login = true;
-                viewMainWindow = false;
+                pluginInstance.newConnection = false;
+                pluginInstance.CloseAllWindows();
+                pluginInstance.OpenMainPanel();               
+                login = CurrentElement();
                 status = "Logged Out";
                 statusColor = new Vector4(255, 0, 0, 255);
             }
         }
         if (viewProfile == true)
         {
-            if (ImGui.ImageButton(this.profileImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.profileImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                if (plugin.IsOnline())
+                if (pluginInstance.IsOnline())
                 {
-                    ProfileWindow.TabOpen[TabValue.Bio] = true;
-                    ProfileWindow.TabOpen[TabValue.Hooks] = true;
-                    ProfileWindow.TabOpen[TabValue.Story] = true;
-                    ProfileWindow.TabOpen[TabValue.OOC] = true;
-                    ProfileWindow.TabOpen[TabValue.Gallery] = true;
-                    plugin.OpenProfileWindow();
-                    //FETCH USER AND PASS ASEWLL
-                    DataSender.SendFetchProfilesAsync(Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString());
-                    ProfileWindow.ClearUI();
+                    StoryTab.storyTitle = string.Empty;
+                    ProfileWindow.oocInfo = string.Empty;
+                    pluginInstance.OpenAndLoadProfileWindow();
                 }
             }
             if (ImGui.IsItemHovered())
@@ -329,11 +300,12 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetTooltip("Manage your profile");
             }
             ImGui.SameLine();
-            if (ImGui.ImageButton(this.profileBookmarkImage.ImGuiHandle, new Vector2(100, 50)))
+            if (ImGui.ImageButton(this.profileBookmarkImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                if (plugin.IsOnline())
+                if (pluginInstance.IsOnline())
                 {
-                    DataSender.SendBookmarkRequestAsync(plugin.username);
+                    DataSender.RequestBookmarks();
+                    pluginInstance.OpenBookmarksWindow();
                 }
                
             }
@@ -343,7 +315,7 @@ public class MainPanel : Window, IDisposable
             }
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.npcImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -362,7 +334,7 @@ public class MainPanel : Window, IDisposable
 
             using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(this.npcBookmarkImage.ImGuiHandle, new Vector2(100, 50)))
+                if (ImGui.ImageButton(this.npcBookmarkImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     //  viewConnections = true;
                     // viewMainWindow = false;
@@ -376,57 +348,113 @@ public class MainPanel : Window, IDisposable
             }
 
         }
+        
+        if (pluginInstance.Configuration.showKofi)
+        {
+            if (viewMainWindow == false && viewProfile == false)
+            {
 
+                var currentCursorY = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(centeredX, currentCursorY));
+                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, ButtonSize))
+                {
+                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
+                }
+            }
+            else
+            {
+                var kofiPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 10, kofiPos));
+                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 1.95f, buttonHeight / 2.5f)))
+                {
+                    Util.OpenLink("https://ko-fi.com/infiniteroleplay");
+                }
+            }
+        }
+        if (pluginInstance.Configuration.showDisc == true)
+        {
+            if (viewMainWindow == false && viewProfile == false)
+            {
+
+                var discPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(centeredX, discPos));
+                if (ImGui.ImageButton(discoBtn.ImGuiHandle, ButtonSize))
+                {
+                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                }
+            }
+            else
+            {
+                var discPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 10, discPos));
+                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(buttonWidth * 1.95f, buttonHeight / 2.5f)))
+                {
+                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                }
+            }
+        }
 
         if (viewProfile == true || viewSystems == true || viewEvents == true || viewConnections == true)
         {
             if (ImGui.Button("Back"))
             {
-                switchUI();
-                viewMainWindow = true;
+                viewMainWindow = CurrentElement();
             }
+        }
+
+        if (viewMainWindow == false && viewProfile == false)
+        {
+            var serverStatusPosY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
         }
         ImGui.TextColored(serverStatusColor, serverStatus);
         ImGui.SameLine();
-        if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(18, 18)))
+        if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(buttonHeight / 3.5f, buttonHeight / 3.5f)))
         {
-            ClientHTTP.EnsureWebSocketInitialized();  // Ensure the WebSocket is initialized
-            ClientHTTP.ConnectWebSocketAsync().GetAwaiter().GetResult();
-            plugin.UpdateStatus();
+            ClientTCP.AttemptConnect();
+            pluginInstance.UpdateStatus();
         }
+        if (viewMainWindow == false && viewProfile == false)
+        {
+            var statusPosY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, statusPosY));
+        }
+        ImGui.PushStyleColor(ImGuiCol.Text, statusColor);
+        ImGui.TextWrapped(status);
+        ImGui.PopStyleColor();
 
-        ImGui.TextColored(statusColor, status);
 
-        
+    }
+    public static bool CurrentElement()
+    {
+        login = false;
+        forgot = false;
+        register = false;
+        viewProfile = false;
+        viewSystems = false;
+        viewEvents = false;
+        viewConnections = false;
+        viewMainWindow = false;
+        return true;
     }
     public void SaveLoginPreferences(string username, string password)
     {
-        plugin.Configuration.rememberInformation = Remember;
-        if (plugin.Configuration.rememberInformation == true)
+        pluginInstance.Configuration.rememberInformation = Remember;
+        if (pluginInstance.Configuration.rememberInformation == true)
         {
-            plugin.Configuration.username = username;
-            plugin.Configuration.password = password;
+            pluginInstance.Configuration.username = username;
+            pluginInstance.Configuration.password = password;
         }
         else
         {
-            plugin.Configuration.username = string.Empty;
-            plugin.Configuration.password = string.Empty;
+            pluginInstance.Configuration.username = string.Empty;
+            pluginInstance.Configuration.password = string.Empty;
         }
-        plugin.username = username;
-        plugin.password = password;
-        plugin.Configuration.Save();
+        pluginInstance.username = username;
+        pluginInstance.password = password;
+        pluginInstance.Configuration.Save();
     }
-    public void AttemptLogin()
-    {
-        if(ClientHTTP.GetWebSocketState().Item1 && plugin.Configuration.username != string.Empty && plugin.Configuration.password != string.Empty)
-        {
-            plugin.username = username;
-            plugin.password = password;
-            Task.Run(async () => await DataSender.SendLoginAsync(plugin.Configuration.username, plugin.Configuration.password, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString()));
-        }
-        plugin.LoadConnection();
-        plugin.CloseAllWindows();
-    }
+  
     public void switchUI()
     {
         viewProfile = false;

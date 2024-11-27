@@ -7,6 +7,7 @@ using System;
 using System.Net.Http;
 using System.Numerics;
 using AbsoluteRoleplay;
+using Dalamud.Interface.Utility;
 namespace AbsoluteRoleplay.Windows
 {
     public class TOS : Window, IDisposable
@@ -23,8 +24,8 @@ namespace AbsoluteRoleplay.Windows
         {
             this.SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(1200, 200),
-                MaximumSize = new Vector2(1200, 1000)
+                MinimumSize = new Vector2(200, 200),
+                MaximumSize = new Vector2(1200, 1200)
             };
             pg = plugin;
 
@@ -39,12 +40,12 @@ namespace AbsoluteRoleplay.Windows
         {
             //draw TOS
             Misc.SetTitle(pg, true, "Terms of Service");
-            ImGui.Text(ToS1);
-            ImGui.Text(ToS2);
+            ImGuiHelpers.SafeTextWrapped(ToS1);
+            ImGuiHelpers.SafeTextWrapped(ToS2);
             //draw rules
             Misc.SetTitle(pg, true, "Rules");
-            ImGui.Text(Rules1);
-            ImGui.Text(Rules2);
+            ImGuiHelpers.SafeTextWrapped(Rules1);
+            ImGuiHelpers.SafeTextWrapped(Rules2);
         }
 
         public void Dispose()

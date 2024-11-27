@@ -57,7 +57,7 @@ namespace AbsoluteRoleplay.Windows
                         if (pg.IsOnline())
                         {
                             //send the key with the new password to restore the account to settings the user knows
-                            DataSender.SendRestorationKeyAsync(restorationEmail, restorationPass, restorationKey);
+                            DataSender.SendRestoration(restorationEmail, restorationPass, restorationKey);
                         }
                     }
                     else

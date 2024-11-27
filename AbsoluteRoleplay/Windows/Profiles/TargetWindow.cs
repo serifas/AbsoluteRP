@@ -13,6 +13,8 @@ using Dalamud.Interface.Internal;
 using AbsoluteRoleplay.Helpers;
 using Microsoft.VisualBasic;
 using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Utility;
+using OtterGuiInternal.Enums;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -41,12 +43,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool ExistingProfile;
         public static string storyTitle = "";
         public static byte[] existingAvatarBytes;
+        public static string currentTab = null;
+        public static bool isActive = currentTab == "Bio";
+        public static string[] imageTooltips = new string[30];
         //BIO VARS
         public static IDalamudTextureWrap alignmentImg, personalityImg1, personalityImg2, personalityImg3;
         public static IDalamudTextureWrap[] galleryImages, galleryThumbs = new IDalamudTextureWrap[30];
         public static List<IDalamudTextureWrap> galleryThumbsList = new List<IDalamudTextureWrap>();
         public static List<IDalamudTextureWrap> galleryImagesList = new List<IDalamudTextureWrap>();
-
+        public static Vector2 avatarSize = new Vector2(100,100);
         public static IDalamudTextureWrap currentAvatarImg, pictureTab;
         //profile vars
         public static string characterEditName,
@@ -67,20 +72,22 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool[] ChapterExists = new bool[30];
         internal static string characterName;
         internal static string characterWorld;
+        public static bool firstDraw = true;
+        public static string activeTab;
 
         public TargetWindow(Plugin plugin) : base(
        "TARGET", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(600, 400),
-                MaximumSize = new Vector2(750, 950)
+                MinimumSize = new Vector2(300, 300),
+                MaximumSize = new Vector2(950, 950)
             };
             this.plugin = plugin;
             pg = Plugin.PluginInterface;
         }
         public override void OnOpen()
-        {
+        {  
             var blankPictureTab = Defines.UICommonImage(Defines.CommonImageTypes.blankPictureTab);
             if (blankPictureTab != null)
             {
@@ -113,45 +120,36 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     //if we receive that there is an existing profile that we can view show the available view buttons
                     if (ExistingProfile == true)
                     {
-                        if (ExistingBio == true)
+                        if (firstDraw)
                         {
-                            if (ImGui.Button("Bio", new Vector2(100, 20))) { ClearUI(); viewBio = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View bio section of this profile."); }
-                        }
-                        if (ExistingHooks == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("Hooks", new Vector2(100, 20))) { ClearUI(); viewHooks = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View hooks section of this profile."); }
-                        }
-                        if (ExistingStory == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("Story", new Vector2(100, 20))) { ClearUI(); viewStory = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View story section to your profile."); }
-                        }
-                        if (ExistingOOC == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("OOC Info", new Vector2(100, 20))) { ClearUI(); viewOOC = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View OOC section of this profile."); }
-                        }
-                        if (ExistingGallery == true)
-                        {
-                            ImGui.SameLine();
-                            if (ImGui.Button("Gallery", new Vector2(100, 20))) { ClearUI(); viewGallery = true; }
-                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View gallery section of this profile."); }
+                            currentTab = "Bio";
+                            ClearUI();
+                            viewBio = true;
+                            firstDraw = false;
                         }
 
+                        ImGui.BeginTabBar("TargetNavigation");
 
+                        if(activeTab == "BIO")
+                        {
+                            ClearUI(); currentTab = "Bio"; viewBio = true;
+                        }
+                        ImGui.BeginTabBar("TargetNavigation");
+                        if (ExistingBio) { if (ImGui.BeginTabItem("Bio")) { if (currentTab != "Bio") { ClearUI(); currentTab = "Bio"; viewBio = true; } ImGui.EndTabItem(); } }
+                        if (ExistingHooks) { if (ImGui.BeginTabItem("Hooks")) { if (currentTab != "Hooks") { ClearUI(); currentTab = "Hooks"; viewHooks = true; } ImGui.EndTabItem(); } }
+                        if (ExistingStory) { if (ImGui.BeginTabItem("Story")) { if (currentTab != "Story") { ClearUI(); currentTab = "Story"; viewStory = true; } ImGui.EndTabItem(); } }
+                        if (oocInfo != string.Empty) { if (ImGui.BeginTabItem("OOC")) { if (currentTab != "OOC") { ClearUI(); currentTab = "OOC"; viewOOC = true; } ImGui.EndTabItem(); } }
+                        if (ExistingGallery) { if (ImGui.BeginTabItem("Gallery")) { if (currentTab != "Gallery") { ClearUI(); currentTab = "Gallery"; viewGallery = true; } ImGui.EndTabItem(); } }
+                        ImGui.EndTabBar();
                         //personal controls for viewing user
                         ImGui.Text("Controls");
-                        if (ImGui.Button("Notes", new Vector2(100, 20))) { ClearUI(); addNotes = true; }
-                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile or the user."); }
+                        if (ImGui.Button("Notes")) { addNotes = true; }
+                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
 
                         ImGui.SameLine();
 
-                        if (ImGui.Button("Report!", new Vector2(100, 20)))
+                        Misc.RenderAlignmentToRight("Report");
+                        if (ImGui.Button("Report"))
                         {
                             ReportWindow.reportCharacterName = characterNameVal;
                             ReportWindow.reportCharacterWorld = characterWorldVal;
@@ -168,13 +166,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         if (ExistingBio == false && ExistingHooks == false && ExistingStory == false && ExistingOOC == false && ExistingOOC == false && ExistingGallery == false)
                         {
                             //inform the viewer that there is no profile to view
-                            ImGui.TextUnformatted("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
+                            ImGuiHelpers.SafeTextWrapped("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
 
                             //but incase the profile is set to private, give the user a request button to ask for access
                             if (ImGui.Button("Request access"))
                             {
                                 //send a new request to the server and then the profile owner if pressed
-                                DataSender.SendProfileAccessUpdateAsync(plugin.username, Plugin.ClientState.LocalPlayer.Name.ToString(), Plugin.ClientState.LocalPlayer.HomeWorld.GameData.Name.ToString(), characterName, characterWorld, (int)Defines.ConnectionStatus.pending);
+                                DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)Defines.ConnectionStatus.pending);
                             }
                         }
                         else
@@ -183,27 +181,48 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 //set bordered title at top of window and set fonts back to normal
                                 Misc.SetTitle(plugin, true, characterEditName);
-                                ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(100, 100)); //display avatar image
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("NAME:   " + characterEditName); // display character name
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("RACE:   " + characterEditRace); // race
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("GENDER:   " + characterEditGender); //and so on
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("AGE:   " + characterEditAge);
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("HEIGHT:   " + characterEditHeight);
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("WEIGHT:   " + characterEditWeight);
-                                ImGui.Spacing();
-                                ImGui.TextUnformatted("AT FIRST GLANCE: \n" + characterEditAfg);
+                                ImGui.Image(currentAvatarImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f)); //display avatar image
+                                if (characterEditName != string.Empty && characterEditName != "New Profile")
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("NAME:   " + characterEditName); // display character name
+                                }
+                                if (characterEditRace != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("RACE:   " + characterEditRace); // race
+                                }
+                                if (characterEditGender != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("GENDER:   " + characterEditGender); //and so on
+                                }
+                                if (characterEditAge != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("AGE:   " + characterEditAge);
+                                }
+                                if (characterEditHeight != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("HEIGHT:   " + characterEditHeight);
+                                }
+                                if (characterEditWeight != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("WEIGHT:   " + characterEditWeight);
+                                }
+                                if (characterEditAfg != string.Empty)
+                                {
+                                    ImGui.Spacing();
+                                    ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
+                                }
                                 ImGui.Spacing();
                                 if (showAlignment == true)
                                 {
                                     ImGui.TextColored(new Vector4(1, 1, 1, 1), "ALIGNMENT:");
 
-                                    ImGui.Image(alignmentImg.ImGuiHandle, new Vector2(32, 32));
+                                    ImGui.Image(alignmentImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 40));
 
                                     if (ImGui.IsItemHovered())
                                     {
@@ -214,10 +233,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 {
                                     ImGui.Spacing();
 
+                                    Vector2 alignmentSize = new Vector2(ImGui.GetIO().FontGlobalScale * 25, ImGui.GetIO().FontGlobalScale * 32);
                                     ImGui.TextColored(new Vector4(1, 1, 1, 1), "PERSONALITY TRAITS:");
                                     if(showPersonality1 == true)
                                     {
-                                        ImGui.Image(personalityImg1.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg1.ImGuiHandle, alignmentSize);
 
                                         if (ImGui.IsItemHovered())
                                         {
@@ -227,7 +247,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     }
                                     if (showPersonality2 == true)
                                     {
-                                        ImGui.Image(personalityImg2.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg2.ImGuiHandle, alignmentSize);
 
                                         if (ImGui.IsItemHovered())
                                         {
@@ -237,7 +257,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     }
                                     if(showPersonality3 == true)
                                     {
-                                        ImGui.Image(personalityImg3.ImGuiHandle, new Vector2(32, 42));
+                                        ImGui.Image(personalityImg3.ImGuiHandle, alignmentSize);
 
                                         if (ImGui.IsItemHovered())
                                         {
@@ -260,8 +280,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 for (var h = 0; h < hookEditCount; h++)
                                 {
                                     Misc.SetCenter(plugin, HookNames[h].ToString()); // set the position to the center of the window
-                                    ImGui.TextUnformatted(HookNames[h].ToUpper()); //display the title in the center
-                                    ImGui.TextUnformatted(HookContents[h]); //display the content
+                                    ImGuiHelpers.SafeTextWrapped(HookNames[h].ToUpper()); //display the title in the center
+                                    ImGuiHelpers.SafeTextWrapped(HookContents[h]); //display the content
                                 }
 
                             }
@@ -275,10 +295,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 for (var h = 0; h < chapterCount; h++)
                                 {
                                     Misc.SetCenter(plugin, ChapterTitle[h]);
-                                    ImGui.TextUnformatted(ChapterTitle[h].ToUpper());
+                                    ImGuiHelpers.SafeTextWrapped(ChapterTitle[h].ToUpper());
                                     ImGui.Spacing();
                                     using var defInfFontDen = ImRaii.DefaultFont();
-                                    ImGui.TextWrapped(ChapterContent[h]);
+                                    ImGuiHelpers.SafeTextWrapped(ChapterContent[h]);
                                 }
 
 
@@ -286,7 +306,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             if (viewOOC == true)
                             {
                                 Misc.SetTitle(plugin, true, "OOC Information");
-                                ImGui.TextUnformatted(oocInfo);
+                                ImGuiHelpers.SafeTextWrapped(oocInfo);
                             }
                             if (viewGallery == true)
                             {
@@ -298,7 +318,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     {
                                         ImGui.TableNextColumn();
                                         ImGui.Image(galleryThumbs[i].ImGuiHandle, new Vector2(galleryThumbs[i].Width, galleryThumbs[i].Height));
-                                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Click to enlarge"); }
+                                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip(imageTooltips[i] + "\nClick to enlarge"); }
                                         if (ImGui.IsItemClicked())
                                         {
                                             ImagePreview.width = galleryImages[i].Width;
@@ -313,20 +333,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                             if (addNotes == true)
                             {
-
-                                Misc.SetTitle(plugin, true, "Personal Notes");
-
-                                ImGui.Text("Here you can add personal notes about this player or profile");
-                                ImGui.InputTextMultiline("##info", ref profileNotes, 500, new Vector2(400, 100));
-                                if (ImGui.Button("Add Notes"))
-                                {
-                                    if (plugin.IsOnline())
-                                    {
-                                        DataSender.SendProfileNotesAsync(plugin.username, characterNameVal, characterWorldVal, profileNotes);
-                                    }
-
-                                }
-
+                                plugin.OpenProfileNotes();
+                                addNotes = false;
                             }
                             if (loadPreview == true)
                             {
@@ -339,7 +347,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
                 else
                 {
-                    Misc.StartLoader(currentInd, max, loading);
+                    Misc.StartLoader(currentInd, max, loading, ImGui.GetWindowSize());
                 }
             }
         }
@@ -353,6 +361,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             viewOOC = false;
             viewGallery = false;
             addNotes = false;
+           
         }
         public static void ReloadTarget()
         {

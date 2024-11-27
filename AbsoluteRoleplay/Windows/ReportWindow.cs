@@ -19,7 +19,6 @@ using Microsoft.VisualBasic;
 using Networking;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Internal;
-using Lumina.Excel.GeneratedSheets;
 
 namespace AbsoluteRoleplay.Windows
 {
@@ -35,9 +34,10 @@ namespace AbsoluteRoleplay.Windows
         {
             this.SizeConstraints = new WindowSizeConstraints
             {
-                MinimumSize = new Vector2(400, 400),
+                MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(1200, 950)
             };
+            
             pg = plugin;
 
         }
@@ -47,14 +47,14 @@ namespace AbsoluteRoleplay.Windows
             {
                 ImGui.TextColored(new Vector4(100, 0, 0, 100), reportStatus);
                 ImGui.Text("Reason for report");
-                ImGui.InputTextMultiline("##info", ref reportInfo, 500, new Vector2(400, 100));
+                ImGui.InputTextMultiline("##info", ref reportInfo, 5000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - ImGui.GetWindowSize().Y / 2));
            
                 if (ImGui.Button("Report!"))
                 {
                     if (reportInfo.Length > 15)
                     {
                         //report the currently viewed profile to the moderators
-                        DataSender.SendReportProfileAsync(pg.username, reportCharacterName, reportCharacterWorld, reportInfo);
+                        DataSender.ReportProfile(pg.username, reportCharacterName, reportCharacterWorld, reportInfo);
                     }
                     else
                     {
