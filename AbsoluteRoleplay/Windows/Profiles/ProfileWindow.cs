@@ -1,35 +1,17 @@
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using Dalamud.Utility;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 using Networking;
-using Dalamud.Interface.Internal;
 using OtterGui;
-using System.Linq;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Textures.TextureWraps;
-using System.Diagnostics;
-using System.Collections;
-using OtterGui.Log;
-using static Lumina.Data.Parsing.Layer.LayerCommon;
-using Dalamud.Hooking;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.VertexShader;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using OtterGui.Tasks;
-using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay;
-using static FFXIVClientStructs.FFXIV.Client.Game.SatisfactionSupplyManager;
-using FFXIVClientStructs.Havok.Common.Base.Container.String;
-using System.Text;
-using Lumina.Extensions;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 
 

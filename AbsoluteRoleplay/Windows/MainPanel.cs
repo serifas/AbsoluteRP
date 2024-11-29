@@ -191,8 +191,7 @@ public class MainPanel : Window, IDisposable
                     {
                         if (pluginInstance.IsOnline())
                         {
-                            SaveLoginPreferences(registerUser, registerPassword);
-                            pluginInstance.username = registerUser.ToString();
+                            SaveLoginPreferences(registerUser.ToString(), registerPassword.ToString());
                             DataSender.Register(registerUser.ToString(), registerPassword, email);
                         }
                     }

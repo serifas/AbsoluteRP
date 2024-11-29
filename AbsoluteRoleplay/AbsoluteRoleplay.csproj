@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <Authors>Lynie</Authors>
-    <Version>0.0.0.16</Version>
+    <Version>0.0.0.17</Version>
     <Description>An all around Roleplay Plugin.</Description>
     <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
@@ -27,9 +27,6 @@
     </ItemGroup>
     <ItemGroup>
       <Compile Remove="Helpers\Timer.cs" />
-    </ItemGroup>
-    <ItemGroup>
-      <None Include="Helpers\Timer.cs" />
     </ItemGroup>
 
     <ItemGroup>
