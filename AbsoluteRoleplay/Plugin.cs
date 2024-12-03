@@ -24,13 +24,16 @@ using System.Diagnostics;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Conditions;
 using ImGuiNET;
-using AbsoluteRoleplay.Windows.Listings;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using static Lumina.Data.Parsing.Layer.LayerCommon;
 using Dalamud.Interface.Utility;
 using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using System.Timers;
+using Lumina.Excel.Sheets;
+using AbsoluteRoleplay.Windows.Listings;
+using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRoleplay.Windows.Account;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -85,7 +88,7 @@ namespace AbsoluteRoleplay
         private VerificationWindow VerificationWindow { get; init; }
         public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
-        private ManageListings ListingWindow { get; init; }
+        private ListingsWindow ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
@@ -170,7 +173,7 @@ namespace AbsoluteRoleplay
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
             AlertWindow = new AlertWindow(this);
-            ListingWindow = new ManageListings(this);
+            ListingWindow = new ListingsWindow(this);
             Configuration.Initialize(PluginInterface);
 
             //add the windows to the windowsystem
@@ -597,7 +600,7 @@ namespace AbsoluteRoleplay
             // Check if we have a new target by comparing addresses
             if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress )
             {
-                if (InCombatLock()) return;
+                if (InCombatLock() || InDutyLock() || InPvpLock()) return;
                
                 WindowOperations.DrawTooltipInfo(gameObject);
 
@@ -610,10 +613,31 @@ namespace AbsoluteRoleplay
                 lastTargetAddress = IntPtr.Zero;  // Reset the target address when no target
             }
         }      
-        
+        public bool InDutyLock()
+        {
+            if (Condition[ConditionFlag.BoundByDuty] && Configuration.tooltip_DutyDisabled == true)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
         public bool InCombatLock()
         {
-            if (ClientState.LocalPlayer.StatusFlags.HasFlag(StatusFlags.InCombat) || ClientState.IsPvP && Configuration.tooltip_HideInCombat == true)
+            if (Condition[ConditionFlag.InCombat] && Configuration.tooltip_HideInCombat == true)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public bool InPvpLock()
+        {
+            if (ClientState.IsPvP && Configuration.tooltip_PvPDisabled == true)
             {
                 return true;
             }

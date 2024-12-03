@@ -65,6 +65,7 @@ namespace Networking
         RequestTargetProfileByCharacter = 50,
         SetAsTooltip = 51,
         Logout = 52,
+        PreviewProfile = 53,
     }
     public class DataSender
     {
@@ -110,9 +111,7 @@ namespace Networking
                 {
                     plugin.logger.Error("Error in Logout: " + ex.ToString());
                 }
-
             }
-
         }
 
         public static async void Register(string username, string password, string email)
@@ -925,6 +924,30 @@ namespace Networking
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(name);
                         buffer.WriteString(worldname);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void PreviewProfile(int currentProfile)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.PreviewProfile);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(currentProfile);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

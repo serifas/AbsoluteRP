@@ -15,6 +15,7 @@ using Microsoft.VisualBasic;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using OtterGuiInternal.Enums;
+using AbsoluteRoleplay.Windows.Ect;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -74,6 +75,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         internal static string characterWorld;
         public static bool firstDraw = true;
         public static string activeTab;
+        public static bool self = false;
 
         public TargetWindow(Plugin plugin) : base(
        "TARGET", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -142,21 +144,25 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         if (ExistingGallery) { if (ImGui.BeginTabItem("Gallery")) { if (currentTab != "Gallery") { ClearUI(); currentTab = "Gallery"; viewGallery = true; } ImGui.EndTabItem(); } }
                         ImGui.EndTabBar();
                         //personal controls for viewing user
-                        ImGui.Text("Controls");
-                        if (ImGui.Button("Notes")) { addNotes = true; }
-                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
-
-                        ImGui.SameLine();
-
-                        Misc.RenderAlignmentToRight("Report");
-                        if (ImGui.Button("Report"))
+                        if(self == false)
                         {
-                            ReportWindow.reportCharacterName = characterNameVal;
-                            ReportWindow.reportCharacterWorld = characterWorldVal;
-                            plugin.OpenReportWindow();
-                        }
-                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Report this profile for inappropriate use.\n(Repeat false reports may result in your account being banned.)"); }
+                            ImGui.Text("Controls");
+                            if (ImGui.Button("Notes")) { addNotes = true; }
+                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
 
+                            ImGui.SameLine();
+
+                            Misc.RenderAlignmentToRight("Report");
+                            if (ImGui.Button("Report"))
+                            {
+                                ReportWindow.reportCharacterName = characterNameVal;
+                                ReportWindow.reportCharacterWorld = characterWorldVal;
+                                plugin.OpenReportWindow();
+                            }
+                            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Report this profile for inappropriate use.\n(Repeat false reports may result in your account being banned.)"); }
+
+
+                        }
                     }
 
                     using var profileTable = ImRaii.Child("PROFILE");

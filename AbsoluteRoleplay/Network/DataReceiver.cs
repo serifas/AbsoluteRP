@@ -15,8 +15,10 @@ using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
 using static AbsoluteRoleplay.Defines;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
-using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Listings;
+using AbsoluteRoleplay.Windows.Account;
+using AbsoluteRoleplay.Windows.Ect;
 
 namespace Networking
 {
@@ -175,7 +177,12 @@ namespace Networking
                 using (var buffer = new ByteBuffer())
                 {
                     buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
+                    var packetID = buffer.ReadInt();      
+                    string profileName = buffer.ReadString();
+                    string characterName = buffer.ReadString();
+                    string characterWorld = buffer.ReadString();
+                    bool self = buffer.ReadBool();
+                    TargetWindow.self = self;
                     TargetWindow.ExistingProfile = true;
                     TargetWindow.ClearUI();
                     ReportWindow.reportStatus = "";
@@ -1124,7 +1131,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
-                    ManageListings.percentage = listingCount;
+                    ListingsWindow.percentage = listingCount;
                     for (int i = 0; i < listingCount; i++)
                     {
                         string name = buffer.ReadString();
@@ -1140,9 +1147,9 @@ namespace Networking
                         string endDate = buffer.ReadString();
                         IDalamudTextureWrap banner = Imaging.DownloadListingImage(bannerURL, i);
                         Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
-                        ManageListings.listings.Add(listing);
-                        ManageListings.loading = "Listing: " + i;
-                        ManageListings.loaderInd = i;
+                        ListingsWindow.listings.Add(listing);
+                        ListingsWindow.loading = "Listing: " + i;
+                        ListingsWindow.loaderInd = i;
                     }
                     ListingsLoadStatus = 1;
                 }

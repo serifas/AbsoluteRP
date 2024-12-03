@@ -5,7 +5,6 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
 using ImGuiScene;
-using AbsoluteRoleplay;
 using OtterGui.Raii;
 using OtterGui;
 using System;
@@ -20,7 +19,7 @@ using Networking;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Internal;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class ReportWindow : Window, IDisposable
     {
@@ -32,12 +31,12 @@ namespace AbsoluteRoleplay.Windows
         public ReportWindow(Plugin plugin) : base(
        "REPORT USER PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(1200, 950)
             };
-            
+
             pg = plugin;
 
         }
@@ -48,7 +47,7 @@ namespace AbsoluteRoleplay.Windows
                 ImGui.TextColored(new Vector4(100, 0, 0, 100), reportStatus);
                 ImGui.Text("Reason for report");
                 ImGui.InputTextMultiline("##info", ref reportInfo, 5000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - ImGui.GetWindowSize().Y / 2));
-           
+
                 if (ImGui.Button("Report!"))
                 {
                     if (reportInfo.Length > 15)
@@ -62,7 +61,7 @@ namespace AbsoluteRoleplay.Windows
                     }
                 }
             }
-           
+
         }
         public void Dispose()
         {

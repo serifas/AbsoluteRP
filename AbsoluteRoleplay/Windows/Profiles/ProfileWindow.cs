@@ -164,6 +164,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ProfileBaseData.Count > 0 && ExistingProfile == true)
                 {
                     AddProfileSelection();
+                    ImGui.SameLine();
+                    if(ImGui.Button("Preview Profile"))
+                    {
+                        TargetWindow.characterNameVal = plugin.playername;
+                        TargetWindow.characterWorldVal = plugin.playerworld;
+                        DataSender.PreviewProfile(currentProfile);
+                    }
                     DrawProfile();
                 }
                 if(ProfileBaseData.Count <= 0)
@@ -313,8 +320,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (GalleryTab.ReorderGallery == true)
                     {
                         GalleryTab.ReorderGallery = false;
-                        GalleryTab.ReorderGalleryData();
-                     
+                        GalleryTab.ReorderGalleryData();                     
                     }
                     //pretty much the same logic but with our hooks
                     if (HooksTab.ReorderHooks == true)

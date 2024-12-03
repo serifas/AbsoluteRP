@@ -5,7 +5,7 @@ using System;
 using Networking;
 using System.Security.Cryptography;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Ect
 {
 
     public class AlertWindow : Window, IDisposable
@@ -19,8 +19,8 @@ namespace AbsoluteRoleplay.Windows
         public AlertWindow(Plugin plugin) : base(
        "ALERT", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize)
         {
-            
-            this.SizeConstraints = new WindowSizeConstraints
+
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(400, 80),
                 MaximumSize = new Vector2(400, 80)
@@ -35,13 +35,13 @@ namespace AbsoluteRoleplay.Windows
             ImGui.SetNextWindowPos(new Vector2(viewport.WorkPos.X + viewport.WorkSize.X - 300, viewport.WorkPos.Y + viewport.WorkSize.Y - 200), ImGuiCond.Always); // Adjust position based on window size
             ImGui.TextColored(alertColor, alertStatus);
             length++;
-            if(length > 400 && increment == true)
+            if (length > 400 && increment == true)
             {
                 increment = false;
                 pg.CloseAlertWIndow();
             }
-                // Add other UI elements here
-             Misc.AddIncrementBar(ImGui.GetWindowDrawList(), length, alertColor);
+            // Add other UI elements here
+            Misc.AddIncrementBar(ImGui.GetWindowDrawList(), length, alertColor);
 
         }
         public void Update()

@@ -12,7 +12,7 @@ using Networking;
 using Dalamud.Interface.Utility;
 using Dalamud.IoC;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Account
 {
     public class RestorationWindow : Window, IDisposable
     {
@@ -26,14 +26,14 @@ namespace AbsoluteRoleplay.Windows
         public RestorationWindow(Plugin plugin) : base(
        "RESTORATION", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(600, 300),
                 MaximumSize = new Vector2(420, 350)
             };
             pg = plugin;
-         
-          
+
+
         }
         public override void Draw()
         {
@@ -50,7 +50,7 @@ namespace AbsoluteRoleplay.Windows
 
             if (ImGui.Button("Submit"))
             {
-                if(restorationKey != string.Empty && restorationPass != string.Empty && restorationPassConfirm != string.Empty)
+                if (restorationKey != string.Empty && restorationPass != string.Empty && restorationPassConfirm != string.Empty)
                 {
                     if (restorationPass == restorationPassConfirm)
                     {
@@ -65,10 +65,10 @@ namespace AbsoluteRoleplay.Windows
                         restorationCol = new Vector4(255, 0, 0, 255);
                         restorationStatus = "Passwords do not match.";
                     }
-                   
+
 
                 }
-               
+
             }
             ImGui.TextColored(restorationCol, restorationStatus);
         }

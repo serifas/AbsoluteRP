@@ -1,3 +1,4 @@
+using AbsoluteRoleplay.Windows.Ect;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
@@ -140,7 +141,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 for (var g = 0; g < galleryImages.Length; g++)
                 {
                     galleryImageCount = 0;
-                    ReorderGallery = true;
                 }
                 for (var i = 0; i < 30; i++)
                 {
@@ -157,6 +157,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 // plugin.logger.Error("Could not reset gallery:: Results may be incorrect.");
             }
         }
+
         public static void ReorderGalleryData()
         {
             var nextExists = ImageExists[NextAvailableImageIndex() + 1];//bool to check if the next image in the list exists
@@ -173,7 +174,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     imageURLs[i] = imageURLs[i + 1];
                     NSFW[i] = NSFW[i + 1];
                     TRIGGER[i] = TRIGGER[i + 1];
-
                 }
             }
             //lower the overall image count

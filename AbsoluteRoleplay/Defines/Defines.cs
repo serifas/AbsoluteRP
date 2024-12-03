@@ -302,6 +302,7 @@ namespace AbsoluteRoleplay
             Coven = 8,
             Bathhouse = 9,
             Other = 10,
+            Infirmary = 11,
         }
         public static IDalamudTextureWrap UICommonImage(CommonImageTypes imageType)
         {
@@ -766,7 +767,7 @@ namespace AbsoluteRoleplay
         };
         public static readonly (string, string)[] ListingCategoryVals =
         {
-            ("Event",     "A one time event, for advertising parts of a campaign or short term RPs."),
+            ("Event",     "For advertising parts of a campaign or short term RPs."),
 
             ("Campaign",    "For an ongoing roleplay campaign, used for advertising long term Rps or a list of events."),
 
@@ -826,6 +827,8 @@ namespace AbsoluteRoleplay
 
             ("Bathhouse",  "Setting takes place in a public or private bathing area."),
 
+            ("Infirmary",  "Setting takes place in a hospital or medical facility."),
+
             ("Other",  "Setting unspecified."),
         };
 
@@ -874,6 +877,7 @@ namespace AbsoluteRoleplay
             if (setting == (int)ListingSetting.Shrine) { SettingName = "Shrine"; };
             if (setting == (int)ListingSetting.Coven) { SettingName = "Coven"; };
             if (setting == (int)ListingSetting.Bathhouse) { SettingName = "Bathhouse"; };
+            if (setting == (int)ListingSetting.Infirmary) { SettingName = "Infirmary"; };
             if (setting == (int)ListingSetting.Other) { SettingName = "Other"; };
             return SettingName;
         }

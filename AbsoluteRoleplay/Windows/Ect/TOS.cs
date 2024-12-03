@@ -6,9 +6,8 @@ using AbsoluteRoleplay.Helpers;
 using System;
 using System.Net.Http;
 using System.Numerics;
-using AbsoluteRoleplay;
 using Dalamud.Interface.Utility;
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Ect
 {
     public class TOS : Window, IDisposable
     {
@@ -22,7 +21,7 @@ namespace AbsoluteRoleplay.Windows
         public TOS(Plugin plugin) : base(
         "TERMS OF SERVICE")
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(200, 200),
                 MaximumSize = new Vector2(1200, 1200)
@@ -52,18 +51,18 @@ namespace AbsoluteRoleplay.Windows
         {
 
         }
-       
+
         static string ReadTOS(string url)
         {
             //simply reads the online file from the url
-            using (HttpClient client = new HttpClient())
+            using (var client = new HttpClient())
             {
-                HttpResponseMessage response = client.GetAsync(url).Result;
+                var response = client.GetAsync(url).Result;
                 response.EnsureSuccessStatusCode();
-                string result = response.Content.ReadAsStringAsync().Result;
+                var result = response.Content.ReadAsStringAsync().Result;
                 return result;
             }
         }
     }
-    
+
 }

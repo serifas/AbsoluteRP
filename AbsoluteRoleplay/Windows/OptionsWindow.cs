@@ -93,6 +93,21 @@ namespace AbsoluteRoleplay.Windows
                         Configuration.tooltip_HideInCombat = hideTooltipInCombat;
                         Configuration.Save();
                     }
+                    ImGui.SameLine();
+                    var hideTooltipInDuty = Configuration.tooltip_DutyDisabled;
+                    if (ImGui.Checkbox("Hide in Duty", ref hideTooltipInDuty))
+                    {
+                        Configuration.tooltip_DutyDisabled = hideTooltipInDuty;
+                        Configuration.Save();
+                    }
+                    ImGui.SameLine();
+                    var hideTooltipInPvP = Configuration.tooltip_PvPDisabled;
+                    if (ImGui.Checkbox("Hide in PvP", ref hideTooltipInPvP))
+                    {
+                        Configuration.tooltip_PvPDisabled = hideTooltipInPvP;
+                        Configuration.Save();
+                    }
+
                     var showAvatar = Configuration.tooltip_showAvatar;
                     if (ImGui.Checkbox("Show Avatar", ref showAvatar))
                     {

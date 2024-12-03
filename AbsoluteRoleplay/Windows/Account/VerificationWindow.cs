@@ -8,7 +8,7 @@ using Networking;
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Helpers;
 
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRoleplay.Windows.Account
 {
     public class VerificationWindow : Window, IDisposable
     {
@@ -19,13 +19,13 @@ namespace AbsoluteRoleplay.Windows
         public VerificationWindow(Plugin plugin) : base(
        "VERIFICATION", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
-            this.SizeConstraints = new WindowSizeConstraints
+            SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(350, 200),
                 MaximumSize = new Vector2(350, 200)
             };
             pg = plugin;
-          
+
         }
         public override void Draw()
         {
@@ -38,12 +38,12 @@ namespace AbsoluteRoleplay.Windows
             if (ImGui.Button("Submit"))
             {
                 //if player is online in game
-                if(pg.IsOnline())
+                if (pg.IsOnline())
                 {
                     //submit our verification key for verification
                     DataSender.SendVerification(pg.username.ToString(), verificationKey);
                 }
-                
+
             }
             ImGui.TextColored(verificationCol, verificationStatus);
         }

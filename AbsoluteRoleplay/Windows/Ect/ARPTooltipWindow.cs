@@ -30,7 +30,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using AbsoluteRoleplay.Helpers;
 
-namespace AbsoluteRoleplay.Windows.Profiles
+namespace AbsoluteRoleplay.Windows.Ect
 {
     public class ARPTooltipWindow : Window, IDisposable
     {
@@ -46,7 +46,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static IDalamudTextureWrap personality_2Img;
         public static IDalamudTextureWrap personality_3Img;
         public static IDalamudTextureWrap AlignmentImg;
-        
+
         public Plugin plugin;
         internal static bool hasAlignment = false;
         internal static bool showPersonality1 = false;
@@ -66,9 +66,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            
-            if (config.tooltip_showName && profile.Name != string.Empty && profile.Name != "New Profile") Misc.SetTitle(this.plugin, false, profile.Name);
-            if (config.tooltip_showAvatar)ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
+
+            if (config.tooltip_showName && profile.Name != string.Empty && profile.Name != "New Profile") Misc.SetTitle(plugin, false, profile.Name);
+            if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
             if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"Race: {profile.Race}");
             if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"Gender: {profile.Gender}");
             if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"Age: {profile.Age}");
@@ -77,7 +77,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
             if (config.tooltip_showAlignment)
             {
-                if(hasAlignment == true)
+                if (hasAlignment == true)
                 {
                     ImGui.Text("Alignment:");
                     ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
@@ -88,7 +88,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             if (config.tooltip_showPersonalityTraits)
             {
-                if(showPersonalities == true)
+                if (showPersonalities == true)
                 {
                     ImGui.Text("Personality Traits:");
                     if (showPersonality1 == true)
@@ -96,7 +96,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
                         ImGui.Text(Defines.PersonalityNames(profile.Personality_1));
-                        
+
                     }
                     if (showPersonality2 == true)
                     {
@@ -104,7 +104,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         ImGui.SameLine();
                         ImGui.Text(Defines.PersonalityNames(profile.Personality_2));
                     }
-                    if(showPersonality3 == true)
+                    if (showPersonality3 == true)
                     {
                         ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
@@ -114,7 +114,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             if (config.tooltip_draggable)
             {
-                if(Plugin.lockedtarget == false)
+                if (Plugin.lockedtarget == false)
                 {
                     windowPos = ImGui.GetMousePos();
                     ImGui.SetWindowPos(windowPos);
@@ -122,14 +122,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             else
             {
-                WindowOperations operations = new WindowOperations();
-                Vector2 position = operations.CalculateTooltipPos();
+                var operations = new WindowOperations();
+                var position = operations.CalculateTooltipPos();
                 ImGui.SetWindowPos(position);
             }
-           
+
         }
-     
-        
+
+
 
 
 

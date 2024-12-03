@@ -16,7 +16,7 @@ namespace AbsoluteRoleplay.Windows.Listings
 {
 
     //changed
-    public class ManageListings : Window, IDisposable
+    public class ListingsWindow : Window, IDisposable
     {
         private string ListingName = string.Empty, ListingDescription = string.Empty, ListingRules = string.Empty, triggers = string.Empty;
         public static IDalamudTextureWrap banner;
@@ -26,14 +26,15 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static float percentage = 0f; //loading base value
         private Plugin plugin;
         private IDalamudPluginInterface pg;
-        private FileDialogManager fileDialogManager = new FileDialogManager(); 
+        private FileDialogManager fileDialogManager = new FileDialogManager();
         public Configuration configuration;
+        public static Listing listing;
         public static int width = 0, height = 0;
         public static int currentCategory, currentType, currentFocus, currentSetting = 0;
         public static bool editBanner = false;
         public bool ReorderTriggers = false;
         public static bool IsNSFW = false;
-        public static bool StartListingCreation  = false;
+        public static bool StartListingCreation = false;
         // Variables for start date
         int selectedStartYear = 2024;
         int selectedStartMonth = 0; // Example: January
@@ -64,7 +65,7 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static float loaderInd;
         internal static bool allLoaded = false;
 
-        public ManageListings(Plugin plugin) : base(
+        public ListingsWindow(Plugin plugin) : base(
        "LISTINGS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -78,13 +79,13 @@ namespace AbsoluteRoleplay.Windows.Listings
             configuration = plugin.Configuration;
         }
         public override void OnOpen()
-        {         
+        {
             if (bannerBytes == null)
             {
                 //set the avatar to the avatar_holder.png by default
                 if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
                 {
-                    bannerBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/listings/banner.png"));
+                    bannerBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/blank.png"));
                 }
             }
             banner = Defines.UICommonImage(Defines.CommonImageTypes.eventsBanner);
@@ -98,7 +99,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 ImGui.Columns(2, "layoutColumns", false);
                 ImGui.SetColumnWidth(0, 110);
-                for (int i = 0; i < Defines.ListingNavigationVals.Length; i++)
+                for (var i = 0; i < Defines.ListingNavigationVals.Length; i++)
                 {
                     var (id, navBtnName) = Defines.ListingNavigationVals[i];
                     if (ImGui.Button(navBtnName, new Vector2(100, 50)))
@@ -112,7 +113,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                     }
                 }
                 ImGui.Spacing();
-                if(ImGui.Button("Create Listing", new Vector2(100, 30)))
+                if (ImGui.Button("Create Listing", new Vector2(100, 30)))
                 {
                     listings.Clear();
                     ResetPages();
@@ -123,9 +124,9 @@ namespace AbsoluteRoleplay.Windows.Listings
                 ImGui.NextColumn();
 
 
-                if(StartListingCreation == true)
+                if (StartListingCreation == true)
                 {
-                    DrawListingCreation();
+                    DrawListingManagement();
                 }
                 if (DrawListings == true)
                 {
@@ -137,7 +138,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                     {
                         Misc.StartLoader(loaderInd, percentage, loading, ImGui.GetWindowSize());
                     }
-                    
+
                 }
 
             }
@@ -171,23 +172,24 @@ namespace AbsoluteRoleplay.Windows.Listings
             using var listingView = ImRaii.Child("LISTING");
             if (listingView)
             {
-                for (int i = 0; i < listings.Count; i++)
+                for (var i = 0; i < listings.Count; i++)
                 {
                     ImGui.Image(listings[i].banner.ImGuiHandle, new Vector2(500, 100));
                     ImGui.TextUnformatted(listings[i].name);
                 }
             }
-          
+
         }
 
         
-        public void DrawListingCreation()
+        public void DrawListingManagement()
         {
+            
             GetImGuiWindowDimensions(out var windowWidth, out var windowHeight);
-         
+
             //banner uploader / viewer
-          
-            if(DrawDateTimeSelection == true)
+
+            if (DrawDateTimeSelection == true)
             {
                 DrawDatePickerTable();
                 ImGui.Spacing();
@@ -205,12 +207,12 @@ namespace AbsoluteRoleplay.Windows.Listings
                 }
                 ImGui.SameLine();
                 ImGui.TextColored(new Vector4(255, 0, 0, 255), "All images are scaled to 500x100 and may NOT contain NSFW content");
-                if(banner != null)
+                if (banner != null)
                 {
                     ImGui.Image(banner.ImGuiHandle, new Vector2(500, 100));
                 }
-                
-              
+
+
 
                 //Specifications
                 ImGui.Text("Name:");
@@ -232,7 +234,7 @@ namespace AbsoluteRoleplay.Windows.Listings
 
                 ImGui.Text("Availility:");
                 ImGui.Combo($"##inclusion", ref inclusion, Defines.inclusions, Defines.inclusions.Length);  // Unique ID
-          
+
 
                 if (ImGui.Button("Back"))
                 {
@@ -246,7 +248,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                     DrawInfoCreation = true;
                 }
             }
-            if(DrawInfoCreation == true)
+            if (DrawInfoCreation == true)
             {
 
                 ImGui.Text("Category:");
@@ -274,7 +276,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                 {
                     ResetElements();
                     DrawDetailsCreation = true;
-                } 
+                }
                 ImGui.SameLine();
                 if (ImGui.Button("Submit Listing"))
                 {
@@ -287,7 +289,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                 }
             }
 
-           
+
             if (editBanner == true)
             {
                 editBanner = false;
@@ -297,14 +299,14 @@ namespace AbsoluteRoleplay.Windows.Listings
         private void GetImGuiWindowDimensions(out int width, out int height)
         {
             var windowSize = ImGui.GetWindowSize();
-            width = (int)windowSize.X -200;
+            width = (int)windowSize.X - 200;
             height = (int)windowSize.Y;
         }
-       
 
-    
 
-        
+
+
+
 
         public void Dispose()
         {
@@ -376,6 +378,23 @@ namespace AbsoluteRoleplay.Windows.Listings
                 ImGuiUtil.SelectableHelpMarker(newDesc);
             }
         }
+        public void AddListingsSelection()
+        {
+            List<string> listingNames = new List<string>();
+            var (text, desc) = Defines.ListingSettingVals[currentSetting];
+            using var combo = OtterGui.Raii.ImRaii.Combo("##Listings", text);
+            ImGuiUtil.HoverTooltip(desc);
+            if (!combo)
+                return;
+
+            foreach (var ((newText, newDesc), idx) in Defines.ListingSettingVals.WithIndex())
+            {
+                if (ImGui.Selectable(newText, idx == currentSetting))
+                    currentSetting = idx;
+
+                ImGuiUtil.SelectableHelpMarker(newDesc);
+            }
+        }
 
         public void DrawDatePickerTable()
         {
@@ -383,7 +402,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             using var dateTable = ImRaii.Table("DatePickersTable", 2, ImGuiTableFlags.BordersInnerV);
             if (!dateTable)
                 return;
-            
+
             // Column 1: Start Date
             ImGui.TableNextColumn();  // Move to the first column
             ImGui.Text("Start Date:");
@@ -395,11 +414,11 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 DrawDateTimePicker(false); // Pass 'false' for the end picker
             } // End the table
-            
+
         }
         public void DrawDateTimePicker(bool starting)
         {
-            string idPrefix = starting ? "Start" : "End";  // Unique prefix for UI element IDs
+            var idPrefix = starting ? "Start" : "End";  // Unique prefix for UI element IDs
 
             // Variables based on whether we are modifying "Start" or "End"
             ref int year = ref (starting ? ref selectedStartYear : ref selectedEndYear);
@@ -416,8 +435,8 @@ namespace AbsoluteRoleplay.Windows.Listings
 
             // Year selection (limited to current year + 2)
             ImGui.Text($"{idPrefix} Year");
-            int minYear = DateTime.Now.Year;
-            int maxYear = DateTime.Now.Year + 2;
+            var minYear = DateTime.Now.Year;
+            var maxYear = DateTime.Now.Year + 2;
             ImGui.SliderInt($"##{idPrefix}_year", ref year, minYear, maxYear);  // Unique ID
 
             // Month selection using Combo (index is 0-based)
@@ -428,8 +447,8 @@ namespace AbsoluteRoleplay.Windows.Listings
             }
 
             // Get the correct number of days in the selected month and year
-            int monthValue = month + 1;  // Convert 0-based index to 1-12 month value
-            int daysInMonth = DateTime.DaysInMonth(year, monthValue);
+            var monthValue = month + 1;  // Convert 0-based index to 1-12 month value
+            var daysInMonth = DateTime.DaysInMonth(year, monthValue);
 
             // Day selection (adjust dynamically based on month and year)
             ImGui.Text($"{idPrefix} Day");
@@ -461,7 +480,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 if (!s)
                     return;
-                var imagePath = f[0].ToString();        
+                var imagePath = f[0].ToString();
                 bannerBytes = File.ReadAllBytes(imagePath);
                 banner = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
             }, 0, null, configuration.AlwaysOpenDefaultImport);

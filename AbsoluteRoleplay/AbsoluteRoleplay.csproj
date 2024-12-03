@@ -222,4 +222,13 @@
       
       
   </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Windows\Armory\" />
+      <Folder Include="Windows\PublicListings\ListingTabs\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Include="Windows\PublicListings\ListingsWindow.cs" />
+    </ItemGroup>
 </Project>

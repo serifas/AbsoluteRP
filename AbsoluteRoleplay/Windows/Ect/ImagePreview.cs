@@ -1,4 +1,4 @@
- using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using ImGuiNET;
@@ -28,7 +28,7 @@ using Dalamud.Plugin.Services;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
 
-namespace AbsoluteRoleplay.Windows.Profiles
+namespace AbsoluteRoleplay.Windows.Ect
 {
     public class ImagePreview : Window, IDisposable
     {

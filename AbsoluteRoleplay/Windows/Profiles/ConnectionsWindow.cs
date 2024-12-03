@@ -61,7 +61,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
                 if (receivedRequestsTable)
                 {
-
                     for (var i = 0; i < receivedProfileRequests.Count; i++)
                     {
                         var requesterName = receivedProfileRequests[i].Item1;
