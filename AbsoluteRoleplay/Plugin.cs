@@ -34,6 +34,7 @@ using Lumina.Excel.Sheets;
 using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Account;
+using AbsoluteRoleplay.Windows.MainPanel;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {

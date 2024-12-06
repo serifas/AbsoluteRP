@@ -8,11 +8,11 @@ using System.Threading.Tasks;
 using AbsoluteRoleplay;
 using System.IO;
 using System.Net.Http;
-using AbsoluteRoleplay.Windows;
 using static AbsoluteRoleplay.Defines;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
+using AbsoluteRoleplay.Windows.MainPanel;
 
 namespace Networking
 {

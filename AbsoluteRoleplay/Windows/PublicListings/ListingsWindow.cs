@@ -36,7 +36,7 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static bool IsNSFW = false;
         public static bool StartListingCreation = false;
         // Variables for start date
-        int selectedStartYear = 2024;
+        int selectedStartYear = DateTime.Now.Year;
         int selectedStartMonth = 0; // Example: January
         int selectedStartDay = 1;
         int selectedStartHour = 1;
@@ -45,7 +45,7 @@ namespace AbsoluteRoleplay.Windows.Listings
         int selectedStartTimezone = 0; // Example: UTC
         public static IDalamudTextureWrap[] banners = new IDalamudTextureWrap[100];
         // Variables for end date
-        int selectedEndYear = 2024;
+        int selectedEndYear = DateTime.Now.Year;
         int selectedEndMonth = 0; // Example: January
         int selectedEndDay = 1;
         int selectedEndHour = 1;
@@ -64,14 +64,14 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static string[] listingNames;
         public static float loaderInd;
         internal static bool allLoaded = false;
-
+        public static Vector2 buttonScale;
         public ListingsWindow(Plugin plugin) : base(
        "LISTINGS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
 
-                MinimumSize = new Vector2(200, 200),
+                MinimumSize = new Vector2(200, 400),
                 MaximumSize = new Vector2(1000, 1000)
             };
 
@@ -80,6 +80,8 @@ namespace AbsoluteRoleplay.Windows.Listings
         }
         public override void OnOpen()
         {
+            buttonScale = new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f, ImGui.GetIO().FontGlobalScale / 0.030f);
+
             if (bannerBytes == null)
             {
                 //set the avatar to the avatar_holder.png by default
@@ -88,32 +90,35 @@ namespace AbsoluteRoleplay.Windows.Listings
                     bannerBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/blank.png"));
                 }
             }
-            banner = Defines.UICommonImage(Defines.CommonImageTypes.eventsBanner);
+            banner = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
         }
         public override void Draw()
         {
             fileDialogManager.Draw();
-
             using var listing = ImRaii.Child("LISTING");
             if (listing)
             {
                 ImGui.Columns(2, "layoutColumns", false);
-                ImGui.SetColumnWidth(0, 110);
+                ImGui.SetColumnWidth(0, buttonScale.X + 30);
                 for (var i = 0; i < Defines.ListingNavigationVals.Length; i++)
                 {
-                    var (id, navBtnName) = Defines.ListingNavigationVals[i];
-                    if (ImGui.Button(navBtnName, new Vector2(100, 50)))
+                    var (id, navBtnName, image) = Defines.ListingNavigationVals[i];
+                    if (ImGui.ImageButton(image.ImGuiHandle, buttonScale))
                     {
-
                         listings.Clear();
                         DataReceiver.ListingsLoadStatus = -1;
                         ResetElements();
                         DrawListings = true;
                         DataSender.RequestListingsSection(id);
                     }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip(navBtnName);
+                    }
                 }
                 ImGui.Spacing();
-                if (ImGui.Button("Create Listing", new Vector2(100, 30)))
+                ImGui.SetCursorPos(new Vector2(0, ImGui.GetWindowHeight() - 50));
+                if (ImGui.Button("Create Listing"))
                 {
                     listings.Clear();
                     ResetPages();
@@ -221,15 +226,15 @@ namespace AbsoluteRoleplay.Windows.Listings
                 ImGui.Spacing();
 
                 ImGui.Text("Description:");
-                ImGui.InputTextMultiline("##Description", ref ListingDescription, 5000, new Vector2(windowWidth, 100));
+                ImGui.InputTextMultiline("##Description", ref ListingDescription, 5000, new Vector2(windowWidth - 50, 100));
                 ImGui.Spacing();
 
                 ImGui.Text("Rules:");
-                ImGui.InputTextMultiline("##Rules", ref ListingRules, 5000, new Vector2(windowWidth, 100));
+                ImGui.InputTextMultiline("##Rules", ref ListingRules, 5000, new Vector2(windowWidth - 50, 100));
                 ImGui.Spacing();
 
                 ImGui.Text("Trigger List");
-                ImGui.InputTextMultiline("##Triggers", ref triggers, 10000, new Vector2(windowWidth, 100));
+                ImGui.InputTextMultiline("##Triggers", ref triggers, 10000, new Vector2(windowWidth - 50, 100));
                 ImGui.Spacing();
 
                 ImGui.Text("Availility:");

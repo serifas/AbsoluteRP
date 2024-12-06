@@ -2,7 +2,6 @@
 
 using FFXIVClientStructs.FFXIV.Common.Math;
 using AbsoluteRoleplay;
-using AbsoluteRoleplay.Windows;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +18,7 @@ using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRoleplay.Windows.MainPanel;
 
 namespace Networking
 {
@@ -471,7 +471,7 @@ namespace Networking
                     {
                         MainPanel.status = "Logged In";
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
-                        MainPanel.viewMainWindow = true;
+                        MainPanel.loggedIn = true;
                         plugin.loginAttempted = true;
                     }
                     if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
@@ -495,7 +495,7 @@ namespace Networking
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Incorrect Account Info";
-                        MainPanel.viewMainWindow = false;
+                        MainPanel.loggedIn = false;
                     }
                     if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_RECEIVED)
                     {

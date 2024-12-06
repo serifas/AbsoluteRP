@@ -26,8 +26,14 @@ namespace AbsoluteRoleplay.Helpers
      
         public static IDalamudTextureWrap DownloadListingImage(string url, int index)
         {
-            IDalamudTextureWrap banner = Defines.UICommonImage(Defines.CommonImageTypes.eventsBanner);
-
+            byte[] bannerBytes = null;
+                //set the avatar to the avatar_holder.png by default
+            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+            {
+                bannerBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/blank.png"));
+            }
+            
+            IDalamudTextureWrap banner = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
             using (WebClient webClient = new WebClient())
             {
                 try

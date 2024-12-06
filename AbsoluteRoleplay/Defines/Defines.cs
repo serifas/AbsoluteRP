@@ -154,7 +154,7 @@ namespace AbsoluteRoleplay
         }
         public static bool nameLoaded = false, raceLoaded = false, genderLoaded = false, ageLoaded = false, heightLoaded = false, weightLoaded = false, afgLoaded = false;
         public static string[] amPmOptions = { "AM", "PM" };
-        public static string[] inclusions = { "Public", "Server Only", "FC Only", "Connections Only", "Invite Only" };
+        public static string[] inclusions = { "Public", "World Only", "Datacenter Only", "FC Only", "Connections Only", "Invite Only" };
         public static string[] months = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         public static string[] timezones = { "Eastern Standard Time (EST)", "Eastern Daylight Time (EDT)", "Central Standard Time (CST)", "Central Daylight Time (CDT)", "Mountain Standard Time (MST)", "Mountain Daylight Time (MDT)", "Pacific Standard Time (PST)", "Pacific Daylight Time (PDT)" };
 
@@ -260,7 +260,20 @@ namespace AbsoluteRoleplay
             NSFWTRIGGER = 23,
             //Connection Button
             reconnect = 24,
-            eventsBanner = 25,
+            //listings
+            listingsCampaign = 25,
+            listingsEvent = 26,
+            listingsFC = 27,
+            listingsGroup = 28,
+            listingsPersonal = 29,
+            listingsVenue = 30,
+            listingsCampaignBig = 31,
+            listingsEventBig = 32,
+            listingsFCBig = 33,
+            listingsGroupBig = 34,
+            listingsPersonalBig = 35,
+            listingsVenueBig = 36,
+
         }
         public enum ListingCategory
         {
@@ -331,7 +344,19 @@ namespace AbsoluteRoleplay
                 if (imageType == CommonImageTypes.targetGroupInvite) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result;}
                 if (imageType == CommonImageTypes.targetViewProfile) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result;}
                 if (imageType == CommonImageTypes.reconnect) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result;}
-                if (imageType == CommonImageTypes.eventsBanner) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/banner.png"))).Result; }
+                //listings
+                if (imageType == CommonImageTypes.listingsCampaign) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsEvent) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsFC) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsGroup) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsPersonal) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsVenue) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsCampaignBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsEventBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsFCBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsGroupBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsPersonalBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsVenueBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
 
             }
 
@@ -750,19 +775,19 @@ namespace AbsoluteRoleplay
         };
 
 
-        public static readonly (int, string)[] ListingNavigationVals =
+        public static readonly (int, string, IDalamudTextureWrap)[] ListingNavigationVals =
         {
-            (0, "Events"),
+            (0, "Events", UICommonImage(CommonImageTypes.listingsEvent)),
 
-            (1, "Campaigns"),
+            (1, "Campaigns", UICommonImage(CommonImageTypes.listingsCampaign)),
 
-            (2, "Venues"),
+            (2, "Venues", UICommonImage(CommonImageTypes.listingsVenue)),
 
-            (3, "Groups"),
+            (3, "Groups", UICommonImage(CommonImageTypes.listingsGroup)),
 
-            (4, "FCs"),
+            (4, "FCs", UICommonImage(CommonImageTypes.listingsFC)),
 
-            (5, "Personals"),
+            (5, "Personals", UICommonImage(CommonImageTypes.listingsPersonal)),
 
         };
         public static readonly (string, string)[] ListingCategoryVals =

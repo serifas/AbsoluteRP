@@ -21,11 +21,6 @@
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
     <ItemGroup>
-      <Compile Remove="UI\common\listings\**" />
-      <EmbeddedResource Remove="UI\common\listings\**" />
-      <None Remove="UI\common\listings\**" />
-    </ItemGroup>
-    <ItemGroup>
       <Compile Remove="Helpers\Timer.cs" />
     </ItemGroup>
 
@@ -212,6 +207,42 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
         <None Update="UI\common\targets\profile_view.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\campaign.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\event.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\fc.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\group.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\personal.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\venue.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\campaign_big.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\event_big.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\fc_big.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\group_big.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\personal_big.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\listings\venue_big.png">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
         <!--Connection-->

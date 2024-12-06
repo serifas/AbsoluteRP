@@ -29,7 +29,6 @@ public class HitboxWindow : Window
         {
             DrawTooltipHitbox(Player, gameGui, 0.300f);
         }
-        // Add UI drawing logic here
     }
     public static void DrawTooltipHitbox(IPlayerCharacter player, IGameGui gui, float radius)
     {
