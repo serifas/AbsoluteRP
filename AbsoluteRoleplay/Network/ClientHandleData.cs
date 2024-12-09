@@ -64,45 +64,68 @@ namespace Networking
             //simple message back from server, simply for verification that the user is connected
         }
 
-        //LITERALLY NOT COMMENTING THIS, AS IT WASNT EVEN EXPLAINED TO ME
         public static void HandleData(byte[] data)
         {
+            // Clone the incoming data to avoid modifying the original buffer
             var buffer = (byte[])data.Clone();
             var pLength = 0;
 
+            // Initialize the player buffer if it's null
             if (playerBuffer == null)
             {
                 playerBuffer = new ByteBuffer();
             }
+
+            // Write the cloned data into the player buffer
             playerBuffer.WriteBytes(buffer);
+
+            // Check if the buffer is empty; clear and return if true
             if (playerBuffer.Count() == 0)
             {
                 playerBuffer.Clear();
                 return;
             }
+
+            // Ensure there are at least 4 bytes (length header) in the buffer
             if (playerBuffer.Length() > 4)
             {
+                // Read the packet length without removing it from the buffer
                 pLength = playerBuffer.ReadInt(false);
+
+                // If the length is invalid, clear the buffer and exit
                 if (pLength <= 0)
                 {
                     playerBuffer.Clear();
                     return;
                 }
             }
-            while (pLength > 0 & pLength <= playerBuffer.Length() - 4)
+
+            // Process the data packets while there are valid lengths and enough data in the buffer
+            while (pLength > 0 && pLength <= playerBuffer.Length() - 4)
             {
+                // Check again if there is enough data for the packet
                 if (pLength <= playerBuffer.Length() - 4)
                 {
+                    // Consume the packet length header
                     playerBuffer.ReadInt();
-                    data = playerBuffer.ReadBytes(pLength);
-                    HandleDataPackets(data);
 
+                    // Read the actual data packet
+                    data = playerBuffer.ReadBytes(pLength);
+
+                    // Handle the extracted data packet
+                    HandleDataPackets(data);
                 }
 
+                // Reset packet length and check for the next packet
                 pLength = 0;
+
+                // Ensure there are still enough bytes for another length header
                 if (playerBuffer.Length() > 4)
                 {
+                    // Peek the next packet length without removing it
                     pLength = playerBuffer.ReadInt(false);
+
+                    // If the length is invalid, clear the buffer and exit
                     if (pLength <= 0)
                     {
                         playerBuffer.Clear();
@@ -110,11 +133,14 @@ namespace Networking
                     }
                 }
             }
+
+            // If no valid packet remains, clear the buffer
             if (pLength <= 1)
             {
                 playerBuffer.Clear();
             }
         }
+
         private static void HandleDataPackets(byte[] data)
         {
             var buffer = new ByteBuffer();

@@ -24,6 +24,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         Story = 3,
         OOC = 4,
         Gallery = 5,
+        Inventory = 6,
     }
     //changed
     public class ProfileWindow : Window, IDisposable
@@ -60,20 +61,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
             configuration = plugin.Configuration;
             _fileDialogManager = new FileDialogManager();
 
-
+            InventoryTab.InitInventory(0);
         }
         public override void OnOpen()
         {
             ProfileBaseData.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
-            var avatarHolderImage = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
+            var avatarHolderImage = UI.UICommonImage(UI.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
             if (avatarHolderImage != null)
             {
                 avatarHolder = avatarHolderImage; //set our avatarHolder ot the same TextureWrap
             }
 
             //same for pictureTab
-            var pictureTabImage = Defines.UICommonImage(Defines.CommonImageTypes.blankPictureTab);
+            var pictureTabImage = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
             if (pictureTabImage != null)
             {
                 pictureTab = pictureTabImage;
@@ -109,7 +110,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             GalleryTab.galleryImages = GalleryTab.galleryImagesList.ToArray();
             GalleryTab.galleryThumbs = GalleryTab.galleryThumbsList.ToArray();
-
             //set all our text entry fields for the bio to empty strings
             for (var b = 0; b < BioTab.bioFieldsArr.Length; b++)
             {
@@ -261,6 +261,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Inventory")) { ClearUI(); TabOpen[TabValue.Inventory] = true; ImGui.EndTabItem(); }
                 ImGui.EndTabBar();
 
 
@@ -283,14 +284,16 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         GalleryTab.LoadGalleryTab();
                     }
-
                     if (TabOpen[TabValue.OOC])
                     {
                         Vector2 inputSize = new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - 20);
                        // oocInfo = Misc.WrapTextToFit(oocInfo, inputSize.X);
                         ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, inputSize);
                     }
-
+                    if (TabOpen[TabValue.Inventory])
+                    {
+                        InventoryTab.LoadInventoryTab(plugin);
+                    }
                     if (GalleryTab.loadPreview == true)
                     {
                         //load gallery image preview if requested
@@ -411,6 +414,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             TabOpen[TabValue.Story] = false;
             TabOpen[TabValue.OOC] = false;
             TabOpen[TabValue.Gallery] = false;
+            TabOpen[TabValue.Inventory] = false;
         }
         public static void ResetOnChangeOrRemoval()
         {
@@ -429,7 +433,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 BioTab.bioFieldsArr[i] = string.Empty;
             }
-            BioTab.currentAvatarImg = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
+            BioTab.currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
             BioTab.currentAlignment = 9;
             BioTab.currentPersonality_1 = 26;
             BioTab.currentPersonality_2 = 26;
@@ -499,7 +503,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 BioTab.bioFieldsArr[i] = string.Empty;
                             }
-                            BioTab.currentAvatarImg = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
+                            BioTab.currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                             BioTab.currentAlignment = 9;
                             BioTab.currentPersonality_1 = 26;
                             BioTab.currentPersonality_2 = 26;
@@ -839,13 +843,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
             DataSender.SubmitProfileBio(currentProfile,
                                                   BioTab.avatarBytes,
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.name].Replace("'", "''"),
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.race].Replace("'", "''"),
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.gender].Replace("'", "''"),
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.age].Replace("'", "''"),
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.height].Replace("'", "''"),
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.weight].Replace("'", "''"),
-                                                  BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.afg].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.gender].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight].Replace("'", "''"),
+                                                  BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg].Replace("'", "''"),
                                                   BioTab.currentAlignment, BioTab.currentPersonality_1, BioTab.currentPersonality_2, BioTab.currentPersonality_3,
                                                   activeProfile);
             var hooks = new List<Tuple<int, string, string>>();
@@ -892,25 +896,25 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public void SaveBackupFile()
         {
-            _fileDialogManager.SaveFileDialog("Save Backup", "Data{.dat, .json}", "backup", ".dat", (s, f) =>
+            _fileDialogManager.SaveFileDialog("Save Backup", "Data{.dat, .json}", "backup", ".dat", (Action<bool, string>)((s, f) =>
             {
                 if (!s)
                     return;
                 var dataPath = f.ToString();
 
-                using (StreamWriter writer = new StreamWriter($"{dataPath}"))
+                using (var writer = new StreamWriter($"{dataPath}"))
                 {
                     // Write avatarBytes as base64
                     string avatarBts = Convert.ToBase64String(BioTab.avatarBytes);
                     // Bio fields
                     writer.WriteLine($"<avatar>{avatarBts}</avatar>");
-                    writer.WriteLine($"<name>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.name])}</name>");
-                    writer.WriteLine($"<race>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.race])}</race>");
-                    writer.WriteLine($"<gender>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.gender])}</gender>");
-                    writer.WriteLine($"<age>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.age])}</age>");
-                    writer.WriteLine($"<height>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.height])}</height>");
-                    writer.WriteLine($"<weight>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.weight])}</weight>");
-                    writer.WriteLine($"<afg>{EscapeTagContent(BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.afg])}</afg>");
+                    writer.WriteLine($"<name>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name])}</name>");
+                    writer.WriteLine($"<race>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race])}</race>");
+                    writer.WriteLine($"<gender>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.gender])}</gender>");
+                    writer.WriteLine($"<age>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age])}</age>");
+                    writer.WriteLine($"<height>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height])}</height>");
+                    writer.WriteLine($"<weight>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight])}</weight>");
+                    writer.WriteLine($"<afg>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg])}</afg>");
                     writer.WriteLine($"<alignment>{BioTab.currentAlignment}</alignment>");
                     writer.WriteLine($"<personality_1>{BioTab.currentPersonality_1}</personality_1>");
                     writer.WriteLine($"<personality_2>{BioTab.currentPersonality_2}</personality_2>");
@@ -949,7 +953,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     }
                     writer.WriteLine("</gallery>");
                 }
-            });
+            }));
         }   
 
 

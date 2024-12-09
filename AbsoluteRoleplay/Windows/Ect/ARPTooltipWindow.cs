@@ -82,7 +82,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                     ImGui.Text("Alignment:");
                     ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
                     ImGui.SameLine();
-                    ImGui.Text(Defines.AlignmentName(profile.Alignment));
+                    ImGui.Text(UI.AlignmentName(profile.Alignment));
 
                 }
             }
@@ -95,20 +95,20 @@ namespace AbsoluteRoleplay.Windows.Ect
                     {
                         ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
-                        ImGui.Text(Defines.PersonalityNames(profile.Personality_1));
+                        ImGui.Text(UI.PersonalityNames(profile.Personality_1));
 
                     }
                     if (showPersonality2 == true)
                     {
                         ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
-                        ImGui.Text(Defines.PersonalityNames(profile.Personality_2));
+                        ImGui.Text(UI.PersonalityNames(profile.Personality_2));
                     }
                     if (showPersonality3 == true)
                     {
                         ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
-                        ImGui.Text(Defines.PersonalityNames(profile.Personality_3));
+                        ImGui.Text(UI.PersonalityNames(profile.Personality_3));
                     }
                 }
             }

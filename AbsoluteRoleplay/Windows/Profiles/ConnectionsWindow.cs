@@ -71,7 +71,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Decline##Decline" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.refused);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -83,7 +83,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Accept##Accept" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.accepted);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -95,7 +95,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Block##Block" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)Defines.ConnectionStatus.blocked);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -121,7 +121,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Remove##Remove" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.refused);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -133,7 +133,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Block##Block" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)Defines.ConnectionStatus.blocked);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -161,7 +161,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Cancel##Cancel" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)Defines.ConnectionStatus.refused);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -187,7 +187,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (ImGui.Button("Unblock##Unblock" + i))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)Defines.ConnectionStatus.refused);
+                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
                             }
                         }
                         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -204,13 +204,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public void AddConnectionListingOptions()
         {
-            var (text, desc) = Defines.ConnectionListingVals[currentListing];
+            var (text, desc) = UI.ConnectionListingVals[currentListing];
             using var combo = ImRaii.Combo("##Connetions", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Defines.ConnectionListingVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.ConnectionListingVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentListing))
                     currentListing = idx;

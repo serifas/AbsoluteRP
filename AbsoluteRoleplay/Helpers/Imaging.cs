@@ -101,7 +101,7 @@ namespace AbsoluteRoleplay.Helpers
                              // Handle NSFW/trigger thumbnail logic
                              if (trigger && !nsfw)
                              {
-                                 var triggerImage = Defines.UICommonImage(Defines.CommonImageTypes.TRIGGER);
+                                 var triggerImage = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
                                  if (self)
                                  {
                                      GalleryTab.galleryThumbs[index] = triggerImage;
@@ -113,7 +113,7 @@ namespace AbsoluteRoleplay.Helpers
                              }
                              else if (nsfw && !trigger)
                              {
-                                 var nsfwImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFW);
+                                 var nsfwImage = UI.UICommonImage(UI.CommonImageTypes.NSFW);
                                  if (self)
                                  {
                                      GalleryTab.galleryThumbs[index] = nsfwImage;
@@ -125,7 +125,7 @@ namespace AbsoluteRoleplay.Helpers
                              }
                              else if (nsfw && trigger)
                              {
-                                 var nsfwTriggerImage = Defines.UICommonImage(Defines.CommonImageTypes.NSFWTRIGGER);
+                                 var nsfwTriggerImage = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
                                  if (self)
                                  {
                                      GalleryTab.galleryThumbs[index] = nsfwTriggerImage;

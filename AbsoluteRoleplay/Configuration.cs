@@ -43,7 +43,7 @@ public class Configuration : IPluginConfiguration
     public int tooltip_PosY { get; set; }
     public bool tooltip_LockOnClick { get; set; } = false;
     public bool tooltip_HideInCombat { get; set; }
-    public int alert_position { get; set; } = (int)Defines.AlertPositions.BottomRight;
+    public int alert_position { get; set; } = (int)UI.AlertPositions.BottomRight;
 
     public string mcdfPath { get; set; }
     public float hPos {  get; set; }

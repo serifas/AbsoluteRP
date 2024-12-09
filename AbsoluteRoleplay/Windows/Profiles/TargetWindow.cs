@@ -90,7 +90,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void OnOpen()
         {  
-            var blankPictureTab = Defines.UICommonImage(Defines.CommonImageTypes.blankPictureTab);
+            var blankPictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
             if (blankPictureTab != null)
             {
                 pictureTab = blankPictureTab;
@@ -178,7 +178,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             if (ImGui.Button("Request access"))
                             {
                                 //send a new request to the server and then the profile owner if pressed
-                                DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)Defines.ConnectionStatus.pending);
+                                DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
                             }
                         }
                         else

@@ -65,6 +65,8 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static float loaderInd;
         internal static bool allLoaded = false;
         public static Vector2 buttonScale;
+        private bool setStartDate;
+
         public ListingsWindow(Plugin plugin) : base(
        "LISTINGS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -100,9 +102,9 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 ImGui.Columns(2, "layoutColumns", false);
                 ImGui.SetColumnWidth(0, buttonScale.X + 30);
-                for (var i = 0; i < Defines.ListingNavigationVals.Length; i++)
+                for (var i = 0; i < UI.ListingNavigationVals.Length; i++)
                 {
-                    var (id, navBtnName, image) = Defines.ListingNavigationVals[i];
+                    var (id, navBtnName, image) = UI.ListingNavigationVals[i];
                     if (ImGui.ImageButton(image.ImGuiHandle, buttonScale))
                     {
                         listings.Clear();
@@ -238,7 +240,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                 ImGui.Spacing();
 
                 ImGui.Text("Availility:");
-                ImGui.Combo($"##inclusion", ref inclusion, Defines.inclusions, Defines.inclusions.Length);  // Unique ID
+                ImGui.Combo($"##inclusion", ref inclusion, UI.inclusions, UI.inclusions.Length);  // Unique ID
 
 
                 if (ImGui.Button("Back"))
@@ -285,7 +287,6 @@ namespace AbsoluteRoleplay.Windows.Listings
                 ImGui.SameLine();
                 if (ImGui.Button("Submit Listing"))
                 {
-
                     DataSender.SubmitListing(bannerBytes, ListingName, ListingDescription, ListingRules, inclusion,
                         currentCategory, currentType, currentFocus, currentSetting, IsNSFW, triggers,
                         selectedStartYear, selectedStartMonth + 1, selectedStartDay, selectedStartHour, selectedStartMinute, selectedStartAmPm, selectedStartTimezone,
@@ -320,13 +321,13 @@ namespace AbsoluteRoleplay.Windows.Listings
 
         public void AddCategorySelection()
         {
-            var (text, desc) = Defines.ListingCategoryVals[currentCategory];
+            var (text, desc) = UI.ListingCategoryVals[currentCategory];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Category", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Defines.ListingCategoryVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.ListingCategoryVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentCategory))
                     currentCategory = idx;
@@ -336,13 +337,13 @@ namespace AbsoluteRoleplay.Windows.Listings
         }
         public void AddTypeSelection()
         {
-            var (text, desc) = Defines.ListingTypeVals[currentType];
+            var (text, desc) = UI.ListingTypeVals[currentType];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Type", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Defines.ListingTypeVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.ListingTypeVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentType))
                     currentType = idx;
@@ -352,13 +353,13 @@ namespace AbsoluteRoleplay.Windows.Listings
         }
         public void AddFocusSelection()
         {
-            var (text, desc) = Defines.ListingFocusVals[currentFocus];
+            var (text, desc) = UI.ListingFocusVals[currentFocus];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Focus", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Defines.ListingFocusVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.ListingFocusVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentFocus))
                     currentFocus = idx;
@@ -369,13 +370,13 @@ namespace AbsoluteRoleplay.Windows.Listings
 
         public void AddSettingSelection()
         {
-            var (text, desc) = Defines.ListingSettingVals[currentSetting];
+            var (text, desc) = UI.ListingSettingVals[currentSetting];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Setting", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Defines.ListingSettingVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.ListingSettingVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentSetting))
                     currentSetting = idx;
@@ -386,13 +387,13 @@ namespace AbsoluteRoleplay.Windows.Listings
         public void AddListingsSelection()
         {
             List<string> listingNames = new List<string>();
-            var (text, desc) = Defines.ListingSettingVals[currentSetting];
+            var (text, desc) = UI.ListingSettingVals[currentSetting];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Listings", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc), idx) in Defines.ListingSettingVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.ListingSettingVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentSetting))
                     currentSetting = idx;
@@ -409,9 +410,13 @@ namespace AbsoluteRoleplay.Windows.Listings
                 return;
 
             // Column 1: Start Date
-            ImGui.TableNextColumn();  // Move to the first column
-            ImGui.Text("Start Date:");
-            DrawDateTimePicker(true);  // Pass 'true' for the start picker
+            ImGui.TableNextColumn();
+            ImGui.Checkbox("Set End Date", ref setStartDate);
+            if (setEndDate)
+            {
+                DrawDateTimePicker(true);
+            }
+            // Pass 'true' for the start picker
             // Column 2: End Date
             ImGui.TableNextColumn();  // Move to the second column
             ImGui.Checkbox("Set End Date", ref setEndDate);
@@ -434,8 +439,8 @@ namespace AbsoluteRoleplay.Windows.Listings
             ref int ampm = ref (starting ? ref selectedStartAmPm : ref selectedEndAmPm);
             ref int timezone = ref (starting ? ref selectedStartTimezone : ref selectedEndTimezone);
             //display the selected datetime info
-            ImGui.TextWrapped($"Selected {idPrefix} Date and Time: {year}-{month + 1:D2}-{day:D2} {hour:D2}:{minute:D2} {Defines.amPmOptions[ampm]}");
-            ImGui.TextWrapped($"Selected {idPrefix} Timezone: {Defines.timezones[timezone]}");
+            ImGui.TextWrapped($"Selected {idPrefix} Date and Time: {year}-{month + 1:D2}-{day:D2} {hour:D2}:{minute:D2} {UI.amPmOptions[ampm]}");
+            ImGui.TextWrapped($"Selected {idPrefix} Timezone: {UI.timezones[timezone]}");
 
 
             // Year selection (limited to current year + 2)
@@ -446,7 +451,7 @@ namespace AbsoluteRoleplay.Windows.Listings
 
             // Month selection using Combo (index is 0-based)
             ImGui.Text($"{idPrefix} Month");
-            if (ImGui.Combo($"##{idPrefix}_month", ref month, Defines.months, Defines.months.Length))  // Unique ID
+            if (ImGui.Combo($"##{idPrefix}_month", ref month, UI.months, UI.months.Length))  // Unique ID
             {
                 day = 1;
             }
@@ -469,10 +474,10 @@ namespace AbsoluteRoleplay.Windows.Listings
 
             // AM/PM selection using Combo
             ImGui.Text($"{idPrefix} AM/PM");
-            ImGui.Combo($"##{idPrefix}_ampm", ref ampm, Defines.amPmOptions, Defines.amPmOptions.Length);  // Unique ID
+            ImGui.Combo($"##{idPrefix}_ampm", ref ampm, UI.amPmOptions, UI.amPmOptions.Length);  // Unique ID
 
             ImGui.Text($"{idPrefix} Timezone");
-            ImGui.Combo($"##{idPrefix}_timezone", ref timezone, Defines.timezones, Defines.timezones.Length);  // Unique ID
+            ImGui.Combo($"##{idPrefix}_timezone", ref timezone, UI.timezones, UI.timezones.Length);  // Unique ID
         }
 
 

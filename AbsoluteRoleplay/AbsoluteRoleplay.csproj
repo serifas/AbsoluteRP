@@ -249,17 +249,20 @@
         <None Update="UI\common\connect.png">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
+        <None Update="UI\common\blank.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
       
       
       
   </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Windows\Armory\" />
-      <Folder Include="Windows\PublicListings\ListingTabs\" />
+      <None Include="Defines\UI.cs" />
+      <None Include="Windows\Listings\ListingsWindow.cs" />
     </ItemGroup>
 
     <ItemGroup>
-      <None Include="Windows\PublicListings\ListingsWindow.cs" />
+      <Folder Include="Windows\Listings\EventListings\" />
     </ItemGroup>
 </Project>

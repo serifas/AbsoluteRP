@@ -12,7 +12,6 @@ using Dalamud.Interface.Textures;
 using AbsoluteRoleplay.Windows.Profiles;
 //using AbsoluteRoleplay.Windows.Chat;
 using Dalamud.Interface.Textures.TextureWraps;
-using static AbsoluteRoleplay.Defines;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using AbsoluteRoleplay.Windows.Listings;
@@ -251,7 +250,7 @@ namespace Networking
                     GalleryTab.galleryImageCount = 0; 
                     for (int i = 0; i < GalleryTab.galleryThumbs.Length; i++)
                     {
-                        GalleryTab.galleryThumbs[i] = Defines.UICommonImage(CommonImageTypes.blankPictureTab);
+                        GalleryTab.galleryThumbs[i] = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
                     }
                     BookmarkLoadStatus = 0;
                     
@@ -355,19 +354,19 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     ProfileWindow.ClearUI();
-                    var currentAvatar = Defines.UICommonImage(Defines.CommonImageTypes.avatarHolder);
+                    var currentAvatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                     if (currentAvatar != null)
                     {
                         BioTab.currentAvatarImg = currentAvatar;
                     }
 
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.name] = "";
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.race] = "";
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = "";
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.age] = "";
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.height] = "";
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = "";
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.gender] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight] = "";
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg] = "";
                     BioTab.currentAlignment = 9;
 
                     BioTab.currentPersonality_1 = 26;
@@ -455,71 +454,71 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int status = buffer.ReadInt();
                     //account window
-                    if (status == (int)Defines.StatusMessages.LOGIN_BANNED)
+                    if (status == (int)UI.StatusMessages.LOGIN_BANNED)
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account Banned";
                         plugin.loginAttempted = true;
                     }
-                    if (status == (int)Defines.StatusMessages.LOGIN_UNVERIFIED)
+                    if (status == (int)UI.StatusMessages.LOGIN_UNVERIFIED)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Unverified Account";
                         plugin.loginAttempted = true;
                     }
-                    if (status == (int)Defines.StatusMessages.LOGIN_VERIFIED)
+                    if (status == (int)UI.StatusMessages.LOGIN_VERIFIED)
                     {
                         MainPanel.status = "Logged In";
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.loggedIn = true;
                         plugin.loginAttempted = true;
                     }
-                    if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
+                    if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
                         MainPanel.status = "Incorrect login details";
                         plugin.loginAttempted = true;
                     }
-                    if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
+                    if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Username already in use.";
                     }
 
-                    if (status == (int)Defines.StatusMessages.REGISTRATION_DUPLICATE_EMAIL)
+                    if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_EMAIL)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Email already in use.";
                     }
-                    if (status == (int)Defines.StatusMessages.LOGIN_WRONG_INFORMATION)
+                    if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Incorrect Account Info";
                         MainPanel.loggedIn = false;
                     }
-                    if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_RECEIVED)
+                    if (status == (int)UI.StatusMessages.FORGOT_REQUEST_RECEIVED)
                     {
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.status = "Request received, please stand by...";
                     }
-                    if (status == (int)Defines.StatusMessages.FORGOT_REQUEST_INCORRECT)
+                    if (status == (int)UI.StatusMessages.FORGOT_REQUEST_INCORRECT)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "There is no account with this email.";
                     }
                     //Restoration window
-                    if (status == (int)Defines.StatusMessages.PASSCHANGE_INCORRECT_RESTORATION_KEY)
+                    if (status == (int)UI.StatusMessages.PASSCHANGE_INCORRECT_RESTORATION_KEY)
                     {
                         RestorationWindow.restorationCol = new Vector4(255, 0, 0, 255);
                         RestorationWindow.restorationStatus = "Incorrect Key.";
                     }
-                    if (status == (int)Defines.StatusMessages.PASSCHANGE_PASSWORD_CHANGED)
+                    if (status == (int)UI.StatusMessages.PASSCHANGE_PASSWORD_CHANGED)
                     {
                         RestorationWindow.restorationCol = new Vector4(0, 255, 0, 255);
                         RestorationWindow.restorationStatus = "Password updated, you may close this window.";
                     }
                     //Verification window
-                    if (status == (int)Defines.StatusMessages.VERIFICATION_KEY_VERIFIED)
+                    if (status == (int)UI.StatusMessages.VERIFICATION_KEY_VERIFIED)
                     {
                         VerificationWindow.verificationCol = new Vector4(0, 255, 0, 255);
                         VerificationWindow.verificationStatus = "Account Verified! you may now log in.";
@@ -529,17 +528,17 @@ namespace Networking
                         MainPanel.register = false;
 
                     }
-                    if (status == (int)Defines.StatusMessages.VERIFICATION_INCORRECT_KEY)
+                    if (status == (int)UI.StatusMessages.VERIFICATION_INCORRECT_KEY)
                     {
                         VerificationWindow.verificationCol = new Vector4(255, 0, 0, 255);
                         VerificationWindow.verificationStatus = "Incorrect verification key.";
                     }
-                    if (status == (int)Defines.StatusMessages.REGISTRATION_INSUFFICIENT_DATA)
+                    if (status == (int)UI.StatusMessages.REGISTRATION_INSUFFICIENT_DATA)
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Please fill all fields.";
                     }
-                    if (status == (int)Defines.StatusMessages.NO_AVAILABLE_PROFILE)
+                    if (status == (int)UI.StatusMessages.NO_AVAILABLE_PROFILE)
                     {
                         AlertWindow.alertColor = new Vector4(255, 0, 0, 255);
                         AlertWindow.alertStatus = "No profile available.";
@@ -689,20 +688,20 @@ namespace Networking
                     TargetWindow.characterEditName = name.Replace("''", "'"); TargetWindow.characterEditRace = race.Replace("''", "'"); TargetWindow.characterEditGender = gender.Replace("''", "'");
                     TargetWindow.characterEditAge = age.Replace("''", "'"); TargetWindow.characterEditHeight = height.Replace("''", "'"); TargetWindow.characterEditWeight = weight.Replace("''", "'");
                     TargetWindow.characterEditAfg = atFirstGlance.Replace("''", "'");
-                    var alignmentImage = Defines.AlignementIcon(alignment);
-                    var personality1Image = Defines.PersonalityIcon(personality_1);
-                    var personality2Image = Defines.PersonalityIcon(personality_2);
-                    var personality3Image = Defines.PersonalityIcon(personality_3);
+                    var alignmentImage = UI.AlignementIcon(alignment);
+                    var personality1Image = UI.PersonalityIcon(personality_1);
+                    var personality2Image = UI.PersonalityIcon(personality_2);
+                    var personality3Image = UI.PersonalityIcon(personality_3);
 
                     if (alignmentImage != null) { TargetWindow.alignmentImg = alignmentImage; }
                     if (personality1Image != null) { TargetWindow.personalityImg1 = personality1Image; }
                     if (personality2Image != null) { TargetWindow.personalityImg2 = personality2Image; }
                     if (personality3Image != null) { TargetWindow.personalityImg3 = personality3Image; }
 
-                    var (text, desc) = Defines.AlignmentVals[alignment];
-                    var (textpers1, descpers1) = Defines.PersonalityValues[personality_1];
-                    var (textpers2, descpers2) = Defines.PersonalityValues[personality_2];
-                    var (textpers3, descpers3) = Defines.PersonalityValues[personality_3];
+                    var (text, desc) = UI.AlignmentVals[alignment];
+                    var (textpers1, descpers1) = UI.PersonalityValues[personality_1];
+                    var (textpers2, descpers2) = UI.PersonalityValues[personality_2];
+                    var (textpers3, descpers3) = UI.PersonalityValues[personality_3];
                     TargetWindow.alignmentTooltip = text + ": \n" + desc;
                     TargetWindow.personality1Tooltip = textpers1 + ": \n" + descpers1;
                     TargetWindow.personality2Tooltip = textpers2 + ": \n" + descpers2;
@@ -743,13 +742,13 @@ namespace Networking
 
                     BioTab.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     BioTab.avatarBytes = avatarBytes;
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.name] = name.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.race] = race.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.gender] = gender.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.age] = age.ToString().Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.height] = height.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.weight] = weight.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)Defines.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name] = name.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race] = race.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.gender] = gender.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age] = age.ToString().Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height] = height.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight] = weight.Replace("''", "'");
+                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
                     BioTab.currentAlignment = alignment;
 
                     BioTab.currentPersonality_1 = personality_1;
@@ -1204,19 +1203,19 @@ namespace Networking
                         Tuple<string, string> receiver = Tuple.Create(receiverName, receiverWorld);
                         if (isReceiver)
                         {
-                            if (status == (int)Defines.ConnectionStatus.pending)
+                            if (status == (int)UI.ConnectionStatus.pending)
                             {
                                 ConnectionsWindow.receivedProfileRequests.Add(requester);
                             }
-                            if (status == (int)Defines.ConnectionStatus.accepted)
+                            if (status == (int)UI.ConnectionStatus.accepted)
                             {
                                 ConnectionsWindow.connetedProfileList.Add(requester);
                             }
-                            if (status == (int)Defines.ConnectionStatus.blocked)
+                            if (status == (int)UI.ConnectionStatus.blocked)
                             {
                                 ConnectionsWindow.blockedProfileRequests.Add(requester);
                             }
-                            if (status == (int)Defines.ConnectionStatus.refused)
+                            if (status == (int)UI.ConnectionStatus.refused)
                             {
                                 if (ConnectionsWindow.receivedProfileRequests.Contains(requester))
                                 {
@@ -1226,19 +1225,19 @@ namespace Networking
                         }
                         else if (!isReceiver)
                         {
-                            if (status == (int)Defines.ConnectionStatus.pending)
+                            if (status == (int)UI.ConnectionStatus.pending)
                             {
                                 ConnectionsWindow.sentProfileRequests.Add(receiver);
                             }
-                            if (status == (int)Defines.ConnectionStatus.accepted)
+                            if (status == (int)UI.ConnectionStatus.accepted)
                             {
                                 ConnectionsWindow.connetedProfileList.Add(receiver);
                             }
-                            if (status == (int)Defines.ConnectionStatus.blocked)
+                            if (status == (int)UI.ConnectionStatus.blocked)
                             {
                                 ConnectionsWindow.blockedProfileRequests.Add(receiver);
                             }
-                            if (status == (int)Defines.ConnectionStatus.refused)
+                            if (status == (int)UI.ConnectionStatus.refused)
                             {
                                 //ConnectionsWindow.sentProfileRequests.Add(receiver);
                             }
@@ -1331,10 +1330,10 @@ namespace Networking
                     profile.Personality_3 = Personality_3;
                     ARPTooltipWindow.profile = profile;
 
-                    ARPTooltipWindow.AlignmentImg = Defines.AlignementIcon(Alignment);
-                    ARPTooltipWindow.personality_1Img = Defines.PersonalityIcon(Personality_1);
-                    ARPTooltipWindow.personality_2Img = Defines.PersonalityIcon(Personality_2);
-                    ARPTooltipWindow.personality_3Img = Defines.PersonalityIcon(Personality_3);
+                    ARPTooltipWindow.AlignmentImg = UI.AlignementIcon(Alignment);
+                    ARPTooltipWindow.personality_1Img = UI.PersonalityIcon(Personality_1);
+                    ARPTooltipWindow.personality_2Img = UI.PersonalityIcon(Personality_2);
+                    ARPTooltipWindow.personality_3Img = UI.PersonalityIcon(Personality_3);
 
                     Plugin.tooltipLoaded = true;
                     plugin.OpenARPTooltip();

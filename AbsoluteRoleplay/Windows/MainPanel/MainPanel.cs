@@ -61,25 +61,25 @@ public class MainPanel : Window, IDisposable
     }
     public override void OnOpen()
     {
-        var kofi = Defines.UICommonImage(Defines.CommonImageTypes.kofiBtn);
-        var discod = Defines.UICommonImage(Defines.CommonImageTypes.discordBtn);
-        var profileSectionImg = Defines.UICommonImage(Defines.CommonImageTypes.profileSection);
-        var eventsImg = Defines.UICommonImage(Defines.CommonImageTypes.eventsSection);
-        var systemsImg = Defines.UICommonImage(Defines.CommonImageTypes.systemsSection);
-        var connectionsImg = Defines.UICommonImage(Defines.CommonImageTypes.connectionsSection);
-        var profileImg = Defines.UICommonImage(Defines.CommonImageTypes.profileCreateProfile);
-        var profileBookmarkImg = Defines.UICommonImage(Defines.CommonImageTypes.profileBookmarkProfile);
-        var npcImg = Defines.UICommonImage(Defines.CommonImageTypes.profileCreateNPC);
-        var npcBookmarkImg = Defines.UICommonImage(Defines.CommonImageTypes.profileBookmarkNPC);
-        var reconnectImg = Defines.UICommonImage(Defines.CommonImageTypes.reconnect);
+        var kofi = UI.UICommonImage(UI.CommonImageTypes.kofiBtn);
+        var discod = UI.UICommonImage(UI.CommonImageTypes.discordBtn);
+        var profileSectionImg = UI.UICommonImage(UI.CommonImageTypes.profileSection);
+        var eventsImg = UI.UICommonImage(UI.CommonImageTypes.eventsSection);
+        var systemsImg = UI.UICommonImage(UI.CommonImageTypes.systemsSection);
+        var connectionsImg = UI.UICommonImage(UI.CommonImageTypes.connectionsSection);
+        var profileImg = UI.UICommonImage(UI.CommonImageTypes.profileCreateProfile);
+        var profileBookmarkImg = UI.UICommonImage(UI.CommonImageTypes.profileBookmarkProfile);
+        var npcImg = UI.UICommonImage(UI.CommonImageTypes.profileCreateNPC);
+        var npcBookmarkImg = UI.UICommonImage(UI.CommonImageTypes.profileBookmarkNPC);
+        var reconnectImg = UI.UICommonImage(UI.CommonImageTypes.reconnect);
         //listings
 
-        var listingsEventImg = Defines.UICommonImage(Defines.CommonImageTypes.listingsEventBig);
-        var listingsCampaignImg = Defines.UICommonImage(Defines.CommonImageTypes.listingsCampaignBig);
-        var listingsFCImg = Defines.UICommonImage(Defines.CommonImageTypes.listingsFCBig);
-        var listingsGroupImg = Defines.UICommonImage(Defines.CommonImageTypes.listingsGroupBig);
-        var listingsVenueImg = Defines.UICommonImage(Defines.CommonImageTypes.listingsVenueBig);
-        var listingsPersonalImg = Defines.UICommonImage(Defines.CommonImageTypes.listingsPersonalBig);
+        var listingsEventImg = UI.UICommonImage(UI.CommonImageTypes.listingsEventBig);
+        var listingsCampaignImg = UI.UICommonImage(UI.CommonImageTypes.listingsCampaignBig);
+        var listingsFCImg = UI.UICommonImage(UI.CommonImageTypes.listingsFCBig);
+        var listingsGroupImg = UI.UICommonImage(UI.CommonImageTypes.listingsGroupBig);
+        var listingsVenueImg = UI.UICommonImage(UI.CommonImageTypes.listingsVenueBig);
+        var listingsPersonalImg = UI.UICommonImage(UI.CommonImageTypes.listingsPersonalBig);
         if (kofi != null) { kofiBtnImg = kofi; }
         if (discod != null) { discoBtn = discod; }
         if (profileSectionImg != null) { profileSectionImage = profileSectionImg; }

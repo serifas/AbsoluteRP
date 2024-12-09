@@ -16,8 +16,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         public static IDalamudTextureWrap currentAvatarImg;
         public static bool editAvatar = false;
         public static string[] bioFieldsArr = new string[7]; //fields such as name, race, gender and so on
-        public static int currentPersonality_1, currentPersonality_2, currentPersonality_3 = (int)Defines.Personalities.None;
-        public static int currentAlignment = (int)Defines.Personalities.None;
+        public static int currentPersonality_1, currentPersonality_2, currentPersonality_3 = (int)UI.Personalities.None;
+        public static int currentAlignment = (int)UI.Personalities.None;
         public static void LoadBioTab()
         {
             //display for avatar
@@ -28,11 +28,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 editAvatar = true; //used to open the file dialog
             }
             ImGui.Spacing();
-            for (var i = 0; i < Defines.BioFieldVals.Length; i++)
+            for (var i = 0; i < UI.BioFieldVals.Length; i++)
             {
-                var BioField = Defines.BioFieldVals[i];
+                var BioField = UI.BioFieldVals[i];
                 //if our input type is single line 
-                if (BioField.Item4 == Defines.InputTypes.single)
+                if (BioField.Item4 == UI.InputTypes.single)
                 {
                     ImGui.Text(BioField.Item1);
                     ImGui.SameLine();
@@ -41,9 +41,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 }
             }
             //text must be multiline so add the multiline field/fields
-            var biofield = Defines.BioFieldVals[(int)Defines.BioFieldTypes.afg];
+            var biofield = UI.BioFieldVals[(int)UI.BioFieldTypes.afg];
             ImGui.Text(biofield.Item1);
-            ImGui.InputTextMultiline(biofield.Item2, ref bioFieldsArr[(int)Defines.BioFieldTypes.afg], 3100, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5));
+            ImGui.InputTextMultiline(biofield.Item2, ref bioFieldsArr[(int)UI.BioFieldTypes.afg], 3100, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5));
             //simple for loop to get through our bio text fields
 
 
@@ -64,7 +64,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         }
         public static void AddPersonalitySelection_1()
         {
-            var (text, desc) = Defines.PersonalityValues[currentPersonality_1];
+            var (text, desc) = UI.PersonalityValues[currentPersonality_1];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #1", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
@@ -73,9 +73,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 currentPersonality_1 = 26;
             ImGuiUtil.SelectableHelpMarker("Undefined");
 
-            foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.PersonalityValues.WithIndex())
             {
-                if (idx != (int)Defines.Personalities.None)
+                if (idx != (int)UI.Personalities.None)
                 {
                     if (ImGui.Selectable(newText, idx == currentPersonality_1))
                         currentPersonality_1 = idx;
@@ -86,7 +86,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         }
         public static void AddPersonalitySelection_2()
         {
-            var (text, desc) = Defines.PersonalityValues[currentPersonality_2];
+            var (text, desc) = UI.PersonalityValues[currentPersonality_2];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #2", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
@@ -95,9 +95,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             if (ImGui.Selectable("None", currentPersonality_2 == 26))
                 currentPersonality_2 = 26;
             ImGuiUtil.SelectableHelpMarker("Undefined");
-            foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.PersonalityValues.WithIndex())
             {
-                if (idx != (int)Defines.Personalities.None)
+                if (idx != (int)UI.Personalities.None)
                 {
                     if (ImGui.Selectable(newText, idx == currentPersonality_2))
                         currentPersonality_2 = idx;
@@ -108,7 +108,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         }
         public static void AddPersonalitySelection_3()
         {
-            var (text, desc) = Defines.PersonalityValues[currentPersonality_3];
+            var (text, desc) = UI.PersonalityValues[currentPersonality_3];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #3", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
@@ -117,9 +117,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             if (ImGui.Selectable("None", currentPersonality_3 == 26))
                 currentPersonality_3 = 26;
             ImGuiUtil.SelectableHelpMarker("Undefined");
-            foreach (var ((newText, newDesc), idx) in Defines.PersonalityValues.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.PersonalityValues.WithIndex())
             {
-                if (idx != (int)Defines.Personalities.None)
+                if (idx != (int)UI.Personalities.None)
                 {
                     if (ImGui.Selectable(newText, idx == currentPersonality_3))
                         currentPersonality_3 = idx;
@@ -130,7 +130,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         }
         public static void AddAlignmentSelection()
         {
-            var (text, desc) = Defines.AlignmentVals[currentAlignment];
+            var (text, desc) = UI.AlignmentVals[currentAlignment];
             using var combo = OtterGui.Raii.ImRaii.Combo("##Alignment", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
@@ -138,7 +138,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             if (ImGui.Selectable("None", currentAlignment == 9))
                 currentAlignment = 9;
             ImGuiUtil.SelectableHelpMarker("Undefined");
-            foreach (var ((newText, newDesc), idx) in Defines.AlignmentVals.WithIndex())
+            foreach (var ((newText, newDesc), idx) in UI.AlignmentVals.WithIndex())
             {
                 if (idx != 9)
                 {

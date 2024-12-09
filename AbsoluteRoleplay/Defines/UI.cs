@@ -93,7 +93,7 @@ namespace AbsoluteRoleplay
         public bool showValue { set; get; }
         public Action action { set; get; }
     }
-    internal class Defines
+    internal class UI
     {
         public enum AlertPositions
         {
@@ -273,7 +273,7 @@ namespace AbsoluteRoleplay
             listingsGroupBig = 34,
             listingsPersonalBig = 35,
             listingsVenueBig = 36,
-
+            blank = 37,
         }
         public enum ListingCategory
         {
@@ -357,6 +357,8 @@ namespace AbsoluteRoleplay
                 if (imageType == CommonImageTypes.listingsGroupBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result; }
                 if (imageType == CommonImageTypes.listingsPersonalBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result; }
                 if (imageType == CommonImageTypes.listingsVenueBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
+                //misc
+                if (imageType == CommonImageTypes.blank) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result; }
 
             }
 
