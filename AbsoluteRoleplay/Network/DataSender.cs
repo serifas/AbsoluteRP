@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Xml.Linq;
 using AbsoluteRoleplay.Windows.Profiles;
 using System.Threading.Tasks;
+using AbsoluteRoleplay.Defines;
 
 namespace Networking
 {
@@ -67,6 +68,7 @@ namespace Networking
         Logout = 52,
         PreviewProfile = 53,
         CreateItem = 54,
+        SortItems = 55,
     }
     public class DataSender
     {
@@ -907,7 +909,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                    plugin.logger.Error("Error in SetProfileAsTooltip: " + ex.ToString());
                 }
             }
         }
@@ -930,7 +932,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                    plugin.logger.Error("Error in RequestTargetProfileByCharacter: " + ex.ToString());
                 }
             }
         }
@@ -954,38 +956,70 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                    plugin.logger.Error("Error in PreviewProfile: " + ex.ToString());
                 }
             }
         }
 
         internal static async void SendItemCreation(int currentProfile, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID)
         {
+            if (ClientTCP.IsConnected())
             {
-                if (ClientTCP.IsConnected())
+                try
                 {
-                    try
+                    using (var buffer = new ByteBuffer())
                     {
-                        using (var buffer = new ByteBuffer())
+                        buffer.WriteInt((int)ClientPackets.CreateItem);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(currentProfile);
+                        buffer.WriteString(itemName);
+                        buffer.WriteString(itemDescription);
+                        buffer.WriteInt(selectedItemType);
+                        buffer.WriteInt(itemSubType);
+                        buffer.WriteInt((int)createItemIconID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendItemCreation: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendItemOrder(int profileIndex, List<Item> slotContents)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SortItems);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(slotContents.Count);
+                        for (int i = 0; i < slotContents.Count; i++)
                         {
-                            buffer.WriteInt((int)ClientPackets.CreateItem);
-                            buffer.WriteString(plugin.username);
-                            buffer.WriteString(plugin.password);
-                            buffer.WriteString(plugin.playername);
-                            buffer.WriteString(plugin.playerworld);
-                            buffer.WriteInt(currentProfile);
-                            buffer.WriteString(itemName);
-                            buffer.WriteString(itemDescription);
-                            buffer.WriteInt(selectedItemType);
-                            buffer.WriteInt(itemSubType);
-                            buffer.WriteInt((int)createItemIconID);
-                            await ClientTCP.SendDataAsync(buffer.ToArray());
+                            buffer.WriteString(slotContents[i].name);
+                            buffer.WriteString(slotContents[i].description);
+                            buffer.WriteInt(slotContents[i].type);
+                            buffer.WriteInt(slotContents[i].subtype);
+                            buffer.WriteInt(slotContents[i].iconID);
+                            buffer.WriteInt(slotContents[i].slot);
                         }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
-                    catch (Exception ex)
-                    {
-                        plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
-                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
                 }
             }
         }

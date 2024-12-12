@@ -64,19 +64,19 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             {
                 throw new InvalidOperationException("Failed to initialize icon.");
             }
-            Defines.Item item = new Defines.Item
-            {
-                name = "Test",
-                description = "Stupid Description",
-                iconID = 10
-            };
-
             slotContents.Clear();
             for (int i = 0; i < TotalSlots; i++)
             {
-                slotContents[i] = null; // Empty slots
+                slotContents[i] = new Defines.Item
+                {
+                    name = string.Empty,
+                    description = string.Empty,
+                    type = 0,
+                    subtype = 0,
+                    iconID = 0,
+                    slot = i,
+                };
             }
-            slotContents[0] = item;
             if (type == 1) // Treasures inventory
             {
                 // Populate slots for treasures
@@ -98,86 +98,109 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             {
                LoadItemCreation(plugin);
             }
-            for (int y = 0; y < GridSize; y++)
+            else
             {
-                for (int x = 0; x < GridSize; x++)
+                for (int y = 0; y < GridSize; y++)
                 {
-                    int slotIndex = y * GridSize + x;
+                    for (int x = 0; x < GridSize; x++)
+                    {
+                        int slotIndex = y * GridSize + x;
 
-                    ImGui.PushID(slotIndex);
-                    ImGui.BeginGroup();
+                        ImGui.PushID(slotIndex);
+                        ImGui.BeginGroup();
 
-                    Vector2 cellPos = ImGui.GetCursorScreenPos();
-                    Vector2 cellSize = new Vector2(50, 50);
+                        Vector2 cellPos = ImGui.GetCursorScreenPos();
+                        Vector2 cellSize = new Vector2(50, 50);
 
-                    ImGui.GetWindowDrawList().AddRectFilled(
-                        cellPos,
-                        cellPos + cellSize,
-                        ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f))
-                    );
-                    try
-                    {                     
-
-                        if (slotContents[slotIndex] != null)
+                        ImGui.GetWindowDrawList().AddRectFilled(
+                            cellPos,
+                            cellPos + cellSize,
+                            ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f))
+                        );
+                        try
                         {
-                            ImGui.Image(WindowOperations.RenderIconAsync(plugin, slotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        plugin.logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
-                    }
-                    ImGui.SetCursorScreenPos(cellPos);
-
-                    if (ImGui.InvisibleButton($"##slot{slotIndex}", cellSize))
-                    {
-                        // Handle slot click
-                    }
-
-                    if (ImGui.IsItemHovered() && slotContents.ContainsKey(slotIndex) && slotContents[slotIndex] != null)
-                    {
-                        hoveredSlotIndex = slotIndex;
-                    }
-
-                    if (ImGui.BeginDragDropSource())
-                    {
-                        draggedSlot = slotIndex;
-                        unsafe
-                        {
-                            int payloadData = slotIndex;
-                            ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
-                        }
-                        ImGui.Text($"Dragging Slot {slotIndex}");
-                        ImGui.EndDragDropSource();
-                    }
-
-                    if (ImGui.BeginDragDropTarget())
-                    {
-                        var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
-                        unsafe
-                        {
-                            if (payload.NativePtr != null)
+                            if (slotContents[slotIndex].name != string.Empty)
                             {
-                                int sourceSlotIndex = *(int*)payload.Data.ToPointer();
-                                if (slotContents.ContainsKey(slotIndex) && slotContents.ContainsKey(sourceSlotIndex))
-                                {
-                                    var temp = slotContents[slotIndex];
-                                    slotContents[slotIndex] = slotContents[sourceSlotIndex];
-                                    slotContents[sourceSlotIndex] = temp;
-                                }
+                                ImGui.Image(WindowOperations.RenderIconAsync(plugin, slotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
                             }
                         }
-                        ImGui.EndDragDropTarget();
-                    }
+                        catch (Exception ex)
+                        {
+                            plugin.logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
+                        }
+                        ImGui.SetCursorScreenPos(cellPos);
 
-                    ImGui.EndGroup();
-                    ImGui.PopID();
+                        if (ImGui.InvisibleButton($"##slot{slotIndex}", cellSize))
+                        {
+                            // Handle slot click
+                        }
 
-                    if (x < GridSize - 1)
-                    {
-                        ImGui.SameLine();
+                        if (ImGui.IsItemHovered() && slotContents.ContainsKey(slotIndex) && slotContents[slotIndex].name != string.Empty)
+                        {
+                            hoveredSlotIndex = slotIndex;
+                        }
+
+                        if (ImGui.BeginDragDropSource())
+                        {
+                            draggedSlot = slotIndex;
+                            unsafe
+                            {
+                                int payloadData = slotIndex;
+                                ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
+                            }
+                            ImGui.Text($"Dragging Slot {slotIndex}");
+                            ImGui.EndDragDropSource();
+                        }
+
+                        if (ImGui.BeginDragDropTarget())
+                        {
+                            var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
+                            unsafe
+                            {
+                                if (payload.NativePtr != null)
+                                {
+                                    int sourceSlotIndex = *(int*)payload.Data.ToPointer();
+                                    if (slotContents.ContainsKey(slotIndex) && slotContents.ContainsKey(sourceSlotIndex))
+                                    {
+                                        var temp = slotContents[slotIndex];
+                                        slotContents[slotIndex] = slotContents[sourceSlotIndex];
+                                        slotContents[sourceSlotIndex] = temp;
+                                        slotContents[slotIndex].slot = slotIndex;
+                                        List<Defines.Item> newItemList = new List<Defines.Item>();
+                                        for (int i = 0; i < slotContents.Count; i++)
+                                        {
+                                            if (slotContents[i].name != string.Empty)
+                                            {
+
+                                                newItemList.Add(new Defines.Item
+                                                {
+                                                    name = slotContents[i].name,
+                                                    description = slotContents[i].description,
+                                                    type = slotContents[i].type,
+                                                    subtype = slotContents[i].subtype,
+                                                    iconID = slotContents[i].iconID,
+                                                    slot = slotContents[i].slot,
+                                                });
+                                            }
+                                        }
+                                    
+                                        DataSender.SendItemOrder(ProfileWindow.currentProfile, newItemList);
+                                    }
+                                }
+                            }
+                            ImGui.EndDragDropTarget();
+                        }
+
+                        ImGui.EndGroup();
+                        ImGui.PopID();
+
+                        if (x < GridSize - 1)
+                        {
+                            ImGui.SameLine();
+                        }
                     }
                 }
+
             }
 
             if (hoveredSlotIndex >= 0 && slotContents.ContainsKey(hoveredSlotIndex) && slotContents[hoveredSlotIndex] != null)

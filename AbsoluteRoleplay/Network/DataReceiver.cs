@@ -1293,13 +1293,15 @@ namespace Networking
                         int type = buffer.ReadInt();
                         int subType = buffer.ReadInt();
                         int iconID = buffer.ReadInt(); 
-                        InventoryTab.slotContents[i] = new Item
+                        int slotID = buffer.ReadInt();
+                        InventoryTab.slotContents[slotID] = new Item
                         {
                             name = name,
                             description = description,
                             type = type,
                             subtype = subType,
-                            iconID = iconID // Ensure iconID is valid
+                            iconID = iconID, // Ensure iconID is valid
+                            slot = slotID
                         };
 
                         // Validate and ensure compatibility

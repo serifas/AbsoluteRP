@@ -60,10 +60,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
             this.plugin = plugin;
             configuration = plugin.Configuration;
             _fileDialogManager = new FileDialogManager();
-            InventoryTab.InitInventory(0);
         }
         public override void OnOpen()
         {
+            InventoryTab.InitInventory(0);
             ProfileBaseData.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
             var avatarHolderImage = UI.UICommonImage(UI.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
