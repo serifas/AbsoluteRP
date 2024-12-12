@@ -60,7 +60,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
             this.plugin = plugin;
             configuration = plugin.Configuration;
             _fileDialogManager = new FileDialogManager();
-
             InventoryTab.InitInventory(0);
         }
         public override void OnOpen()
@@ -184,7 +183,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 
             }
         }
-        public void DrawProfile()
+        public async void DrawProfile()
         {
             if (percentage == loaderInd + 1)
             {
@@ -292,7 +291,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     }
                     if (TabOpen[TabValue.Inventory])
                     {
-                        InventoryTab.LoadInventoryTab(plugin);
+                        await InventoryTab.LoadInventoryTabAsync(plugin);
                     }
                     if (GalleryTab.loadPreview == true)
                     {

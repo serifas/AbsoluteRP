@@ -252,6 +252,9 @@
         <None Update="UI\common\blank.png">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
+        <None Update="UI\common\invTab.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
       
       
       

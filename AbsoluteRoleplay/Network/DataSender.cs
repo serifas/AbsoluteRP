@@ -66,6 +66,7 @@ namespace Networking
         SetAsTooltip = 51,
         Logout = 52,
         PreviewProfile = 53,
+        CreateItem = 54,
     }
     public class DataSender
     {
@@ -954,6 +955,37 @@ namespace Networking
                 catch (Exception ex)
                 {
                     plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendItemCreation(int currentProfile, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID)
+        {
+            {
+                if (ClientTCP.IsConnected())
+                {
+                    try
+                    {
+                        using (var buffer = new ByteBuffer())
+                        {
+                            buffer.WriteInt((int)ClientPackets.CreateItem);
+                            buffer.WriteString(plugin.username);
+                            buffer.WriteString(plugin.password);
+                            buffer.WriteString(plugin.playername);
+                            buffer.WriteString(plugin.playerworld);
+                            buffer.WriteInt(currentProfile);
+                            buffer.WriteString(itemName);
+                            buffer.WriteString(itemDescription);
+                            buffer.WriteInt(selectedItemType);
+                            buffer.WriteInt(itemSubType);
+                            buffer.WriteInt((int)createItemIconID);
+                            await ClientTCP.SendDataAsync(buffer.ToArray());
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                    }
                 }
             }
         }

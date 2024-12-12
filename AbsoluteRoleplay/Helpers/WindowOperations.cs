@@ -192,68 +192,137 @@ namespace AbsoluteRoleplay.Helpers
         {
             // Begin rendering the tab bar for categories
            
-                // Check if the selected category has icons
-                if (!categorizedIcons.ContainsKey(currentCategory) || categorizedIcons[currentCategory].Count == 0)
+            // Check if the selected category has icons
+            if (!categorizedIcons.ContainsKey(currentCategory) || categorizedIcons[currentCategory].Count == 0)
+            {
+                ImGui.Text($"No icons available for category: {currentCategory}");
+                return;
+            }
+
+            // Render icons for the current category and page
+            var icons = categorizedIcons[currentCategory];
+            int startIndex = currentPage * iconsPerPage;
+            int endIndex = Math.Min(startIndex + iconsPerPage, icons.Count);
+
+            const int iconsPerRow = 10;
+            float iconSize = 40f;
+            int count = 0;
+
+            for (int i = startIndex; i < endIndex; i++)
+            {
+                    
+                var (iconId, texture) = icons[i];
+
+                ImGui.PushID((int)iconId);
+                if (ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize)))
                 {
-                    ImGui.Text($"No icons available for category: {currentCategory}");
-                    return;
+                    selectedIcon = texture; // Handle icon click
+                    InventoryTab.createItemIconID = iconId;
                 }
+                ImGui.PopID();
 
-                // Render icons for the current category and page
-                var icons = categorizedIcons[currentCategory];
-                int startIndex = currentPage * iconsPerPage;
-                int endIndex = Math.Min(startIndex + iconsPerPage, icons.Count);
-
-                const int iconsPerRow = 10;
-                float iconSize = 40f;
-                int count = 0;
-
-                for (int i = startIndex; i < endIndex; i++)
-                {
-                    var (iconId, texture) = icons[i];
-
-                    ImGui.PushID((int)iconId);
-                    if (ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize)))
-                    {
-                        selectedIcon = texture; // Handle icon click
-                    }
-                    ImGui.PopID();
-
-                    count++;
-                    if (count % iconsPerRow != 0)
-                    {
-                        ImGui.SameLine();
-                    }
-                }
-
-                // Pagination controls
-                if (currentPage > 0 && ImGui.Button("Back"))
-                {
-                    currentPage--;
-                }
-                if (currentPage > 0)
+                count++;
+                if (count % iconsPerRow != 0)
                 {
                     ImGui.SameLine();
                 }
-                if (endIndex < icons.Count && ImGui.Button("Next"))
-                {
-                    currentPage++;
-                }
+            }
 
-                // Display the selected icon, if any
-                if (selectedIcon != null)
+            // Pagination controls
+            if (currentPage > 0 && ImGui.Button("Back"))
+            {
+                currentPage--;
+            }
+            if (currentPage > 0)
+            {
+                ImGui.SameLine();
+            }
+            if (endIndex < icons.Count && ImGui.Button("Next"))
+            {
+                currentPage++;
+            }
+
+            // Display the selected icon, if any
+            if (selectedIcon != null)
+            {
+                ImGui.Text("Selected Icon:");
+                ImGui.SameLine();
+                if (ImGui.Button("Set Icon"))
                 {
-                    ImGui.Text("Selected Icon:");
-                    ImGui.SameLine();
-                    if (ImGui.Button("Set Icon"))
-                    {
-                        InventoryTab.icon = selectedIcon;
-                        InventoryTab.isIconBrowserOpen = false;
-                    }
-                    ImGui.Image(selectedIcon.ImGuiHandle, new Vector2(iconSize, iconSize));
+                    InventoryTab.icon = selectedIcon;
+                    InventoryTab.isIconBrowserOpen = false;
                 }
+                ImGui.Image(selectedIcon.ImGuiHandle, new Vector2(iconSize, iconSize));
+            }
         }
 
+        private static Dictionary<int, IDalamudTextureWrap> loadedTextures = new();
+
+        public static async Task<IDalamudTextureWrap> RenderIconAsync(Plugin plugin, int iconID)
+        {
+            if (loadedTextures.ContainsKey(iconID))
+            {
+                return loadedTextures[iconID];
+            }
+
+            try
+            {
+                if (iconID <= 0)
+                {
+                    return UI.UICommonImage(UI.CommonImageTypes.blank);
+                }
+
+                var icon = Plugin.DataManager.GameData.GetIcon((uint)iconID);
+                if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                {
+                    var texture = await LoadTextureAsync(icon.FilePath);
+                    if (texture != null)
+                    {
+                        loadedTextures[iconID] = texture;
+                        return texture;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"RenderIconAsync: Failed to load icon for ID {iconID}. Exception: {ex}");
+            }
+
+            return UI.UICommonImage(UI.CommonImageTypes.blank);
+        }
+
+        public static IDalamudTextureWrap RenderIcon(int iconId, Plugin plugin)
+        {
+            try
+            {
+                // Check if the icon exists in the categorized icons
+                if (!categorizedIcons.ContainsKey(currentCategory))
+                {
+                    plugin.logger.Error($"Category {currentCategory} does not exist for icon ID {iconId}.");
+                    return UI.UICommonImage(UI.CommonImageTypes.blank); // Fallback texture
+                }
+
+                // Find the icon within the current category
+                var icons = categorizedIcons[currentCategory];
+                foreach (var (storedIconId, texture) in icons)
+                {
+                    if (storedIconId == iconId)
+                    {
+                        return texture; // Return the matching texture
+                    }
+                }
+
+                // If the icon ID is not found, log and return a fallback
+                plugin.logger.Error($"Icon ID {iconId} not found in category {currentCategory}.");
+                return UI.UICommonImage(UI.CommonImageTypes.blank); // Fallback texture
+            }
+            catch (Exception ex)
+            {
+                // Log any errors and return a fallback texture
+                plugin.logger.Error($"Error rendering icon ID {iconId}: {ex.Message}\n{ex.StackTrace}");
+                return UI.UICommonImage(UI.CommonImageTypes.blank);
+            }
+        }
 
         /* public static void RenderIcons()
          {

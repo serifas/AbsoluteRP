@@ -18,6 +18,7 @@ using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel;
+using AbsoluteRoleplay.Defines;
 
 namespace Networking
 {
@@ -74,7 +75,7 @@ namespace Networking
         ReceiveGroupMemberships = 58,
         RecieveTargetTooltip = 59,
         ReceiveProfiles = 60,
-        ReceiveListingsByType = 61,
+        CreateItem = 61,
     }
     class DataReceiver
     {
@@ -1266,6 +1267,48 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     plugin.newConnection = true;
                     plugin.CheckConnectionsRequestStatus();
+
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+        }
+
+        internal static void ReceiveProfileItems(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int itemsCount = buffer.ReadInt();
+
+                    for (int i = 0; i < itemsCount; i++)
+                    {
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        int type = buffer.ReadInt();
+                        int subType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt(); 
+                        InventoryTab.slotContents[i] = new Item
+                        {
+                            name = name,
+                            description = description,
+                            type = type,
+                            subtype = subType,
+                            iconID = iconID // Ensure iconID is valid
+                        };
+
+                        // Validate and ensure compatibility
+                        if (WindowOperations.RenderIconAsync(plugin, iconID) == null)
+                        {
+                            throw new InvalidOperationException($"Invalid iconID: {iconID}");
+                        }
+
+                    }
 
                 }
             }

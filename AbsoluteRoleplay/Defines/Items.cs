@@ -1,24 +1,22 @@
 using Dalamud.Interface.Textures.TextureWraps;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static AbsoluteRoleplay.Defines.Items;
-using static AbsoluteRoleplay.UI;
 
 namespace AbsoluteRoleplay.Defines
 {
-    internal class InventoryItem
+
+    public  class Item
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public IDalamudTextureWrap Icon { get; set; }
-        public static InventoryItemType inventoryType { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public int type { get; set; }
+        public int subtype { get; set; }
+        public int iconID { get; set; }
+        public int slot {  get; set; }
     }
 
     internal class Items
     {
+       
         public enum InventoryItemType
         {            
             Consumeable = 0,
@@ -28,8 +26,7 @@ namespace AbsoluteRoleplay.Defines
             Material = 4,
             Container = 5,
             Script = 6,
-            Pet = 7,
-            Key = 8,
+            Key = 7,
         }
         public enum ConsumableType
         {
@@ -37,9 +34,9 @@ namespace AbsoluteRoleplay.Defines
             Elixer = 1,
             Drink = 2,
             Food = 5,
-            Rune = 6,
+            Aetheric = 6,
         }
-        public enum ArmorType
+        public enum MaterialType
         {
             Bone = 0,
             Cloth = 1,
@@ -55,29 +52,95 @@ namespace AbsoluteRoleplay.Defines
         {
             Fist = 0,
             Tome = 1,
-            Wand = 6,
-            Dagger = 1,
-            Flail = 1,
+            Dagger = 2,
+            Flail = 3,
             Mace = 4,
-            Mallet = 3,
-            Staff = 4,
-            Sword = 5,
-            Greatsword = 6,
-            Lance = 7,
-            Brush = 8,
+            Mallet = 5,
+            Staff = 6,
+            Sword = 7,
+            Greatsword = 8,
+            Axe = 9,
+            Greataxe = 10,
+            Chakrams = 11,
+            Lance = 12,
+            Brush = 13,
+            Astroglobe = 14,
+            Nouliths = 15,
+            Gunblade = 16,
+            Warscythe = 17,
+            Bow = 18,
+            Firearm = 19, 
+            Shield = 20,
+            Pallet = 21,
+            Wand = 22,
+            Thrown = 23,
         }
 
-        public static readonly (string, string)[] InventoryTypes =
-        {   
-            ("Consumable", "• Is consumed after specified amount of uses."),
-            ("Quest ", "• Is an item used to progress or finish a quest"),
-            ("Armor",     "• Can be equipped in an armor slot."),
-            ("Weapon", "• Can be equipped in a weapon slot."),
-            ("Material", "• Can be used to craft an item."),
-            ("Container", "• Is used to hold any type of item, can be locked so it requires a key."),
-            ("Script", "• An item that can be read, good for things like a message in a bottle."),
-            ("Pet", "• A non summonable pet."),
-            ("Key", "• A key for opening locked containers."),
+        public static readonly (string, string, string[]?)[] InventoryTypes =
+        {
+            ("Consumable", "• Is consumed after specified amount of uses.", new string[]
+                {
+                    "Potion",
+                    "Elixer ",
+                    "Tonic",
+                    "Drink",
+                    "Food",
+                    "Aetheric",
+                }),
+            ("Armor",     "• Can be equipped in an armor slot.", new string[]
+                {
+                   "Bone",
+                   "Cloth ",
+                   "Leather",
+                   "Mail",
+                   "Plate",
+                   "Crystal",
+                   "Magitek",
+                   "Allagan",
+                   "Runic",
+                }),
+            ("Weapon", "• Can be equipped in a weapon slot.", new string[]
+            {
+                    "Fist",
+                    "Tome",
+                    "Dagger",
+                    "Flail",
+                    "Mace",
+                    "Mallet",
+                    "Staff",
+                    "Sword",
+                    "Greatsword",
+                    "Axe",
+                    "Greataxe",
+                    "Chakrams",
+                    "Lance",
+                    "Brush",
+                    "Astroglobe",
+                    "Nouliths",
+                    "Gunblade",
+                    "Warscythe",
+                    "Bow",
+                    "Firearm",
+                    "Shield",
+                    "Pallet",
+                    "Wand",
+                    "Thrown",
+
+                }),
+            ("Material", "• Can be used to craft an item.", new string[]   
+            {
+                   "Bone",
+                   "Cloth ",
+                   "Leather",
+                   "Metal",
+                   "Stone",
+                   "Crystal",
+                   "Magitek",
+                   "Allagan",
+                   "Rune",
+            }),
         };
+
+       
     }
 }

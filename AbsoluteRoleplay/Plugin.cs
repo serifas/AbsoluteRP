@@ -35,6 +35,7 @@ using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.MainPanel;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -97,6 +98,7 @@ namespace AbsoluteRoleplay
         private BookmarksWindow BookmarksWindow { get; init; }
         private TargetWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
+        public ItemTooltip ItemTooltip { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
@@ -175,6 +177,7 @@ namespace AbsoluteRoleplay
             NotesWindow = new NotesWindow(this);
             AlertWindow = new AlertWindow(this);
             ListingWindow = new ListingsWindow(this);
+            ItemTooltip = new ItemTooltip(this);
             Configuration.Initialize(PluginInterface);
 
             //add the windows to the windowsystem
@@ -193,6 +196,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(NotesWindow);
             WindowSystem.AddWindow(AlertWindow);
             WindowSystem.AddWindow(ListingWindow);
+            WindowSystem.AddWindow(ItemTooltip);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -474,6 +478,7 @@ namespace AbsoluteRoleplay
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
             ListingWindow?.Dispose();
+            ItemTooltip?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -541,6 +546,8 @@ namespace AbsoluteRoleplay
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
         public void OpenListingsWindow() => ListingWindow.IsOpen = true;
+        public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
+        public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
         public void OpenAlertWindow()
         {
 
@@ -568,6 +575,7 @@ namespace AbsoluteRoleplay
 
         private IntPtr lastTargetAddress = IntPtr.Zero;
         public static bool lockedtarget = false;
+        private bool openItemTooltip;
 
         public void Update(IFramework framework)
         {

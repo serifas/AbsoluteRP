@@ -274,6 +274,7 @@ namespace AbsoluteRoleplay
             listingsPersonalBig = 35,
             listingsVenueBig = 36,
             blank = 37,
+            inventoryTab = 38,
         }
         public enum ListingCategory
         {
@@ -359,6 +360,7 @@ namespace AbsoluteRoleplay
                 if (imageType == CommonImageTypes.listingsVenueBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
                 //misc
                 if (imageType == CommonImageTypes.blank) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result; }
+                if (imageType == CommonImageTypes.inventoryTab) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result; }
 
             }
 
