@@ -121,6 +121,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                         {
                             if (slotContents[slotIndex].name != string.Empty)
                             {
+                                
                                 ImGui.Image(WindowOperations.RenderIconAsync(plugin, slotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
                             }
                         }

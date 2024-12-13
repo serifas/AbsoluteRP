@@ -55,7 +55,6 @@ namespace AbsoluteRoleplay.Windows.Ect
 
         public override void Draw()
         {
-
             ImGui.Image(WindowOperations.RenderIconAsync(plugin, item.iconID).Result.ImGuiHandle, new Vector2(32, 32));
             ImGui.Text(item.name);
             ImGui.Text(item.description);
