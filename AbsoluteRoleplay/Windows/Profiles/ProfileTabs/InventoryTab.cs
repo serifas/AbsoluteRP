@@ -10,7 +10,6 @@ using Dalamud.Interface.Utility;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using ImGuiNET;
-using ImGuiScene;
 using Lumina.Data.Files;
 using Lumina.Excel.Sheets;
 using Lumina.Extensions;

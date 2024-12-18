@@ -4,7 +4,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
-using ImGuiScene;
 using OtterGui.Raii;
 using OtterGui;
 using System;

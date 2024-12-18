@@ -11,7 +11,6 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json.Linq;
 using OtterGui;
 using System;
 using System.Collections.Generic;
