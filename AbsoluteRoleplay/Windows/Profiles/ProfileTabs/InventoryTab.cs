@@ -33,31 +33,18 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
     {
         private const int GridSize = 10; // 10x10 grid for 200 slots
         private const int TotalSlots = GridSize * GridSize;
-        public static int? draggedSlot = null; // Slot currently being dragged
         public static Dictionary<int, Defines.Item> slotContents = new(); // Slot contents, indexed by slot number
-        private static int? currentTabInitialized = null; // Tracks the currently initialized tab
         public static bool isIconBrowserOpen;
         public static string itemName = string.Empty;
         public static string itemDescription = string.Empty;
         public static IDalamudTextureWrap icon;
         private static bool itemCreation;
         public static int selectedItemType = 0;
-        private static bool addsubtype = true;
-        private static string[] itemSubType = Defines.Items.InventoryTypes[0].Item3;
+        private static string[] itemSubType = Items.InventoryTypes[0].Item3;
         private static int selectedSubType = 0;
         public static uint createItemIconID = 0;
-        private static int? draggingSlotIndex = null;
-        private static Defines.Item draggingItem = null; // Holds the item being dragged
 
-        public static IntPtr[] gridTextures = new IntPtr[100]; // Holds textures for each button
-        public static IntPtr blankTexture; // The default blank texture handle
-        public static int draggedIndex = -1; // The index of the dragged button
-        public static IntPtr draggedTexture; // The texture being dragged
-        public static bool isDragging = false; // Whether dragging is in progress
-        public static Vector2 dragOffset; // Offset for the dragged image
-        private static bool isButtonBeingHeld;
-
-        public static void InitInventory(int type)
+        public static void InitInventory()
         {
             icon = UI.UICommonImage(UI.CommonImageTypes.blank);
             if (icon == null)
@@ -77,19 +64,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     slot = i,
                 };
             }
-            if (type == 1) // Treasures inventory
-            {
-                // Populate slots for treasures
-            }
-            else if (type == 2) // Quests inventory
-            {
-                // Populate slots for quests
-            }
+          
         }
 
         public static async Task LoadInventoryTabAsync(Plugin plugin)
         {
-            int hoveredSlotIndex = -1;
             if (ImGui.Button("CreateItem"))
             {
                 itemCreation = true;
@@ -100,120 +79,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             }
             else
             {
-                for (int y = 0; y < GridSize; y++)
-                {
-                    for (int x = 0; x < GridSize; x++)
-                    {
-                        int slotIndex = y * GridSize + x;
-
-                        ImGui.PushID(slotIndex);
-                        ImGui.BeginGroup();
-
-                        Vector2 cellPos = ImGui.GetCursorScreenPos();
-                        Vector2 cellSize = new Vector2(50, 50);
-
-                        ImGui.GetWindowDrawList().AddRectFilled(
-                            cellPos,
-                            cellPos + cellSize,
-                            ImGui.GetColorU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f))
-                        );
-                        try
-                        {
-                            if (slotContents[slotIndex].name != string.Empty)
-                            {
-                                
-                                ImGui.Image(WindowOperations.RenderIconAsync(plugin, slotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            plugin.logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
-                        }
-                        ImGui.SetCursorScreenPos(cellPos);
-
-                        if (ImGui.InvisibleButton($"##slot{slotIndex}", cellSize))
-                        {
-                            // Handle slot click
-                        }
-
-                        if (ImGui.IsItemHovered() && slotContents.ContainsKey(slotIndex) && slotContents[slotIndex].name != string.Empty)
-                        {
-                            hoveredSlotIndex = slotIndex;
-                        }
-
-                        if (ImGui.BeginDragDropSource())
-                        {
-                            draggedSlot = slotIndex;
-                            unsafe
-                            {
-                                int payloadData = slotIndex;
-                                ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
-                            }
-                            ImGui.Text($"Dragging Slot {slotIndex}");
-                            ImGui.EndDragDropSource();
-                        }
-
-                        if (ImGui.BeginDragDropTarget())
-                        {
-                            var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
-                            unsafe
-                            {
-                                if (payload.NativePtr != null)
-                                {
-                                    int sourceSlotIndex = *(int*)payload.Data.ToPointer();
-                                    if (slotContents.ContainsKey(slotIndex) && slotContents.ContainsKey(sourceSlotIndex))
-                                    {
-                                        var temp = slotContents[slotIndex];
-                                        slotContents[slotIndex] = slotContents[sourceSlotIndex];
-                                        slotContents[sourceSlotIndex] = temp;
-                                        slotContents[slotIndex].slot = slotIndex;
-                                        List<Defines.Item> newItemList = new List<Defines.Item>();
-                                        for (int i = 0; i < slotContents.Count; i++)
-                                        {
-                                            if (slotContents[i].name != string.Empty)
-                                            {
-
-                                                newItemList.Add(new Defines.Item
-                                                {
-                                                    name = slotContents[i].name,
-                                                    description = slotContents[i].description,
-                                                    type = slotContents[i].type,
-                                                    subtype = slotContents[i].subtype,
-                                                    iconID = slotContents[i].iconID,
-                                                    slot = slotContents[i].slot,
-                                                });
-                                            }
-                                        }
-                                    
-                                        DataSender.SendItemOrder(ProfileWindow.currentProfile, newItemList);
-                                    }
-                                }
-                            }
-                            ImGui.EndDragDropTarget();
-                        }
-
-                        ImGui.EndGroup();
-                        ImGui.PopID();
-
-                        if (x < GridSize - 1)
-                        {
-                            ImGui.SameLine();
-                        }
-                    }
-                }
-
-            }
-
-            if (hoveredSlotIndex >= 0 && slotContents.ContainsKey(hoveredSlotIndex) && slotContents[hoveredSlotIndex] != null)
-            {
-                var hoveredItem = slotContents[hoveredSlotIndex];
-                ItemTooltip.item = hoveredItem;
-                plugin.ItemTooltip.IsOpen = true;
-            }
-            else
-            {
-                plugin.ItemTooltip.IsOpen = false;
-            }
+                ItemGrid.DrawGrid(plugin, slotContents, false);
+            }           
         }
 
 

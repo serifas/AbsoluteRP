@@ -63,7 +63,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void OnOpen()
         {
-            InventoryTab.InitInventory(0);
+            InventoryTab.InitInventory();
             ProfileBaseData.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
             var avatarHolderImage = UI.UICommonImage(UI.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage

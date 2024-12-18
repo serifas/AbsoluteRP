@@ -34,7 +34,7 @@ public class MainPanel : Window, IDisposable
     public static string status = "";
     public static Vector4 statusColor = new Vector4(255, 255, 255, 255);
     //button images
-    public static IDalamudTextureWrap kofiBtnImg, discoBtn, profileSectionImage, eventsSectionImage, systemsSectionImage, connectionsSectionImage,
+    public static IDalamudTextureWrap kofiBtnImg, discoBtn, patreonBtn, profileSectionImage, eventsSectionImage, systemsSectionImage, connectionsSectionImage,
                                  //profiles
                                  profileImage, npcImage, profileBookmarkImage, npcBookmarkImage,
                                  //events and venues
@@ -63,6 +63,7 @@ public class MainPanel : Window, IDisposable
     {
         var kofi = UI.UICommonImage(UI.CommonImageTypes.kofiBtn);
         var discod = UI.UICommonImage(UI.CommonImageTypes.discordBtn);
+        var patreon = UI.UICommonImage(UI.CommonImageTypes.patreonBtn);
         var profileSectionImg = UI.UICommonImage(UI.CommonImageTypes.profileSection);
         var eventsImg = UI.UICommonImage(UI.CommonImageTypes.eventsSection);
         var systemsImg = UI.UICommonImage(UI.CommonImageTypes.systemsSection);
@@ -82,6 +83,7 @@ public class MainPanel : Window, IDisposable
         var listingsPersonalImg = UI.UICommonImage(UI.CommonImageTypes.listingsPersonalBig);
         if (kofi != null) { kofiBtnImg = kofi; }
         if (discod != null) { discoBtn = discod; }
+        if (patreon != null) { patreonBtn = patreon; }
         if (profileSectionImg != null) { profileSectionImage = profileSectionImg; }
         if (eventsImg != null) { eventsSectionImage = eventsImg; }
         if (systemsImg != null) { systemsSectionImage = systemsImg; }
@@ -145,7 +147,16 @@ public class MainPanel : Window, IDisposable
             if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
             {
                 Util.OpenLink("https://ko-fi.com/absoluteroleplay");
-            }               
+            }
+        }
+        if (pluginInstance.Configuration.showPatreon == true)
+        {
+            var patreonPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
+            if (ImGui.ImageButton(patreonBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+            {
+                Util.OpenLink("https://patreon.com/AbsoluteRoleplay");
+            }
         }
         if (pluginInstance.Configuration.showDisc == true)
         {
@@ -154,7 +165,7 @@ public class MainPanel : Window, IDisposable
             if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
             {
                 Util.OpenLink("https://discord.gg/hWprwTUwqj");
-            }        
+            }
         }
 
         if (viewProfile == true || viewSystems == true || viewEvents == true || viewConnections == true || viewListings == true)

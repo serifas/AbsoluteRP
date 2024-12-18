@@ -14,6 +14,7 @@ namespace AbsoluteRoleplay.Windows
         public static Plugin plugin;
         public static bool showTargetOptions;
         public static bool showKofi;
+        public static bool showPatreon;
         public static bool showDisc;
         public static bool showWIP;
         public Configuration Configuration;
@@ -30,6 +31,7 @@ namespace AbsoluteRoleplay.Windows
             OptionsWindow.plugin = plugin;
             showWIP = plugin.Configuration.showWIP;
             showKofi = plugin.Configuration.showKofi;
+            showPatreon = plugin.Configuration.showPatreon;
             showDisc = plugin.Configuration.showDisc;
         }
         public override void Draw()
@@ -49,6 +51,11 @@ namespace AbsoluteRoleplay.Windows
                 if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
                 {
                     plugin.Configuration.showKofi = showKofi;
+                    plugin.Configuration.Save();
+                }
+                if (ImGui.Checkbox("Show Patreon Button.", ref showPatreon))
+                {
+                    plugin.Configuration.showPatreon = showPatreon;
                     plugin.Configuration.Save();
                 }
                 if (ImGui.Checkbox("Show Discord Button.", ref showDisc))

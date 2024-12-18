@@ -69,6 +69,7 @@ namespace Networking
         PreviewProfile = 53,
         CreateItem = 54,
         SortItems = 55,
+        FetchProfileItems = 56,
     }
     public class DataSender
     {
@@ -1023,5 +1024,30 @@ namespace Networking
                 }
             }
         }
+
+        internal static async void FetchProfileItems(int profileIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchProfileItems);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
+                }
+            }
+        }
+    
+
     }
 }

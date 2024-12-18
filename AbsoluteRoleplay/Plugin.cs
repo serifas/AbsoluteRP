@@ -291,16 +291,25 @@ namespace AbsoluteRoleplay
 
                     },
                 });
-                args.AddMenuItem(new MenuItem
-                {
-                    Name = "View Absolute RP Profile",
-                    PrefixColor = 56,
-                    Prefix = SeIconChar.BoxedQuestionMark,
-                    OnClicked = _ => {
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "View Absolute RP Profile",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedQuestionMark,
+                OnClicked = _ => {
 
-                        DataSender.RequestTargetProfileByCharacter(name, worldname);
-                    },
-                });
+                    DataSender.RequestTargetProfileByCharacter(name, worldname);
+                },
+            });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Absolute RP Trade",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+                    
+                },
+            });
 
         }
 
@@ -329,6 +338,16 @@ namespace AbsoluteRoleplay
                 OnClicked = _ => {
 
                     DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Absolute RP Trade",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+
+                   // DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
         }

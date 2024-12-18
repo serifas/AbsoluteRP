@@ -275,6 +275,7 @@ namespace AbsoluteRoleplay
             listingsVenueBig = 36,
             blank = 37,
             inventoryTab = 38,
+            patreonBtn = 39,
         }
         public enum ListingCategory
         {
@@ -325,6 +326,7 @@ namespace AbsoluteRoleplay
             {
                 if (imageType == CommonImageTypes.discordBtn) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/disc_btn.png"))).Result; }
                 if (imageType == CommonImageTypes.kofiBtn) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/kofi_btn.png"))).Result; }
+                if (imageType == CommonImageTypes.patreonBtn) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/patreon_btn.png"))).Result; }
                 if (imageType == CommonImageTypes.blankPictureTab) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result; }
                 if (imageType == CommonImageTypes.NSFW) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result;}
                 if (imageType == CommonImageTypes.NSFWTRIGGER) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result;}

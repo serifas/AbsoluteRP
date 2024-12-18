@@ -37,9 +37,12 @@
       <None Update="UI\common\disc_btn.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
-      <None Update="UI\common\kofi_btn.png">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      </None>
+        <None Update="UI\common\kofi_btn.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
+        <None Update="UI\common\patreon_btn.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
       <None Update="UI\common\section_connections.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>

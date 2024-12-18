@@ -28,7 +28,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
             }
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Manage your profile");
+                ImGui.SetTooltip("Manage your profiles");
             }
             ImGui.SameLine();
             if (ImGui.ImageButton(MainPanel.profileBookmarkImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
