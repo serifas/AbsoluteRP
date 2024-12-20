@@ -53,11 +53,14 @@ namespace AbsoluteRoleplay.Windows.Ect
 
         public override void Draw()
         {
-            ImGui.Image(WindowOperations.RenderIconAsync(plugin, item.iconID).Result.ImGuiHandle, new Vector2(32, 32));
-            ImGui.Text(item.name);
+            ImGui.Image(WindowOperations.RenderIconAsync(plugin, item.iconID).Result.ImGuiHandle, new Vector2(45, 45));
+            Vector4 color = Items.ItemQualityColors(item.quality);
+            ImGui.TextColored(color, item.name);
+            ImGui.Text(Items.InventoryTypes[item.type].Item1);
+            ImGui.Text(Items.InventoryTypes[item.type].Item3[item.subtype]);
             ImGui.Text(item.description);
-          
-            windowPos = ImGui.GetMousePos();
+            
+            windowPos = ImGui.GetMousePos() - new Vector2( ImGui.GetWindowSize().X, 0);
             ImGui.SetWindowPos(windowPos);         
 
         }

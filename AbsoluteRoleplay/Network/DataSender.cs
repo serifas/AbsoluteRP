@@ -962,7 +962,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendItemCreation(int currentProfile, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID)
+        internal static async void SendItemCreation(int currentProfile, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality)
         {
             if (ClientTCP.IsConnected())
             {
@@ -981,6 +981,7 @@ namespace Networking
                         buffer.WriteInt(selectedItemType);
                         buffer.WriteInt(itemSubType);
                         buffer.WriteInt((int)createItemIconID);
+                        buffer.WriteInt(itemQuality);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1014,6 +1015,7 @@ namespace Networking
                             buffer.WriteInt(slotContents[i].subtype);
                             buffer.WriteInt(slotContents[i].iconID);
                             buffer.WriteInt(slotContents[i].slot);
+                            buffer.WriteInt(slotContents[i].quality);
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }

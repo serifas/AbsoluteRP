@@ -43,7 +43,6 @@ namespace AbsoluteRoleplay
         }
         //sets position of content to center
 
-       
         public static void SetCenter(Plugin plugin, string name)
         {
          

@@ -1294,6 +1294,7 @@ namespace Networking
                         int subType = buffer.ReadInt();
                         int iconID = buffer.ReadInt(); 
                         int slotID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
                         InventoryTab.slotContents[slotID] = new Item
                         {
                             name = name,
@@ -1301,9 +1302,9 @@ namespace Networking
                             type = type,
                             subtype = subType,
                             iconID = iconID, // Ensure iconID is valid
-                            slot = slotID
+                            slot = slotID,
+                            quality = quality
                         };
-
                         // Validate and ensure compatibility
                         if (WindowOperations.RenderIconAsync(plugin, iconID) == null)
                         {

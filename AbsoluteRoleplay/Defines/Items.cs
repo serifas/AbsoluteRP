@@ -1,4 +1,8 @@
 using Dalamud.Interface.Textures.TextureWraps;
+using Lumina.Data.Parsing;
+using Lumina.Excel.Sheets;
+using System.Numerics;
+using System.Runtime.Intrinsics;
 using static AbsoluteRoleplay.Defines.Items;
 
 namespace AbsoluteRoleplay.Defines
@@ -12,6 +16,7 @@ namespace AbsoluteRoleplay.Defines
         public int subtype { get; set; }
         public int iconID { get; set; }
         public int slot {  get; set; }
+        public int quality { get; set; }
     }
 
     internal class Items
@@ -74,6 +79,30 @@ namespace AbsoluteRoleplay.Defines
             Pallet = 21,
             Wand = 22,
             Thrown = 23,
+        }
+
+        public enum ItemQuality
+        {
+            Common = 0,
+            Aetherial = 1,
+            Scarce = 2,
+            Rare = 3,
+            Relic = 4,
+        }
+
+
+
+        public static Vector4 ItemQualityColors(int itemQuality)
+        {
+            switch (itemQuality)
+            {
+                case 0: return new Vector4(255 / 255.0f, 255 / 255.0f, 255 / 255.0f, 255 / 255.0f); // Common
+                case 1: return new Vector4(243 / 255.0f, 131 / 255.0f, 189 / 255.0f, 255 / 255.0f); // Aetherial
+                case 2: return new Vector4(111 / 255.0f, 243 / 255.0f, 104 / 255.0f, 255 / 255.0f); // Scarce
+                case 3: return new Vector4(44 / 255.0f, 109 / 255.0f, 222 / 255.0f, 255 / 255.0f);  // Rare
+                case 4: return new Vector4(133 / 255.0f, 28 / 255.0f, 199 / 255.0f, 255 / 255.0f);  // Relic
+                default: return new Vector4(255 / 255.0f, 255 / 255.0f, 255 / 255.0f, 255 / 255.0f); // Default
+            }
         }
 
         public static readonly (string, string, string[]?)[] InventoryTypes =
@@ -140,7 +169,14 @@ namespace AbsoluteRoleplay.Defines
                    "Rune",
             }),
         };
+        public static readonly string[] ItemQualityTypes =
+        {
+            "Common",
+            "Aetherial",
+            "Scarce",
+            "Rare",
+            "Relic"
+        };
 
-       
     }
 }

@@ -1,15 +1,13 @@
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using Dalamud.Interface.Textures.TextureWraps;
 using ImGuiNET;
 using Networking;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AbsoluteRoleplay.Helpers
 {
@@ -18,7 +16,10 @@ namespace AbsoluteRoleplay.Helpers
         private const int GridSize = 10; // 10x10 grid for 200 slots
         private const int TotalSlots = GridSize * GridSize;
 
-        private static bool isButtonBeingHeld;
+        // Global drag-and-drop state
+        private static int? DraggedItemSlot = null;
+        private static Dictionary<int, Defines.Item> DraggedSlotContents = null;
+
         public static void DrawGrid(Plugin plugin, Dictionary<int, Defines.Item> slotContents, bool isTrade)
         {
             int hoveredSlotIndex = -1;
@@ -66,10 +67,55 @@ namespace AbsoluteRoleplay.Helpers
                         hoveredSlotIndex = slotIndex;
                     }
 
+                    // Right-click context menu
+                    if (ImGui.IsItemClicked(ImGuiMouseButton.Right) && slotContents[slotIndex].name != string.Empty)
+                    {
+                        ImGui.OpenPopup($"##contextMenu{slotIndex}");
+                    }
+
+                    if (ImGui.BeginPopup($"##contextMenu{slotIndex}"))
+                    {
+                        if (ImGui.MenuItem("Delete"))
+                        {
+                            slotContents.Remove(slotIndex);
+                            List<Defines.Item> newItemList = new List<Defines.Item>();
+                            for (int i = 0; i < slotContents.Count; i++)
+                            {
+                                if (slotContents.ContainsKey(i) && slotContents[i].name != string.Empty)
+                                {
+                                    newItemList.Add(new Defines.Item
+                                    {
+                                        name = slotContents[i].name,
+                                        description = slotContents[i].description,
+                                        type = slotContents[i].type,
+                                        subtype = slotContents[i].subtype,
+                                        iconID = slotContents[i].iconID,
+                                        slot = slotContents[i].slot,
+                                        quality = slotContents[i].quality,
+                                    });
+                                }
+                            }
+                            DataSender.SendItemOrder(ProfileWindow.currentProfile, newItemList);
+                        }
+                        if (ImGui.MenuItem("Duplicate"))
+                        {
+                            DataSender.SendItemCreation(ProfileWindow.currentProfile, slotContents[slotIndex].name, slotContents[slotIndex].description, slotContents[slotIndex].type, slotContents[slotIndex].subtype, (uint)slotContents[slotIndex].iconID, slotContents[slotIndex].quality);
+                        }
+                        if (ImGui.MenuItem("Edit"))
+                        {
+                            // Add logic to edit the item
+                            plugin.logger.Error($"Edit requested for slot {slotIndex}");
+                        }
+                        ImGui.EndPopup();
+                    }
+
+                    // Begin Drag Source
                     if (ImGui.BeginDragDropSource())
                     {
                         unsafe
                         {
+                            DraggedItemSlot = slotIndex;
+                            DraggedSlotContents = slotContents;
                             int payloadData = slotIndex;
                             ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
                         }
@@ -77,24 +123,26 @@ namespace AbsoluteRoleplay.Helpers
                         ImGui.EndDragDropSource();
                     }
 
+                    // Accept Drag Target
                     if (ImGui.BeginDragDropTarget())
                     {
                         var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
                         unsafe
                         {
-                            if (payload.NativePtr != null)
+                            if (payload.NativePtr != null && DraggedItemSlot.HasValue && DraggedSlotContents != null)
                             {
                                 int sourceSlotIndex = *(int*)payload.Data.ToPointer();
-                                if (slotContents.ContainsKey(slotIndex) && slotContents.ContainsKey(sourceSlotIndex))
+                                if (slotContents.ContainsKey(slotIndex) && DraggedSlotContents.ContainsKey(sourceSlotIndex))
                                 {
                                     var temp = slotContents[slotIndex];
-                                    slotContents[slotIndex] = slotContents[sourceSlotIndex];
-                                    slotContents[sourceSlotIndex] = temp;
+                                    slotContents[slotIndex] = DraggedSlotContents[sourceSlotIndex];
+                                    DraggedSlotContents[sourceSlotIndex] = temp;
                                     slotContents[slotIndex].slot = slotIndex;
+
                                     List<Defines.Item> newItemList = new List<Defines.Item>();
                                     for (int i = 0; i < slotContents.Count; i++)
                                     {
-                                        if (slotContents[i].name != string.Empty)
+                                        if (slotContents.ContainsKey(i) && slotContents[i].name != string.Empty)
                                         {
                                             newItemList.Add(new Defines.Item
                                             {
@@ -104,11 +152,14 @@ namespace AbsoluteRoleplay.Helpers
                                                 subtype = slotContents[i].subtype,
                                                 iconID = slotContents[i].iconID,
                                                 slot = slotContents[i].slot,
+                                                quality = slotContents[i].quality,
                                             });
                                         }
                                     }
 
                                     DataSender.SendItemOrder(ProfileWindow.currentProfile, newItemList);
+                                    DraggedItemSlot = null;
+                                    DraggedSlotContents = null;
                                 }
                             }
                         }
@@ -185,6 +236,8 @@ namespace AbsoluteRoleplay.Helpers
                         {
                             unsafe
                             {
+                                DraggedItemSlot = slotIndex;
+                                DraggedSlotContents = slotContents;
                                 int payloadData = slotIndex;
                                 ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
                             }
@@ -197,15 +250,19 @@ namespace AbsoluteRoleplay.Helpers
                             var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
                             unsafe
                             {
-                                if (payload.NativePtr != null)
+                                if (payload.NativePtr != null && DraggedItemSlot.HasValue && DraggedSlotContents != null)
                                 {
                                     int sourceSlotIndex = *(int*)payload.Data.ToPointer();
-                                    if (slotContents.ContainsKey(slotIndex) && slotContents.ContainsKey(sourceSlotIndex))
+                                    if (DraggedSlotContents.ContainsKey(sourceSlotIndex))
                                     {
-                                        var temp = slotContents[slotIndex];
-                                        slotContents[slotIndex] = slotContents[sourceSlotIndex];
-                                        slotContents[sourceSlotIndex] = temp;
+                                        var draggedItem = DraggedSlotContents[sourceSlotIndex];
+                                        slotContents[slotIndex] = draggedItem;
+                                        DraggedSlotContents.Remove(sourceSlotIndex);
+
                                         slotContents[slotIndex].slot = slotIndex;
+
+                                        DraggedItemSlot = null;
+                                        DraggedSlotContents = null;
                                     }
                                 }
                             }
@@ -223,6 +280,5 @@ namespace AbsoluteRoleplay.Helpers
                 }
             }
         }
-
     }
 }

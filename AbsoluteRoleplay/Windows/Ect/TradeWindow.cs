@@ -48,7 +48,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void Draw()
         {
-           // ItemGrid.DrawGrid()
+           //ItemGrid.DrawGrid()
         }
 
 

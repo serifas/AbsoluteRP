@@ -42,7 +42,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         private static string[] itemSubType = Items.InventoryTypes[0].Item3;
         private static int selectedSubType = 0;
         public static uint createItemIconID = 0;
-
+        public static int selectedItemQuality = 0;
         public static void InitInventory()
         {
             icon = UI.UICommonImage(UI.CommonImageTypes.blank);
@@ -103,11 +103,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 {
                     AddItemSubtypeSelection(itemSubType);
                 }
-
+                AddItemQualitySelection();
                 if (ImGui.Button("Create"))
                 {
                     itemCreation = false;
-                    DataSender.SendItemCreation(ProfileWindow.currentProfile, itemName, itemDescription, selectedItemType, selectedSubType, createItemIconID);
+                    DataSender.SendItemCreation(ProfileWindow.currentProfile, itemName, itemDescription, selectedItemType, selectedSubType, createItemIconID, selectedItemQuality);
                 }
             }
             else
@@ -156,6 +156,25 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 if (ImGui.Selectable(val, idx == selectedSubType))
                 {
                     selectedSubType = idx;
+                }
+            }
+        }
+        public static void AddItemQualitySelection()
+        {
+            if (selectedItemQuality >= Items.ItemQualityTypes.Length)
+            {
+                selectedItemQuality = 0;
+            }
+            var text = Items.ItemQualityTypes[selectedItemQuality];
+            using var combo = OtterGui.Raii.ImRaii.Combo("##ItemQualityType", text);
+            if (!combo)
+                return;
+
+            foreach (var (val, idx) in Items.ItemQualityTypes.WithIndex())
+            {
+                if (ImGui.Selectable(val, idx==selectedItemQuality))
+                {
+                    selectedItemQuality = idx;
                 }
             }
         }
