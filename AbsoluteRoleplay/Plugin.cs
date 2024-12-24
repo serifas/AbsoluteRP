@@ -36,6 +36,7 @@ using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.MainPanel;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Inventory;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -99,6 +100,7 @@ namespace AbsoluteRoleplay
         private TargetWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
         public ItemTooltip ItemTooltip { get; init; }
+        public InventoryWindow InventoryWindow { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
@@ -176,6 +178,7 @@ namespace AbsoluteRoleplay
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
             AlertWindow = new AlertWindow(this);
+            InventoryWindow = new InventoryWindow(this);
             ListingWindow = new ListingsWindow(this);
             ItemTooltip = new ItemTooltip(this);
             Configuration.Initialize(PluginInterface);
@@ -197,6 +200,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(AlertWindow);
             WindowSystem.AddWindow(ListingWindow);
             WindowSystem.AddWindow(ItemTooltip);
+            WindowSystem.AddWindow(InventoryWindow);
 
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
@@ -497,6 +501,7 @@ namespace AbsoluteRoleplay
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
             ListingWindow?.Dispose();
+            InventoryWindow?.Dispose();
             ItemTooltip?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
@@ -567,6 +572,7 @@ namespace AbsoluteRoleplay
         public void OpenListingsWindow() => ListingWindow.IsOpen = true;
         public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
         public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
+        public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
         public void OpenAlertWindow()
         {
 

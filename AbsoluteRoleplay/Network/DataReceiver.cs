@@ -19,6 +19,7 @@ using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel;
 using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Windows.Inventory;
 
 namespace Networking
 {
@@ -237,6 +238,7 @@ namespace Networking
             {
                 using (var buffer = new ByteBuffer())
                 {
+                    InventoryWindow.ProfileBaseData.Clear();
                     ProfileWindow.ProfileBaseData.Clear();
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
@@ -259,8 +261,11 @@ namespace Networking
                     ProfileWindow.editProfile = false;
                     ProfileWindow.ClearUI();
                     ProfileWindow.ExistingProfile = false;
+                    InventoryWindow.ExistingProfile = false;
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = false;
+                    InventoryWindow.ExistingProfile = false;
+                    
                     ProfileWindow.ClearOnLoad();
                 }
             }
@@ -433,6 +438,7 @@ namespace Networking
                     string profileName = buffer.ReadString();
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = true;
+                    InventoryWindow.ExistingProfile = true;
                     ProfileWindow.ResetOnChangeOrRemoval();
                     ProfileWindow.ClearOnLoad();
                     loggedIn = true;
@@ -775,10 +781,10 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     bool status = buffer.ReadBool();
                     bool tooltipStatus = buffer.ReadBool();
-                    plugin.OpenProfileWindow();
                     ProfileWindow.isPrivate = status;
                     ProfileWindow.activeProfile = tooltipStatus;
                     ProfileWindow.ExistingProfile = true;
+                    InventoryWindow.ExistingProfile = true;
                     ProfileWindow.ClearOnLoad();
 
                 }
@@ -828,6 +834,7 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int profileCount = buffer.ReadInt();
                     ProfileWindow.ProfileBaseData.Clear();
+                    InventoryWindow.ProfileBaseData.Clear();
                     for (int i =0; i < profileCount; i++)
                     {
                         
@@ -835,6 +842,7 @@ namespace Networking
                         string name = buffer.ReadString();
                         bool active = buffer.ReadBool();
                         ProfileWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
+                        InventoryWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
                     }
                 }
             }
@@ -1286,8 +1294,10 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int itemsCount = buffer.ReadInt();
 
+                    InventoryWindow.percentage = itemsCount;
                     for (int i = 0; i < itemsCount; i++)
                     {
+
                         string name = buffer.ReadString();
                         string description = buffer.ReadString();
                         int type = buffer.ReadInt();
@@ -1295,7 +1305,7 @@ namespace Networking
                         int iconID = buffer.ReadInt(); 
                         int slotID = buffer.ReadInt();
                         int quality = buffer.ReadInt();
-                        InventoryTab.slotContents[slotID] = new Item
+                        InvTab.inventorySlotContents[type][slotID] = new Item
                         {
                             name = name,
                             description = description,
@@ -1310,6 +1320,7 @@ namespace Networking
                         {
                             throw new InvalidOperationException($"Invalid iconID: {iconID}");
                         }
+                        InventoryWindow.loaderInd = i;
 
                     }
 

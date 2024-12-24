@@ -2,6 +2,7 @@ using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
+using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface;
 using Dalamud.Interface.Internal.Windows.Data.Widgets;
 using Dalamud.Interface.Textures;
@@ -26,13 +27,31 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
+namespace AbsoluteRoleplay.Windows.Inventory
 {
-    internal class InventoryTab
+    public enum InvTabItem
+    {
+        Consumeable = 0,
+        Quest = 1,
+        Armor = 2,
+        Weapon = 3,
+        Material = 4,
+        Container = 5,
+        Script = 6,
+        Key = 7,
+    }
+    internal class InvTab
     {
         private const int GridSize = 10; // 10x10 grid for 200 slots
         private const int TotalSlots = GridSize * GridSize;
-        public static Dictionary<int, Defines.Item> slotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> consumeableSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> questSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> armorSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> weaponSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> containerSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> scriptSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, Defines.Item> keySlotContents = new(); // Slot contents, indexed by slot number
+        public static List<Dictionary<int, Defines.Item>> inventorySlotContents = new List<Dictionary<int, Defines.Item>>();
         public static bool isIconBrowserOpen;
         public static string itemName = string.Empty;
         public static string itemDescription = string.Empty;
@@ -50,36 +69,48 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             {
                 throw new InvalidOperationException("Failed to initialize icon.");
             }
-            slotContents.Clear();
-            for (int i = 0; i < TotalSlots; i++)
+            inventorySlotContents = new List<Dictionary<int, Defines.Item>> { consumeableSlotContents, questSlotContents, armorSlotContents, weaponSlotContents, containerSlotContents, scriptSlotContents, keySlotContents};
+           
+            consumeableSlotContents.Clear();
+            questSlotContents.Clear();
+            armorSlotContents.Clear();
+            weaponSlotContents.Clear();
+            containerSlotContents.Clear();
+            scriptSlotContents.Clear();
+            keySlotContents.Clear();
+            for (var i = 0; i < TotalSlots; i++)
             {
-                slotContents[i] = new Defines.Item
+                for (int j = 0; j < inventorySlotContents.Count; j++)
                 {
-                    name = string.Empty,
-                    description = string.Empty,
-                    type = 0,
-                    subtype = 0,
-                    iconID = 0,
-                    slot = i,
-                };
+                    inventorySlotContents[j][i] = new Defines.Item
+                    {
+                        name = string.Empty,
+                        description = string.Empty,
+                        type = 0,
+                        subtype = 0,
+                        iconID = 0,
+                        slot = i
+                    };
+                }
+              
             }
-          
+
         }
 
-        public static async Task LoadInventoryTabAsync(Plugin plugin)
+        public static async Task LoadInventoryTabAsync(Plugin plugin, InventoryWindow.InvTabItem invType)
         {
             if (ImGui.Button("CreateItem"))
             {
                 itemCreation = true;
             }
-            if(itemCreation == true)
+            if (itemCreation == true)
             {
-               LoadItemCreation(plugin);
+                LoadItemCreation(plugin);
             }
             else
             {
-                ItemGrid.DrawGrid(plugin, slotContents, false);
-            }           
+                ItemGrid.DrawGrid(plugin, inventorySlotContents[(int)invType], false);
+            }
         }
 
 
@@ -123,18 +154,18 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
 
         public static void AddItemCategorySelection(Plugin plugin)
         {
-            var (text, desc, subType) = Defines.Items.InventoryTypes[selectedItemType];
+            var (text, desc, subType) = Items.InventoryTypes[selectedItemType];
             using var combo = OtterGui.Raii.ImRaii.Combo("##ItemCategory", text);
             ImGuiUtil.HoverTooltip(desc);
             if (!combo)
                 return;
 
-            foreach (var ((newText, newDesc, newSubtype), idx) in Defines.Items.InventoryTypes.WithIndex())
+            foreach (var ((newText, newDesc, newSubtype), idx) in Items.InventoryTypes.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == selectedItemType))
                 {
                     selectedItemType = idx;
-                    itemSubType = Defines.Items.InventoryTypes[idx].Item3;
+                    itemSubType = Items.InventoryTypes[idx].Item3;
                 }
                 ImGuiUtil.SelectableHelpMarker(newDesc);
             }
@@ -172,7 +203,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
 
             foreach (var (val, idx) in Items.ItemQualityTypes.WithIndex())
             {
-                if (ImGui.Selectable(val, idx==selectedItemQuality))
+                if (ImGui.Selectable(val, idx == selectedItemQuality))
                 {
                     selectedItemQuality = idx;
                 }

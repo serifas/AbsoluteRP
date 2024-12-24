@@ -44,19 +44,16 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
             {
                 ImGui.SetTooltip("View profile bookmarks");
             }
-            using (OtterGui.Raii.ImRaii.Disabled(true))
+         
+            if (ImGui.ImageButton(MainPanel.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                if (ImGui.ImageButton(MainPanel.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
-                {
-                    //  viewConnections = true;
-                    // viewMainWindow = false;
-
-                }
-
+                DataSender.FetchProfiles();
+                DataSender.FetchProfile(ProfileWindow.currentProfile);
+                pluginInstance.OpenInventoryWindow();
             }
-            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Manage NPCs - WIP");
+                ImGui.SetTooltip("Manage Inventory");
             }
 
 

@@ -13,6 +13,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Inventory;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -63,7 +64,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void OnOpen()
         {
-            InventoryTab.InitInventory();
+            InvTab.InitInventory();
             ProfileBaseData.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
             var avatarHolderImage = UI.UICommonImage(UI.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
@@ -260,7 +261,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Inventory")) { ClearUI(); TabOpen[TabValue.Inventory] = true; ImGui.EndTabItem(); }
                 ImGui.EndTabBar();
 
 
@@ -288,10 +288,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         Vector2 inputSize = new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - 20);
                        // oocInfo = Misc.WrapTextToFit(oocInfo, inputSize.X);
                         ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, inputSize);
-                    }
-                    if (TabOpen[TabValue.Inventory])
-                    {
-                        await InventoryTab.LoadInventoryTabAsync(plugin);
                     }
                     if (GalleryTab.loadPreview == true)
                     {

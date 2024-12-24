@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Inventory;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -217,7 +217,7 @@ namespace AbsoluteRoleplay.Helpers
                 if (ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize)))
                 {
                     selectedIcon = texture; // Handle icon click
-                    InventoryTab.createItemIconID = iconId;
+                    InvTab.createItemIconID = iconId;
                 }
                 ImGui.PopID();
 
@@ -249,8 +249,8 @@ namespace AbsoluteRoleplay.Helpers
                 ImGui.SameLine();
                 if (ImGui.Button("Set Icon"))
                 {
-                    InventoryTab.icon = selectedIcon;
-                    InventoryTab.isIconBrowserOpen = false;
+                    InvTab.icon = selectedIcon;
+                    InvTab.isIconBrowserOpen = false;
                 }
                 ImGui.Image(selectedIcon.ImGuiHandle, new Vector2(iconSize, iconSize));
             }

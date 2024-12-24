@@ -783,17 +783,17 @@ namespace AbsoluteRoleplay
 
         public static readonly (int, string, IDalamudTextureWrap)[] ListingNavigationVals =
         {
-            (0, "Events", UICommonImage(CommonImageTypes.listingsEvent)),
+            ((int)ListingCategory.Event, "Events", UICommonImage(CommonImageTypes.listingsEvent)),
 
-            (1, "Campaigns", UICommonImage(CommonImageTypes.listingsCampaign)),
+            ((int)ListingCategory.Campaign, "Campaigns", UICommonImage(CommonImageTypes.listingsCampaign)),
 
-            (2, "Venues", UICommonImage(CommonImageTypes.listingsVenue)),
+            ((int)ListingCategory.Venue, "Venues", UICommonImage(CommonImageTypes.listingsVenue)),
 
-            (3, "Groups", UICommonImage(CommonImageTypes.listingsGroup)),
+            ((int)ListingCategory.Group, "Groups", UICommonImage(CommonImageTypes.listingsGroup)),
 
-            (4, "FCs", UICommonImage(CommonImageTypes.listingsFC)),
+            ((int)ListingCategory.FC, "FCs", UICommonImage(CommonImageTypes.listingsFC)),
 
-            (5, "Personals", UICommonImage(CommonImageTypes.listingsPersonal)),
+            ((int)ListingCategory.Personal, "Personals", UICommonImage(CommonImageTypes.listingsPersonal)),
 
         };
         public static readonly (string, string)[] ListingCategoryVals =

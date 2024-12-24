@@ -19,6 +19,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Remove="Windows\Listings\EventListings\**" />
+      <EmbeddedResource Remove="Windows\Listings\EventListings\**" />
+      <None Remove="Windows\Listings\EventListings\**" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Reference Include="Dalamud" Private="false" />
         <PackageReference Include="Lumina" Version="5.6.0" />
         <Reference Include="ImGui.NET" Private="false" />
@@ -264,10 +270,6 @@
 
     <ItemGroup>
       <None Include="Defines\UI.cs" />
-      <None Include="Windows\Listings\ListingsWindow.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="Windows\Listings\EventListings\" />
+      <None Include="Windows\Listings\ListingCreation.cs" />
     </ItemGroup>
 </Project>
