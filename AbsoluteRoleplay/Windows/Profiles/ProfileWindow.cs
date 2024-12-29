@@ -14,6 +14,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using AbsoluteRoleplay.Windows.Inventory;
+using AbsoluteRoleplay.Defines;
+using System.Transactions;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -57,6 +59,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
         private int customTabsCount = 0; // Current number of tabs
         private int tabToDeleteIndex = -1; // Index of the tab to delete
         private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
+        public static List<Layout> layouts = new List<Layout>();
+        public static int currentElementID = 0;
+
+        public bool AddInputTextElement { get; private set; }
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -280,6 +286,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
                 RenderCustomTabs();
+                ImGui.SameLine();
+                if (ImGui.Button("Add Page##AddTab") && customTabsCount < MaxTabs)
+                {
+                    showInputPopup[customTabsCount] = true; // Show popup for the new tab
+                    availableTabs[customTabsCount] = ""; // Clear the input field
+                    ImGui.OpenPopup($"New Tab Input##{customTabsCount}"); // Open popup
+                }
                 ImGui.EndTabBar();
 
 
@@ -372,7 +385,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     if (ImGui.BeginPopupModal($"New Tab Input##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
                     {
-                        ImGui.Text($"Enter the name for tab {i + 1}:");
+                        ImGui.Text($"Enter the name for the page:");
                         ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
 
                         // Detect Enter key submission
@@ -383,6 +396,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             customTabsCount++; // Increment the tab count
                             showInputPopup[i] = false; // Close the popup
                             ImGui.CloseCurrentPopup();
+
                         }
 
                         // Optional cancel button
@@ -425,12 +439,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
             }
             ImGui.SameLine();
-            if (ImGui.Button("Add Page##AddTab") && customTabsCount < MaxTabs)
-            {
-                showInputPopup[customTabsCount] = true; // Show popup for the new tab
-                availableTabs[customTabsCount] = ""; // Clear the input field
-                ImGui.OpenPopup($"New Tab Input##{customTabsCount}"); // Open popup
-            }
         }
 
 
@@ -442,9 +450,61 @@ namespace AbsoluteRoleplay.Windows.Profiles
             // Render the tab
             if (ImGui.BeginTabItem(uniqueId, ref isOpen))
             {
-                ImGui.Text($"Content for {tabName}");
+                ClearUI();
+                // Ensure the layout exists
+                if (!layouts.Any(l => l.id == index))
+                {
+                    layouts.Add(new Layout() { id = index });
+                }
+
+                // Find the current layout
+                var currentLayout = layouts.First(l => l.id == index);
+
+                // Render the Add Element button
+                RenderAddElementButton();
+
+                // Render existing text elements in the layout
+                if (currentLayout.textVals != null)
+                {
+                    for (int i = 0; i < currentLayout.textVals.Length; i++)
+                    {
+                        if (currentLayout.textVals[i] != null)
+                        {
+                            LayoutItems.AddTextElement(index, i);
+                        }
+                    }
+                }
+
+                // Handle adding a new text element
+                if (AddInputTextElement)
+                {
+                    AddInputTextElement = false;
+
+                    // Dynamically add a new TextElement
+                    if (currentLayout.textVals == null)
+                    {
+                        currentLayout.textVals = new TextElement[10]; // Initialize with a default size
+                    }
+
+                    for (int i = 0; i < currentLayout.textVals.Length; i++)
+                    {
+                        if (currentLayout.textVals[i] == null)
+                        {
+                            currentLayout.textVals[i] = new TextElement
+                            {
+                                id = i,
+                                text = $"Text Element {i}",
+                                color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
+                            };
+                            break;
+                        }
+                    }
+                }
+
                 ImGui.EndTabItem();
             }
+
+            ImGui.SameLine();
 
             // If the built-in close button was pressed, trigger the delete confirmation popup
             if (!isOpen)
@@ -456,6 +516,59 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
         }
 
+
+        public void RenderAddElementButton()
+        {
+            if (ImGui.Button("Add Element"))
+            {
+                ImGui.OpenPopup("AddElementPopup"); // Open the popup when the button is clicked
+            }
+
+            if (ImGui.BeginPopup("AddElementPopup")) // Render the popup
+            {
+                ImGui.Text("Select Element Type");
+                ImGui.Separator();
+
+                // Option: Text Element
+                if (ImGui.Selectable("Text Element"))
+                {
+                    currentElementID++;
+                    AddInputTextElement = true;
+                    //AddElement("Text Element");
+                    ImGui.CloseCurrentPopup(); // Close the popup after selection
+                }
+
+                // Option: Image Element
+                if (ImGui.Selectable("Image Element"))
+                {
+                    //AddElement("Image Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                // Option: Status Element
+                if (ImGui.Selectable("Status Element"))
+                {
+                    //AddElement("Status Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                // Option: Icon Element
+                if (ImGui.Selectable("Icon Element"))
+                {
+                    //AddElement("Icon Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                // Option: Progress Element
+                if (ImGui.Selectable("Progress Element"))
+                {
+                    // AddElement("Progress Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+        }
 
         private void RenderDeleteConfirmationPopup()
         {
