@@ -179,7 +179,6 @@ namespace AbsoluteRoleplay.Windows.Listings
                     ResetElements();
                     DrawDateTimeSelection = true;
                 }
-              
             }
             #endregion
             #region START AND END DAATE

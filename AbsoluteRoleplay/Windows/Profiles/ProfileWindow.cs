@@ -25,8 +25,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         Story = 3,
         OOC = 4,
         Gallery = 5,
-        Inventory = 6,
     }
+    
     //changed
     public class ProfileWindow : Window, IDisposable
     {
@@ -37,6 +37,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public Configuration configuration;
         public static IDalamudTextureWrap pictureTab; //picturetab.png for base picture in gallery
         public static SortedList<TabValue, bool> TabOpen = new SortedList<TabValue, bool>(); //what part of the profile we have open
+        public static SortedList<int, bool> CustomTabOpen = new SortedList<int, bool>();
         public static bool addProfile, editProfile;
         public static string oocInfo = string.Empty;
         public static bool ExistingProfile = false;
@@ -47,6 +48,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool activeProfile;
         public static int currentProfile = 0;
         public static List<Tuple<int, string, bool>> ProfileBaseData = new List<Tuple<int, string, bool>>();
+        public static bool Bio, Hooks, Story, OOC, Gallery;
+        public static List<bool> Customs = new List<bool>();
+        private const int MaxTabs = 10; // Maximum number of tabs
+        private string[] availableTabs = new string[MaxTabs]; // Array to store tab names
+        private bool[] showInputPopup = new bool[MaxTabs]; // Array to track popup visibility
+        private bool[] openTabs = new bool[MaxTabs]; // Tracks whether each tab is open
+        private int customTabsCount = 0; // Current number of tabs
+        private int tabToDeleteIndex = -1; // Index of the tab to delete
+        private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -64,6 +74,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void OnOpen()
         {
+            for(int i = 0; i < 10; i++)
+            {
+                showInputPopup[i] = false;
+                availableTabs[i] = "";
+            }
             InvTab.InitInventory();
             ProfileBaseData.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
@@ -156,7 +171,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     isPrivate = true;
                     ResetOnChangeOrRemoval();
-                    DataSender.CreateProfile(ProfileBaseData.Count);
+                    DataSender.CreateProfile(ProfileBaseData.Count, false);
                     currentProfile = ProfileBaseData.Count;
                     DataSender.FetchProfile(currentProfile);
                     ExistingProfile = true;
@@ -255,12 +270,16 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
 
                 ImGui.Spacing();
+                // Button to trigger the popup for a new tab
+               
                 ImGui.BeginTabBar("ProfileNavigation");
-                if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
+
+                if (ImGui.BeginTabItem("Edit Bio")){ ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); } 
                 if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+                RenderCustomTabs();
                 ImGui.EndTabBar();
 
 
@@ -344,6 +363,129 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
         }
 
+        public void RenderCustomTabs()
+        {
+            // Render all active popups
+            for (int i = 0; i < MaxTabs; i++)
+            {
+                if (showInputPopup[i])
+                {
+                    if (ImGui.BeginPopupModal($"New Tab Input##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
+                    {
+                        ImGui.Text($"Enter the name for tab {i + 1}:");
+                        ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
+
+                        // Detect Enter key submission
+                        var io = ImGui.GetIO();
+                        if (io.KeysDown[(int)ImGuiKey.Enter] && !string.IsNullOrWhiteSpace(availableTabs[i]))
+                        {
+                            openTabs[i] = true; // Mark the tab as open
+                            customTabsCount++; // Increment the tab count
+                            showInputPopup[i] = false; // Close the popup
+                            ImGui.CloseCurrentPopup();
+                        }
+
+                        // Optional cancel button
+                        if (ImGui.Button("Cancel"))
+                        {
+                            showInputPopup[i] = false; // Close the popup without saving
+                            availableTabs[i] = ""; // Clear the name
+                            ImGui.CloseCurrentPopup();
+                        }
+
+                        ImGui.EndPopup();
+                    }
+                }
+            }
+
+            // Render all tabs
+            for (int i = 0; i < customTabsCount; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(availableTabs[i]))
+                {
+                    RenderTab(i, ref openTabs[i], availableTabs[i]);
+                }
+            }
+
+            // Render the delete confirmation popup
+            RenderDeleteConfirmationPopup();
+
+            // Clean up closed tabs
+            for (int i = customTabsCount - 1; i >= 0; i--)
+            {
+                if (!openTabs[i])
+                {
+                    for (int j = i; j < customTabsCount - 1; j++)
+                    {
+                        availableTabs[j] = availableTabs[j + 1];
+                        openTabs[j] = openTabs[j + 1];
+                        showInputPopup[j] = showInputPopup[j + 1];
+                    }
+                    customTabsCount--;
+                }
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Add Page##AddTab") && customTabsCount < MaxTabs)
+            {
+                showInputPopup[customTabsCount] = true; // Show popup for the new tab
+                availableTabs[customTabsCount] = ""; // Clear the input field
+                ImGui.OpenPopup($"New Tab Input##{customTabsCount}"); // Open popup
+            }
+        }
+
+
+
+        private void RenderTab(int index, ref bool isOpen, string tabName)
+        {
+            string uniqueId = $"{tabName}##{index}";
+
+            // Render the tab
+            if (ImGui.BeginTabItem(uniqueId, ref isOpen))
+            {
+                ImGui.Text($"Content for {tabName}");
+                ImGui.EndTabItem();
+            }
+
+            // If the built-in close button was pressed, trigger the delete confirmation popup
+            if (!isOpen)
+            {
+                isOpen = true; // Reopen the tab temporarily to show the confirmation popup
+                tabToDeleteIndex = index; // Store the index of the tab to delete
+                showDeleteConfirmationPopup = true; // Show the delete confirmation popup
+                ImGui.OpenPopup("Delete Tab Confirmation");
+            }
+        }
+
+
+        private void RenderDeleteConfirmationPopup()
+        {
+            if (showDeleteConfirmationPopup && ImGui.BeginPopupModal("Delete Tab Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text($"Are you sure you want to delete the tab \"{availableTabs[tabToDeleteIndex]}\"?");
+                ImGui.Spacing();
+
+                // Confirm button
+                if (ImGui.Button("Confirm"))
+                {
+                    openTabs[tabToDeleteIndex] = false; // Mark the tab as closed
+                    showDeleteConfirmationPopup = false; // Close the popup
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.SameLine();
+
+                // Cancel button
+                if (ImGui.Button("Cancel"))
+                {
+                    showDeleteConfirmationPopup = false; // Close the popup without deleting
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+        }
+
+
         private bool ProfileHasContent()
         {
             
@@ -409,7 +551,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
             TabOpen[TabValue.Story] = false;
             TabOpen[TabValue.OOC] = false;
             TabOpen[TabValue.Gallery] = false;
-            TabOpen[TabValue.Inventory] = false;
         }
         public static void ResetOnChangeOrRemoval()
         {

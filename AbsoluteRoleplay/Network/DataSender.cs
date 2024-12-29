@@ -328,7 +328,7 @@ namespace Networking
                 }
             }
         }
-        public static async void CreateProfile(int index)
+        public static async void CreateProfile(int index, bool customLayout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -342,6 +342,7 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(index);
+                        buffer.WriteBool(customLayout);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
