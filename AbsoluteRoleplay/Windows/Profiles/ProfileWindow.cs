@@ -277,23 +277,63 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                 ImGui.Spacing();
                 // Button to trigger the popup for a new tab
-               
+
                 ImGui.BeginTabBar("ProfileNavigation");
 
-                if (ImGui.BeginTabItem("Edit Bio")){ ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); } 
+                // Static tabs
+                if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
                 if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+
+                // Custom tabs
                 RenderCustomTabs();
-                ImGui.SameLine();
-                if (ImGui.Button("Add Page##AddTab") && customTabsCount < MaxTabs)
+
+                // Add the special "+ Add Tab" as a fake tab at the end
+                if (ImGui.TabItemButton("  +  ##AddTab", ImGuiTabItemFlags.NoCloseWithMiddleMouseButton))
                 {
-                    showInputPopup[customTabsCount] = true; // Show popup for the new tab
-                    availableTabs[customTabsCount] = ""; // Clear the input field
-                    ImGui.OpenPopup($"New Tab Input##{customTabsCount}"); // Open popup
+                    if (customTabsCount < MaxTabs)
+                    {
+                        showInputPopup[customTabsCount] = true; // Open the popup for the new tab
+                        availableTabs[customTabsCount] = ""; // Reset the name field
+                        ImGui.OpenPopup($"New Page##{customTabsCount}"); // Trigger popup
+                    }
                 }
+
                 ImGui.EndTabBar();
+
+                // Render the popup for adding a new tab
+                for (int i = 0; i < MaxTabs; i++)
+                {
+                    if (showInputPopup[i])
+                    {
+                        if (ImGui.BeginPopupModal($"New Page##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
+                        {
+                            ImGui.Text("Enter the name for the new page:");
+                            ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
+
+                            if (ImGui.Button("Submit") && !string.IsNullOrWhiteSpace(availableTabs[i]))
+                            {
+                                openTabs[i] = true; // Mark the tab as open
+                                customTabsCount++; // Increment tab count
+                                showInputPopup[i] = false; // Close popup
+                                ImGui.CloseCurrentPopup();
+                            }
+
+                            ImGui.SameLine();
+
+                            if (ImGui.Button("Cancel"))
+                            {
+                                showInputPopup[i] = false; // Close the popup without saving
+                                availableTabs[i] = ""; // Clear the input field
+                                ImGui.CloseCurrentPopup();
+                            }
+
+                            ImGui.EndPopup();
+                        }
+                    }
+                }
 
 
                 using var ProfileTable = ImRaii.Child("PROFILE");
@@ -383,7 +423,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 if (showInputPopup[i])
                 {
-                    if (ImGui.BeginPopupModal($"New Tab Input##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
+                    if (ImGui.BeginPopupModal($"New Page##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
                     {
                         ImGui.Text($"Enter the name for the page:");
                         ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
@@ -438,7 +478,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     customTabsCount--;
                 }
             }
-            ImGui.SameLine();
         }
 
 
@@ -504,7 +543,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.EndTabItem();
             }
 
-            ImGui.SameLine();
 
             // If the built-in close button was pressed, trigger the delete confirmation popup
             if (!isOpen)
