@@ -26,6 +26,10 @@ namespace AbsoluteRoleplay.Helpers
      
         public static IDalamudTextureWrap DownloadImage(string url)
         {
+            if (!IsImageUrl(url))
+            {
+                return UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+            }
             byte[] bannerBytes = null;
                 //set the avatar to the avatar_holder.png by default
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
@@ -50,7 +54,6 @@ namespace AbsoluteRoleplay.Helpers
                     plugin.logger.Error($"Failed to download image from {url}: {ex.Message}");
                 }
             }
-
             return image;
         }
         public static void DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
@@ -212,17 +215,20 @@ namespace AbsoluteRoleplay.Helpers
         {
             try
             {
-                // Send a HEAD request to fetch only the headers
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-                request.Method = "HEAD";
-
-                // Get the response
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                if (url != string.Empty)
                 {
-                    // Check if the Content-Type header indicates an image
-                    if (response.ContentType.ToLower().StartsWith("image/"))
+                    // Send a HEAD request to fetch only the headers
+                    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
+                    request.Method = "HEAD";
+
+                    // Get the response
+                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                     {
-                        return true;
+                        // Check if the Content-Type header indicates an image
+                        if (response.ContentType.ToLower().StartsWith("image/"))
+                        {
+                            return true;
+                        }
                     }
                 }
             }

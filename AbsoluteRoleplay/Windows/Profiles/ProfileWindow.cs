@@ -166,7 +166,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            this.Flags = !LayoutItems.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
+            this.Flags = !DynamicInputs.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -488,7 +488,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             string uniqueId = $"{tabName}##{index}";
 
-            // Render the tab
             if (ImGui.BeginTabItem(uniqueId, ref isOpen))
             {
                 ClearUI();
@@ -501,7 +500,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         id = index,
                         textVals = new List<TextElement>(),
-                        imageVals = new ImageElement[25] // Initialize with capacity for 25 images
+                        imageVals = new List<ImageElement>()
                     };
                     layouts.Add(currentLayout);
                 }
@@ -512,27 +511,34 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 // Create a child window to contain the draggable elements
                 if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
-                    // Render existing text elements in the layout
-                    if (currentLayout.textVals != null)
+                    // Render existing text elements
+                    foreach (var textElement in currentLayout.textVals.ToList())
                     {
-                        foreach (var textElement in currentLayout.textVals)
+                        if (textElement != null)
                         {
-                            if (textElement != null)
+                            try
                             {
-                                LayoutItems.AddTextElement(index, textElement.type, textElement.id, plugin);
+                                DynamicInputs.AddTextElement(index, textElement.type, textElement.id, plugin);
+                            }
+                            catch (Exception ex)
+                            {
+                                plugin.logger.Error($"Error in AddTextElement: {ex.Message}");
                             }
                         }
                     }
 
-                    // Render existing image elements in the layout
-                    if (currentLayout.imageVals != null)
+                    // Render existing image elements
+                    foreach (var imageElement in currentLayout.imageVals.ToList())
                     {
-                        for (int i = 0; i < currentLayout.imageVals.Length; i++)
+                        if (imageElement != null)
                         {
-                            var imageElement = currentLayout.imageVals[i];
-                            if (imageElement != null)
+                            try
                             {
-                               // DrawGalleryImage(plugin, index, i);
+                                DynamicInputs.AddImageElement(index, imageElement.id, plugin);
+                            }
+                            catch (Exception ex)
+                            {
+                                plugin.logger.Error($"Error in AddImageElement: {ex.Message}");
                             }
                         }
                     }
@@ -571,38 +577,34 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         AddInputImageElement = false;
 
-                        for (int i = 0; i < currentLayout.imageVals.Length; i++)
+                        int newId = currentLayout.imageVals.Any() ? currentLayout.imageVals.Max(e => e.id) + 1 : 0;
+                        currentLayout.imageVals.Add(new ImageElement
                         {
-                            if (currentLayout.imageVals[i] == null)
-                            {
-                                currentLayout.imageVals[i] = new ImageElement
-                                {
-                                    id = i,
-                                    url = "",
-                                    bytes = null,
-                                    tooltip = "",
-                                    nsfw = false,
-                                    triggering = false,
-                                    width = 100,  // Default width
-                                    height = 100, // Default height
-                                    PosX = 100,   // Default position
-                                    PosY = 100
-                                };
-                                break;
-                            }
-                        }
+                            id = newId,
+                            url = "",
+                            bytes = null,
+                            tooltip = "",
+                            nsfw = false,
+                            triggering = false,
+                            width = 100,  // Default width
+                            height = 100, // Default height
+                            PosX = 100,   // Default position
+                            PosY = 100
+                        });
                     }
+
+                    ImGui.EndChild();
                 }
-                ImGui.EndChild();
+
                 ImGui.EndTabItem();
             }
 
             // Handle closing the tab
             if (!isOpen)
             {
-                isOpen = true; // Reopen the tab temporarily to show the confirmation popup
-                tabToDeleteIndex = index; // Store the index of the tab to delete
-                showDeleteConfirmationPopup = true; // Show the delete confirmation popup
+                isOpen = true;
+                tabToDeleteIndex = index;
+                showDeleteConfirmationPopup = true;
                 ImGui.OpenPopup("Delete Tab Confirmation");
             }
         }
