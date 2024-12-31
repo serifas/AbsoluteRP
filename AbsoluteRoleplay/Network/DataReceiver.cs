@@ -1153,9 +1153,9 @@ namespace Networking
                         int inclusion = buffer.ReadInt();
                         string startDate = buffer.ReadString();
                         string endDate = buffer.ReadString();
-                        IDalamudTextureWrap banner = Imaging.DownloadListingImage(bannerURL, i);
-                        Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
-                        ListingsWindow.listings.Add(listing);
+                      //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
+                      //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
+                     //   ListingsWindow.listings.Add(listing);
                         ListingsWindow.loading = "Listing: " + i;
                         ListingsWindow.loaderInd = i;
                     }

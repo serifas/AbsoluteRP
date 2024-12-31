@@ -1,7 +1,10 @@
+using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
+using Networking;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,7 +19,7 @@ namespace AbsoluteRoleplay.Defines
     public class Layout
     {
         public int id { get; set; }
-        public TextElement[] textVals { get; set; }
+        public List<TextElement> textVals { get; set; }
         public ImageElement[] imageVals { get; set; }
         public StatusElement[] statusVals { get; set; }
         public IconElement[] iconVals { get; set; }
@@ -36,9 +39,13 @@ namespace AbsoluteRoleplay.Defines
     }
     public class ImageElement
     {
+        internal bool canceled;
+        internal bool modifying;
+
         public int id { get; set; }
         public string url { get; set; }
         public byte[] bytes { get; set; }
+        public IDalamudTextureWrap textureWrap { set; get; }
         public string tooltip { get; set; }
         public bool nsfw { get; set; }
         public bool triggering { get; set; }
@@ -84,7 +91,7 @@ namespace AbsoluteRoleplay.Defines
         public float PosX { get; set; }
         public float PosY { get; set; }
     }
-    internal class LayoutItems
+    internal class DynamicInputs
     {
         public static SortedList<int, object> fieldValues = new SortedList<int, object>();
         private static int? pendingLayoutID = null;
@@ -96,27 +103,23 @@ namespace AbsoluteRoleplay.Defines
         private static bool showDeleteConfirmationPopup = false;
         public static void AddTextElement(int layoutID, int type, int elementID, Plugin plugin)
         {
-            
             // Ensure the layout exists
             if (!layouts.ContainsKey(layoutID))
             {
                 layouts[layoutID] = new Layout
                 {
                     id = layoutID,
-                    textVals = new TextElement[10] // Initialize with a default size
+                    textVals = new List<TextElement>() // Initialize with a List
                 };
             }
 
-            // Ensure textVals array exists
-            if (layouts[layoutID].textVals == null)
-            {
-                layouts[layoutID].textVals = new TextElement[10]; // Initialize with a default size
-            }
+            // Retrieve the specific element
+            var textElement = layouts[layoutID].textVals.FirstOrDefault(e => e.id == elementID);
 
-            // Ensure the specific element exists
-            if (layouts[layoutID].textVals[elementID] == null )
+            // Only create a new element if it doesn't exist and is not canceled
+            if (textElement == null)
             {
-                layouts[layoutID].textVals[elementID] = new TextElement
+                textElement = new TextElement
                 {
                     id = elementID,
                     type = type,
@@ -125,12 +128,16 @@ namespace AbsoluteRoleplay.Defines
                     PosX = 100, // Default position
                     PosY = 100,
                     locked = true,
-                    modifying = false
+                    modifying = false,
+                    canceled = false // Ensure it's not marked as canceled
                 };
+                layouts[layoutID].textVals.Add(textElement);
             }
-
-            // Retrieve the specific text element
-            var textElement = layouts[layoutID].textVals[elementID];
+            else if (textElement.canceled)
+            {
+                plugin.logger.Error($"Element {elementID} in Layout {layoutID} is canceled and will not be recreated.");
+                return; // Exit if the element is canceled
+            }
 
             // Handle dragging logic
             Vector2 mousePos = ImGui.GetMousePos();
@@ -193,7 +200,6 @@ namespace AbsoluteRoleplay.Defines
                     textElement.modifying = false; // Change mode to display
                 }
 
-
                 ImGui.SameLine();
 
                 // Render the "Delete" button
@@ -210,7 +216,7 @@ namespace AbsoluteRoleplay.Defines
                 RenderDeleteConfirmationPopup(() =>
                 {
                     // Logic to delete the element
-                    textElement.canceled = true;
+                    layouts[layoutID].textVals[elementID].canceled = true;
                     plugin.logger.Error($"Deleted Element {elementID} from Layout {layoutID}");
                 });
             }
@@ -234,16 +240,12 @@ namespace AbsoluteRoleplay.Defines
 
                 ImGui.SameLine();
 
-                if(textElement.locked == false)
+                if (textElement.locked == false)
                 {
                     if (ImGui.Button($"Lock##{layoutID}_{elementID}") && draggingElementID == null)
                     {
                         Lockstatus = true;
                         textElement.locked = true;
-                    }
-                    ImGui.SameLine();
-                    if(ImGui.Button($"Move##{layoutID}_{elementID}"))
-                    {
                     }
                     if (ImGui.IsMouseDown(ImGuiMouseButton.Left) && draggingElementID == null)
                     {
@@ -254,16 +256,20 @@ namespace AbsoluteRoleplay.Defines
                 }
                 else
                 {
-                    // Render the "Drag" button
+                    // Render the "Unlock" button
                     if (ImGui.Button($"Unlock##{layoutID}_{elementID}") && draggingElementID == null)
                     {
                         Lockstatus = false;
+                        for (int i = 0; i < layouts[layoutID].textVals.Count; i++)
+                        {
+                            layouts[layoutID].textVals[i].locked = true;
+                        }
                         textElement.locked = false;
                     }
-                } 
-               
+                }
             }
         }
+     
 
         public static void RenderDeleteConfirmationPopup(Action onConfirm)
         {

@@ -63,6 +63,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static int currentElementID = 0;
         public bool AddInputTextElement { get; private set; }
         public bool AddInputTextMultilineElement { get; private set; }
+        public bool AddInputImageElement { get; private set; }
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.None)
@@ -165,7 +166,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            this.Flags = !LayoutItems.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
+            this.Flags = !DynamicInputs.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -491,91 +492,112 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (ImGui.BeginTabItem(uniqueId, ref isOpen))
             {
                 ClearUI();
-                // Ensure the layout exists
-                if (!layouts.Any(l => l.id == index))
-                {
-                    layouts.Add(new Layout() { id = index });
-                }
 
-                // Find the current layout
-                var currentLayout = layouts.First(l => l.id == index);
+                // Ensure the layout exists
+                var currentLayout = layouts.FirstOrDefault(l => l.id == index);
+                if (currentLayout == null)
+                {
+                    currentLayout = new Layout
+                    {
+                        id = index,
+                        textVals = new List<TextElement>(),
+                        imageVals = new ImageElement[25] // Initialize with capacity for 25 images
+                    };
+                    layouts.Add(currentLayout);
+                }
 
                 // Render the Add Element button
                 RenderAddElementButton();
 
                 // Create a child window to contain the draggable elements
-                ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding);
-
-                // Render existing text elements in the layout
-                if (currentLayout.textVals != null)
+                if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
-                    for (int i = 0; i < currentLayout.textVals.Length; i++)
+                    // Render existing text elements in the layout
+                    if (currentLayout.textVals != null)
                     {
-                        if (currentLayout.textVals[i] != null)
+                        foreach (var textElement in currentLayout.textVals)
                         {
-                                LayoutItems.AddTextElement(index, currentLayout.textVals[i].type, i, plugin);
-                        }
-                    }
-                }
-
-                // Handle adding a new text element
-                if (AddInputTextElement)
-                {
-                    AddInputTextElement = false;
-
-                    // Dynamically add a new TextElement
-                    if (currentLayout.textVals == null)
-                    {
-                        currentLayout.textVals = new TextElement[10]; // Initialize with a default size
-                    }
-
-                    for (int i = 0; i < currentLayout.textVals.Length; i++)
-                    {
-                        if (currentLayout.textVals[i] == null)
-                        {
-                            currentLayout.textVals[i] = new TextElement
+                            if (textElement != null)
                             {
-                                id = i,
-                                text = $"Text Element {i}",
-                                type = 0,
-                                color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
-                            };
-                            break;
+                                DynamicInputs.AddTextElement(index, textElement.type, textElement.id, plugin);
+                            }
                         }
                     }
-                }
 
-                if (AddInputTextMultilineElement)
-                {
-                    AddInputTextMultilineElement = false;
-
-                    // Dynamically add a new TextElement
-                    if (currentLayout.textVals == null)
+                    // Render existing image elements in the layout
+                    if (currentLayout.imageVals != null)
                     {
-                        currentLayout.textVals = new TextElement[10]; // Initialize with a default size
-                    }
-
-                    for (int i = 0; i < currentLayout.textVals.Length; i++)
-                    {
-                        if (currentLayout.textVals[i] == null)
+                        for (int i = 0; i < currentLayout.imageVals.Length; i++)
                         {
-                            currentLayout.textVals[i] = new TextElement
+                            if (currentLayout.imageVals[i] != null)
                             {
-                                id = i,
-                                text = $"Text Multiline Element {i}",
-                                type = 1,
-                                color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
-                            };
-                            break;
+                          //      DynamicInputs.AddImageElement(index, i, plugin);
+                            }
+                        }
+                    }
+
+
+                    // Handle adding a new text element
+                    if (AddInputTextElement)
+                    {
+                        AddInputTextElement = false;
+
+                        int newId = currentLayout.textVals.Any() ? currentLayout.textVals.Max(e => e.id) + 1 : 0;
+                        currentLayout.textVals.Add(new TextElement
+                        {
+                            id = newId,
+                            text = $"Text Element {newId}",
+                            type = 0,
+                            color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
+                        });
+                    }
+
+                    if (AddInputTextMultilineElement)
+                    {
+                        AddInputTextMultilineElement = false;
+
+                        int newId = currentLayout.textVals.Any() ? currentLayout.textVals.Max(e => e.id) + 1 : 0;
+                        currentLayout.textVals.Add(new TextElement
+                        {
+                            id = newId,
+                            text = $"Text Multiline Element {newId}",
+                            type = 1,
+                            color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
+                        });
+                    }
+
+                    // Handle adding a new image element
+                    if (AddInputImageElement)
+                    {
+                        AddInputImageElement = false;
+
+                        for (int i = 0; i < currentLayout.imageVals.Length; i++)
+                        {
+                            if (currentLayout.imageVals[i] == null)
+                            {
+                                currentLayout.imageVals[i] = new ImageElement
+                                {
+                                    id = i,
+                                    url = "",
+                                    bytes = null,
+                                    tooltip = "",
+                                    nsfw = false,
+                                    triggering = false,
+                                    width = 100,  // Default width
+                                    height = 100, // Default height
+                                    PosX = 100,   // Default position
+                                    PosY = 100
+                                };
+                                break;
+                            }
                         }
                     }
                 }
-
                 ImGui.EndChild();
                 ImGui.EndTabItem();
             }
 
-            // If the built-in close button was pressed, trigger the delete confirmation popup
+            // Handle closing the tab
             if (!isOpen)
             {
                 isOpen = true; // Reopen the tab temporarily to show the confirmation popup
@@ -584,6 +606,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.OpenPopup("Delete Tab Confirmation");
             }
         }
+
+
 
 
 
@@ -619,6 +643,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 // Option: Image Element
                 if (ImGui.Selectable("Image Element"))
                 {
+                    currentElementID++;
+                    AddInputImageElement = true;
                     //AddElement("Image Element");
                     ImGui.CloseCurrentPopup();
                 }

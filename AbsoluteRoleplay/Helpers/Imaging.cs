@@ -24,7 +24,7 @@ namespace AbsoluteRoleplay.Helpers
         public static Plugin plugin;
         private static Dictionary<uint, IconInfo?> IconInfoCache = [];
      
-        public static IDalamudTextureWrap DownloadListingImage(string url, int index)
+        public static IDalamudTextureWrap DownloadImage(string url)
         {
             byte[] bannerBytes = null;
                 //set the avatar to the avatar_holder.png by default
@@ -33,7 +33,7 @@ namespace AbsoluteRoleplay.Helpers
                 bannerBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/blank.png"));
             }
             
-            IDalamudTextureWrap banner = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
+            IDalamudTextureWrap image = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
             using (WebClient webClient = new WebClient())
             {
                 try
@@ -42,7 +42,7 @@ namespace AbsoluteRoleplay.Helpers
                     byte[] imageBytes = webClient.DownloadData(url);
 
                     // Convert the byte array to a Dalamud texture
-                    banner = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
+                    image = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
                 }
                 catch (Exception ex)
                 {
@@ -51,7 +51,7 @@ namespace AbsoluteRoleplay.Helpers
                 }
             }
 
-            return banner;
+            return image;
         }
         public static void DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
          {
