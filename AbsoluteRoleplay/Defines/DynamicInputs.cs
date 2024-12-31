@@ -39,9 +39,6 @@ namespace AbsoluteRoleplay.Defines
     }
     public class ImageElement
     {
-        internal bool canceled;
-        internal bool modifying;
-
         public int id { get; set; }
         public string url { get; set; }
         public byte[] bytes { get; set; }
@@ -91,7 +88,7 @@ namespace AbsoluteRoleplay.Defines
         public float PosX { get; set; }
         public float PosY { get; set; }
     }
-    internal class DynamicInputs
+    internal class LayoutItems
     {
         public static SortedList<int, object> fieldValues = new SortedList<int, object>();
         private static int? pendingLayoutID = null;
@@ -269,7 +266,151 @@ namespace AbsoluteRoleplay.Defines
                 }
             }
         }
-     
+
+        public static void AddGalleryElement(int layoutID, int elementID, Plugin plugin, ImageElement imageElement)
+        {
+            // Ensure the layout and its array are initialized
+            if (!layouts.ContainsKey(layoutID))
+            {
+                layouts[layoutID] = new Layout
+                {
+                    id = layoutID,
+                    textVals = new List<TextElement>(),
+                    imageVals = new ImageElement[25] // Initialize with capacity for 25 images
+                };
+            }
+            else if (layouts[layoutID].imageVals == null)
+            {
+                layouts[layoutID].imageVals = new ImageElement[25];
+            }
+
+            // Validate index and check for an existing element
+            if (elementID < 0 || elementID >= 25)
+            {
+                plugin.logger.Error($"Invalid elementID {elementID} for Layout {layoutID}");
+                return;
+            }
+
+            var existingImage = layouts[layoutID].imageVals[elementID];
+
+            // Only create a new element if it doesn't exist
+            if (existingImage == null)
+            {
+                layouts[layoutID].imageVals[elementID] = imageElement;
+            }
+            else
+            {
+                plugin.logger.Error($"Image Element {elementID} in Layout {layoutID} already exists.");
+            }
+
+            var currentImage = layouts[layoutID].imageVals[elementID];
+
+            // Handle dragging logic
+            Vector2 mousePos = ImGui.GetMousePos();
+            if (draggingElementID == elementID)
+            {
+                if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
+                    currentImage.PosX = mousePos.X - dragOffset.X;
+                    currentImage.PosY = mousePos.Y - dragOffset.Y;
+                }
+                else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                {
+                    draggingElementID = null;
+                    plugin.logger.Error($"Image Element {currentImage.id} dropped at position: {currentImage.PosX}, {currentImage.PosY}");
+                }
+            }
+            if (ImGui.Button($"Submit#{layoutID}_{elementID}"))
+            {
+                currentImage.textureWrap = Plugin.TextureProvider.CreateFromImageAsync(imageElement.bytes).Result;
+            }
+            // Render the image at its position
+            ImGui.SetCursorPos(new Vector2(currentImage.PosX, currentImage.PosY));
+
+            // Render lock/unlock buttons
+            ImGui.SameLine();
+            if (currentImage.triggering)
+            {
+                if (ImGui.Button($"Lock##{layoutID}_{elementID}") && draggingElementID == null)
+                {
+                    Lockstatus = true;
+                    currentImage.triggering = false;
+                }
+            }
+            else
+            {
+                if (ImGui.Button($"Unlock##{layoutID}_{elementID}") && draggingElementID == null)
+                {
+                    Lockstatus = false;
+                    currentImage.triggering = true;
+                }
+            }
+        }
+        public static void DrawGalleryImage(Plugin plugin, int layoutID, int elementID)
+        {
+            if (!layouts.ContainsKey(layoutID) || layouts[layoutID].imageVals == null)
+            {
+                plugin.logger.Error($"Layout {layoutID} or imageVals is not initialized.");
+                return;
+            }
+
+            if (elementID < 0 || elementID >= layouts[layoutID].imageVals.Length)
+            {
+                plugin.logger.Error($"Invalid elementID {elementID} for Layout {layoutID}.");
+                return;
+            }
+
+            var imageElement = layouts[layoutID].imageVals[elementID];
+            if (imageElement == null)
+            {
+                plugin.logger.Error($"Image Element {elementID} does not exist in Layout {layoutID}");
+                return;
+            }
+
+            ImGui.Text("Will this image be 18+?");
+            bool nsfw = imageElement.nsfw;
+            if (ImGui.Checkbox($"Yes 18+##{imageElement.id}", ref nsfw))
+            {
+               // DataSender.SendGalleryImage(ProfileWindow.currentProfile, imageElement.nsfw, imageElement.triggering, imageElement.url, imageElement.tooltip, imageElement.id);
+            }
+
+            ImGui.Text("Is this a possible trigger?");
+            bool triggering = imageElement.triggering;
+            if (ImGui.Checkbox($"Yes Triggering##{imageElement.id}", ref triggering))
+            {
+               // DataSender.SendGalleryImage(ProfileWindow.currentProfile, imageElement.nsfw, imageElement.triggering, imageElement.url, imageElement.tooltip, imageElement.id);
+            }
+            string url = imageElement.url;
+            string tooltip = imageElement.tooltip;
+            ImGui.InputTextWithHint($"##ImageURL{imageElement.id}", "Image URL", ref url, 300);
+            ImGui.InputTextWithHint($"##ImageInfo{imageElement.id}", "Info", ref tooltip, 400);
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(imageElement.tooltip);
+            }
+            if(imageElement.textureWrap.ImGuiHandle != null)
+            {
+                ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
+            }
+
+
+            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+            {
+                if (ImGui.Button($"Remove##gallery_remove{imageElement.id}"))
+                {
+                    layouts[layoutID].imageVals[elementID] = null;
+                    plugin.logger.Error($"Removed gallery image {imageElement.id}");
+                }
+            }
+
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.SetTooltip("Ctrl Click to Enable");
+            }
+
+
+        }
 
         public static void RenderDeleteConfirmationPopup(Action onConfirm)
         {

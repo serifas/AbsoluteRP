@@ -166,7 +166,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            this.Flags = !DynamicInputs.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
+            this.Flags = !LayoutItems.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -519,7 +519,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         {
                             if (textElement != null)
                             {
-                                DynamicInputs.AddTextElement(index, textElement.type, textElement.id, plugin);
+                                LayoutItems.AddTextElement(index, textElement.type, textElement.id, plugin);
                             }
                         }
                     }
@@ -529,13 +529,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         for (int i = 0; i < currentLayout.imageVals.Length; i++)
                         {
-                            if (currentLayout.imageVals[i] != null)
+                            var imageElement = currentLayout.imageVals[i];
+                            if (imageElement != null)
                             {
-                          //      DynamicInputs.AddImageElement(index, i, plugin);
+                               // DrawGalleryImage(plugin, index, i);
                             }
                         }
                     }
-
 
                     // Handle adding a new text element
                     if (AddInputTextElement)
