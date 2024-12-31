@@ -1,9 +1,11 @@
+using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.WebSockets;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
@@ -23,10 +25,14 @@ namespace AbsoluteRoleplay.Defines
     public class TextElement
     {
         public int id { set; get; }
+        public int type { set; get; }
         public string text { set; get; }
         public Vector4 color { set; get; }
         public float PosX { get; set; }
         public float PosY { get; set; }
+        public bool locked { set; get; }
+        public bool modifying { set; get; }
+        public bool canceled { set; get; } = false;
     }
     public class ImageElement
     {
@@ -81,10 +87,16 @@ namespace AbsoluteRoleplay.Defines
     internal class LayoutItems
     {
         public static SortedList<int, object> fieldValues = new SortedList<int, object>();
-
+        private static int? pendingLayoutID = null;
+        private static int? pendingElementID = null;
         public static SortedList<int, Layout> layouts = new SortedList<int, Layout>();
-        public static void AddTextElement(int layoutID, int elementID)
+        private static Vector2 dragOffset = Vector2.Zero;
+        private static int? draggingElementID = null;
+        public static bool Lockstatus = true; 
+        private static bool showDeleteConfirmationPopup = false;
+        public static void AddTextElement(int layoutID, int type, int elementID, Plugin plugin)
         {
+            
             // Ensure the layout exists
             if (!layouts.ContainsKey(layoutID))
             {
@@ -102,36 +114,68 @@ namespace AbsoluteRoleplay.Defines
             }
 
             // Ensure the specific element exists
-            if (layouts[layoutID].textVals[elementID] == null)
+            if (layouts[layoutID].textVals[elementID] == null )
             {
                 layouts[layoutID].textVals[elementID] = new TextElement
                 {
                     id = elementID,
+                    type = type,
                     text = $"Text Element {elementID}",
                     color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f), // Default to white color
-                    PosX = 0,
-                    PosY = 0
+                    PosX = 100, // Default position
+                    PosY = 100,
+                    locked = true,
+                    modifying = false
                 };
             }
 
             // Retrieve the specific text element
             var textElement = layouts[layoutID].textVals[elementID];
 
+            // Handle dragging logic
+            Vector2 mousePos = ImGui.GetMousePos();
+
+            if (draggingElementID == elementID)
+            {
+                if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
+                    textElement.PosX = mousePos.X - dragOffset.X;
+                    textElement.PosY = mousePos.Y - dragOffset.Y;
+                }
+                else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                {
+                    draggingElementID = null;
+                    plugin.logger.Error($"Element {textElement.id} dropped at position: {textElement.PosX}, {textElement.PosY}");
+                }
+            }
+
             // Check if the element is in "editable" or "display" mode
-            if (textElement.PosX == 0) // Using PosX as a flag for simplicity
+            if (textElement.modifying == true) // Editable mode
             {
                 string text = textElement.text;
                 Vector4 color = textElement.color;
 
                 // Set the font color for the InputText
                 ImGui.PushStyleColor(ImGuiCol.Text, color);
+                ImGui.PushItemWidth(ImGui.GetWindowSize().X / 2.5f);
 
                 // Render the InputText field with the custom text color
-                if (ImGui.InputText($"##Text Input {layoutID}_{elementID}", ref text, 200))
+                if (type == 0)
                 {
-                    textElement.text = text; // Update text if it was changed
+                    ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
+                    if (ImGui.InputText($"##Text Input {layoutID}_{elementID}", ref text, 200))
+                    {
+                        textElement.text = text; // Update text if it was changed
+                    }
                 }
-
+                if (type == 1)
+                {
+                    if (ImGui.InputTextMultiline($"##Text Input {layoutID}_{elementID}", ref text, 200, new Vector2(ImGui.GetWindowSize().X / 2.5f, 120)))
+                    {
+                        textElement.text = text; // Update text if it was changed
+                    }
+                }
+                ImGui.PopItemWidth();
                 ImGui.PopStyleColor(); // Restore the original font color
 
                 ImGui.SameLine();
@@ -143,15 +187,38 @@ namespace AbsoluteRoleplay.Defines
                 }
 
                 ImGui.SameLine();
-
                 // Render the "Submit" button
                 if (ImGui.Button($"Submit##{layoutID}_{elementID}"))
                 {
-                    textElement.PosX = 1; // Change mode to display
+                    textElement.modifying = false; // Change mode to display
                 }
+
+
+                ImGui.SameLine();
+
+                // Render the "Delete" button
+                if (ImGui.Button($"Delete##{layoutID}_{elementID}"))
+                {
+                    // Open the confirmation popup
+                    showDeleteConfirmationPopup = true;
+                    pendingLayoutID = layoutID;
+                    pendingElementID = elementID;
+                    ImGui.OpenPopup("Delete Confirmation");
+                }
+
+                // Call the popup rendering logic
+                RenderDeleteConfirmationPopup(() =>
+                {
+                    // Logic to delete the element
+                    textElement.canceled = true;
+                    plugin.logger.Error($"Deleted Element {elementID} from Layout {layoutID}");
+                });
             }
             else
             {
+                // Render the element at its position
+                ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
+
                 // Render the colored text safely as unformatted text
                 ImGui.PushStyleColor(ImGuiCol.Text, textElement.color);
                 ImGui.TextUnformatted(textElement.text); // Render raw text
@@ -162,10 +229,77 @@ namespace AbsoluteRoleplay.Defines
                 // Render the "Edit" button
                 if (ImGui.Button($"Edit##{layoutID}_{elementID}"))
                 {
-                    textElement.PosX = 0; // Change mode back to editable
+                    textElement.modifying = true; // Change mode back to editable
+                }
+
+                ImGui.SameLine();
+
+                if(textElement.locked == false)
+                {
+                    if (ImGui.Button($"Lock##{layoutID}_{elementID}") && draggingElementID == null)
+                    {
+                        Lockstatus = true;
+                        textElement.locked = true;
+                    }
+                    ImGui.SameLine();
+                    if(ImGui.Button($"Move##{layoutID}_{elementID}"))
+                    {
+                    }
+                    if (ImGui.IsMouseDown(ImGuiMouseButton.Left) && draggingElementID == null)
+                    {
+                        draggingElementID = elementID; // Start dragging
+                        dragOffset = mousePos - new Vector2(textElement.PosX, textElement.PosY);
+                        plugin.logger.Error($"Started dragging Element {textElement.id}");
+                    }
+                }
+                else
+                {
+                    // Render the "Drag" button
+                    if (ImGui.Button($"Unlock##{layoutID}_{elementID}") && draggingElementID == null)
+                    {
+                        Lockstatus = false;
+                        textElement.locked = false;
+                    }
+                } 
+               
+            }
+        }
+
+        public static void RenderDeleteConfirmationPopup(Action onConfirm)
+        {
+            if (pendingLayoutID.HasValue && pendingElementID.HasValue)
+            {
+                if (ImGui.BeginPopupModal("Delete Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    ImGui.Text("Are you sure you want to delete this element?");
+                    ImGui.Separator();
+
+                    // Confirm button
+                    if (ImGui.Button("Yes"))
+                    {
+                        onConfirm?.Invoke(); // Call the provided action to delete the element
+                        pendingLayoutID = null;
+                        pendingElementID = null;
+                        ImGui.CloseCurrentPopup();
+                    }
+
+                    ImGui.SameLine();
+
+                    // Cancel button
+                    if (ImGui.Button("No"))
+                    {
+                        pendingLayoutID = null;
+                        pendingElementID = null;
+                        ImGui.CloseCurrentPopup();
+                    }
+
+                    ImGui.EndPopup();
                 }
             }
         }
+
+
+
 
 
 

@@ -64,6 +64,9 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
       <!--Profiles-->
+        <None Update="UI\common\move.png">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </None>
       <None Update="UI\common\profiles\avatar_holder.png">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>

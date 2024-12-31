@@ -61,11 +61,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
         private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
         public static List<Layout> layouts = new List<Layout>();
         public static int currentElementID = 0;
-
         public bool AddInputTextElement { get; private set; }
+        public bool AddInputTextMultilineElement { get; private set; }
 
         public ProfileWindow(Plugin plugin) : base(
-       "PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+       "PROFILE", ImGuiWindowFlags.None)
         {
             SizeConstraints = new WindowSizeConstraints
             {
@@ -165,6 +165,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
+            this.Flags = !LayoutItems.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -502,6 +503,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 // Render the Add Element button
                 RenderAddElementButton();
 
+                // Create a child window to contain the draggable elements
+                ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding);
+
                 // Render existing text elements in the layout
                 if (currentLayout.textVals != null)
                 {
@@ -509,7 +513,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         if (currentLayout.textVals[i] != null)
                         {
-                            LayoutItems.AddTextElement(index, i);
+                                LayoutItems.AddTextElement(index, currentLayout.textVals[i].type, i, plugin);
                         }
                     }
                 }
@@ -533,6 +537,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 id = i,
                                 text = $"Text Element {i}",
+                                type = 0,
                                 color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
                             };
                             break;
@@ -540,9 +545,35 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     }
                 }
 
+                if (AddInputTextMultilineElement)
+                {
+                    AddInputTextMultilineElement = false;
+
+                    // Dynamically add a new TextElement
+                    if (currentLayout.textVals == null)
+                    {
+                        currentLayout.textVals = new TextElement[10]; // Initialize with a default size
+                    }
+
+                    for (int i = 0; i < currentLayout.textVals.Length; i++)
+                    {
+                        if (currentLayout.textVals[i] == null)
+                        {
+                            currentLayout.textVals[i] = new TextElement
+                            {
+                                id = i,
+                                text = $"Text Multiline Element {i}",
+                                type = 1,
+                                color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
+                            };
+                            break;
+                        }
+                    }
+                }
+
+                ImGui.EndChild();
                 ImGui.EndTabItem();
             }
-
 
             // If the built-in close button was pressed, trigger the delete confirmation popup
             if (!isOpen)
@@ -553,6 +584,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.OpenPopup("Delete Tab Confirmation");
             }
         }
+
+
 
 
         public void RenderAddElementButton()
@@ -572,6 +605,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     currentElementID++;
                     AddInputTextElement = true;
+                    //AddElement("Text Element");
+                    ImGui.CloseCurrentPopup(); // Close the popup after selection
+                }
+                if (ImGui.Selectable("Multiline Text Element"))
+                {
+                    currentElementID++;
+                    AddInputTextMultilineElement = true;
                     //AddElement("Text Element");
                     ImGui.CloseCurrentPopup(); // Close the popup after selection
                 }

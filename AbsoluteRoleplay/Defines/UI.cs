@@ -276,6 +276,7 @@ namespace AbsoluteRoleplay
             blank = 37,
             inventoryTab = 38,
             patreonBtn = 39,
+            move = 40,
         }
         public enum ListingCategory
         {
@@ -360,6 +361,7 @@ namespace AbsoluteRoleplay
                 if (imageType == CommonImageTypes.listingsGroupBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result; }
                 if (imageType == CommonImageTypes.listingsPersonalBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result; }
                 if (imageType == CommonImageTypes.listingsVenueBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
+                if (imageType == CommonImageTypes.move) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/move.png"))).Result; }
                 //misc
                 if (imageType == CommonImageTypes.blank) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result; }
                 if (imageType == CommonImageTypes.inventoryTab) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result; }
