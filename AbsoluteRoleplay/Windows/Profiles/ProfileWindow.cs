@@ -488,6 +488,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             string uniqueId = $"{tabName}##{index}";
 
+            // Render the tab
             if (ImGui.BeginTabItem(uniqueId, ref isOpen))
             {
                 ClearUI();
@@ -500,7 +501,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         id = index,
                         textVals = new List<TextElement>(),
-                        imageVals = new List<ImageElement>()
+                        imageVals = new List<ImageElement>() 
                     };
                     layouts.Add(currentLayout);
                 }
@@ -511,34 +512,27 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 // Create a child window to contain the draggable elements
                 if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
-                    // Render existing text elements
-                    foreach (var textElement in currentLayout.textVals.ToList())
+                    // Render existing text elements in the layout
+                    if (currentLayout.textVals != null)
                     {
-                        if (textElement != null)
+                        foreach (var textElement in currentLayout.textVals)
                         {
-                            try
+                            if (textElement != null)
                             {
                                 DynamicInputs.AddTextElement(index, textElement.type, textElement.id, plugin);
-                            }
-                            catch (Exception ex)
-                            {
-                                plugin.logger.Error($"Error in AddTextElement: {ex.Message}");
                             }
                         }
                     }
 
-                    // Render existing image elements
-                    foreach (var imageElement in currentLayout.imageVals.ToList())
+                    // Render existing image elements in the layout
+                    if (currentLayout.imageVals != null)
                     {
-                        if (imageElement != null)
+                        for (int i = 0; i < currentLayout.imageVals.Count; i++)
                         {
-                            try
+                            var imageElement = currentLayout.imageVals[i];
+                            if (imageElement != null)
                             {
                                 DynamicInputs.AddImageElement(index, imageElement.id, plugin);
-                            }
-                            catch (Exception ex)
-                            {
-                                plugin.logger.Error($"Error in AddImageElement: {ex.Message}");
                             }
                         }
                     }
@@ -577,10 +571,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         AddInputImageElement = false;
 
-                        int newId = currentLayout.imageVals.Any() ? currentLayout.imageVals.Max(e => e.id) + 1 : 0;
+                        int newId = currentLayout.textVals.Any() ? currentLayout.textVals.Max(e => e.id) + 2 : 0;
                         currentLayout.imageVals.Add(new ImageElement
                         {
-                            id = newId,
+                            id = newId, 
                             url = "",
                             bytes = null,
                             tooltip = "",
@@ -593,22 +587,23 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         });
                     }
 
+
+
+
                     ImGui.EndChild();
+                    ImGui.EndTabItem();
                 }
 
-                ImGui.EndTabItem();
-            }
-
-            // Handle closing the tab
-            if (!isOpen)
-            {
-                isOpen = true;
-                tabToDeleteIndex = index;
-                showDeleteConfirmationPopup = true;
-                ImGui.OpenPopup("Delete Tab Confirmation");
+                // Handle closing the tab
+                if (!isOpen)
+                {
+                    isOpen = true; // Reopen the tab temporarily to show the confirmation popup
+                    tabToDeleteIndex = index; // Store the index of the tab to delete
+                    showDeleteConfirmationPopup = true; // Show the delete confirmation popup
+                    ImGui.OpenPopup("Delete Tab Confirmation");
+                }
             }
         }
-
 
 
 

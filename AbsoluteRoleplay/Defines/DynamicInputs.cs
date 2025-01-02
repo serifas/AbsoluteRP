@@ -31,6 +31,7 @@ namespace AbsoluteRoleplay.Defines
     public class TextElement
     {
         public int id { set; get; }
+        public int index { set; get; }
         public int type { set; get; }
         public string text { set; get; }
         public Vector4 color { set; get; }
@@ -39,10 +40,13 @@ namespace AbsoluteRoleplay.Defines
         public bool locked { set; get; }
         public bool modifying { set; get; }
         public bool canceled { set; get; } = false;
+        public bool dragging { set; get; }
+        public Vector2 dragOffset { get; set;}
     }
     public class ImageElement
     {
         public int id { get; set; }
+        public int index { set; get; }
         public string url { get; set; }
         public byte[] bytes { get; set; }
         public IDalamudTextureWrap textureWrap { set; get; }
@@ -56,6 +60,8 @@ namespace AbsoluteRoleplay.Defines
         public bool locked { set; get; }
         public bool modifying { set; get; }
         public bool canceled { set; get; }
+        public bool dragging { set; get; }
+        public Vector2 dragOffset { get; set; }
     }
     public class StatusElement
     {
@@ -100,8 +106,9 @@ namespace AbsoluteRoleplay.Defines
         private static int? pendingLayoutID = null;
         private static int? pendingElementID = null;
         public static SortedList<int, Layout> layouts = new SortedList<int, Layout>();
-        private static Vector2 dragOffset = Vector2.Zero;
-        private static int? draggingElementID = null;
+        private static int? draggingTextElementID = null;
+        private static int? draggingImageElementID = null;
+
         public static bool Lockstatus = true; 
         private static bool showDeleteConfirmationPopup = false;
         public static void AddTextElement(int layoutID, int type, int elementID, Plugin plugin)
@@ -140,22 +147,23 @@ namespace AbsoluteRoleplay.Defines
 
             Vector2 mousePos = ImGui.GetMousePos();
 
-            if (draggingElementID == elementID)
+            if (draggingTextElementID == elementID)
             {
                 if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
                 {
-                    textElement.PosX = mousePos.X - dragOffset.X;
-                    textElement.PosY = mousePos.Y - dragOffset.Y;
+                    textElement.PosX = mousePos.X - textElement.dragOffset.X;
+                    textElement.PosY = mousePos.Y - textElement.dragOffset.Y;
                 }
                 else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
                 {
-                    draggingElementID = null;
+                    draggingTextElementID = null;
                     plugin.logger.Error($"Text Element {textElement.id} dropped at position: {textElement.PosX}, {textElement.PosY}");
                 }
             }
 
             if (textElement.modifying)
             {
+                ResetToLockedState(layoutID);
                 // Editable logic
                 RenderEditableTextElement(layoutID, elementID, plugin, textElement);
             }
@@ -208,29 +216,30 @@ namespace AbsoluteRoleplay.Defines
 
             Vector2 mousePos = ImGui.GetMousePos();
 
-            if (draggingElementID == elementID)
+            if (draggingImageElementID == elementID)
             {
                 if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
                 {
-                    imageElement.PosX = mousePos.X - dragOffset.X;
-                    imageElement.PosY = mousePos.Y - dragOffset.Y;
+                    imageElement.PosX = mousePos.X - imageElement.dragOffset.X;
+                    imageElement.PosY = mousePos.Y - imageElement.dragOffset.Y;
                 }
                 else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
                 {
-                    draggingElementID = null;
+                    draggingImageElementID = null;
                     plugin.logger.Error($"Image Element {imageElement.id} dropped at position: {imageElement.PosX}, {imageElement.PosY}");
                 }
             }
 
             if (imageElement.modifying)
             {
+                ResetToLockedState(layoutID);
                 // Editable logic
-                RenderEditableImageElement(layoutID, elementID, plugin, imageElement);
+                RenderEditableImageElement(layoutID, plugin, imageElement);
             }
             else
             {
                 // Display logic
-                RenderDisplayImageElement(layoutID, elementID, plugin, imageElement);
+                RenderDisplayImageElement(layoutID, plugin, imageElement);
             }
         }
 
@@ -267,49 +276,71 @@ namespace AbsoluteRoleplay.Defines
                 }
             }
         }
-
         private static void RenderDisplayTextElement(int layoutID, int elementID, Plugin plugin, TextElement textElement)
         {
-            // Render the element at its position
+            // Render the text at its position
             ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
-
-            // Render the colored text safely as unformatted text
-            ImGui.PushStyleColor(ImGuiCol.Text, textElement.color);
-            ImGui.TextUnformatted(textElement.text); // Render raw text
-            ImGui.PopStyleColor();
+            ImGui.TextUnformatted(textElement.text);
 
             ImGui.SameLine();
 
             // Render the "Edit" button
             if (ImGui.Button($"Edit##{layoutID}_{elementID}"))
             {
-                textElement.modifying = true; // Change mode back to editable
+                textElement.modifying = true; // Enter editing mode
             }
 
             ImGui.SameLine();
 
-            if (textElement.locked == false)
+            if (textElement.locked)
             {
-                if (ImGui.Button($"Lock##{layoutID}_{elementID}"))
+                // Render "Unlock" button
+                if (ImGui.Button($"Unlock##{layoutID}_{elementID}"))
                 {
-                    textElement.locked = true;
-                }
-                if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
-                {
-                    draggingElementID = elementID; // Start dragging
-                    dragOffset = ImGui.GetMousePos() - new Vector2(textElement.PosX, textElement.PosY);
-                    plugin.logger.Error($"Started dragging Element {textElement.id}");
+                    textElement.locked = false; // Unlock the element
+                    CheckLockState(layoutID);
                 }
             }
             else
             {
-                // Render the "Unlock" button
-                if (ImGui.Button($"Unlock##{layoutID}_{elementID}"))
+                // Render "Lock" button
+                if (ImGui.Button($"Lock##{layoutID}_{elementID}"))
                 {
-                    textElement.locked = false;
+                    textElement.locked = true; // Lock the element
+                    textElement.dragging = false; // Stop dragging if locked
+                    CheckLockState(layoutID);
+                }
+
+                // Handle dragging only when unlocked
+                if (textElement.dragging)
+                {
+                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                    {
+                        Vector2 mousePos = ImGui.GetMousePos();
+                        textElement.PosX = mousePos.X - textElement.dragOffset.X;
+                        textElement.PosY = mousePos.Y - textElement.dragOffset.Y;
+                    }
+                    else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                    {
+                        textElement.dragging = false; // Stop dragging on release
+                    }
+                }
+                else if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                {
+                    textElement.dragging = true; // Start dragging
+                    textElement.dragOffset = ImGui.GetMousePos() - new Vector2(textElement.PosX, textElement.PosY);
                 }
             }
         }
+
+
+
+
+
+
+
+
+
         private static void RenderEditableTextElement(int layoutID, int elementID, Plugin plugin, TextElement textElement)
         {
             string text = textElement.text;
@@ -330,6 +361,7 @@ namespace AbsoluteRoleplay.Defines
             }
             if (textElement.type == 1)
             {
+                ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
                 if (ImGui.InputTextMultiline($"##Text Input {layoutID}_{elementID}", ref text, 200, new Vector2(ImGui.GetWindowSize().X / 2.5f, 120)))
                 {
                     textElement.text = text; // Update text if it was changed
@@ -388,7 +420,8 @@ namespace AbsoluteRoleplay.Defines
             });
 
         }
-        private static void RenderDisplayImageElement(int layoutID, int elementID, Plugin plugin, ImageElement imageElement)
+
+        private static void RenderDisplayImageElement(int layoutID, Plugin plugin, ImageElement imageElement)
         {
             // Render the image at its position
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
@@ -397,43 +430,70 @@ namespace AbsoluteRoleplay.Defines
             ImGui.SameLine();
 
             // Render the "Edit" button
-            if (ImGui.Button($"Edit##{layoutID}_{elementID}"))
+            if (ImGui.Button($"Edit##{layoutID}_{imageElement.id}"))
             {
-                imageElement.modifying = true; // Change mode back to editable
+                imageElement.modifying = true; // Enter editing mode
             }
 
             ImGui.SameLine();
 
-            if (imageElement.locked == false)
+            if (imageElement.locked)
             {
-                if (ImGui.Button($"Lock##{layoutID}_{elementID}") && draggingElementID == null)
+                // Render "Unlock" button
+                if (ImGui.Button($"Unlock##{layoutID}_{imageElement.id}"))
                 {
-                    imageElement.locked = true;
-                }
-                if (ImGui.IsMouseDown(ImGuiMouseButton.Left) && draggingElementID == null)
-                {
-                    draggingElementID = elementID; // Start dragging
-                    dragOffset = ImGui.GetMousePos() - new Vector2(imageElement.PosX, imageElement.PosY);
-                    plugin.logger.Error($"Started dragging Image Element {imageElement.id}");
+                    imageElement.locked = false; // Unlock the element
+                    CheckLockState(layoutID);
                 }
             }
             else
             {
-                // Render the "Unlock" button
-                if (ImGui.Button($"Unlock##{layoutID}_{elementID}") && draggingElementID == null)
+                // Render "Lock" button
+                if (ImGui.Button($"Lock##{layoutID}_{imageElement.id}"))
                 {
-                    imageElement.locked = false;
+                    imageElement.locked = true; // Lock the element
+                    imageElement.dragging = false; // Stop dragging if locked
+                    CheckLockState(layoutID);
+                }
+
+                // Handle dragging only when unlocked
+                if (imageElement.dragging)
+                {
+                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                    {
+                        Vector2 mousePos = ImGui.GetMousePos();
+                        imageElement.PosX = mousePos.X - imageElement.dragOffset.X;
+                        imageElement.PosY = mousePos.Y - imageElement.dragOffset.Y;
+                    }
+                    else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                    {
+                        imageElement.dragging = false; // Stop dragging on release
+                    }
+                }
+                else if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                {
+                    imageElement.dragging = true; // Start dragging
+                    imageElement.dragOffset = ImGui.GetMousePos() - new Vector2(imageElement.PosX, imageElement.PosY);
                 }
             }
         }
-        private static void RenderEditableImageElement(int layoutID, int elementID, Plugin plugin, ImageElement imageElement)
+
+
+
+
+
+
+
+        private static void RenderEditableImageElement(int layoutID, Plugin plugin, ImageElement imageElement)
         {
             string url = imageElement.url;
             float width = imageElement.width;
             float height = imageElement.height;
 
+            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
+            ImGui.PushItemWidth(ImGui.GetWindowSize().X / 2.5f);
             // Render the URL input
-            if (ImGui.InputText($"URL:##{layoutID}_{elementID}", ref url, 2000))
+            if (ImGui.InputText($"URL:##{layoutID}_{imageElement.id}", ref url, 2000))
             {
                 imageElement.url = url;
             }
@@ -446,7 +506,7 @@ namespace AbsoluteRoleplay.Defines
             ImGui.SameLine();
 
             // Render the "Submit" button
-            if (ImGui.Button($"Submit##{layoutID}_{elementID}"))
+            if (ImGui.Button($"Submit##{layoutID}_{imageElement.id}"))
             {
                 imageElement.textureWrap = Imaging.DownloadImage(url); // Update the texture
                 imageElement.modifying = false; // Change mode to display
@@ -455,12 +515,12 @@ namespace AbsoluteRoleplay.Defines
             ImGui.SameLine();
 
             // Render the "Delete" button
-            if (ImGui.Button($"Delete##{layoutID}_{elementID}"))
+            if (ImGui.Button($"Delete##{layoutID}_{imageElement.id}"))
             {
                 // Open the confirmation popup
                 showDeleteConfirmationPopup = true;
                 pendingLayoutID = layoutID;
-                pendingElementID = elementID;
+                pendingElementID = imageElement.id;
                 ImGui.OpenPopup("Delete Confirmation");
             }
 
@@ -471,29 +531,51 @@ namespace AbsoluteRoleplay.Defines
                     var layout = layouts[layoutID];
 
                     // Mark the element as canceled
-                    var elementToCancel = layout.imageVals.FirstOrDefault(e => e.id == elementID);
+                    var elementToCancel = layout.imageVals.FirstOrDefault(e => e.id == imageElement.id);
                     if (elementToCancel != null)
                     {
                         elementToCancel.canceled = true;
-                        plugin.logger.Error($"Marked Image Element {elementID} as canceled in Layout {layoutID}");
+                        plugin.logger.Error($"Marked Image Element {imageElement.id} as canceled in Layout {layoutID}");
                     }
                     else
                     {
-                        plugin.logger.Error($"Image Element {elementID} not found in Layout {layoutID}");
+                        plugin.logger.Error($"Image Element {imageElement.id} not found in Layout {layoutID}");
                     }
                 }
                 else
                 {
-                    plugin.logger.Error($"Layout {layoutID} does not exist. Cannot mark Image Element {elementID} as canceled.");
+                    plugin.logger.Error($"Layout {layoutID} does not exist. Cannot mark Image Element {imageElement.id} as canceled.");
                 }
             });
 
         }
+        public static void ResetToLockedState(int layoutID, bool resetDragging = true)
+        {
+            var layout = layouts[layoutID];
 
+            foreach (var textVal in layout.textVals)
+            {
+                if (!textVal.locked)
+                    textVal.locked = true; // Only lock unlocked elements
+            }
 
+            foreach (var imageVal in layout.imageVals)
+            {
+                if (!imageVal.locked)
+                    imageVal.locked = true; // Only lock unlocked elements
+            }
 
-
-
-
+            // Reset dragging states only if specified
+            if (resetDragging)
+            {
+                draggingTextElementID = null;
+                draggingImageElementID = null;
+            }
+        }
+        public static void CheckLockState(int layoutID)
+        {
+            var layout = layouts[layoutID];
+            Lockstatus = layout.imageVals.All(e => e.locked) && layout.textVals.All(e => e.locked);
+        }
     }
 }
