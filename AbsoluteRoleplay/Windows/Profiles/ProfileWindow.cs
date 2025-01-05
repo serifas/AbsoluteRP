@@ -16,6 +16,7 @@ using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using AbsoluteRoleplay.Windows.Inventory;
 using AbsoluteRoleplay.Defines;
 using System.Transactions;
+using JetBrains.Annotations;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -417,7 +418,33 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 Misc.StartLoader(loaderInd, percentage, loading, ImGui.GetWindowSize());
             }
         }
+        private void RenderDeleteConfirmationPopup()
+        {
+            if (showDeleteConfirmationPopup && ImGui.BeginPopupModal("Delete Tab Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text($"Are you sure you want to delete the tab \"{availableTabs[tabToDeleteIndex]}\"?");
+                ImGui.Spacing();
 
+                // Confirm button
+                if (ImGui.Button("Confirm"))
+                {
+                    openTabs[tabToDeleteIndex] = false; // Mark the tab as closed
+                    showDeleteConfirmationPopup = false; // Close the popup
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.SameLine();
+
+                // Cancel button
+                if (ImGui.Button("Cancel"))
+                {
+                    showDeleteConfirmationPopup = false; // Close the popup without deleting
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+        }
         public void RenderCustomTabs()
         {
             // Render all active popups
@@ -500,95 +527,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     currentLayout = new Layout
                     {
                         id = index,
-                        textVals = new List<TextElement>(),
-                        imageVals = new List<ImageElement>() 
+                        elements = new List<LayoutElement>()
                     };
                     layouts.Add(currentLayout);
                 }
 
                 // Render the Add Element button
-                RenderAddElementButton();
+                DynamicInputs.RenderAddElementButton(currentLayout);
 
                 // Create a child window to contain the draggable elements
                 if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
-                    // Render existing text elements in the layout
-                    if (currentLayout.textVals != null)
-                    {
-                        foreach (var textElement in currentLayout.textVals)
-                        {
-                            if (textElement != null)
-                            {
-                                DynamicInputs.AddTextElement(index, textElement.type, textElement.id, plugin);
-                            }
-                        }
-                    }
 
-                    // Render existing image elements in the layout
-                    if (currentLayout.imageVals != null)
-                    {
-                        for (int i = 0; i < currentLayout.imageVals.Count; i++)
-                        {
-                            var imageElement = currentLayout.imageVals[i];
-                            if (imageElement != null)
-                            {
-                                DynamicInputs.AddImageElement(index, imageElement.id, plugin);
-                            }
-                        }
-                    }
-
-                    // Handle adding a new text element
-                    if (AddInputTextElement)
-                    {
-                        AddInputTextElement = false;
-
-                        int newId = currentLayout.textVals.Any() ? currentLayout.textVals.Max(e => e.id) + 1 : 0;
-                        currentLayout.textVals.Add(new TextElement
-                        {
-                            id = newId,
-                            text = $"Text Element {newId}",
-                            type = 0,
-                            color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
-                        });
-                    }
-
-                    if (AddInputTextMultilineElement)
-                    {
-                        AddInputTextMultilineElement = false;
-
-                        int newId = currentLayout.textVals.Any() ? currentLayout.textVals.Max(e => e.id) + 1 : 0;
-                        currentLayout.textVals.Add(new TextElement
-                        {
-                            id = newId,
-                            text = $"Text Multiline Element {newId}",
-                            type = 1,
-                            color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
-                        });
-                    }
-
-                    // Handle adding a new image element
-                    if (AddInputImageElement)
-                    {
-                        AddInputImageElement = false;
-
-                        int newId = currentLayout.textVals.Any() ? currentLayout.textVals.Max(e => e.id) + 2 : 0;
-                        currentLayout.imageVals.Add(new ImageElement
-                        {
-                            id = newId, 
-                            url = "",
-                            bytes = null,
-                            tooltip = "",
-                            nsfw = false,
-                            triggering = false,
-                            width = 100,  // Default width
-                            height = 100, // Default height
-                            PosX = 100,   // Default position
-                            PosY = 100
-                        });
-                    }
-
-
-
+                    DynamicInputs.RenderElements(currentLayout, plugin);
 
                     ImGui.EndChild();
                     ImGui.EndTabItem();
@@ -604,100 +555,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
             }
         }
-
-
-
-
-
-        public void RenderAddElementButton()
-        {
-            if (ImGui.Button("Add Element"))
-            {
-                ImGui.OpenPopup("AddElementPopup"); // Open the popup when the button is clicked
-            }
-
-            if (ImGui.BeginPopup("AddElementPopup")) // Render the popup
-            {
-                ImGui.Text("Select Element Type");
-                ImGui.Separator();
-
-                // Option: Text Element
-                if (ImGui.Selectable("Text Element"))
-                {
-                    currentElementID++;
-                    AddInputTextElement = true;
-                    //AddElement("Text Element");
-                    ImGui.CloseCurrentPopup(); // Close the popup after selection
-                }
-                if (ImGui.Selectable("Multiline Text Element"))
-                {
-                    currentElementID++;
-                    AddInputTextMultilineElement = true;
-                    //AddElement("Text Element");
-                    ImGui.CloseCurrentPopup(); // Close the popup after selection
-                }
-
-                // Option: Image Element
-                if (ImGui.Selectable("Image Element"))
-                {
-                    currentElementID++;
-                    AddInputImageElement = true;
-                    //AddElement("Image Element");
-                    ImGui.CloseCurrentPopup();
-                }
-
-                // Option: Status Element
-                if (ImGui.Selectable("Status Element"))
-                {
-                    //AddElement("Status Element");
-                    ImGui.CloseCurrentPopup();
-                }
-
-                // Option: Icon Element
-                if (ImGui.Selectable("Icon Element"))
-                {
-                    //AddElement("Icon Element");
-                    ImGui.CloseCurrentPopup();
-                }
-
-                // Option: Progress Element
-                if (ImGui.Selectable("Progress Element"))
-                {
-                    // AddElement("Progress Element");
-                    ImGui.CloseCurrentPopup();
-                }
-
-                ImGui.EndPopup();
-            }
-        }
-
-        private void RenderDeleteConfirmationPopup()
-        {
-            if (showDeleteConfirmationPopup && ImGui.BeginPopupModal("Delete Tab Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
-            {
-                ImGui.Text($"Are you sure you want to delete the tab \"{availableTabs[tabToDeleteIndex]}\"?");
-                ImGui.Spacing();
-
-                // Confirm button
-                if (ImGui.Button("Confirm"))
-                {
-                    openTabs[tabToDeleteIndex] = false; // Mark the tab as closed
-                    showDeleteConfirmationPopup = false; // Close the popup
-                    ImGui.CloseCurrentPopup();
-                }
-
-                ImGui.SameLine();
-
-                // Cancel button
-                if (ImGui.Button("Cancel"))
-                {
-                    showDeleteConfirmationPopup = false; // Close the popup without deleting
-                    ImGui.CloseCurrentPopup();
-                }
-
-                ImGui.EndPopup();
-            }
-        }
+        
 
 
         private bool ProfileHasContent()

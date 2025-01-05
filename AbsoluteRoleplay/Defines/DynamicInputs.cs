@@ -1,8 +1,10 @@
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
 using Networking;
@@ -22,30 +24,31 @@ namespace AbsoluteRoleplay.Defines
     public class Layout
     {
         public int id { get; set; }
-        public List<TextElement> textVals { get; set; }
-        public List<ImageElement> imageVals { get; set; }
-        public StatusElement[] statusVals { get; set; }
-        public IconElement[] iconVals { get; set; }
-        public ProgressElement[] progressVals { get; set; }
+        public List<LayoutElement> elements { get; set; } = new List<LayoutElement>();
+        public bool loadTextElement { set; get; }
+        public bool loadTextMultilineElement { set; get; }
+        public bool loadImageElement { set; get; }
     }
-    public class TextElement
+    public class LayoutElement
     {
         public int id { set; get; }
+        public bool locked { get; set; }
+        public float PosX { get; set; }
+        public float PosY { get; set; }
+        public bool modifying { set; get; }
+        public bool canceled { set; get; } = false;
+        public bool dragging { set; get; }
+        public Vector2 dragOffset { get; set; }
+    }
+    public class TextElement : LayoutElement
+    {
         public int index { set; get; }
         public int type { set; get; }
         public string text { set; get; }
         public Vector4 color { set; get; }
-        public float PosX { get; set; }
-        public float PosY { get; set; }
-        public bool locked { set; get; }
-        public bool modifying { set; get; }
-        public bool canceled { set; get; } = false;
-        public bool dragging { set; get; }
-        public Vector2 dragOffset { get; set;}
     }
-    public class ImageElement
+    public class ImageElement : LayoutElement
     {
-        public int id { get; set; }
         public int index { set; get; }
         public string url { get; set; }
         public byte[] bytes { get; set; }
@@ -55,17 +58,9 @@ namespace AbsoluteRoleplay.Defines
         public bool triggering { get; set; }
         public int width { get; set; }
         public int height { get; set; }
-        public float PosX { get; set; }
-        public float PosY { get; set; }
-        public bool locked { set; get; }
-        public bool modifying { set; get; }
-        public bool canceled { set; get; }
-        public bool dragging { set; get; }
-        public Vector2 dragOffset { get; set; }
     }
     public class StatusElement
     {
-        int id { set; get; }
         int statusIconId { set; get; }
         public string name { set; get; }
         public string tooltip { set; get; }
@@ -74,7 +69,6 @@ namespace AbsoluteRoleplay.Defines
     }
     public class IconElement
     {
-        public int id { set; get; }
         public int iconId { set; get; }
         public string name { set; get; }
         public string tooltip { set; get; }
@@ -83,7 +77,6 @@ namespace AbsoluteRoleplay.Defines
     }
     public class ProgressElement
     {
-        public int id { set; get; }
         public string name { set; get; }
         public float max { set; get; }
         public float progress { set; get; }
@@ -94,7 +87,6 @@ namespace AbsoluteRoleplay.Defines
     }
     public class LayoutNavigationElement
     {
-        public int id { set; get; }
         public string name { set; get; }
         public string tooltip { set; get; }
         public float PosX { get; set; }
@@ -118,12 +110,11 @@ namespace AbsoluteRoleplay.Defines
                 layouts[layoutID] = new Layout
                 {
                     id = layoutID,
-                    textVals = new List<TextElement>(),
-                    imageVals = new List<ImageElement>()
+                    elements = new List<LayoutElement>()
                 };
             }
 
-            var textElement = layouts[layoutID].textVals.FirstOrDefault(e => e.id == elementID);
+            var textElement = layouts[layoutID].elements.OfType<TextElement>().FirstOrDefault(e => e.id == elementID);
 
             if (textElement == null || textElement.canceled)
             {
@@ -142,7 +133,7 @@ namespace AbsoluteRoleplay.Defines
                     modifying = false,
                     canceled = false
                 };
-                layouts[layoutID].textVals.Add(textElement);
+                layouts[layoutID].elements.Add(textElement);
             }
 
             Vector2 mousePos = ImGui.GetMousePos();
@@ -173,7 +164,158 @@ namespace AbsoluteRoleplay.Defines
                 RenderDisplayTextElement(layoutID, elementID, plugin, textElement);
             }
         }
+        public void ReorderElement(Layout currentLayout, int elementID, int newOrder)
+        {
+            var element = currentLayout.elements.FirstOrDefault(e => e.id == elementID);
+            if (element != null)
+            {
+                currentLayout.elements.Remove(element);
+                currentLayout.elements.Insert(newOrder, element);
+            }
+        }
 
+        public static void RenderElements(Layout currentLayout, Plugin plugin)
+        {
+            // Render existing text elements in the layout
+            if (currentLayout.elements != null)
+            {
+                for (int i = 0; i < currentLayout.elements.OfType<TextElement>().Count(); i++)
+                {
+                    TextElement textElement = currentLayout.elements.OfType<TextElement>().ToArray()[i];
+                    if (textElement != null)
+                    {
+                        DynamicInputs.AddTextElement(currentLayout.id, textElement.type, textElement.id, plugin);
+                    }
+                }
+                for (int i = 0; i < currentLayout.elements.OfType<ImageElement>().Count(); i++)
+                {
+                    ImageElement imageElement = currentLayout.elements.OfType<ImageElement>().ToArray()[i];
+                    if (imageElement != null)
+                    {
+                        DynamicInputs.AddImageElement(currentLayout.id, imageElement.id, plugin);
+
+                    }
+                }
+            }
+
+
+
+            // Handle adding a new text element
+            if (currentLayout.loadTextElement)
+            {
+                int newId = currentLayout.elements.Any() ? currentLayout.elements.Max(e => e.id) + 1 : 0;
+                currentLayout.loadTextElement = false;
+
+                currentLayout.elements.Add(new TextElement
+                {
+                    id = newId,
+                    text = $"Text Element {newId}",
+                    type = 0,
+                    color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
+                });
+            }
+
+            if (currentLayout.loadTextMultilineElement)
+            {
+                int newId = currentLayout.elements.Any() ? currentLayout.elements.Max(e => e.id) + 1 : 0;
+                currentLayout.loadTextMultilineElement = false;
+
+                currentLayout.elements.Add(new TextElement
+                {
+                    id = newId,
+                    text = $"Text Multiline Element {newId}",
+                    type = 1,
+                    color = new Vector4(1.0f, 1.0f, 1.0f, 1.0f) // Default to white color
+                });
+            }
+
+            // Handle adding a new image element
+            if (currentLayout.loadImageElement)
+            {
+                int newId = currentLayout.elements.Any() ? currentLayout.elements.Max(e => e.id) + 1 : 0;
+                currentLayout.loadImageElement = false;
+
+                currentLayout.elements.Add(new ImageElement
+                {
+                    id = newId,
+                    url = "",
+                    bytes = null,
+                    tooltip = "",
+                    nsfw = false,
+                    triggering = false,
+                    width = 100,  // Default width
+                    height = 100, // Default height
+                    PosX = 100,   // Default position
+                    PosY = 100
+                });
+            }
+
+        }
+
+        public static void RenderAddElementButton(Layout layout)
+        {
+            int currentElementCount = layout.elements.Count;
+            if (ImGui.Button("Add Element"))
+            {
+                ImGui.OpenPopup("AddElementPopup"); // Open the popup when the button is clicked
+            }
+
+            if (ImGui.BeginPopup("AddElementPopup")) // Render the popup
+            {
+                ImGui.Text("Select Element Type");
+                ImGui.Separator();
+
+                // Option: Text Element
+                if (ImGui.Selectable("Text Element"))
+                {
+                    currentElementCount++;
+                    layout.loadTextElement = true;
+                    //AddElement("Text Element");
+                    ImGui.CloseCurrentPopup(); // Close the popup after selection
+                }
+                if (ImGui.Selectable("Multiline Text Element"))
+                {
+                    currentElementCount++;
+                    layout.loadTextMultilineElement = true;
+                    //AddElement("Text Element");
+                    ImGui.CloseCurrentPopup(); // Close the popup after selection
+                }
+
+                // Option: Image Element
+                if (ImGui.Selectable("Image Element"))
+                {
+                    currentElementCount++;
+                    layout.loadImageElement = true;
+                    //AddElement("Image Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                // Option: Status Element
+                if (ImGui.Selectable("Status Element"))
+                {
+                    //AddElement("Status Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                // Option: Icon Element
+                if (ImGui.Selectable("Icon Element"))
+                {
+                    //AddElement("Icon Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                // Option: Progress Element
+                if (ImGui.Selectable("Progress Element"))
+                {
+                    // AddElement("Progress Element");
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+        }
+
+      
 
         public static void AddImageElement(int layoutID, int elementID, Plugin plugin)
         {
@@ -182,12 +324,11 @@ namespace AbsoluteRoleplay.Defines
                 layouts[layoutID] = new Layout
                 {
                     id = layoutID,
-                    textVals = new List<TextElement>(),
-                    imageVals = new List<ImageElement>()
+                    elements = new List<LayoutElement>()
                 };
             }
          
-            var imageElement = layouts[layoutID].imageVals.FirstOrDefault(e => e.id == elementID);
+            var imageElement = layouts[layoutID].elements.OfType<ImageElement>().FirstOrDefault(e => e.id == elementID);
             
             if (imageElement == null || imageElement.canceled)
             {
@@ -211,7 +352,7 @@ namespace AbsoluteRoleplay.Defines
                     modifying = false,
                     canceled = false
                 };
-                layouts[layoutID].imageVals.Add(imageElement);
+                layouts[layoutID].elements.Add(imageElement);
             }
 
             Vector2 mousePos = ImGui.GetMousePos();
@@ -340,86 +481,85 @@ namespace AbsoluteRoleplay.Defines
 
 
 
-
         private static void RenderEditableTextElement(int layoutID, int elementID, Plugin plugin, TextElement textElement)
         {
+            if (textElement == null || textElement.text == null)
+            {
+                plugin.logger.Error($"RenderEditableTextElement: Null TextElement or Text for LayoutID {layoutID}, ElementID {elementID}");
+                return; // Prevent crashes
+            }
+
             string text = textElement.text;
             Vector4 color = textElement.color;
 
-            // Set the font color for the InputText
-            ImGui.PushStyleColor(ImGuiCol.Text, color);
-            ImGui.PushItemWidth(ImGui.GetWindowSize().X / 2.5f);
+            try
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, color);
+                ImGui.PushItemWidth(ImGui.GetWindowSize().X / 2.5f);
 
-            // Render the InputText field with the custom text color
-            if (textElement.type == 0)
-            {
-                ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
-                if (ImGui.InputText($"##Text Input {layoutID}_{elementID}", ref text, 200))
+                if (textElement.type == 0)
                 {
-                    textElement.text = text; // Update text if it was changed
+                    ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
+                    if (ImGui.InputText($"##Text Input {layoutID}_{elementID}", ref text, 200))
+                    {
+                        textElement.text = text;
+                    }
+                }
+                else if (textElement.type == 1)
+                {
+                    ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
+                    if (ImGui.InputTextMultiline($"##Text Input {layoutID}_{elementID}", ref text, 200, new Vector2(ImGui.GetWindowSize().X / 2.5f, 120)))
+                    {
+                        textElement.text = text;
+                    }
                 }
             }
-            if (textElement.type == 1)
+            catch (Exception ex)
             {
-                ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
-                if (ImGui.InputTextMultiline($"##Text Input {layoutID}_{elementID}", ref text, 200, new Vector2(ImGui.GetWindowSize().X / 2.5f, 120)))
-                {
-                    textElement.text = text; // Update text if it was changed
-                }
+                plugin.logger.Error($"RenderEditableTextElement: Exception occurred - {ex.Message}");
             }
-            ImGui.PopItemWidth();
-            ImGui.PopStyleColor(); // Restore the original font color
+            finally
+            {
+                ImGui.PopItemWidth();
+                ImGui.PopStyleColor();
+            }
 
             ImGui.SameLine();
-
-            // Render the color selector with no numeric inputs
             if (ImGui.ColorEdit4($"##Text Input Color {layoutID}_{elementID}", ref color, ImGuiColorEditFlags.NoInputs))
             {
-                textElement.color = color; // Update color if it was changed
+                textElement.color = color;
             }
 
             ImGui.SameLine();
-            // Render the "Submit" button
             if (ImGui.Button($"Submit##{layoutID}_{elementID}"))
             {
-                textElement.modifying = false; // Change mode to display
+                textElement.modifying = false;
             }
 
             ImGui.SameLine();
-            // Render the "Delete" button
             if (ImGui.Button($"Delete##{layoutID}_{elementID}"))
             {
-                // Open the confirmation popup
                 showDeleteConfirmationPopup = true;
                 pendingLayoutID = layoutID;
                 pendingElementID = elementID;
                 ImGui.OpenPopup("Delete Confirmation");
             }
+
             RenderDeleteConfirmationPopup(() =>
             {
                 if (layouts.ContainsKey(layoutID))
                 {
                     var layout = layouts[layoutID];
-
-                    // Mark the element as canceled
-                    var elementToCancel = layout.textVals.FirstOrDefault(e => e.id == elementID);
+                    var elementToCancel = layout.elements.OfType<TextElement>().FirstOrDefault(e => e.id == elementID);
                     if (elementToCancel != null)
                     {
                         elementToCancel.canceled = true;
                         plugin.logger.Error($"Marked Text Element {elementID} as canceled in Layout {layoutID}");
                     }
-                    else
-                    {
-                        plugin.logger.Error($"Text Element {elementID} not found in Layout {layoutID}");
-                    }
-                }
-                else
-                {
-                    plugin.logger.Error($"Layout {layoutID} does not exist. Cannot mark Text Element {elementID} as canceled.");
                 }
             });
-
         }
+
 
         private static void RenderDisplayImageElement(int layoutID, Plugin plugin, ImageElement imageElement)
         {
@@ -531,7 +671,7 @@ namespace AbsoluteRoleplay.Defines
                     var layout = layouts[layoutID];
 
                     // Mark the element as canceled
-                    var elementToCancel = layout.imageVals.FirstOrDefault(e => e.id == imageElement.id);
+                    var elementToCancel = layout.elements.OfType<ImageElement>().FirstOrDefault(e => e.id == imageElement.id);
                     if (elementToCancel != null)
                     {
                         elementToCancel.canceled = true;
@@ -553,16 +693,10 @@ namespace AbsoluteRoleplay.Defines
         {
             var layout = layouts[layoutID];
 
-            foreach (var textVal in layout.textVals)
+            foreach (LayoutElement element in layout.elements)
             {
-                if (!textVal.locked)
-                    textVal.locked = true; // Only lock unlocked elements
-            }
-
-            foreach (var imageVal in layout.imageVals)
-            {
-                if (!imageVal.locked)
-                    imageVal.locked = true; // Only lock unlocked elements
+                if (!element.locked)
+                    element.locked = true; // Only lock unlocked elements
             }
 
             // Reset dragging states only if specified
@@ -575,7 +709,7 @@ namespace AbsoluteRoleplay.Defines
         public static void CheckLockState(int layoutID)
         {
             var layout = layouts[layoutID];
-            Lockstatus = layout.imageVals.All(e => e.locked) && layout.textVals.All(e => e.locked);
+            Lockstatus = layout.elements.All(e => e.locked);
         }
     }
 }
