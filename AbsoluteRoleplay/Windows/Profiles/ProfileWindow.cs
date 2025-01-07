@@ -62,6 +62,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
         public static List<Layout> layouts = new List<Layout>();
         public static int currentElementID = 0;
+        public static bool customTabSelected = false;
         public bool AddInputTextElement { get; private set; }
         public bool AddInputTextMultilineElement { get; private set; }
         public bool AddInputImageElement { get; private set; }
@@ -167,7 +168,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            this.Flags = !DynamicInputs.Lockstatus ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
+            this.Flags = (customTabSelected && !DynamicInputs.Lockstatus || DynamicInputs.EditStatus) ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -284,11 +285,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.BeginTabBar("ProfileNavigation");
 
                 // Static tabs
-                if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
 
                 // Custom tabs
                 RenderCustomTabs();
@@ -515,11 +516,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             string uniqueId = $"{tabName}##{index}";
 
-            // Render the tab
+            // Render the tab with a close button
             if (ImGui.BeginTabItem(uniqueId, ref isOpen))
             {
                 ClearUI();
-
+                customTabSelected = true;
                 // Ensure the layout exists
                 var currentLayout = layouts.FirstOrDefault(l => l.id == index);
                 if (currentLayout == null)
@@ -538,24 +539,25 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 // Create a child window to contain the draggable elements
                 if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
-
                     DynamicInputs.RenderElements(currentLayout, plugin);
 
                     ImGui.EndChild();
-                    ImGui.EndTabItem();
                 }
 
-                // Handle closing the tab
-                if (!isOpen)
-                {
-                    isOpen = true; // Reopen the tab temporarily to show the confirmation popup
-                    tabToDeleteIndex = index; // Store the index of the tab to delete
-                    showDeleteConfirmationPopup = true; // Show the delete confirmation popup
-                    ImGui.OpenPopup("Delete Tab Confirmation");
-                }
+                ImGui.EndTabItem();
+            }
+
+            // Handle the case where the tab is closed (close button pressed)
+            if (!isOpen)
+            {
+                isOpen = true; // Reopen the tab temporarily to show the confirmation popup
+                tabToDeleteIndex = index; // Store the index of the tab to delete
+                showDeleteConfirmationPopup = true; // Show the delete confirmation popup
+                ImGui.OpenPopup("Delete Tab Confirmation");
             }
         }
-        
+
+
 
 
         private bool ProfileHasContent()

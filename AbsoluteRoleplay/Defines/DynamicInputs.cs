@@ -38,6 +38,7 @@ namespace AbsoluteRoleplay.Defines
         public bool modifying { set; get; }
         public bool canceled { set; get; } = false;
         public bool dragging { set; get; }
+        public bool resizing { set; get; }
         public Vector2 dragOffset { get; set; }
     }
     public class TextElement : LayoutElement
@@ -49,6 +50,7 @@ namespace AbsoluteRoleplay.Defines
     }
     public class ImageElement : LayoutElement
     {
+        
         public int index { set; get; }
         public string url { get; set; }
         public byte[] bytes { get; set; }
@@ -56,8 +58,9 @@ namespace AbsoluteRoleplay.Defines
         public string tooltip { get; set; }
         public bool nsfw { get; set; }
         public bool triggering { get; set; }
-        public int width { get; set; }
-        public int height { get; set; }
+        public float width { get; set; }
+        public float height { get; set; }
+        public bool proprotionalEditing { set; get; }
     }
     public class StatusElement
     {
@@ -100,8 +103,12 @@ namespace AbsoluteRoleplay.Defines
         public static SortedList<int, Layout> layouts = new SortedList<int, Layout>();
         private static int? draggingTextElementID = null;
         private static int? draggingImageElementID = null;
+        private static Vector2 lastMousePosition;
+        private enum ResizeEdge { None, BottomRight, Bottom, Right }
+        private static ResizeEdge currentEdge = ResizeEdge.None;
 
-        public static bool Lockstatus = true; 
+        public static bool Lockstatus = true;
+        public static bool EditStatus = false;
         private static bool showDeleteConfirmationPopup = false;
         public static void AddTextElement(int layoutID, int type, int elementID, Plugin plugin)
         {
@@ -179,14 +186,6 @@ namespace AbsoluteRoleplay.Defines
             // Render existing text elements in the layout
             if (currentLayout.elements != null)
             {
-                for (int i = 0; i < currentLayout.elements.OfType<TextElement>().Count(); i++)
-                {
-                    TextElement textElement = currentLayout.elements.OfType<TextElement>().ToArray()[i];
-                    if (textElement != null)
-                    {
-                        DynamicInputs.AddTextElement(currentLayout.id, textElement.type, textElement.id, plugin);
-                    }
-                }
                 for (int i = 0; i < currentLayout.elements.OfType<ImageElement>().Count(); i++)
                 {
                     ImageElement imageElement = currentLayout.elements.OfType<ImageElement>().ToArray()[i];
@@ -194,6 +193,14 @@ namespace AbsoluteRoleplay.Defines
                     {
                         DynamicInputs.AddImageElement(currentLayout.id, imageElement.id, plugin);
 
+                    }
+                }
+                for (int i = 0; i < currentLayout.elements.OfType<TextElement>().Count(); i++)
+                {
+                    TextElement textElement = currentLayout.elements.OfType<TextElement>().ToArray()[i];
+                    if (textElement != null)
+                    {
+                        DynamicInputs.AddTextElement(currentLayout.id, textElement.type, textElement.id, plugin);
                     }
                 }
             }
@@ -373,7 +380,7 @@ namespace AbsoluteRoleplay.Defines
 
             if (imageElement.modifying)
             {
-                ResetToLockedState(layoutID);
+                //ResetToLockedState(layoutID);
                 // Editable logic
                 RenderEditableImageElement(layoutID, plugin, imageElement);
             }
@@ -421,8 +428,9 @@ namespace AbsoluteRoleplay.Defines
         {
             // Render the text at its position
             ImGui.SetCursorPos(new Vector2(textElement.PosX, textElement.PosY));
+            ImGui.PushStyleColor(ImGuiCol.Text, textElement.color);
             ImGui.TextUnformatted(textElement.text);
-
+            ImGui.PopStyleColor();
             ImGui.SameLine();
 
             // Render the "Edit" button
@@ -567,12 +575,14 @@ namespace AbsoluteRoleplay.Defines
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
             ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
 
+          
+            
             ImGui.SameLine();
-
             // Render the "Edit" button
             if (ImGui.Button($"Edit##{layoutID}_{imageElement.id}"))
             {
                 imageElement.modifying = true; // Enter editing mode
+                EditStatus = true;
             }
 
             ImGui.SameLine();
@@ -618,20 +628,132 @@ namespace AbsoluteRoleplay.Defines
             }
         }
 
+        public static void DrawImageWithScaling(ImageElement imageElement)
+        {
+            Vector2 cursorPos = ImGui.GetMousePos();
+            float edgeThreshold = 10.0f; // Sensitivity for edge detection
+
+            // Display the image
+            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY +100));
+            ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
+
+            // Get the global bounds of the image
+            Vector2 imageMin = ImGui.GetItemRectMin();
+            Vector2 imageMax = ImGui.GetItemRectMax();
+
+            // Detect edges or corners for resizing
+            if (!imageElement.resizing)
+            {
+                currentEdge = ResizeEdge.None;
+
+                if (cursorPos.X >= imageMax.X - edgeThreshold &&
+                    cursorPos.X <= imageMax.X &&
+                    cursorPos.Y >= imageMax.Y - edgeThreshold &&
+                    cursorPos.Y <= imageMax.Y)
+                {
+                    currentEdge = ResizeEdge.BottomRight;
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNWSE); // Corner cursor
+                }
+                else if (cursorPos.X >= imageMax.X - edgeThreshold && cursorPos.X <= imageMax.X)
+                {
+                    currentEdge = ResizeEdge.Right;
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeEW); // Horizontal cursor
+                }
+                else if (cursorPos.Y >= imageMax.Y - edgeThreshold && cursorPos.Y <= imageMax.Y)
+                {
+                    currentEdge = ResizeEdge.Bottom;
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.ResizeNS); // Vertical cursor
+                }
+                else
+                {
+                    ImGui.SetMouseCursor(ImGuiMouseCursor.Arrow); // Default cursor
+                }
+            }
+
+            // Start resizing when the left mouse button is clicked
+            if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) && currentEdge != ResizeEdge.None)
+            {
+                imageElement.resizing = true;
+                lastMousePosition = cursorPos;
+            }
+
+            // Continue resizing as long as the left mouse button is held
+            if (imageElement.resizing)
+            {
+                if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                {
+                    imageElement.resizing = false;
+                }
+                else
+                {
+                    Vector2 currentMousePosition = ImGui.GetMousePos();
+                    Vector2 dragDelta = currentMousePosition - lastMousePosition;
+
+                    float aspectRatio = imageElement.width / imageElement.height;
+
+                    // Apply resizing logic
+                    if (imageElement.proprotionalEditing)
+                    {
+                        // Proportional scaling
+                        if (currentEdge == ResizeEdge.BottomRight || currentEdge == ResizeEdge.Right || currentEdge == ResizeEdge.Bottom)
+                        {
+                            // Choose the dominant direction for scaling
+                            if (Math.Abs(dragDelta.X) > Math.Abs(dragDelta.Y))
+                            {
+                                float newWidth = Math.Max(50, imageElement.width + dragDelta.X);
+                                imageElement.height = newWidth / aspectRatio;
+                                imageElement.width = newWidth;
+                            }
+                            else
+                            {
+                                float newHeight = Math.Max(50, imageElement.height + dragDelta.Y);
+                                imageElement.width = newHeight * aspectRatio;
+                                imageElement.height = newHeight;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Non-proportional scaling
+                        if (currentEdge == ResizeEdge.BottomRight || currentEdge == ResizeEdge.Right)
+                        {
+                            imageElement.width = Math.Max(50, imageElement.width + dragDelta.X);
+                        }
+                        if (currentEdge == ResizeEdge.BottomRight || currentEdge == ResizeEdge.Bottom)
+                        {
+                            imageElement.height = Math.Max(50, imageElement.height + dragDelta.Y);
+                        }
+                    }
+
+                    // Update the last mouse position
+                    lastMousePosition = currentMousePosition;
+                }
+            }
+        }
 
 
 
-
-
-
-        private static void RenderEditableImageElement(int layoutID, Plugin plugin, ImageElement imageElement)
+        private static void RenderEditableImageElement( int layoutID, Plugin plugin, ImageElement imageElement)
         {
             string url = imageElement.url;
             float width = imageElement.width;
             float height = imageElement.height;
 
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
-            ImGui.PushItemWidth(ImGui.GetWindowSize().X / 2.5f);
+            if (ImGui.Button("Proportional"))
+            {
+                imageElement.proprotionalEditing = true;
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Unproportional"))
+            {
+                imageElement.proprotionalEditing = false;
+            }
+
+
+            ImGui.SameLine();
+
+            ImGui.PushItemWidth(ImGui.GetWindowSize().X / 5f);
             // Render the URL input
             if (ImGui.InputText($"URL:##{layoutID}_{imageElement.id}", ref url, 2000))
             {
@@ -640,16 +762,12 @@ namespace AbsoluteRoleplay.Defines
 
             ImGui.SameLine();
 
-            // Render the image
-            ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(width, height));
-
-            ImGui.SameLine();
-
             // Render the "Submit" button
             if (ImGui.Button($"Submit##{layoutID}_{imageElement.id}"))
             {
                 imageElement.textureWrap = Imaging.DownloadImage(url); // Update the texture
                 imageElement.modifying = false; // Change mode to display
+                EditStatus = false;
             }
 
             ImGui.SameLine();
@@ -663,8 +781,12 @@ namespace AbsoluteRoleplay.Defines
                 pendingElementID = imageElement.id;
                 ImGui.OpenPopup("Delete Confirmation");
             }
+            
+            DrawImageWithScaling(imageElement);
 
-            RenderDeleteConfirmationPopup(() =>
+
+
+             RenderDeleteConfirmationPopup(() =>
             {
                 if (layouts.ContainsKey(layoutID))
                 {

@@ -291,84 +291,46 @@ namespace AbsoluteRoleplay.Helpers
             return UI.UICommonImage(UI.CommonImageTypes.blank);
         }
 
-        public static IDalamudTextureWrap RenderIcon(int iconId, Plugin plugin)
+
+        private static Dictionary<int, IDalamudTextureWrap> loadedStatusEffectTextures = new();
+
+        public static async Task<IDalamudTextureWrap> RenderStatusEffectIconAsync(Plugin plugin, int statusEffectID)
         {
+            if (loadedStatusEffectTextures.ContainsKey(statusEffectID))
+            {
+                return loadedStatusEffectTextures[statusEffectID];
+            }
+
             try
             {
-                // Check if the icon exists in the categorized icons
-                if (!categorizedIcons.ContainsKey(currentCategory))
+                if (statusEffectID <= 0)
                 {
-                    plugin.logger.Error($"Category {currentCategory} does not exist for icon ID {iconId}.");
-                    return UI.UICommonImage(UI.CommonImageTypes.blank); // Fallback texture
+                    return UI.UICommonImage(UI.CommonImageTypes.blank);
                 }
 
-                // Find the icon within the current category
-                var icons = categorizedIcons[currentCategory];
-                foreach (var (storedIconId, texture) in icons)
+                // Access the Status sheet using the updated namespace
+                var statusEffect = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Status>()?.GetRow((uint)statusEffectID);
+
+                if (statusEffect != null)
                 {
-                    if (storedIconId == iconId)
+                    var statusIconID = (uint)statusEffect.Value.Icon; // Replace 'IconID' with the correct property name
+                    var icon = Plugin.DataManager.GameData.GetIcon(statusIconID);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
                     {
-                        return texture; // Return the matching texture
+                        var texture = await LoadTextureAsync(icon.FilePath);
+                        var iconFilePath = icon.FilePath;
+                        loadedStatusEffectTextures[(int)statusIconID] = texture;
+                        return texture;
                     }
                 }
-
-                // If the icon ID is not found, log and return a fallback
-                plugin.logger.Error($"Icon ID {iconId} not found in category {currentCategory}.");
-                return UI.UICommonImage(UI.CommonImageTypes.blank); // Fallback texture
             }
             catch (Exception ex)
             {
-                // Log any errors and return a fallback texture
-                plugin.logger.Error($"Error rendering icon ID {iconId}: {ex.Message}\n{ex.StackTrace}");
-                return UI.UICommonImage(UI.CommonImageTypes.blank);
+                plugin.logger.Error($"RenderStatusEffectIconAsync: Failed to load status effect icon for ID {statusEffectID}. Exception: {ex}");
             }
+
+            return UI.UICommonImage(UI.CommonImageTypes.blank);
         }
-
-        /* public static void RenderIcons()
-         {
-             const int iconsPerPage = 100; // Adjust based on window size
-             const int iconsPerRow = 10;
-             float iconSize = 40f;
-
-             int startIndex = currentPage * iconsPerPage;
-             int endIndex = Math.Min(startIndex + iconsPerPage, loadedIcons.Count);
-
-             int count = 0;
-             for (int i = startIndex; i < endIndex; i++)
-             {
-                 var (iconId, texture) = loadedIcons[i];
-                 if (texture == null || texture.Width == 0 || texture.Height == 0)
-                 {
-                     continue;
-                 }
-
-                 ImGui.PushID((int)iconId);
-
-                 if (ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize)))
-                 {
-                     selectedIcon = texture;
-                 }
-
-                 ImGui.PopID();
-                 count++;
-
-                 if (count % iconsPerRow != 0)
-                 {
-                     ImGui.SameLine();
-                 }
-             }
-
-             // Pagination controls
-             if (ImGui.Button("Previous") && currentPage > 0)
-             {
-                 currentPage--;
-             }
-             ImGui.SameLine();
-             if (ImGui.Button("Next") && endIndex < loadedIcons.Count)
-             {
-                 currentPage++;
-             }
-         }*/
 
 
 
