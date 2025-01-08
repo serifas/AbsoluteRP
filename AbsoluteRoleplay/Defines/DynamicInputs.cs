@@ -763,6 +763,7 @@ namespace AbsoluteRoleplay.Defines
             ImGui.SameLine();
             if (ImGui.Button($"Upload##{layoutID}_{imageElement.id}"))
             {
+                imageElement.initialized = false;
                 UploadImage(plugin, ProfileWindow._fileDialogManager, imageElement);
             }
 
@@ -772,17 +773,6 @@ namespace AbsoluteRoleplay.Defines
             if(ImGui.Button($"Submit##{layoutID}_{imageElement.id}"))
             {
                 EditStatus = false;
-                if (imageElement.textureWrap != null)
-                {
-                    IDalamudTextureWrap tex = imageElement.textureWrap;
-                    if (!imageElement.initialized)
-                    {
-                        imageElement.initialized = true;
-                        imageElement.width = imageElement.textureWrap.Width;
-                        imageElement.height = imageElement.textureWrap.Height;
-                    }
-                    imageElement.textureWrap = tex; // Update the texture
-                }
                 imageElement.modifying = false; // Change mode to display
             }
 
@@ -806,6 +796,7 @@ namespace AbsoluteRoleplay.Defines
             if (imageElement.hasTooltip)
             {
                 ImGui.SameLine();
+                ImGui.PushItemWidth(300);
                 if(ImGui.InputText($"Tooltip##{layoutID}_{imageElement.id}", ref tooltip, 200))
                 {
                     imageElement.tooltip = tooltip;
@@ -873,10 +864,14 @@ namespace AbsoluteRoleplay.Defines
                 if(imagePath == string.Empty || image == null)
                 {
                     imageElement.textureWrap = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                    imageElement.width = imageElement.textureWrap.Width;
+                    imageElement.height = imageElement.textureWrap.Height;
                 }
                 else
                 {
                     imageElement.textureWrap = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 1000, 1000)).Result;
+                    imageElement.width = imageElement.textureWrap.Width;
+                    imageElement.height = imageElement.textureWrap.Height;
                 }
                 
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);

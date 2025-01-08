@@ -74,7 +74,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static List<Layout> layouts = new List<Layout>();
         public static int currentElementID = 0;
         public static bool customTabSelected = false;
-        public static bool AllLocked = false;
+        public static bool Locked = false;
         public bool AddInputTextElement { get; private set; }
         public bool AddInputTextMultilineElement { get; private set; }
         public bool AddInputImageElement { get; private set; }
@@ -180,7 +180,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            this.Flags = (customTabSelected && !DynamicInputs.Lockstatus || DynamicInputs.EditStatus) ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
+            this.Flags = (customTabSelected && !DynamicInputs.Lockstatus || customTabSelected && DynamicInputs.EditStatus) ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -307,11 +307,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.BeginTabBar("ProfileNavigation");
 
                 // Static tabs
-                if (ImGui.BeginTabItem("Edit Bio")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Hooks")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Story")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit OOC")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Edit Gallery")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Bio")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Hooks")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Story")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("OOC")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
+                if (ImGui.BeginTabItem("Gallery")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
 
                 // Custom tabs
                 RenderCustomTabs();
@@ -330,36 +330,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.EndTabBar();
 
                 // Render the popup for adding a new tab
-                for (int i = 0; i < MaxTabs; i++)
-                {
-                    if (showInputPopup[i])
-                    {
-                        if (ImGui.BeginPopupModal($"New Page##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
-                        {
-                            ImGui.Text("Enter the name for the new page:");
-                            ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
-
-                            if (ImGui.Button("Submit") && !string.IsNullOrWhiteSpace(availableTabs[i]))
-                            {
-                                openTabs[i] = true; // Mark the tab as open
-                                customTabsCount++; // Increment tab count
-                                showInputPopup[i] = false; // Close popup
-                                ImGui.CloseCurrentPopup();
-                            }
-
-                            ImGui.SameLine();
-
-                            if (ImGui.Button("Cancel"))
-                            {
-                                showInputPopup[i] = false; // Close the popup without saving
-                                availableTabs[i] = ""; // Clear the input field
-                                ImGui.CloseCurrentPopup();
-                            }
-
-                            ImGui.EndPopup();
-                        }
-                    }
-                }
+              
 
 
                 using var ProfileTable = ImRaii.Child("PROFILE");
@@ -482,7 +453,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                         // Detect Enter key submission
                         var io = ImGui.GetIO();
-                        if (io.KeysDown[(int)ImGuiKey.Enter] && !string.IsNullOrWhiteSpace(availableTabs[i]))
+
+
+                        if (ImGui.Button("Submit") || io.KeysDown[(int)ImGuiKey.Enter] && !string.IsNullOrWhiteSpace(availableTabs[i]))
                         {
                             openTabs[i] = true; // Mark the tab as open
                             customTabsCount++; // Increment the tab count
@@ -490,7 +463,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             ImGui.CloseCurrentPopup();
 
                         }
-
+                        ImGui.SameLine();
                         // Optional cancel button
                         if (ImGui.Button("Cancel"))
                         {
@@ -554,35 +527,34 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     };
                     layouts.Add(currentLayout);
                 }
-                if (!DynamicInputs.EditStatus)
+                if (Locked)
                 {
-                    if (AllLocked)
+                    if(ImGui.Button("Unlock All"))
                     {
-                        if(ImGui.Button("Unlock All"))
+                        DynamicInputs.Lockstatus = false;
+                        for(int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
                         {
-                            for(int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
+                            for(int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
                             {
-                                for(int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
-                                {
-                                    DynamicInputs.layouts[i].elements[l].locked = false;
-                                }
+                                DynamicInputs.layouts[i].elements[l].locked = false;
                             }
-                            AllLocked = false;
                         }
+                        Locked = false;
                     }
-                    else
+                }
+                else
+                {
+                    if (ImGui.Button("Lock All"))
                     {
-                        if (ImGui.Button("Lock All"))
+                        DynamicInputs.Lockstatus = true;
+                        for (int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
                         {
-                            for (int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
+                            for (int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
                             {
-                                for (int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
-                                {
-                                    DynamicInputs.layouts[i].elements[l].locked = true;
-                                }
+                                DynamicInputs.layouts[i].elements[l].locked = true;
                             }
-                            AllLocked = true;
                         }
+                        Locked = true;
                     }
                 }
                 // Render the Add Element button
