@@ -54,6 +54,7 @@ namespace AbsoluteRoleplay.Helpers
                     plugin.logger.Error($"Failed to download image from {url}: {ex.Message}");
                 }
             }
+            
             return image;
         }
         public static void DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)

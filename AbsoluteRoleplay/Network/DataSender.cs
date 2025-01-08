@@ -843,6 +843,30 @@ namespace Networking
                 }
             }
         }
+
+        internal static async void SendARPChatMessage(string message)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SSendChatMessage);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(message);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                }
+            }
+        }
         internal static async void DeleteProfile(int profileIndex)
         {
             if (ClientTCP.IsConnected())

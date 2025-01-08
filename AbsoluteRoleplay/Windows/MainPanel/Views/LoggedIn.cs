@@ -36,6 +36,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             {
                 ImGui.SetTooltip("Connections");
             }
+
             if (ImGui.ImageButton(MainPanel.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
                 MainPanel.viewListings = MainPanel.CurrentElement();
@@ -59,7 +60,12 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             {
                 ImGui.SetTooltip("Systems - WIP");
             }
-
+            var chatPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, chatPos));
+            if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+            {
+                pluginInstance.ToggleChatWindow();
+            }
 
             var optionPos = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(buttonWidth / 14, optionPos));

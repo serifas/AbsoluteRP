@@ -1403,8 +1403,28 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveTooltip message: {ex}");
             }
         }
- 
 
+        internal static void ReceiveChatMessage(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    string profileName = buffer.ReadString();
+                    int avatarBytesLen = buffer.ReadInt();
+                    byte[] avatarBytes = buffer.ReadBytes(avatarBytesLen);
+                    string message = buffer.ReadString();
+                    IDalamudTextureWrap avatar =  Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    ARPChatWindow.messages.Add(new ChatMessage { authorName = profileName, avatar = avatar, message = message });
 
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+        }
     }
 }

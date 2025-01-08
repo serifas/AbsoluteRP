@@ -74,7 +74,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             return new Vector2(positionX, positionY);
         }
-        public static void LoadIconsLazy(Plugin plugin)
+        public static void LoadIconsLazy(Plugin plugin, bool statusIcon)
         {
             int loadedThisFrame = 0;
 
@@ -83,39 +83,47 @@ namespace AbsoluteRoleplay.Helpers
                 try
                 {
                     var icon = Plugin.DataManager.GameData.GetIcon((uint)nextIconToLoad);
-                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                    object iconToLoad;
+                    if (statusIcon)
                     {
-                        var texFile = Plugin.DataManager.GetFile<TexFile>(icon.FilePath);
-                        var texture = LoadTextureAsync(icon.FilePath).Result;
-
-                        if (texture != null && texture.Width > 0 && texture.Height > 0)
+                        RenderStatusEffectIconAsync(plugin, (int)nextIconToLoad);
+                    }
+                    else
+                    {
+                        if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
                         {
-                            lock (categorizedIcons)
+                            var texFile = Plugin.DataManager.GetFile<TexFile>(icon.FilePath);
+                            var texture = LoadTextureAsync(icon.FilePath).Result;
+
+                            if (texture != null && texture.Width > 0 && texture.Height > 0)
                             {
-                                // Categorize icons correctly
-                                if (IsItemIcon(nextIconToLoad))
+                                lock (categorizedIcons)
                                 {
-                                    categorizedIcons["Items"].Add(((uint)nextIconToLoad, texture));
-                                    plugin.logger.Debug($"Added icon {nextIconToLoad} to Items.");
-                                }
-                                else if (IsSpellIcon(nextIconToLoad))
-                                {
-                                    categorizedIcons["Spells"].Add(((uint)nextIconToLoad, texture));
-                                    plugin.logger.Debug($"Added icon {nextIconToLoad} to Spells.");
-                                }
-                                else if (IsSpellIcon(nextIconToLoad))
-                                {
-                                    categorizedIcons["Actions"].Add(((uint)nextIconToLoad, texture));
-                                    plugin.logger.Debug($"Added icon {nextIconToLoad} to Actions.");
-                                }
-                                else if (IsEmoteIcon(nextIconToLoad))
-                                {
-                                    categorizedIcons["Emotes"].Add(((uint)nextIconToLoad, texture));
-                                    plugin.logger.Debug($"Added icon {nextIconToLoad} to Emotes.");
-                                }
-                                else
-                                {
-                                    plugin.logger.Debug($"Icon {nextIconToLoad} does not match any category.");
+                                    // Categorize icons correctly
+                                    if (IsItemIcon(nextIconToLoad))
+                                    {
+                                        categorizedIcons["Items"].Add(((uint)nextIconToLoad, texture));
+                                        plugin.logger.Debug($"Added icon {nextIconToLoad} to Items.");
+                                    }
+                                    else if (IsSpellIcon(nextIconToLoad))
+                                    {
+                                        categorizedIcons["Spells"].Add(((uint)nextIconToLoad, texture));
+                                        plugin.logger.Debug($"Added icon {nextIconToLoad} to Spells.");
+                                    }
+                                    else if (IsSpellIcon(nextIconToLoad))
+                                    {
+                                        categorizedIcons["Actions"].Add(((uint)nextIconToLoad, texture));
+                                        plugin.logger.Debug($"Added icon {nextIconToLoad} to Actions.");
+                                    }
+                                    else if (IsEmoteIcon(nextIconToLoad))
+                                    {
+                                        categorizedIcons["Emotes"].Add(((uint)nextIconToLoad, texture));
+                                        plugin.logger.Debug($"Added icon {nextIconToLoad} to Emotes.");
+                                    }
+                                    else
+                                    {
+                                        plugin.logger.Debug($"Icon {nextIconToLoad} does not match any category.");
+                                    }
                                 }
                             }
                         }

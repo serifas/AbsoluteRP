@@ -44,17 +44,17 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
             {
                 ImGui.SetTooltip("View profile bookmarks");
             }
-         
-            if (ImGui.ImageButton(MainPanel.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
-            {
-                DataSender.FetchProfiles();
-                DataSender.FetchProfile(ProfileWindow.currentProfile);
-                pluginInstance.OpenInventoryWindow();
-            }
-            if (ImGui.IsItemHovered())
-            {
-                ImGui.SetTooltip("Manage Inventory");
-            }
+                if (ImGui.ImageButton(MainPanel.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+                {
+                    DataSender.FetchProfiles();
+                    DataSender.FetchProfile(ProfileWindow.currentProfile);
+                    pluginInstance.OpenInventoryWindow();
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Inventory");
+                }
 
 
 

@@ -145,7 +145,7 @@ namespace AbsoluteRoleplay.Windows.Inventory
             {
                 if (!WindowOperations.iconsLoaded)
                 {
-                    WindowOperations.LoadIconsLazy(plugin); // Load a small batch of icons
+                    WindowOperations.LoadIconsLazy(plugin, false); // Load a small batch of icons
                 }
 
                 WindowOperations.RenderIcons(plugin);

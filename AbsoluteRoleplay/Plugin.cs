@@ -97,6 +97,7 @@ namespace AbsoluteRoleplay
         private MainPanel MainPanel { get; init; }
         private ProfileWindow ProfileWindow { get; init; }
         private BookmarksWindow BookmarksWindow { get; init; }
+        private ARPChatWindow ArpChatWindow { get; init; }
         private TargetWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
         public ItemTooltip ItemTooltip { get; init; }
@@ -172,6 +173,7 @@ namespace AbsoluteRoleplay
             BookmarksWindow = new BookmarksWindow(this);
             TargetWindow = new TargetWindow(this);
             VerificationWindow = new VerificationWindow(this);
+            ArpChatWindow = new ARPChatWindow(this);
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
@@ -201,7 +203,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ListingWindow);
             WindowSystem.AddWindow(ItemTooltip);
             WindowSystem.AddWindow(InventoryWindow);
-
+            WindowSystem.AddWindow(ArpChatWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
 
@@ -573,6 +575,7 @@ namespace AbsoluteRoleplay
         public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
         public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
         public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
+        public void ToggleChatWindow() => ArpChatWindow.Toggle();
         public void OpenAlertWindow()
         {
 

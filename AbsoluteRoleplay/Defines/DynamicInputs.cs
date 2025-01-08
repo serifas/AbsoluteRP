@@ -3,6 +3,7 @@ using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
@@ -60,7 +61,11 @@ namespace AbsoluteRoleplay.Defines
         public bool triggering { get; set; }
         public float width { get; set; }
         public float height { get; set; }
-        public bool proprotionalEditing { set; get; }
+        public bool initialized { get; set; }
+        public bool proprotionalEditing { set; get; } = true;
+        public bool hasTooltip { get; set; }
+        public bool upload {  get; set; }
+       
     }
     public class StatusElement
     {
@@ -104,13 +109,14 @@ namespace AbsoluteRoleplay.Defines
         private static int? draggingTextElementID = null;
         private static int? draggingImageElementID = null;
         private static Vector2 lastMousePosition;
+        private static FileDialogManager _fileDialogManager;
         private enum ResizeEdge { None, BottomRight, Bottom, Right }
         private static ResizeEdge currentEdge = ResizeEdge.None;
 
         public static bool Lockstatus = true;
         public static bool EditStatus = false;
         private static bool showDeleteConfirmationPopup = false;
-        public static void AddTextElement(int layoutID, int type, int elementID, Plugin plugin)
+        public static void AddTextElement(int layoutID, int type, int elementID, bool locked, Plugin plugin)
         {
             if (!layouts.ContainsKey(layoutID))
             {
@@ -144,7 +150,10 @@ namespace AbsoluteRoleplay.Defines
             }
 
             Vector2 mousePos = ImGui.GetMousePos();
+            if (!locked)
+            {
 
+            }
             if (draggingTextElementID == elementID)
             {
                 if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
@@ -181,8 +190,9 @@ namespace AbsoluteRoleplay.Defines
             }
         }
 
-        public static void RenderElements(Layout currentLayout, Plugin plugin)
+        public static void RenderElements(Layout currentLayout, bool locked, Plugin plugin)
         {
+            _fileDialogManager = new FileDialogManager();
             // Render existing text elements in the layout
             if (currentLayout.elements != null)
             {
@@ -191,7 +201,7 @@ namespace AbsoluteRoleplay.Defines
                     ImageElement imageElement = currentLayout.elements.OfType<ImageElement>().ToArray()[i];
                     if (imageElement != null)
                     {
-                        DynamicInputs.AddImageElement(currentLayout.id, imageElement.id, plugin);
+                        AddImageElement(currentLayout.id, imageElement.id, plugin);
 
                     }
                 }
@@ -200,7 +210,7 @@ namespace AbsoluteRoleplay.Defines
                     TextElement textElement = currentLayout.elements.OfType<TextElement>().ToArray()[i];
                     if (textElement != null)
                     {
-                        DynamicInputs.AddTextElement(currentLayout.id, textElement.type, textElement.id, plugin);
+                        AddTextElement(currentLayout.id, textElement.type, textElement.id, locked, plugin);
                     }
                 }
             }
@@ -347,17 +357,15 @@ namespace AbsoluteRoleplay.Defines
                     id = elementID,
                     url = string.Empty,
                     bytes = new byte[0],
-                    textureWrap = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
                     tooltip = string.Empty,
                     nsfw = false,
                     triggering = false,
-                    width = 100,
-                    height = 100,
                     PosX = 100,
                     PosY = 100,
                     locked = true,
                     modifying = false,
-                    canceled = false
+                    canceled = false,
+                    initialized = false
                 };
                 layouts[layoutID].elements.Add(imageElement);
             }
@@ -572,12 +580,7 @@ namespace AbsoluteRoleplay.Defines
         private static void RenderDisplayImageElement(int layoutID, Plugin plugin, ImageElement imageElement)
         {
             // Render the image at its position
-            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
-            ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
-
-          
-            
-            ImGui.SameLine();
+            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));    
             // Render the "Edit" button
             if (ImGui.Button($"Edit##{layoutID}_{imageElement.id}"))
             {
@@ -626,6 +629,11 @@ namespace AbsoluteRoleplay.Defines
                     imageElement.dragOffset = ImGui.GetMousePos() - new Vector2(imageElement.PosX, imageElement.PosY);
                 }
             }
+            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY + 50));
+            if (imageElement.textureWrap != null)
+            {
+                ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
+            }
         }
 
         public static void DrawImageWithScaling(ImageElement imageElement)
@@ -635,7 +643,10 @@ namespace AbsoluteRoleplay.Defines
 
             // Display the image
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY +100));
-            ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
+            if(imageElement.textureWrap != null)
+            {
+                ImGui.Image(imageElement.textureWrap.ImGuiHandle, new Vector2(imageElement.width, imageElement.height));
+            }
 
             // Get the global bounds of the image
             Vector2 imageMin = ImGui.GetItemRectMin();
@@ -735,29 +746,25 @@ namespace AbsoluteRoleplay.Defines
 
         private static void RenderEditableImageElement( int layoutID, Plugin plugin, ImageElement imageElement)
         {
+            _fileDialogManager.Draw(); //file dialog mainly for avatar atm. galleries later possibly.
             string url = imageElement.url;
             float width = imageElement.width;
             float height = imageElement.height;
-
+            bool hasTooltip = imageElement.hasTooltip;
+            string tooltip = imageElement.tooltip;
+            bool proportionalEditing = imageElement.proprotionalEditing;
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
-            if (ImGui.Button("Proportional"))
+
+            ImGui.Text("Proportional Scaling:");
+            ImGui.SameLine();
+            if (ImGui.Checkbox($"##{layoutID}_{imageElement.id}", ref proportionalEditing))
             {
-                imageElement.proprotionalEditing = true;
+                imageElement.proprotionalEditing = proportionalEditing;
             }
             ImGui.SameLine();
-            if (ImGui.Button("Unproportional"))
+            if (ImGui.Button($"Upload##{layoutID}_{imageElement.id}"))
             {
-                imageElement.proprotionalEditing = false;
-            }
-
-
-            ImGui.SameLine();
-
-            ImGui.PushItemWidth(ImGui.GetWindowSize().X / 5f);
-            // Render the URL input
-            if (ImGui.InputText($"URL:##{layoutID}_{imageElement.id}", ref url, 2000))
-            {
-                imageElement.url = url;
+                UploadImage(plugin, ProfileWindow._fileDialogManager, imageElement);
             }
 
             ImGui.SameLine();
@@ -765,7 +772,15 @@ namespace AbsoluteRoleplay.Defines
             // Render the "Submit" button
             if (ImGui.Button($"Submit##{layoutID}_{imageElement.id}"))
             {
-                imageElement.textureWrap = Imaging.DownloadImage(url); // Update the texture
+                IDalamudTextureWrap tex = imageElement.textureWrap;
+                if (!imageElement.initialized)
+                {
+                    imageElement.initialized = true;
+                    imageElement.width = imageElement.textureWrap.Width;
+                    imageElement.height = imageElement.textureWrap.Height;
+                }
+                imageElement.textureWrap = tex; // Update the texture
+                
                 imageElement.modifying = false; // Change mode to display
                 EditStatus = false;
             }
@@ -781,7 +796,22 @@ namespace AbsoluteRoleplay.Defines
                 pendingElementID = imageElement.id;
                 ImGui.OpenPopup("Delete Confirmation");
             }
-            
+
+            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY + 50));
+            if (ImGui.Checkbox($"Has Tooltip##{layoutID}_{imageElement.id}", ref hasTooltip))
+            {
+                imageElement.hasTooltip = hasTooltip;
+            }
+            if (imageElement.hasTooltip)
+            {
+                ImGui.SameLine();
+                if(ImGui.InputText($"Tooltip##{layoutID}_{imageElement.id}", ref tooltip, 200))
+                {
+                    imageElement.tooltip = tooltip;
+                }
+            }
+
+            ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY + 100));
             DrawImageWithScaling(imageElement);
 
 
@@ -832,6 +862,20 @@ namespace AbsoluteRoleplay.Defines
         {
             var layout = layouts[layoutID];
             Lockstatus = layout.elements.All(e => e.locked);
+        }
+        public static void UploadImage(Plugin plugin, FileDialogManager _fileDialogManager, ImageElement imageElement)
+        {
+            _fileDialogManager.OpenFileDialog("Select Image", "Image{.png,.jpg}", (s, f) =>
+            {
+                if (!s)
+                    return;
+                var imagePath = f[0].ToString();
+                var image = Path.GetFullPath(imagePath);
+                var imageBytes = File.ReadAllBytes(image);
+
+                imageElement.textureWrap = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 1000,1000)).Result;
+            }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
+
         }
     }
 }

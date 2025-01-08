@@ -36,7 +36,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static string loading; //loading status string for loading the profile gallery mainly
         public static float percentage = 0f; //loading base value
         private Plugin plugin;
-        private FileDialogManager _fileDialogManager; //for avatars only at the moment
+        public static FileDialogManager _fileDialogManager; //for avatars only at the moment
         public Configuration configuration;
         public static IDalamudTextureWrap pictureTab; //picturetab.png for base picture in gallery
         public static SortedList<TabValue, bool> TabOpen = new SortedList<TabValue, bool>(); //what part of the profile we have open
@@ -539,7 +539,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 // Create a child window to contain the draggable elements
                 if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
-                    DynamicInputs.RenderElements(currentLayout, plugin);
+                    DynamicInputs.RenderElements(currentLayout, false, plugin);
 
                     ImGui.EndChild();
                 }
