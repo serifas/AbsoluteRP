@@ -93,28 +93,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void OnOpen()
         {
-            if (warning)
-            {
-                if (ImGui.BeginPopupModal($"WARNING MESSAGE", ref warning, ImGuiWindowFlags.AlwaysAutoResize))
-                {
-                    ImGuiHelpers.SafeTextWrapped(warningMessage);
-                    ImGui.Text("Do you agree to view the profile.");
-                    if (ImGui.Button("Agree"))
-                    {
-                        ImGui.CloseCurrentPopup();
-                    }
-
-                    ImGui.SameLine();
-
-                    if (ImGui.Button("Cancel"))
-                    {
-                        this.IsOpen = false;
-                        ImGui.CloseCurrentPopup();
-                    }
-
-                    ImGui.EndPopup();
-                }
-            }
+           
             var blankPictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
             if (blankPictureTab != null)
             {
@@ -141,9 +120,39 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             if (plugin.IsOnline())
             {
-                
+               
+
                 if (AllLoaded() == true)
                 {
+                    if (warning)
+                    {
+                        ImGui.OpenPopup("WARNING");  // Ensure the popup is triggered to open
+
+                        // Begin the modal popup window
+                        if (ImGui.BeginPopupModal("WARNING", ref warning, ImGuiWindowFlags.AlwaysAutoResize))
+                        {
+
+                            // Display the warning message
+                            ImGui.Text(warningMessage);
+                            ImGui.TextColored(new Vector4(255, 0, 0, 255), "Do you agree to view the profile anyway?");
+                            if (ImGui.Button("Agree"))
+                            {
+                                warning = false; // Close the popup by setting 'warning' to false
+                                ImGui.CloseCurrentPopup(); // Explicitly close the popup
+                            }
+                            ImGui.SameLine();
+                            // Button to close the popup
+                            if (ImGui.Button("Go back"))
+                            {
+                                this.IsOpen = false;
+                                warning = false;
+                                ImGui.CloseCurrentPopup();
+
+                            }
+
+                            ImGui.EndPopup();
+                        }
+                    }
                     //if we receive that there is an existing profile that we can view show the available view buttons
                     if (ExistingProfile == true)
                     {
