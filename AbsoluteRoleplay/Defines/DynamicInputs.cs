@@ -585,7 +585,6 @@ namespace AbsoluteRoleplay.Defines
             if (ImGui.Button($"Edit##{layoutID}_{imageElement.id}"))
             {
                 imageElement.modifying = true; // Enter editing mode
-                EditStatus = true;
             }
 
             ImGui.SameLine();
@@ -754,7 +753,7 @@ namespace AbsoluteRoleplay.Defines
             string tooltip = imageElement.tooltip;
             bool proportionalEditing = imageElement.proprotionalEditing;
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
-
+            EditStatus = true;
             ImGui.Text("Proportional Scaling:");
             ImGui.SameLine();
             if (ImGui.Checkbox($"##{layoutID}_{imageElement.id}", ref proportionalEditing))
@@ -770,19 +769,21 @@ namespace AbsoluteRoleplay.Defines
             ImGui.SameLine();
 
             // Render the "Submit" button
-            if (ImGui.Button($"Submit##{layoutID}_{imageElement.id}"))
+            if(ImGui.Button($"Submit##{layoutID}_{imageElement.id}"))
             {
-                IDalamudTextureWrap tex = imageElement.textureWrap;
-                if (!imageElement.initialized)
-                {
-                    imageElement.initialized = true;
-                    imageElement.width = imageElement.textureWrap.Width;
-                    imageElement.height = imageElement.textureWrap.Height;
-                }
-                imageElement.textureWrap = tex; // Update the texture
-                
-                imageElement.modifying = false; // Change mode to display
                 EditStatus = false;
+                if (imageElement.textureWrap != null)
+                {
+                    IDalamudTextureWrap tex = imageElement.textureWrap;
+                    if (!imageElement.initialized)
+                    {
+                        imageElement.initialized = true;
+                        imageElement.width = imageElement.textureWrap.Width;
+                        imageElement.height = imageElement.textureWrap.Height;
+                    }
+                    imageElement.textureWrap = tex; // Update the texture
+                }
+                imageElement.modifying = false; // Change mode to display
             }
 
             ImGui.SameLine();
@@ -810,12 +811,8 @@ namespace AbsoluteRoleplay.Defines
                     imageElement.tooltip = tooltip;
                 }
             }
-
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY + 100));
             DrawImageWithScaling(imageElement);
-
-
-
              RenderDeleteConfirmationPopup(() =>
             {
                 if (layouts.ContainsKey(layoutID))
@@ -827,6 +824,7 @@ namespace AbsoluteRoleplay.Defines
                     if (elementToCancel != null)
                     {
                         elementToCancel.canceled = true;
+                        EditStatus = false;
                         plugin.logger.Error($"Marked Image Element {imageElement.id} as canceled in Layout {layoutID}");
                     }
                     else
@@ -872,8 +870,15 @@ namespace AbsoluteRoleplay.Defines
                 var imagePath = f[0].ToString();
                 var image = Path.GetFullPath(imagePath);
                 var imageBytes = File.ReadAllBytes(image);
-
-                imageElement.textureWrap = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 1000,1000)).Result;
+                if(imagePath == string.Empty || image == null)
+                {
+                    imageElement.textureWrap = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                }
+                else
+                {
+                    imageElement.textureWrap = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 1000, 1000)).Result;
+                }
+                
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
 
         }

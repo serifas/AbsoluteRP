@@ -49,7 +49,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
         private IDalamudTextureWrap persistAvatarHolder;
         public static bool isPrivate;
         public static bool activeProfile;
+        public static bool NSFW;
+        public static bool Triggering;
+        public static bool SpoilerARR;
+        public static bool SpoilerHW;
+        public static bool SpoilerSB;
+        public static bool SpoilerSHB;
+        public static bool SpoilerEW;
+        public static bool SpoilerDT;
         public static int currentProfile = 0;
+
+        
+        public static List<PlayerProfile> profiles = new List<PlayerProfile>();
         public static List<Tuple<int, string, bool>> ProfileBaseData = new List<Tuple<int, string, bool>>();
         public static bool Bio, Hooks, Story, OOC, Gallery;
         public static List<bool> Customs = new List<bool>();
@@ -63,6 +74,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static List<Layout> layouts = new List<Layout>();
         public static int currentElementID = 0;
         public static bool customTabSelected = false;
+        public static bool AllLocked = false;
         public bool AddInputTextElement { get; private set; }
         public bool AddInputTextMultilineElement { get; private set; }
         public bool AddInputImageElement { get; private set; }
@@ -214,20 +226,30 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (percentage == loaderInd + 1)
             {
 
-                if (ImGui.Checkbox("Set Private", ref isPrivate))
-                {
-                    //send our privacy settings to the server
-                    DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile);
-                }
+                ImGui.Checkbox("Set Private", ref isPrivate);
                 ImGui.SameLine();
-                if(ImGui.Checkbox("Set As Profile", ref activeProfile))
-                {
-                    DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile);
-                }
+                ImGui.Checkbox("Set As Profile", ref activeProfile);
                 if (ImGui.IsItemHovered())
                 {
                     ImGui.SetTooltip("Set this as your profile for the current character.");
                 }
+                ImGui.Checkbox("Set as 18+", ref NSFW);
+                ImGui.SameLine();
+                ImGui.Checkbox("Set as Triggering", ref Triggering);
+
+                ImGui.Text("Has Spoilers From:");
+                ImGui.Checkbox("A Realm Reborn", ref SpoilerARR);
+                ImGui.SameLine();
+                ImGui.Checkbox("Heavensward", ref SpoilerHW);
+                ImGui.SameLine();
+                ImGui.Checkbox("Stormblood", ref SpoilerSB);
+
+                ImGui.Checkbox("Shadowbringers", ref SpoilerSHB);
+                ImGui.SameLine();
+                ImGui.Checkbox("Endwalker", ref SpoilerEW);
+                ImGui.SameLine();
+                ImGui.Checkbox("Dawntrail", ref SpoilerDT);
+               
                 if (ImGui.Button("Save Profile"))
                 {
                     SubmitProfileData();
@@ -532,10 +554,40 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     };
                     layouts.Add(currentLayout);
                 }
-
+                if (!DynamicInputs.EditStatus)
+                {
+                    if (AllLocked)
+                    {
+                        if(ImGui.Button("Unlock All"))
+                        {
+                            for(int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
+                            {
+                                for(int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
+                                {
+                                    DynamicInputs.layouts[i].elements[l].locked = false;
+                                }
+                            }
+                            AllLocked = false;
+                        }
+                    }
+                    else
+                    {
+                        if (ImGui.Button("Lock All"))
+                        {
+                            for (int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
+                            {
+                                for (int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
+                                {
+                                    DynamicInputs.layouts[i].elements[l].locked = true;
+                                }
+                            }
+                            AllLocked = true;
+                        }
+                    }
+                }
                 // Render the Add Element button
                 DynamicInputs.RenderAddElementButton(currentLayout);
-
+                
                 // Create a child window to contain the draggable elements
                 if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
                 {
@@ -944,7 +996,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             };
 
                             //send data to server
-                            DataSender.SubmitProfileBio(currentProfile, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3, activeProfile);
+                            DataSender.SubmitProfileBio(currentProfile, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3);
                             var hooks = new List<Tuple<int, string, string>>();
                             for (var i = 0; i < hookData.Count; i++)
                             {
@@ -1051,7 +1103,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             try
             {
 
-            DataSender.SubmitProfileBio(currentProfile,
+                DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
+                DataSender.SubmitProfileBio(currentProfile,
                                                   BioTab.avatarBytes,
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name].Replace("'", "''"),
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race].Replace("'", "''"),
@@ -1060,8 +1113,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height].Replace("'", "''"),
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight].Replace("'", "''"),
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg].Replace("'", "''"),
-                                                  BioTab.currentAlignment, BioTab.currentPersonality_1, BioTab.currentPersonality_2, BioTab.currentPersonality_3,
-                                                  activeProfile);
+                                                  BioTab.currentAlignment, BioTab.currentPersonality_1, BioTab.currentPersonality_2, BioTab.currentPersonality_3
+                                                  );
             var hooks = new List<Tuple<int, string, string>>();
             for (var i = 0; i < HooksTab.hookCount; i++)
             {

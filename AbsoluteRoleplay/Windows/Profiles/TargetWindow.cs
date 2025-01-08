@@ -16,6 +16,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using OtterGuiInternal.Enums;
 using AbsoluteRoleplay.Windows.Ect;
+using System.Diagnostics;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -76,6 +77,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool firstDraw = true;
         public static string activeTab;
         public static bool self = false;
+        internal static bool warning;
+        internal static string warningMessage;
 
         public TargetWindow(Plugin plugin) : base(
        "TARGET", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -89,7 +92,29 @@ namespace AbsoluteRoleplay.Windows.Profiles
             pg = Plugin.PluginInterface;
         }
         public override void OnOpen()
-        {  
+        {
+            if (warning)
+            {
+                if (ImGui.BeginPopupModal($"WARNING MESSAGE", ref warning, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    ImGuiHelpers.SafeTextWrapped(warningMessage);
+                    ImGui.Text("Do you agree to view the profile.");
+                    if (ImGui.Button("Agree"))
+                    {
+                        ImGui.CloseCurrentPopup();
+                    }
+
+                    ImGui.SameLine();
+
+                    if (ImGui.Button("Cancel"))
+                    {
+                        this.IsOpen = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+
+                    ImGui.EndPopup();
+                }
+            }
             var blankPictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
             if (blankPictureTab != null)
             {
@@ -116,7 +141,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             if (plugin.IsOnline())
             {
-
+                
                 if (AllLoaded() == true)
                 {
                     //if we receive that there is an existing profile that we can view show the available view buttons

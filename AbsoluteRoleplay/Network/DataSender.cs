@@ -422,7 +422,8 @@ namespace Networking
         }
 
         public static async void SubmitProfileBio(int profileIndex, byte[] avatarBytes, string name, string race, string gender, string age,
-                                            string height, string weight, string atFirstGlance, int alignment, int personality_1, int personality_2, int personality_3, bool isTooltip)
+                                            string height, string weight, string atFirstGlance, int alignment, int personality_1, int personality_2, int personality_3
+                                            )
         {
             if (ClientTCP.IsConnected())
             {
@@ -449,6 +450,7 @@ namespace Networking
                         buffer.WriteInt(personality_1);
                         buffer.WriteInt(personality_2);
                         buffer.WriteInt(personality_3);
+
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -702,7 +704,7 @@ namespace Networking
         }
 
 
-        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex)
+        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
         {
             if (ClientTCP.IsConnected())
             {
@@ -717,6 +719,14 @@ namespace Networking
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteBool(status);
                         buffer.WriteBool(tooltipStatus);
+                        buffer.WriteBool(spoilerARR);
+                        buffer.WriteBool(spoilerHW);
+                        buffer.WriteBool(spoilerSB);
+                        buffer.WriteBool(spoilerSHB);
+                        buffer.WriteBool(spoilerEW);
+                        buffer.WriteBool(spoilerDT);
+                        buffer.WriteBool(NSFW);
+                        buffer.WriteBool(TRIGGERING);
                         buffer.WriteInt(profileIndex);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }

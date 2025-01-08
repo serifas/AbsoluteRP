@@ -77,6 +77,7 @@ namespace Networking
         RecieveTargetTooltip = 59,
         ReceiveProfiles = 60,
         CreateItem = 61,
+        ReceiveProfileWarning = 62,
     }
     class DataReceiver
     {
@@ -1328,10 +1329,65 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                plugin.logger.Error($"Error handling ReceiveProfileItems message: {ex}");
             }
         }
+        internal static void RecieveProfileWarning(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    bool ARR = buffer.ReadBool();
+                    bool HW = buffer.ReadBool();
+                    bool SB = buffer.ReadBool();
+                    bool SHB = buffer.ReadBool();
+                    bool EW = buffer.ReadBool();
+                    bool DT = buffer.ReadBool();
+                    bool NSFW = buffer.ReadBool();
+                    bool TRIGGERING = buffer.ReadBool();
 
+
+                    List<string> spoilers = new List<string>();
+
+                    if (ARR) { spoilers.Add("A Realm Reborn"); }
+                    if (HW) { spoilers.Add("Heavensward"); }
+                    if (SB) { spoilers.Add("Stormblood"); }
+                    if (SHB) { spoilers.Add("Shadowbringers"); }
+                    if (EW) { spoilers.Add("Endwalker"); }
+                    if (DT) { spoilers.Add("Dawntrail"); }
+                    string message = "The profile you are about to view contains:\n";
+                    if (NSFW)
+                    {
+                        message += "NSFW (18+) content \n";
+                    }
+                    if (TRIGGERING)
+                    {
+                        message += "Triggering content \n";
+                    }
+                    if(NSFW || TRIGGERING)
+                    {
+
+                    }
+                    if(spoilers.Count > 0)
+                    {
+                        message += "Spoilers from the expansions \n";
+                    }
+                    for(int i = 0; i< spoilers.Count; i++)
+                    {
+                        message += spoilers[i] + "\n";
+                    }
+                    TargetWindow.warning = true;
+                    TargetWindow.warningMessage = message;
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling RecieveProfileWarning message: {ex}");
+            }
+        }
         internal static void ReceiveTargetTooltip(byte[] data)
         {
             try
