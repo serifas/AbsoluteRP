@@ -193,7 +193,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     isPrivate = true;
                     ResetOnChangeOrRemoval();
-                    DataSender.CreateProfile(ProfileBaseData.Count, false);
+                    DataSender.CreateProfile(ProfileBaseData.Count);
                     currentProfile = ProfileBaseData.Count;
                     DataSender.FetchProfile(currentProfile);
                     ExistingProfile = true;
@@ -1076,6 +1076,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
 
                 DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
+
+
+                DataSender.SendCustomTabs(currentProfile, availableTabs);
+                for(int i =0; i < layouts.Count; i++)
+                {
+                    DataSender.SendTabContents(currentProfile, layouts[i].id, layouts[i].elements);
+                }
+
+
                 DataSender.SubmitProfileBio(currentProfile,
                                                   BioTab.avatarBytes,
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name].Replace("'", "''"),

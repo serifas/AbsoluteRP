@@ -100,18 +100,21 @@ namespace AbsoluteRoleplay.Windows.Ect
             ImGui.SameLine();
             if (ImGui.Button("Send"))
             {
-                DataSender.SendARPChatMessage(messageInput);
-                messageInput = string.Empty;
+                SendMessage(messageInput);
             }
             if (ImGui.IsKeyPressed(ImGuiKey.Enter))
             {
                 if (canSend == true)
                 {
-                    DataSender.SendARPChatMessage(messageInput);
-                    messageInput = string.Empty;
+                    SendMessage(messageInput);
                 }
             }
            
+        }
+        public void SendMessage(string input)
+        {
+            DataSender.SendARPChatMessage(input);
+            messageInput = string.Empty;
         }
 
 

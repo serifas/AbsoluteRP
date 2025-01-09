@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
@@ -29,6 +30,7 @@ namespace AbsoluteRoleplay.Defines
         public bool loadTextElement { set; get; }
         public bool loadTextMultilineElement { set; get; }
         public bool loadImageElement { set; get; }
+        public bool loadStatusElement { set; get; }
     }
     public class LayoutElement
     {
@@ -44,36 +46,22 @@ namespace AbsoluteRoleplay.Defines
     }
     public class TextElement : LayoutElement
     {
-        public int index { set; get; }
         public int type { set; get; }
         public string text { set; get; }
         public Vector4 color { set; get; }
     }
     public class ImageElement : LayoutElement
     {
-        
-        public int index { set; get; }
-        public string url { get; set; }
         public byte[] bytes { get; set; }
         public IDalamudTextureWrap textureWrap { set; get; }
         public string tooltip { get; set; }
-        public bool nsfw { get; set; }
-        public bool triggering { get; set; }
         public float width { get; set; }
         public float height { get; set; }
         public bool initialized { get; set; }
         public bool proprotionalEditing { set; get; } = true;
         public bool hasTooltip { get; set; }
-        public bool upload {  get; set; }
-       
-    }
-    public class StatusElement
-    {
-        int statusIconId { set; get; }
-        public string name { set; get; }
-        public string tooltip { set; get; }
-        public float PosX { get; set; }
-        public float PosY { get; set; }
+        internal bool maximizable { get; set; }
+
     }
     public class IconElement
     {
@@ -83,15 +71,24 @@ namespace AbsoluteRoleplay.Defines
         public float PosX { get; set; }
         public float PosY { get; set; }
     }
-    public class ProgressElement
+    public class StatusElement : LayoutElement
     {
         public string name { set; get; }
-        public float max { set; get; }
+        public IDalamudTextureWrap icon { set; get; }
+        public float totalPositive {  set; get; }
+        public float totalNegative { set; get; }
+        public Vector4 positiveCol { set; get; }
+        public Vector4 negitiveCol { set; get; }
+        public float maxPositive { set; get; }
+        public float maxNegitive { set; get; }
         public float progress { set; get; }
         public float PosX { get; set; }
         public float PosY { get; set; }
         public float width { set; get; }
         public float height { set; get; }
+        public bool hasTooltip {  set; get; }
+        public string tooltip {  get; set; }
+        public bool hasNegative {  set; get; }
     }
     public class LayoutNavigationElement
     {
@@ -108,6 +105,7 @@ namespace AbsoluteRoleplay.Defines
         public static SortedList<int, Layout> layouts = new SortedList<int, Layout>();
         private static int? draggingTextElementID = null;
         private static int? draggingImageElementID = null;
+        private static int? draggingStatusElementID = null;
         private static Vector2 lastMousePosition;
         private static FileDialogManager _fileDialogManager;
         private enum ResizeEdge { None, BottomRight, Bottom, Right }
@@ -150,10 +148,6 @@ namespace AbsoluteRoleplay.Defines
             }
 
             Vector2 mousePos = ImGui.GetMousePos();
-            if (!locked)
-            {
-
-            }
             if (draggingTextElementID == elementID)
             {
                 if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
@@ -180,15 +174,76 @@ namespace AbsoluteRoleplay.Defines
                 RenderDisplayTextElement(layoutID, elementID, plugin, textElement);
             }
         }
-        public void ReorderElement(Layout currentLayout, int elementID, int newOrder)
+        /*
+        public static void AddStatusElement(int layoutID, int elementID, bool locked, Plugin plugin)
         {
-            var element = currentLayout.elements.FirstOrDefault(e => e.id == elementID);
-            if (element != null)
+            if (!layouts.ContainsKey(layoutID))
             {
-                currentLayout.elements.Remove(element);
-                currentLayout.elements.Insert(newOrder, element);
+                layouts[layoutID] = new Layout
+                {
+                    id = layoutID,
+                    elements = new List<LayoutElement>()
+                };
             }
-        }
+
+            var statusElement = layouts[layoutID].elements.OfType<StatusElement>().FirstOrDefault(e => e.id == elementID);
+
+            if (statusElement == null || statusElement.canceled)
+            {
+                if (statusElement != null && statusElement.canceled)
+                    return;
+
+                statusElement = new StatusElement
+                {
+                    id = elementID,
+                    icon = WindowOperations.RenderIconAsync(plugin, 1).Result,
+                    maxPositive = 100,
+                    maxNegitive = 100,
+                    totalPositive = 200,
+                    totalNegative = 200,
+                    width = 200,
+                    height = 20,
+                    positiveCol = new Vector4(0, 255, 255, 255),
+                    negitiveCol = new Vector4(255, 0, 255, 255),
+                    PosX = 500,
+                    PosY = 500,
+                    hasNegative = true,
+                    modifying = false,
+                };
+                layouts[layoutID].elements.Add(statusElement);
+            }
+
+            Vector2 mousePos = ImGui.GetMousePos();
+            if (!locked)
+            {
+
+            }
+            if (draggingStatusElementID == elementID)
+            {
+                if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
+                    statusElement.PosX = mousePos.X - statusElement.dragOffset.X;
+                    statusElement.PosY = mousePos.Y - statusElement.dragOffset.Y;
+                }
+                else if (ImGui.IsMouseReleased(ImGuiMouseButton.Left))
+                {
+                    draggingStatusElementID = null;
+                    plugin.logger.Error($"Text Element {statusElement.id} dropped at position: {statusElement.PosX}, {statusElement.PosY}");
+                }
+            }
+
+            if (statusElement.modifying)
+            {
+                ResetToLockedState(layoutID);
+                // Editable logic
+                RenderEditableStatusElement(layoutID, elementID, plugin, statusElement);
+            }
+            else
+            {
+                // Display logic
+                RenderDisplayStatusElement(layoutID, elementID, plugin, statusElement);
+            }
+        }*/
 
         public static void RenderElements(Layout currentLayout, bool locked, Plugin plugin)
         {
@@ -213,6 +268,15 @@ namespace AbsoluteRoleplay.Defines
                         AddTextElement(currentLayout.id, textElement.type, textElement.id, locked, plugin);
                     }
                 }
+                /*
+                for (int i = 0; i < currentLayout.elements.OfType<StatusElement>().Count(); i++)
+                {
+                    StatusElement statusElement = currentLayout.elements.OfType<StatusElement>().ToArray()[i];
+                    if (statusElement != null)
+                    {
+                        AddStatusElement(currentLayout.id, statusElement.id, locked, plugin);
+                    }
+                }*/
             }
 
 
@@ -255,15 +319,36 @@ namespace AbsoluteRoleplay.Defines
                 currentLayout.elements.Add(new ImageElement
                 {
                     id = newId,
-                    url = "",
                     bytes = null,
                     tooltip = "",
-                    nsfw = false,
-                    triggering = false,
                     width = 100,  // Default width
                     height = 100, // Default height
                     PosX = 100,   // Default position
                     PosY = 100
+                });
+            }
+            // Handle adding a new image element
+            if (currentLayout.loadStatusElement)
+            {
+                int newId = currentLayout.elements.Any() ? currentLayout.elements.Max(e => e.id) + 1 : 0;
+                currentLayout.loadStatusElement = false;
+
+                currentLayout.elements.Add(new StatusElement
+                {
+                    id = newId,
+                    icon = WindowOperations.RenderIconAsync(plugin, 1).Result,
+                    maxPositive = 100,
+                    maxNegitive = 100,
+                    totalPositive = 200,
+                    totalNegative = 200,
+                    width = 200,
+                    height = 20,
+                    positiveCol = new Vector4(0, 255, 255, 255),
+                    negitiveCol = new Vector4(255, 0, 255, 255),
+                    PosX = 500,
+                    PosY = 500,
+                    hasNegative = true,
+                    modifying = false,
                 });
             }
 
@@ -307,26 +392,6 @@ namespace AbsoluteRoleplay.Defines
                     ImGui.CloseCurrentPopup();
                 }
 
-                // Option: Status Element
-                if (ImGui.Selectable("Status Element"))
-                {
-                    //AddElement("Status Element");
-                    ImGui.CloseCurrentPopup();
-                }
-
-                // Option: Icon Element
-                if (ImGui.Selectable("Icon Element"))
-                {
-                    //AddElement("Icon Element");
-                    ImGui.CloseCurrentPopup();
-                }
-
-                // Option: Progress Element
-                if (ImGui.Selectable("Progress Element"))
-                {
-                    // AddElement("Progress Element");
-                    ImGui.CloseCurrentPopup();
-                }
 
                 ImGui.EndPopup();
             }
@@ -355,11 +420,8 @@ namespace AbsoluteRoleplay.Defines
                 imageElement = new ImageElement
                 {
                     id = elementID,
-                    url = string.Empty,
                     bytes = new byte[0],
                     tooltip = string.Empty,
-                    nsfw = false,
-                    triggering = false,
                     PosX = 100,
                     PosY = 100,
                     locked = true,
@@ -575,6 +637,184 @@ namespace AbsoluteRoleplay.Defines
                 }
             });
         }
+        /*
+        //Status Elements
+        private static void RenderDisplayStatusElement(int layoutID, int elementID, Plugin plugin, StatusElement statusElement)
+        {
+            // Get the current window position
+            var windowPos = ImGui.GetWindowPos();
+            var position = new Vector2(statusElement.PosX + windowPos.X, statusElement.PosY + windowPos.Y); // Adjust with window position
+            var size = new Vector2(statusElement.width, statusElement.height);
+
+            // Get the window's draw list
+            var drawList = ImGui.GetWindowDrawList();
+
+            // **Step 1**: Render the icon (this part doesn't change)
+            if (statusElement.icon != null)
+            {
+                ImGui.SetCursorPos(new Vector2(position.X - 75, position.Y - 75)); // Adjust cursor to place icon
+                ImGui.Image(statusElement.icon.ImGuiHandle, new Vector2(50, 50)); // Draw the icon with 50x50 size
+            }
+
+            // **Step 2**: Render the draggable shape, starting after the icon
+            var barStartPosition = new Vector2(position.X + 50, position.Y); // Start after the icon
+
+            // **Draw the shape relative to the window when locked**
+            if (statusElement.locked)
+            {
+                // This will move with the window when locked
+                drawList.AddRectFilled(barStartPosition, barStartPosition + new System.Numerics.Vector2(200, 20),
+                    ImGui.ColorConvertFloat4ToU32(new System.Numerics.Vector4(0.0f, 0.0f, 1.0f, 1.0f))); // Blue for the locked shape
+            }
+            else
+            {
+                // **Allow dragging the shape when unlocked**
+                var mousePos = ImGui.GetMousePos();
+
+                // Start dragging when the mouse is clicked inside the shape
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) &&
+                    mousePos.X >= barStartPosition.X && mousePos.X <= barStartPosition.X + 200 &&
+                    mousePos.Y >= barStartPosition.Y && mousePos.Y <= barStartPosition.Y + 20)
+                {
+                    statusElement.dragging = true;
+                    statusElement.dragOffset = mousePos - barStartPosition; // Store offset for dragging
+                }
+
+                // If dragging, update position
+                if (statusElement.dragging)
+                {
+                    if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
+                    {
+                        statusElement.PosX = mousePos.X - statusElement.dragOffset.X;
+                        statusElement.PosY = mousePos.Y - statusElement.dragOffset.Y;
+                    }
+                    else
+                    {
+                        statusElement.dragging = false; // Stop dragging on mouse release
+                    }
+                }
+
+                // Draw the shape at the new position when dragging (will be independent of the window)
+                drawList.AddRectFilled(new Vector2(statusElement.PosX, statusElement.PosY),
+                    new Vector2(statusElement.PosX + 200, statusElement.PosY + 20),
+                    ImGui.ColorConvertFloat4ToU32(new System.Numerics.Vector4(1.0f, 0.0f, 0.0f, 1.0f))); // Red for the unlocked shape
+            }
+
+            // **Step 3**: Render the "Edit" button and other UI elements after the shape
+            ImGui.SetCursorPos(new Vector2(barStartPosition.X + 220, position.Y)); // Position text after the shapes
+            ImGui.TextUnformatted(statusElement.name);
+
+            // Render the "Edit" button
+            ImGui.SameLine();
+            if (ImGui.Button($"Edit##{layoutID}_{elementID}"))
+            {
+                statusElement.modifying = true; // Enter editing mode
+            }
+
+            // Render the "Lock" or "Unlock" button after the "Edit" button
+            ImGui.SameLine();
+            if (statusElement.locked)
+            {
+                if (ImGui.Button($"Unlock##{layoutID}_{elementID}"))
+                {
+                    statusElement.locked = false; // Unlock the element
+                    CheckLockState(layoutID);
+                }
+            }
+            else
+            {
+                if (ImGui.Button($"Lock##{layoutID}_{elementID}"))
+                {
+                    statusElement.locked = true; // Lock the element
+                    statusElement.dragging = false; // Stop dragging if locked
+                    CheckLockState(layoutID);
+                }
+            }
+        }
+
+
+
+
+
+        private static void RenderEditableStatusElement(int layoutID, int elementID, Plugin plugin, StatusElement statusElement)
+        {
+            if (statusElement == null)
+            {
+                plugin.logger.Error($"RenderEditableStatusElement: Null StatusElement for LayoutID {layoutID}, ElementID {elementID}");
+                return; // Prevent crashes
+            }
+
+
+            try
+            {
+                var drawList = ImGui.GetWindowDrawList();
+                
+                float negativeWidth = Math.Abs(statusElement.totalNegative);
+                float positiveWidth = statusElement.totalPositive; // Positive value
+                float totalWidth = negativeWidth + positiveWidth;
+                Vector2 position = new Vector2(statusElement.PosX, statusElement.PosY);
+
+
+                Vector4 negativeColor = statusElement.negitiveCol;
+                if (ImGui.ColorEdit4($"##Text Input Color {layoutID}_{elementID}", ref negativeColor, ImGuiColorEditFlags.NoInputs))
+                {
+                    statusElement.negitiveCol = negativeColor;
+                }
+
+                ImGui.PushStyleColor(ImGuiCol.Text, statusElement.negitiveCol);
+                drawList.AddRectFilled(position - new System.Numerics.Vector2(negativeWidth, statusElement.height), position, ImGui.ColorConvertFloat4ToU32(statusElement.negitiveCol));
+                ImGui.PushStyleColor(ImGuiCol.Text, statusElement.positiveCol);
+                drawList.AddRectFilled(position - new System.Numerics.Vector2(negativeWidth, 0), position, ImGui.ColorConvertFloat4ToU32(statusElement.positiveCol));
+                var whiteRectPosition = new System.Numerics.Vector2(position.X - 3, position.Y - 3); // Offset by 3px
+                var whiteRectSize = new System.Numerics.Vector2(totalWidth + 6, statusElement.height + 6); // Add 3px to each side
+
+
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"RenderEditableTextElement: Exception occurred - {ex.Message}");
+            }
+            finally
+            {
+                ImGui.PopStyleColor();
+            }
+
+            ImGui.SameLine();
+            Vector4 color = statusElement.negitiveCol;
+            if (ImGui.ColorEdit4($"##Text Input Color {layoutID}_{elementID}", ref color, ImGuiColorEditFlags.NoInputs))
+            {
+                statusElement.negitiveCol = color;
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button($"Submit##{layoutID}_{elementID}"))
+            {
+                statusElement.modifying = false;
+            }
+
+            ImGui.SameLine();
+            if (ImGui.Button($"Delete##{layoutID}_{elementID}"))
+            {
+                showDeleteConfirmationPopup = true;
+                pendingLayoutID = layoutID;
+                pendingElementID = elementID;
+                ImGui.OpenPopup("Delete Confirmation");
+            }
+
+            RenderDeleteConfirmationPopup(() =>
+            {
+                if (layouts.ContainsKey(layoutID))
+                {
+                    var layout = layouts[layoutID];
+                    var elementToCancel = layout.elements.OfType<StatusElement>().FirstOrDefault(e => e.id == elementID);
+                    if (elementToCancel != null)
+                    {
+                        elementToCancel.canceled = true;
+                        plugin.logger.Error($"Marked Text Element {elementID} as canceled in Layout {layoutID}");
+                    }
+                }
+            });
+        }*/
 
 
         private static void RenderDisplayImageElement(int layoutID, Plugin plugin, ImageElement imageElement)
@@ -746,10 +986,10 @@ namespace AbsoluteRoleplay.Defines
         private static void RenderEditableImageElement( int layoutID, Plugin plugin, ImageElement imageElement)
         {
             _fileDialogManager.Draw(); //file dialog mainly for avatar atm. galleries later possibly.
-            string url = imageElement.url;
             float width = imageElement.width;
             float height = imageElement.height;
             bool hasTooltip = imageElement.hasTooltip;
+            bool maximizable = imageElement.maximizable;
             string tooltip = imageElement.tooltip;
             bool proportionalEditing = imageElement.proprotionalEditing;
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY));
@@ -789,6 +1029,10 @@ namespace AbsoluteRoleplay.Defines
             }
 
             ImGui.SetCursorPos(new Vector2(imageElement.PosX, imageElement.PosY + 50));
+            if(ImGui.Checkbox($"Maximizable##{layoutID}_{imageElement.id}", ref maximizable))
+            {
+                imageElement.maximizable = maximizable;
+            }
             if (ImGui.Checkbox($"Has Tooltip##{layoutID}_{imageElement.id}", ref hasTooltip))
             {
                 imageElement.hasTooltip = hasTooltip;

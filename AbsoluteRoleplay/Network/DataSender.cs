@@ -70,6 +70,8 @@ namespace Networking
         CreateItem = 54,
         SortItems = 55,
         FetchProfileItems = 56,
+        SendCustomTabs = 57,
+        SendCustomTabContents = 58,
     }
     public class DataSender
     {
@@ -328,7 +330,7 @@ namespace Networking
                 }
             }
         }
-        public static async void CreateProfile(int index, bool customLayout)
+        public static async void CreateProfile(int index)
         {
             if (ClientTCP.IsConnected())
             {
@@ -342,7 +344,7 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(index);
-                        buffer.WriteBool(customLayout);
+                       
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1080,11 +1082,93 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
+                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
                 }
             }
         }
-    
 
+        internal static async void SendCustomTabs(int profileIndex, string[] tabNames)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendCustomTabs);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(tabNames.Length);
+                        for(int i =0; i< tabNames.Length; i++)
+                        {
+                            buffer.WriteString(tabNames[i]);
+                            buffer.WriteInt(i);
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendCustomTabs: " + ex.ToString());
+                }
+            }
+        }
+        internal static async void SendTabContents(int profileIndex, int layoutID, List<LayoutElement> layoutElements)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendCustomTabContents);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(layoutID);
+                        buffer.WriteInt(layoutElements.Count);
+                        for (int i = 0; i < layoutElements.Count; i++) 
+                        { 
+                            if(layoutElements[i].GetType() == typeof(ImageElement))
+                            {
+                                ImageElement imgElement = (ImageElement)layoutElements[i];
+                                buffer.WriteInt(0);
+                                buffer.WriteInt(imgElement.id);
+                                buffer.WriteInt(imgElement.bytes.Length);
+                                buffer.WriteBytes(imgElement.bytes);
+                                buffer.WriteString(imgElement.tooltip);
+                                buffer.WriteFloat(imgElement.width);
+                                buffer.WriteFloat(imgElement.height);
+                                buffer.WriteFloat(imgElement.PosX);
+                                buffer.WriteFloat(imgElement.PosY);
+                                buffer.WriteBool(imgElement.maximizable);
+                            }
+                            if (layoutElements[i].GetType() == typeof(TextElement))
+                            { 
+                                TextElement txtElement = (TextElement)layoutElements[i];
+                                buffer.WriteInt(1);
+                                buffer.WriteInt(txtElement.id);
+                                buffer.WriteInt(txtElement.type);
+                                buffer.WriteString(txtElement.text);
+                                buffer.WriteString(txtElement.color.X.ToString() + "," + txtElement.color.Y.ToString() + "," + txtElement.color.Z.ToString() + "," + txtElement.color.W.ToString());
+                                buffer.WriteFloat(txtElement.PosX);
+                                buffer.WriteFloat(txtElement.PosY);
+                            }
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendCustomTabs: " + ex.ToString());
+                }
+            }
+        }
     }
 }
