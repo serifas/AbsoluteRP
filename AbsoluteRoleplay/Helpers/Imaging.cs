@@ -310,6 +310,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             return ImageToByteArray(blurred);
         }
+       
         public static System.Drawing.Image ScaleImage(System.Drawing.Image image, int maxWidth, int maxHeight)
         {
             int newWidth, newHeight;

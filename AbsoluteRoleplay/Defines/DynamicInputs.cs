@@ -26,6 +26,7 @@ namespace AbsoluteRoleplay.Defines
     public class Layout
     {
         public int id { get; set; }
+        public string name { get; set; }
         public List<LayoutElement> elements { get; set; } = new List<LayoutElement>();
         public bool loadTextElement { set; get; }
         public bool loadTextMultilineElement { set; get; }
@@ -42,6 +43,7 @@ namespace AbsoluteRoleplay.Defines
         public bool canceled { set; get; } = false;
         public bool dragging { set; get; }
         public bool resizing { set; get; }
+        public int type {  set; get; }
         public Vector2 dragOffset { get; set; }
     }
     public class TextElement : LayoutElement
@@ -49,6 +51,11 @@ namespace AbsoluteRoleplay.Defines
         public int type { set; get; }
         public string text { set; get; }
         public Vector4 color { set; get; }
+    }
+    public class ImageData
+    {
+        public byte[] bytes { set; get; }
+        public ImageElement image { set; get; }
     }
     public class ImageElement : LayoutElement
     {
@@ -122,6 +129,7 @@ namespace AbsoluteRoleplay.Defines
                 {
                     id = layoutID,
                     elements = new List<LayoutElement>()
+                    
                 };
             }
 
@@ -319,7 +327,6 @@ namespace AbsoluteRoleplay.Defines
                 currentLayout.elements.Add(new ImageElement
                 {
                     id = newId,
-                    bytes = null,
                     tooltip = "",
                     width = 100,  // Default width
                     height = 100, // Default height
@@ -420,7 +427,6 @@ namespace AbsoluteRoleplay.Defines
                 imageElement = new ImageElement
                 {
                     id = elementID,
-                    bytes = new byte[0],
                     tooltip = string.Empty,
                     PosX = 100,
                     PosY = 100,
@@ -1113,6 +1119,7 @@ namespace AbsoluteRoleplay.Defines
                 }
                 else
                 {
+                    imageElement.bytes = imageBytes;
                     imageElement.textureWrap = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 1000, 1000)).Result;
                     imageElement.width = imageElement.textureWrap.Width;
                     imageElement.height = imageElement.textureWrap.Height;

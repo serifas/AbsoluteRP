@@ -71,7 +71,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
         private int customTabsCount = 0; // Current number of tabs
         private int tabToDeleteIndex = -1; // Index of the tab to delete
         private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
-        public static List<Layout> layouts = new List<Layout>();
         public static int currentElementID = 0;
         public static bool customTabSelected = false;
         public static bool Locked = false;
@@ -517,15 +516,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ClearUI();
                 customTabSelected = true;
                 // Ensure the layout exists
-                var currentLayout = layouts.FirstOrDefault(l => l.id == index);
+                var currentLayout = DynamicInputs.layouts.Values.FirstOrDefault(l => l.id == index);
                 if (currentLayout == null)
                 {
                     currentLayout = new Layout
                     {
                         id = index,
+                        name = tabName,
                         elements = new List<LayoutElement>()
+
                     };
-                    layouts.Add(currentLayout);
+                    int ind = DynamicInputs.layouts.Count;
+                    DynamicInputs.layouts.Add(ind, currentLayout);
                 }
                 if (Locked)
                 {
@@ -1078,11 +1080,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
 
 
-                DataSender.SendCustomTabs(currentProfile, availableTabs);
-                for(int i =0; i < layouts.Count; i++)
-                {
-                    DataSender.SendTabContents(currentProfile, layouts[i].id, layouts[i].elements);
-                }
+
+                DataSender.SendLayouts(currentProfile, DynamicInputs.layouts);
 
 
                 DataSender.SubmitProfileBio(currentProfile,
