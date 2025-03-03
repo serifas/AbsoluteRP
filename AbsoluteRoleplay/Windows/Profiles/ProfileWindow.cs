@@ -19,6 +19,7 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using AbsoluteRoleplay.Helpers;
 using K4os.Compression.LZ4.Internal;
+using static AbsoluteRoleplay.UI;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -500,8 +501,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static void ResetOnChangeOrRemoval()
         {
             isPrivate = true;
-            
-            for(int i = 0; i < HooksTab.hookCount; i++)
+
+            for (int i = 0; i < HooksTab.hookCount; i++)
             {
                 HooksTab.hookExists[i] = false;
                 HooksTab.HookNames[i] = string.Empty;
@@ -510,10 +511,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
             GalleryTab.ResetGallery();
             StoryTab.ResetStory();
             oocInfo = string.Empty;
-            for(int i = 0; i < BioTab.bioFieldsArr.Length; i++)
+
+            // Ensure bio fields are cleared
+            for (int i = 0; i < BioTab.bioFieldsArr.Length; i++)
             {
                 BioTab.bioFieldsArr[i] = string.Empty;
             }
+
+            // Clear descriptors, fields, and personalities
+            BioTab.descriptors.Clear();
+            BioTab.fields.Clear();
+            BioTab.personalities.Clear();  // <-- Ensure custom traits are cleared
+
             currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
             BioTab.currentAlignment = 9;
             BioTab.currentPersonality_1 = 26;

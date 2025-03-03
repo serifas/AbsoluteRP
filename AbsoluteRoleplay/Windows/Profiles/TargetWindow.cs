@@ -332,15 +332,25 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             ImGui.SetTooltip(personality3Tooltip);
                         }
                     }
-                    foreach (trait personality in personalities)
+                    ImGui.Spacing();
+                    using var table = ImRaii.Table("table_name", 3);
+                    if (table)
                     {
-                        ImGui.Spacing();
-                        ImGui.Image(personality.icon.icon.ImGuiHandle, alignmentSize);
-                        if (ImGui.IsItemHovered())
+                        ImGui.TableSetupColumn("Column 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                        ImGui.TableSetupColumn("Column 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                        ImGui.TableSetupColumn("Column 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+
+                        foreach (trait personality in personalities)
                         {
-                            ImGui.SetTooltip(personality.name + ": \n" + personality.description);
+                            ImGui.TableNextColumn();
+                            ImGui.Image(personality.icon.icon.ImGuiHandle, alignmentSize);
+                            if (ImGui.IsItemHovered())
+                            {
+                                ImGui.SetTooltip(personality.name + ": \n" + personality.description);
+                            }
                         }
                     }
+                  
                 }
             }
 

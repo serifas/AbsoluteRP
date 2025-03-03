@@ -139,7 +139,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     {
                         fields.RemoveAll(p => p.index == field.index);
                     }
-                    if (ImGui.InputTextMultiline($"##FieldDescription{field.index}", ref fieldDescription, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5)))
+                    if (ImGui.InputTextMultiline($"##FieldDescription{field.index}", ref fieldDescription, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 20)))
                     {
                         field.description = fieldDescription;
                     }
@@ -170,10 +170,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                         description = "Description"
                     });
                 }
-                foreach (var personality in personalities.ToList()) // Iterate over a copy of the list
+                for (int i =0; i < personalities.Count; i++)
                 {
-                    LoadCustomPersonality(plugin, personality);
+                    LoadCustomPersonality(plugin, personalities[i]);
                 }
+                
             }
         }
         public static void LoadCustomPersonality(Plugin plugin, trait personality)
@@ -201,7 +202,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             {
                 personality.name = name;
             }
-            if (ImGui.InputTextMultiline($"##Description{personality.index}", ref description, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5)))
+            if (ImGui.InputTextMultiline($"##Description{personality.index}", ref description, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 20)))
             {
                 personality.description = description;
             }
