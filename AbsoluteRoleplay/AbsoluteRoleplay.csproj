@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Dalamud.NET.Sdk/11.2.0">
     <PropertyGroup>
         <Authors>Lynie</Authors>
         <Version>0.0.0.20</Version>
@@ -9,21 +9,8 @@
         <IsPackable>false</IsPackable>
     </PropertyGroup>
     <PropertyGroup>
-        <TargetFramework>net8.0-windows</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-        <Platforms>AnyCPU;x64</Platforms>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <PlatformTarget>x64</PlatformTarget>
-        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    </PropertyGroup>
-
-    <PropertyGroup>
-        <DalamudLibPath Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(appdata)\XIVLauncher\addon\Hooks\dev\</DalamudLibPath>
-        <DalamudLibPath Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(HOME)/.xlcore/dalamud/Hooks/dev/</DalamudLibPath>
-        <DalamudLibPath Condition="$([MSBuild]::IsOSPlatform('OSX'))">$(HOME)/Library/Application Support/XIV on Mac/dalamud/Hooks/dev/</DalamudLibPath>
-        <DalamudLibPath Condition="$(DALAMUD_HOME) != ''">$(DALAMUD_HOME)/</DalamudLibPath>
-        <AssemblySearchPaths>$(AssemblySearchPaths);$(DalamudLibPath)</AssemblySearchPaths>
+        <Platforms>x64</Platforms>
     </PropertyGroup>
 
     <ItemGroup>
@@ -34,22 +21,12 @@
 
     <!-- Explicit dependencies -->
     <ItemGroup>
-        <Reference Include="Dalamud" PrivateAssets="none">
-            <HintPath>$(DalamudLibPath)/Dalamud.dll</HintPath>
-            <Private>false</Private>
-        </Reference>
-        <Reference Include="ImGui.NET" Private="false" />
-        <Reference Include="FFXIVClientStructs" Private="false" />
-        <PackageReference Include="DalamudPackager" Version="11.0.0" />
         <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
         <PackageReference Include="K4os.Compression.LZ4.Legacy" Version="1.3.8" />
-        <PackageReference Include="Lumina" Version="5.6.0" />
-        <PackageReference Include="Lumina.Excel" Version="7.1.3" />
         <PackageReference Include="MessagePack" Version="3.1.1" />
         <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.1" />
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
         <PackageReference Include="NReco.Logging.File" Version="1.2.2" />
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
         <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
@@ -60,268 +37,7 @@
     <!-- Post-build task to ensure all referenced DLLs are copied -->
 
     <ItemGroup>
-    
-        <!--Common-->
-        <None Update="UI\common\blank.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\disc_btn.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\kofi_btn.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\patreon_btn.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\section_connections.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\section_events.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\section_profiles.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\section_systems.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\spacer.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <!--Profiles-->
-        <None Update="UI\common\move.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\avatar_holder.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\pin.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\unpin.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\hide.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\display.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\dock.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\undock.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\edit.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\move.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\dynamic\move_cancel.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\npc_bookmarks.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\npc_create.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\profile_bookmarks.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\profile_create.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\lawful_good.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\lawful_neutral.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\lawful_evil.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\neutral_good.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\true_neutral.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\neutral_evil.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\chaotic_good.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\chaotic_neutral.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\alignments\chaotic_evil.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\galleries\nsfw.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\galleries\nsfw_trigger.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\galleries\picturetab.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\galleries\trigger.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\abrasive.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\absentminded.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\aggressive.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\artistic.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\cautious.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\charming.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\compassionate.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\daredevil.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\dishonest.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\dutiful.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\easygoing.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\eccentric.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\honest.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\knowledgable.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\optimistic.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\polite.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\relentless.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\resentful.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\reserved.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\romantic.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\spiritual.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\superior.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\tormented.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\tough.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\wild.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\worldly.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\profiles\personalities\none.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\systems\systems_combat.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\systems\systems_stats.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\targets\assign_connection.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\targets\bookmark.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\targets\group_invite.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\targets\profile_view.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\campaign.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\event.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\fc.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\group.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\personal.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\venue.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\campaign_big.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\event_big.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\fc_big.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\group_big.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\personal_big.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\listings\venue_big.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <!--Connection-->
-        <None Update="UI\common\connect.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\blank.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <None Update="UI\common\invTab.png">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </None>
-        <!--Fonts-->
-
-
+        <None Include="$(ProjectDir)UI\**" CopyToOutputDirectory="Always" />
     </ItemGroup>
 
 
