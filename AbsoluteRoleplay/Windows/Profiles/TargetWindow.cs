@@ -49,6 +49,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static byte[] existingAvatarBytes;
         public static string currentTab = null;
         public static bool isActive = currentTab == "Bio";
+        public static int alignment = 9;
         public static string[] imageTooltips = new string[30];
         //BIO VARS
         public static IDalamudTextureWrap alignmentImg, personalityImg1, personalityImg2, personalityImg3;
@@ -291,6 +292,15 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     ImGui.Spacing();
                     ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
+                }
+                if(showAlignment == true)
+                {
+                    ImGui.Text("ALIGNMENT:");
+                    ImGui.Image(alignmentImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 38));
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip(UI.AlignmentName(alignment));
+                    }
                 }
                 foreach (var field in fields)
                 {
