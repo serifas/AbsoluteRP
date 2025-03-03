@@ -87,7 +87,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     for (var g = 0; g < galleryImageCount; g++)
                     {
                         //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
-                        DataSender.SendGalleryImage(ProfileWindow.currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
+                        DataSender.SendGalleryImage(ProfileWindow.currentProfileIndex, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
                     }
                 }
                 ImGui.Text("Is this a possible trigger ?");
@@ -96,7 +96,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     for (var g = 0; g < galleryImageCount; g++)
                     {
                         //same for triggering, we don't want to lose this info if the user is forgetful
-                        DataSender.SendGalleryImage(ProfileWindow.currentProfile, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
+                        DataSender.SendGalleryImage(ProfileWindow.currentProfileIndex, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
                     }
                 }
                 ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
@@ -124,7 +124,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                         ImageExists[i] = false;
                         ReorderGallery = true;
                         //remove the image immediately once pressed
-                        DataSender.RemoveGalleryImage(ProfileWindow.currentProfile, plugin.playername, plugin.playerworld, i, galleryImageCount);
+                        DataSender.RemoveGalleryImage(ProfileWindow.currentProfileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
                     }
                 }
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

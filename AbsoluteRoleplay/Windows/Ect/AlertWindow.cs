@@ -38,7 +38,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             if (length > 400 && increment == true)
             {
                 increment = false;
-                pg.CloseAlertWIndow();
+                pg.CloseAlertWindow();
             }
             // Add other UI elements here
             Misc.AddIncrementBar(ImGui.GetWindowDrawList(), length, alertColor);

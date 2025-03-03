@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
 using System;
 using Networking;
+using Dalamud.Interface.Colors;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -32,7 +33,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             if (pg.IsOnline())
             {
-                Misc.SetTitle(pg, true, "Personal Notes");
+                Misc.SetTitle(pg, true, "Personal Notes", ImGuiColors.TankBlue);
 
                 ImGui.Text("Here you can add personal notes about this player or profile");
                 ImGui.InputTextMultiline("##info", ref profileNotes, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - ImGui.GetWindowSize().Y / 2));

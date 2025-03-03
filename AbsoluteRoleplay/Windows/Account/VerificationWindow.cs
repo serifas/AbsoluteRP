@@ -7,6 +7,7 @@ using Dalamud.Interface.GameFonts;
 using Networking;
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Helpers;
+using Dalamud.Interface.Colors;
 
 namespace AbsoluteRoleplay.Windows.Account
 {
@@ -29,7 +30,7 @@ namespace AbsoluteRoleplay.Windows.Account
         }
         public override void Draw()
         {
-            Misc.SetTitle(pg, false, "Verification");
+            Misc.SetTitle(pg, false, "Verification", ImGuiColors.TankBlue);
             //okay that's done.
             ImGui.Text("We sent a verification key to the email provided. \nPlease provide it below...");
             ImGui.Spacing();

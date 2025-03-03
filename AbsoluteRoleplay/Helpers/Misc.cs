@@ -1,15 +1,20 @@
+using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.ImGuiFontChooserDialog;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin;
+using Dalamud.Storage.Assets;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
+using Lumina.Excel.Sheets;
 using Microsoft.Extensions.Configuration;
 using OtterGui;
 using System;
@@ -33,6 +38,46 @@ namespace AbsoluteRoleplay
         public static float _modVersionWidth;
         public static int loaderIndex = 0;
         private static Random random = new Random();
+
+        public static List<ImFontPtr> availableFonts = new();
+        public static ImFontPtr selectedFont;
+        private static int selectedFontIndex = 0;
+        private static List<string> fontNames = new();
+        private static bool fontsLoaded = false;
+
+        public static void LoadFonts(Plugin plugin)
+        {
+            availableFonts.Clear();
+        }
+
+
+        public static void LoadFontSelector()
+        {
+
+            if (ImGui.BeginCombo("Select Font", selectedFontIndex >= 0 && selectedFontIndex < availableFonts.Count ? $"Font {selectedFontIndex}" : "Select a Font"))
+            {
+                for (int i = 0; i < availableFonts.Count; i++)
+                {
+                    bool isSelected = (selectedFontIndex == i);
+                    if (ImGui.Selectable($"Font {i}", isSelected))
+                    {
+                        selectedFontIndex = i;
+                        selectedFont = availableFonts[i];
+                    }
+                    if (isSelected)
+                    {
+                        ImGui.SetItemDefaultFocus();
+                    }
+                }
+                ImGui.EndCombo();
+            }
+
+            ImGui.PushFont(selectedFont);
+            ImGui.Text("Sample Text in Selected Font");
+            ImGui.PopFont();
+        }
+
+
         public static float ConvertToPercentage(float value)
         {
             // Clamp the value between 0 and 100
@@ -81,6 +126,24 @@ namespace AbsoluteRoleplay
             ImGui.InputTextWithHint(label, hint, ref input, length, flags);
             ImGui.PopItemWidth();
         }
+        public static bool DrawXCenteredInput(string label, string id, ref string input, uint length)
+        {
+
+            var size = ImGui.CalcTextSize(label).X + 400;
+
+            var windowSize = ImGui.GetWindowSize();
+
+            // Set the cursor position to center the button horizontally
+            float xPos = (windowSize.X - size) / 2; // Center horizontally
+            var currentCursorY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(xPos, currentCursorY));
+            ImGui.Text(label);
+            ImGui.SameLine();
+            ImGui.PushItemWidth(350);
+            var centeredInput = ImGui.InputText("##ID" + id, ref input, length);
+            ImGui.PopItemWidth();
+            return centeredInput;
+        }
         public static void EditImage(Plugin plugin, FileDialogManager _fileDialogManager, bool avatar, int imageIndex)
         {
             _fileDialogManager.OpenFileDialog("Select Image", "Image{.png,.jpg}", (s, f) =>
@@ -93,7 +156,7 @@ namespace AbsoluteRoleplay
                 if (avatar == true)
                 {
                     BioTab.avatarBytes = File.ReadAllBytes(imagePath);
-                    BioTab.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(BioTab.avatarBytes).Result;
+                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes( BioTab.avatarBytes, 100,100)).Result;
                 }
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
 
@@ -104,8 +167,15 @@ namespace AbsoluteRoleplay
             var currentCursorY = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(center, currentCursorY));
             ImGui.PushItemWidth(size.X);
-            var button  = ImGui.Button(label);
+            var button = DrawButton(label);
             ImGui.PopItemWidth();
+            return button;
+        }
+        public static bool DrawButton(string label)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.3f, 0.3f, 0.3f, 1.0f)); // Dark gray
+            var button = ImGui.Button(label);
+            ImGui.PopStyleColor();
             return button;
         }
         public static void DrawCenteredButtonTable(int rows, List<ProfileTab> profileTabs)
@@ -156,34 +226,33 @@ namespace AbsoluteRoleplay
 
         
         //sets a title at the center of the window and resets the font back to default afterwards
-        public static void SetTitle(Plugin plugin, bool center, string title)
+        public static void SetTitle(Plugin plugin, bool center, string title, Vector4 borderColor)
         {
             Jupiter = Plugin.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Jupiter, 35));
             
-            if (center == true){
-                int NameWidth = title.Length * 10;
-                var decidingWidth = Math.Max(500, ImGui.GetWindowWidth());
-                var offsetWidth = (decidingWidth - NameWidth) / 2;
-                var offsetVersion = title.Length > 0
-                    ? _modVersionWidth + ImGui.GetStyle().ItemSpacing.X + ImGui.GetStyle().WindowPadding.X
-                    : 0;
-                var offset = Math.Max(offsetWidth, offsetVersion);
-                if (offset > 0)
-                {
-                    ImGui.SetCursorPosX(offset);
-                }
-            }
+      
 
 
-            using var col = ImRaii.PushColor(ImGuiCol.Border, ImGuiColors.DalamudViolet);
+            using var col = ImRaii.PushColor(ImGuiCol.Border, borderColor);
             using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * ImGuiHelpers.GlobalScale);
             using var font = Jupiter.Push();
+            if(center == true)
+            {
+                var size = ImGui.CalcTextSize(title);
+
+                var windowSize = ImGui.GetWindowSize();
+
+                // Set the cursor position to center the button horizontally
+                float xPos = (windowSize.X - size.X -15) / 2; // Center horizontally
+                ImGui.SetCursorPosX(xPos);
+            }
             ImGuiUtil.DrawTextButton(title, Vector2.Zero, 0);
 
             using var defInfFontDen = ImRaii.DefaultFont();
             using var defCol = ImRaii.DefaultColors();
             using var defStyle = ImRaii.DefaultStyle();
         }
+
 
 
 

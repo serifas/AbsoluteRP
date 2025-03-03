@@ -30,22 +30,24 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             ImGui.SameLine();
             if (ImGui.ImageButton(MainPanel.connectionsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.password.ToString());
+                DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.password.ToString(), true);
             }
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("Connections");
             }
 
-            if (ImGui.ImageButton(MainPanel.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+            using (OtterGui.Raii.ImRaii.Disabled(true))
             {
-                MainPanel.viewListings = MainPanel.CurrentElement();
+                if (ImGui.ImageButton(MainPanel.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+                {
+                    MainPanel.viewListings = MainPanel.CurrentElement();
+                }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("Listings");
+                ImGui.SetTooltip("Listings - WIP");
             }
-
             ImGui.SameLine();
 
             using (OtterGui.Raii.ImRaii.Disabled(true))
@@ -59,13 +61,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip("Systems - WIP");
-            }
-            var chatPos = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, chatPos));
-            if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
-            {
-                pluginInstance.ToggleChatWindow();
-            }
+            }        
 
             var optionPos = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(buttonWidth / 14, optionPos));

@@ -44,18 +44,18 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
             {
                 ImGui.SetTooltip("View profile bookmarks");
             }
+            using (OtterGui.Raii.ImRaii.Disabled(true))
+            {
                 if (ImGui.ImageButton(MainPanel.npcImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     DataSender.FetchProfiles();
-                    DataSender.FetchProfile(ProfileWindow.currentProfile);
-                    pluginInstance.OpenInventoryWindow();
+                    DataSender.FetchProfile(ProfileWindow.currentProfileIndex);
                 }
-
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip("Inventory");
-                }
-
+            }
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.SetTooltip("Manage your Npcs - WIP");
+            }
 
 
             ImGui.SameLine();
@@ -73,6 +73,23 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip("View NPC bookmarks - WIP");
+            }
+            var optionPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, optionPos));
+            if (ImGui.Button("Options", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+            {
+                pluginInstance.OpenOptionsWindow();
+            }
+            var logoutPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, logoutPos));
+            if (ImGui.Button("Logout", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+            {
+                pluginInstance.newConnection = false;
+                pluginInstance.CloseAllWindows();
+                pluginInstance.OpenMainPanel();
+                MainPanel.login = MainPanel.CurrentElement();
+                MainPanel.status = "Logged Out";
+                MainPanel.statusColor = new Vector4(255, 0, 0, 255);
             }
         }
     }

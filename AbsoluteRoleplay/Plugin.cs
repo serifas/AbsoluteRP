@@ -31,12 +31,13 @@ using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using System.Timers;
 using Lumina.Excel.Sheets;
-using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.MainPanel;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
-using AbsoluteRoleplay.Windows.Inventory;
+using OtterGui.Filesystem;
+using AbsoluteRoleplay.Windows.MainPanel.Views;
+using Dalamud.Interface;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -50,14 +51,13 @@ namespace AbsoluteRoleplay
         public string playername = string.Empty;
         public string playerworld = string.Empty;
         private const string CommandName = "/arp";
-        
         public static ImGuiViewportPtr viewport = ImGui.GetMainViewport();
 
         public float screenWidth = viewport.WorkSize.X;
         public float screenHeight = viewport.WorkSize.Y;
         //WIP
         private const string ChatToggleCommand = "/arpchat";
-
+        public IPlayerCharacter playerCharacter;
         public bool loginAttempted = false;
         private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
@@ -65,6 +65,7 @@ namespace AbsoluteRoleplay
         private IDtrBarEntry? chatBarEntry;
         public static bool BarAdded = false;
         internal static float timer = 0f;
+        public static UiBuilder builder;
         public static IGameGui GameGUI;
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
@@ -76,6 +77,7 @@ namespace AbsoluteRoleplay
         [PluginService] internal static IClientState ClientState { get; private set; } = null;
         [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
         [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
+        [PluginService] internal static IChatGui chatgui { get; private set; } = null;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -86,28 +88,23 @@ namespace AbsoluteRoleplay
         public static Plugin? Ui { get; private set; }
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         //Windows
-       public OptionsWindow OptionsWindow { get; init; }
+        public OptionsWindow OptionsWindow { get; init; }
         public NotesWindow NotesWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
         public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
-        private ListingsWindow ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
         private ProfileWindow ProfileWindow { get; init; }
         private BookmarksWindow BookmarksWindow { get; init; }
-        private ARPChatWindow ArpChatWindow { get; init; }
         private TargetWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
-        public ItemTooltip ItemTooltip { get; init; }
-        public InventoryWindow InventoryWindow { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
         //logger for printing errors and such
         public Logger logger = new Logger();
-
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -131,9 +128,11 @@ namespace AbsoluteRoleplay
             IDataManager dataManager,
             IObjectTable objectTable,
             IDtrBar dtrBar,
-            IGameGui gameGui
+            IGameGui gameGui,
+            IChatGui ChatGui
             )
         {
+            
             // Wrap the original service
             this.dtrBar = dtrBar;
             DataManager = dataManager;
@@ -147,6 +146,7 @@ namespace AbsoluteRoleplay
             ContextMenu = contextMenu;
             Framework = framework;
             GameGUI = gameGui;
+            chatgui = ChatGui;
             ClientTCP.plugin = this;
             WindowOperations.plugin = this;
             //unhandeled exception handeling - probably not really needed anymore.
@@ -163,7 +163,6 @@ namespace AbsoluteRoleplay
             {
                 HelpMessage = "opens the plugin window."
             });
-
             //init our windows
             OptionsWindow = new OptionsWindow(this);
             MainPanel = new MainPanel(this);
@@ -173,18 +172,14 @@ namespace AbsoluteRoleplay
             BookmarksWindow = new BookmarksWindow(this);
             TargetWindow = new TargetWindow(this);
             VerificationWindow = new VerificationWindow(this);
-            ArpChatWindow = new ARPChatWindow(this);
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
             AlertWindow = new AlertWindow(this);
-            InventoryWindow = new InventoryWindow(this);
-            ListingWindow = new ListingsWindow(this);
-            ItemTooltip = new ItemTooltip(this);
             Configuration.Initialize(PluginInterface);
-
+            
             //add the windows to the windowsystem
             WindowSystem.AddWindow(OptionsWindow);
             WindowSystem.AddWindow(MainPanel);
@@ -200,10 +195,6 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
             WindowSystem.AddWindow(AlertWindow);
-            WindowSystem.AddWindow(ListingWindow);
-            WindowSystem.AddWindow(ItemTooltip);
-            WindowSystem.AddWindow(InventoryWindow);
-            WindowSystem.AddWindow(ArpChatWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
 
@@ -214,16 +205,17 @@ namespace AbsoluteRoleplay
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
             ClientState.Logout += OnLogout;
-            ClientState.Login += LoadConnection;
+            ClientState.Login += LoadConnection;            
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
             plugin = this;
-
             if (IsOnline())
             {
+                playerCharacter = ClientState.LocalPlayer;
                 LoadConnection();
             }
         }
+
 
         private void CheckConnection(object? sender, ElapsedEventArgs e)
         {
@@ -243,7 +235,6 @@ namespace AbsoluteRoleplay
 
         public void OpenAndLoadProfileWindow()
         {
-
             ProfileWindow.TabOpen[TabValue.Bio] = true;
             ProfileWindow.TabOpen[TabValue.Hooks] = true;
             ProfileWindow.TabOpen[TabValue.Story] = true;
@@ -252,7 +243,7 @@ namespace AbsoluteRoleplay
             ProfileWindow.ResetOnChangeOrRemoval();
             OpenProfileWindow();
             DataSender.FetchProfiles();
-            DataSender.FetchProfile(ProfileWindow.currentProfile);
+            DataSender.FetchProfile(ProfileWindow.currentProfileIndex);
         }
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
@@ -307,15 +298,6 @@ namespace AbsoluteRoleplay
                     DataSender.RequestTargetProfileByCharacter(name, worldname);
                 },
             });
-            args.AddMenuItem(new MenuItem
-            {
-                Name = "Absolute RP Trade",
-                PrefixColor = 56,
-                Prefix = SeIconChar.Gil,
-                OnClicked = _ => {
-                    
-                },
-            });
 
         }
 
@@ -344,16 +326,6 @@ namespace AbsoluteRoleplay
                 OnClicked = _ => {
 
                     DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
-                },
-            });
-            args.AddMenuItem(new MenuItem
-            {
-                Name = "Absolute RP Trade",
-                PrefixColor = 56,
-                Prefix = SeIconChar.Gil,
-                OnClicked = _ => {
-
-                   // DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
         }
@@ -412,15 +384,7 @@ namespace AbsoluteRoleplay
             });
         }
 
-        /// <summary>
-        /// 
-        /// 
-
-
-
-
-        /// </summary>
-        /// <param name="args"></param>
+        
 
 
         private void BookmarkProfile(IMenuItemClickedArgs args)
@@ -456,7 +420,7 @@ namespace AbsoluteRoleplay
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
             ConnectionsWindow.currentListing = 2;
-            entry.OnClick = () => DataSender.RequestConnections(username, password);
+            entry.OnClick = () => DataSender.RequestConnections(username, password, true);
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
             statusString.AddText("\uE070"); //Boxed question mark (Mario brick)
@@ -502,9 +466,6 @@ namespace AbsoluteRoleplay
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
-            ListingWindow?.Dispose();
-            InventoryWindow?.Dispose();
-            ItemTooltip?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -529,6 +490,9 @@ namespace AbsoluteRoleplay
             ToggleMainUI();
         }
 
+        
+
+
         public void CloseAllWindows()
         {
             foreach (Window window in WindowSystem.Windows)
@@ -552,7 +516,12 @@ namespace AbsoluteRoleplay
             return loggedIn; //return our logged in status
         }
 
-        private void DrawUI() => WindowSystem.Draw();
+
+        private void DrawUI()
+        {
+            WindowSystem.Draw();
+         //   PlayerInteraction.GetConnectionsInRange(1000, ClientState.LocalPlayer);
+        }
         public void ToggleConfigUI() => OptionsWindow.Toggle();
         public void ToggleMainUI() => MainPanel.Toggle();
 
@@ -571,19 +540,13 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
-        public void OpenListingsWindow() => ListingWindow.IsOpen = true;
-        public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
-        public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
-        public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
-        public void ToggleChatWindow() => ArpChatWindow.Toggle();
         public void OpenAlertWindow()
         {
-
             AlertWindow.increment = true;
             AlertWindow.length = 0;
             AlertWindow.IsOpen = true;
         }
-        public void CloseAlertWIndow() => AlertWindow.IsOpen = false;
+        public void CloseAlertWindow() => AlertWindow.IsOpen = false;
 
         internal void UpdateStatus()
         {
@@ -604,6 +567,7 @@ namespace AbsoluteRoleplay
         private IntPtr lastTargetAddress = IntPtr.Zero;
         public static bool lockedtarget = false;
         private bool openItemTooltip;
+        public bool loggedIn;
 
         public void Update(IFramework framework)
         {
@@ -623,7 +587,6 @@ namespace AbsoluteRoleplay
                     }
                 }
             }
-
             // Get the current target, prioritizing MouseOverTarget if available
             var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
             if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)

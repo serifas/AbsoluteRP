@@ -80,20 +80,46 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         }
         public static void RemoveChapter(int index)
         {
-            storyChapterCount--; //reduce our chapter count
-            storyChapterExists[index] = false; //set the image to not exist
-            ChapterNames[index] = string.Empty; //reset the name
-            ChapterContents[index] = string.Empty; //reset the contents
-            //if the story behind it exists
-            if (storyChapterExists[index - 1] == true)
-            {
-                //we switch to that chapter to view it instead.
-                currentChapter = index - 1;
-                viewChapter[index - 1] = true;
-            }
-            ReorderChapters = true; //finally reorder chapters
+            if (index < 0 || index >= ChapterNames.Length)
+                return; // Prevent invalid index access.
 
+            if (storyChapterCount < 0)
+                return; // Ensure there are chapters to remove.
+
+            // Shift all elements after the removed chapter
+            for (int i = index; i < storyChapterCount; i++)
+            {
+                ChapterNames[i] = ChapterNames[i + 1];
+                ChapterContents[i] = ChapterContents[i + 1];
+                storyChapterExists[i] = storyChapterExists[i + 1];
+                viewChapter[i] = viewChapter[i + 1];
+            }
+
+            // Clear the last slot since everything shifted
+            ChapterNames[storyChapterCount] = string.Empty;
+            ChapterContents[storyChapterCount] = string.Empty;
+            storyChapterExists[storyChapterCount] = false;
+            viewChapter[storyChapterCount] = false;
+
+            // Reduce chapter count
+            storyChapterCount--;
+
+            // Set the new current chapter
+            if (storyChapterCount >= 0)
+            {
+                currentChapter = Math.Max(0, index - 1);
+                viewChapter[currentChapter] = true;
+            }
+            else
+            {
+                // No more chapters exist
+                currentChapter = 0;
+            }
+
+            ReorderChapters = true;
         }
+
+
 
         public static void ReorderChapterData(Plugin plugin)
         {

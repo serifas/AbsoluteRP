@@ -7,6 +7,7 @@ using System;
 using System.Net.Http;
 using System.Numerics;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Colors;
 namespace AbsoluteRoleplay.Windows.Ect
 {
     public class TOS : Window, IDisposable
@@ -38,11 +39,11 @@ namespace AbsoluteRoleplay.Windows.Ect
         public override async void Draw()
         {
             //draw TOS
-            Misc.SetTitle(pg, true, "Terms of Service");
+            Misc.SetTitle(pg, true, "Terms of Service", ImGuiColors.TankBlue);
             ImGuiHelpers.SafeTextWrapped(ToS1);
             ImGuiHelpers.SafeTextWrapped(ToS2);
             //draw rules
-            Misc.SetTitle(pg, true, "Rules");
+            Misc.SetTitle(pg, true, "Rules", ImGuiColors.TankBlue);
             ImGuiHelpers.SafeTextWrapped(Rules1);
             ImGuiHelpers.SafeTextWrapped(Rules2);
         }

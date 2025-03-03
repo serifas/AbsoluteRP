@@ -37,7 +37,7 @@ namespace AbsoluteRoleplay.Windows.Ect
         public static bool isAdmin;
         public Configuration config;
         public Vector2 windowPos;
-        public static Item item;
+        public static ItemDefinition item;
 
         public Plugin plugin;
 

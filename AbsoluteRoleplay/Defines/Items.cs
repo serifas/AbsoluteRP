@@ -8,7 +8,7 @@ using static AbsoluteRoleplay.Defines.Items;
 namespace AbsoluteRoleplay.Defines
 {
 
-    public  class Item
+    public  class ItemDefinition
     {
         public string name { get; set; }
         public string description { get; set; }

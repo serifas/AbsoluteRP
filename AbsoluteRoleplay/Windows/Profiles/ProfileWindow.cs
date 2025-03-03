@@ -13,10 +13,12 @@ using Dalamud.Interface.Textures.TextureWraps;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
-using AbsoluteRoleplay.Windows.Inventory;
-using AbsoluteRoleplay.Defines;
 using System.Transactions;
 using JetBrains.Annotations;
+using System.Runtime.InteropServices;
+using System.Diagnostics;
+using AbsoluteRoleplay.Helpers;
+using K4os.Compression.LZ4.Internal;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -41,6 +43,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static IDalamudTextureWrap pictureTab; //picturetab.png for base picture in gallery
         public static SortedList<TabValue, bool> TabOpen = new SortedList<TabValue, bool>(); //what part of the profile we have open
         public static SortedList<int, bool> CustomTabOpen = new SortedList<int, bool>();
+        public static Vector4 color = new Vector4(1, 1, 1, 1);
         public static bool addProfile, editProfile;
         public static string oocInfo = string.Empty;
         public static bool ExistingProfile = false;
@@ -57,13 +60,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool SpoilerSHB;
         public static bool SpoilerEW;
         public static bool SpoilerDT;
-        public static int currentProfile = 0;
-
-        
+        public static string ProfileTitle = string.Empty;
+        public static int currentProfileIndex = 0;
+        public static float inputWidth = 500;
+        public static IDalamudTextureWrap currentAvatarImg;
+        private bool firstDraw = true;
         public static List<PlayerProfile> profiles = new List<PlayerProfile>();
-        public static List<Tuple<int, string, bool>> ProfileBaseData = new List<Tuple<int, string, bool>>();
-        public static bool Bio, Hooks, Story, OOC, Gallery;
-        public static List<bool> Customs = new List<bool>();
+        public static PlayerProfile CurrentProfile;
         private const int MaxTabs = 10; // Maximum number of tabs
         private string[] availableTabs = new string[MaxTabs]; // Array to store tab names
         private bool[] showInputPopup = new bool[MaxTabs]; // Array to track popup visibility
@@ -77,6 +80,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public bool AddInputTextElement { get; private set; }
         public bool AddInputTextMultilineElement { get; private set; }
         public bool AddInputImageElement { get; private set; }
+        public bool HideHeiarchy { get; private set; }
+        public bool DockHeiarchy { get; private set; }
+
+        public static IDalamudTextureWrap pinImg = UI.UICommonImage(UI.CommonImageTypes.pin);
+        public static IDalamudTextureWrap unpinImg = UI.UICommonImage(UI.CommonImageTypes.unpin);
+        public static IDalamudTextureWrap viewImg = UI.UICommonImage(UI.CommonImageTypes.display);
+        public static IDalamudTextureWrap hideImg = UI.UICommonImage(UI.CommonImageTypes.hide);
+        public static IDalamudTextureWrap dockImg = UI.UICommonImage(UI.CommonImageTypes.dock);
+        public static IDalamudTextureWrap undockImg = UI.UICommonImage(UI.CommonImageTypes.undock);
+        public static bool editAvatar = false;
+        private bool showProfileTypeSelection;
+        private static int currentProfileType;
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.None)
@@ -85,7 +100,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
 
                 MinimumSize = new Vector2(300, 300),
-                MaximumSize = new Vector2(950, 950)
+                MaximumSize = new Vector2(950, 1200)
             };
 
             this.plugin = plugin;
@@ -99,8 +114,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 showInputPopup[i] = false;
                 availableTabs[i] = "";
             }
-            InvTab.InitInventory();
-            ProfileBaseData.Clear();
+            profiles.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
             var avatarHolderImage = UI.UICommonImage(UI.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
             if (avatarHolderImage != null)
@@ -114,7 +128,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 pictureTab = pictureTabImage;
             }
-            BioTab.currentAvatarImg = pictureTab;
+            currentAvatarImg = pictureTab;
             persistAvatarHolder = avatarHolder; //unneeded at the moment, but I seem to keep needing and not needing it so I am leaving it for now.
             for (var bf = 0; bf < BioTab.bioFieldsArr.Length; bf++)
             {
@@ -179,7 +193,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
-            this.Flags = (customTabSelected && !DynamicInputs.Lockstatus || customTabSelected && DynamicInputs.EditStatus) ? ImGuiWindowFlags.NoMove : ImGuiWindowFlags.None;
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -192,12 +205,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     isPrivate = true;
                     ResetOnChangeOrRemoval();
-                    DataSender.CreateProfile(ProfileBaseData.Count);
-                    currentProfile = ProfileBaseData.Count;
-                    DataSender.FetchProfile(currentProfile);
+                    DataSender.CreateProfile(profiles.Count);
+                    currentProfileIndex = profiles.Count;
+                    DataSender.FetchProfile(currentProfileIndex);
                     ExistingProfile = true;
+                    CurrentProfile = profiles[currentProfileIndex];
                 }
-                if (ProfileBaseData.Count > 0 && ExistingProfile == true)
+                if (profiles.Count > 0 && ExistingProfile == true)
                 {
                     AddProfileSelection();
                     ImGui.SameLine();
@@ -205,11 +219,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         TargetWindow.characterNameVal = plugin.playername;
                         TargetWindow.characterWorldVal = plugin.playerworld;
-                        DataSender.PreviewProfile(currentProfile);
+                        DataSender.PreviewProfile(currentProfileIndex);
                     }
                     DrawProfile();
                 }
-                if(ProfileBaseData.Count <= 0)
+                if(profiles.Count <= 0)
                 {
                     ExistingProfile = false;
                 }
@@ -217,14 +231,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     ExistingProfile = true;
                 }
-                
+
             }
         }
         public async void DrawProfile()
         {
             if (percentage == loaderInd + 1)
             {
-
                 ImGui.Checkbox("Set Private", ref isPrivate);
                 ImGui.SameLine();
                 ImGui.Checkbox("Set As Profile", ref activeProfile);
@@ -248,7 +261,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 ImGui.Checkbox("Endwalker", ref SpoilerEW);
                 ImGui.SameLine();
                 ImGui.Checkbox("Dawntrail", ref SpoilerDT);
-               
+
                 if (ImGui.Button("Save Profile"))
                 {
                     SubmitProfileData();
@@ -259,20 +272,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (ImGui.Button("Delete Profile"))
                     {
                         ClearLoaded();
-                        DataSender.DeleteProfile(currentProfile);
-                        currentProfile -= 1;
-                        if(currentProfile < 0)
+                        DataSender.DeleteProfile(currentProfileIndex);
+                        currentProfileIndex -= 1;
+                        if (currentProfileIndex < 0)
                         {
-                            currentProfile = 0;
+                            currentProfileIndex = 0;
                         }
                         DataSender.FetchProfiles();
-                        DataSender.FetchProfile(currentProfile);
-                        if (ProfileBaseData.Count == 0)
+                        DataSender.FetchProfile(currentProfileIndex);
+                        if (profiles.Count == 0)
                         {
                             ExistingProfile = false;
                         }
                         ResetOnChangeOrRemoval();
-
                     }
                 }
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -301,43 +313,43 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 }
 
                 ImGui.Spacing();
-                // Button to trigger the popup for a new tab
+                var windowSize = ImGui.GetWindowSize();
 
-                ImGui.BeginTabBar("ProfileNavigation");
+                float centeredX = (windowSize.X - currentAvatarImg.Size.X) / 2;
+                var buttonSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
+                float xPos = (windowSize.X - buttonSize.X) / 2;
 
-                // Static tabs
-                if (ImGui.BeginTabItem("Bio")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Hooks")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Story")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("OOC")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
-                if (ImGui.BeginTabItem("Gallery")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
-
-                // Custom tabs
-                RenderCustomTabs();
-
-                // Add the special "+ Add Tab" as a fake tab at the end
-                if (ImGui.TabItemButton("  +  ##AddTab", ImGuiTabItemFlags.NoCloseWithMiddleMouseButton))
+                ImGui.SetCursorPosX(centeredX);
+                ImGui.Image(currentAvatarImg.ImGuiHandle, currentAvatarImg.Size);
+                ImGui.SetCursorPosX(xPos);
+                if (ImGui.Button("Edit Avatar"))
                 {
-                    if (customTabsCount < MaxTabs)
-                    {
-                        showInputPopup[customTabsCount] = true; // Open the popup for the new tab
-                        availableTabs[customTabsCount] = ""; // Reset the name field
-                        ImGui.OpenPopup($"New Page##{customTabsCount}"); // Trigger popup
-                    }
+                    editAvatar = true;
                 }
+                ImGui.Spacing();
 
-                ImGui.EndTabBar();
-
-                // Render the popup for adding a new tab
-              
-
-
-                using var ProfileTable = ImRaii.Child("PROFILE");
-                if (ProfileTable)
+                if (ProfileTitle.Length > 0)
                 {
+                    Misc.SetTitle(plugin, true, ProfileTitle, color);
+                }
+                Misc.DrawXCenteredInput("TITLE:", $"Title{currentProfileIndex}", ref ProfileTitle, 50);
+                ImGui.SameLine();
+                ImGui.ColorEdit4($"##Text Input Color{currentProfileIndex}", ref color, ImGuiColorEditFlags.NoInputs);
+
+                if (ImGui.BeginTabBar("ProfileNavigation"))
+                {
+                    if (ImGui.BeginTabItem("Bio")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Bio] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Hooks")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Hooks] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Story")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Story] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("OOC")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
+                    if (ImGui.BeginTabItem("Gallery")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
+
+                    ImGui.EndTabBar();
+
+
                     if (TabOpen[TabValue.Bio])
                     {
-                        BioTab.LoadBioTab();
+                        BioTab.LoadBioTab(plugin);
                     }
                     if (TabOpen[TabValue.Hooks])
                     {
@@ -354,7 +366,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (TabOpen[TabValue.OOC])
                     {
                         Vector2 inputSize = new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - 20);
-                       // oocInfo = Misc.WrapTextToFit(oocInfo, inputSize.X);
+                        // oocInfo = Misc.WrapTextToFit(oocInfo, inputSize.X);
                         ImGui.InputTextMultiline("##OOC", ref oocInfo, 50000, inputSize);
                     }
                     if (GalleryTab.loadPreview == true)
@@ -371,9 +383,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     {
                         HooksTab.DrawHooksUI(plugin, HooksTab.hookCount);
                     }
-                    if (BioTab.editAvatar == true)
+                    if (editAvatar == true)
                     {
-                        BioTab.editAvatar = false;
+                        editAvatar = false;
                         Misc.EditImage(plugin, _fileDialogManager, true, 0);
                     }
                     if (StoryTab.drawChapter == true)
@@ -386,7 +398,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (GalleryTab.ReorderGallery == true)
                     {
                         GalleryTab.ReorderGallery = false;
-                        GalleryTab.ReorderGalleryData();                     
+                        GalleryTab.ReorderGalleryData();
                     }
                     //pretty much the same logic but with our hooks
                     if (HooksTab.ReorderHooks == true)
@@ -401,188 +413,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         StoryTab.ReorderChapters = false;
                         StoryTab.ReorderChapterData(plugin);
                     }
-
                 }
-
             }
+
             else
             {
 
                 Misc.StartLoader(loaderInd, percentage, loading, ImGui.GetWindowSize());
             }
         }
-        private void RenderDeleteConfirmationPopup()
-        {
-            if (showDeleteConfirmationPopup && ImGui.BeginPopupModal("Delete Tab Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
-            {
-                ImGui.Text($"Are you sure you want to delete the tab \"{availableTabs[tabToDeleteIndex]}\"?");
-                ImGui.Spacing();
-
-                // Confirm button
-                if (ImGui.Button("Confirm"))
-                {
-                    openTabs[tabToDeleteIndex] = false; // Mark the tab as closed
-                    showDeleteConfirmationPopup = false; // Close the popup
-                    ImGui.CloseCurrentPopup();
-                }
-
-                ImGui.SameLine();
-
-                // Cancel button
-                if (ImGui.Button("Cancel"))
-                {
-                    showDeleteConfirmationPopup = false; // Close the popup without deleting
-                    ImGui.CloseCurrentPopup();
-                }
-
-                ImGui.EndPopup();
-            }
-        }
-        public void RenderCustomTabs()
-        {
-            // Render all active popups
-            for (int i = 0; i < MaxTabs; i++)
-            {
-                if (showInputPopup[i])
-                {
-                    if (ImGui.BeginPopupModal($"New Page##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
-                    {
-                        ImGui.Text($"Enter the name for the page:");
-                        ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
-
-                        // Detect Enter key submission
-                        var io = ImGui.GetIO();
-
-
-                        if (ImGui.Button("Submit") || io.KeysDown[(int)ImGuiKey.Enter] && !string.IsNullOrWhiteSpace(availableTabs[i]))
-                        {
-                            openTabs[i] = true; // Mark the tab as open
-                            customTabsCount++; // Increment the tab count
-                            showInputPopup[i] = false; // Close the popup
-                            ImGui.CloseCurrentPopup();
-
-                        }
-                        ImGui.SameLine();
-                        // Optional cancel button
-                        if (ImGui.Button("Cancel"))
-                        {
-                            showInputPopup[i] = false; // Close the popup without saving
-                            availableTabs[i] = ""; // Clear the name
-                            ImGui.CloseCurrentPopup();
-                        }
-
-                        ImGui.EndPopup();
-                    }
-                }
-            }
-
-            // Render all tabs
-            for (int i = 0; i < customTabsCount; i++)
-            {
-                if (!string.IsNullOrWhiteSpace(availableTabs[i]))
-                {
-                    RenderTab(i, ref openTabs[i], availableTabs[i]);
-                }
-            }
-
-            // Render the delete confirmation popup
-            RenderDeleteConfirmationPopup();
-
-            // Clean up closed tabs
-            for (int i = customTabsCount - 1; i >= 0; i--)
-            {
-                if (!openTabs[i])
-                {
-                    for (int j = i; j < customTabsCount - 1; j++)
-                    {
-                        availableTabs[j] = availableTabs[j + 1];
-                        openTabs[j] = openTabs[j + 1];
-                        showInputPopup[j] = showInputPopup[j + 1];
-                    }
-                    customTabsCount--;
-                }
-            }
-        }
+       
 
 
 
-        private void RenderTab(int index, ref bool isOpen, string tabName)
-        {
-            string uniqueId = $"{tabName}##{index}";
-
-            // Render the tab with a close button
-            if (ImGui.BeginTabItem(uniqueId, ref isOpen))
-            {
-                ClearUI();
-                customTabSelected = true;
-                // Ensure the layout exists
-                var currentLayout = DynamicInputs.layouts.Values.FirstOrDefault(l => l.id == index);
-                if (currentLayout == null)
-                {
-                    currentLayout = new Layout
-                    {
-                        id = index,
-                        name = tabName,
-                        elements = new List<LayoutElement>()
-
-                    };
-                    int ind = DynamicInputs.layouts.Count;
-                    DynamicInputs.layouts.Add(ind, currentLayout);
-                }
-                if (Locked)
-                {
-                    if(ImGui.Button("Unlock All"))
-                    {
-                        DynamicInputs.Lockstatus = false;
-                        for(int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
-                        {
-                            for(int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
-                            {
-                                DynamicInputs.layouts[i].elements[l].locked = false;
-                            }
-                        }
-                        Locked = false;
-                    }
-                }
-                else
-                {
-                    if (ImGui.Button("Lock All"))
-                    {
-                        DynamicInputs.Lockstatus = true;
-                        for (int i = 0; i < DynamicInputs.layouts.Values.Count; i++)
-                        {
-                            for (int l = 0; l < DynamicInputs.layouts.Values[i].elements.Count; l++)
-                            {
-                                DynamicInputs.layouts[i].elements[l].locked = true;
-                            }
-                        }
-                        Locked = true;
-                    }
-                }
-                // Render the Add Element button
-                DynamicInputs.RenderAddElementButton(currentLayout);
-                
-                // Create a child window to contain the draggable elements
-                if (ImGui.BeginChild($"DraggableContent##{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
-                {
-                    DynamicInputs.RenderElements(currentLayout, false, plugin);
-
-                    ImGui.EndChild();
-                }
-
-                ImGui.EndTabItem();
-            }
-
-            // Handle the case where the tab is closed (close button pressed)
-            if (!isOpen)
-            {
-                isOpen = true; // Reopen the tab temporarily to show the confirmation popup
-                tabToDeleteIndex = index; // Store the index of the tab to delete
-                showDeleteConfirmationPopup = true; // Show the delete confirmation popup
-                ImGui.OpenPopup("Delete Tab Confirmation");
-            }
-        }
-
+     
 
 
 
@@ -651,6 +495,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             TabOpen[TabValue.Story] = false;
             TabOpen[TabValue.OOC] = false;
             TabOpen[TabValue.Gallery] = false;
+            
         }
         public static void ResetOnChangeOrRemoval()
         {
@@ -669,7 +514,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 BioTab.bioFieldsArr[i] = string.Empty;
             }
-            BioTab.currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+            currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
             BioTab.currentAlignment = 9;
             BioTab.currentPersonality_1 = 26;
             BioTab.currentPersonality_2 = 26;
@@ -681,8 +526,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             avatarHolder = null;
             pictureTab?.Dispose();
             pictureTab = null;
-            BioTab.currentAvatarImg?.Dispose();
-            BioTab.currentAvatarImg = null;
+            currentAvatarImg?.Dispose();
+            currentAvatarImg = null;
             persistAvatarHolder?.Dispose();
             persistAvatarHolder = null;
             for (var i = 0; i < GalleryTab.galleryImagesList.Count; i++)
@@ -702,20 +547,20 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public void AddProfileSelection()
         { 
             List<string> profileNames = new List<string>();
-            for(int i = 0; i < ProfileBaseData.Count; i++)
+            for(int i = 0; i < profiles.Count; i++)
             {
-                profileNames.Add(ProfileBaseData[i].Item2);
+                profileNames.Add(profiles[i].Name);
             }
             string[] ProfileNames = new string[profileNames.Count];
             ProfileNames = profileNames.ToArray();
-            var profileName = ProfileNames[currentProfile];
+            var profileName = ProfileNames[currentProfileIndex];
 
             using var combo = OtterGui.Raii.ImRaii.Combo("##Profiles", profileName);
             if (!combo)
                 return;
             foreach (var (newText, idx) in ProfileNames.WithIndex())
             {
-                if(ProfileBaseData.Count > 0)
+                if(profiles.Count > 0)
                 {
                     var label = newText;
                     if (label == string.Empty)
@@ -724,7 +569,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     }
                     if (newText != string.Empty)
                     {
-                        if (ImGui.Selectable(label + "##" + idx, idx == currentProfile))
+                        if (ImGui.Selectable(label + "##" + idx, idx == currentProfileIndex))
                         {
                             for (int i = 0; i < HooksTab.hookCount; i++)
                             {
@@ -739,14 +584,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             {
                                 BioTab.bioFieldsArr[i] = string.Empty;
                             }
-                            BioTab.currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+                            currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                             BioTab.currentAlignment = 9;
                             BioTab.currentPersonality_1 = 26;
                             BioTab.currentPersonality_2 = 26;
                             BioTab.currentPersonality_3 = 26;
-                            currentProfile = idx;
+                            currentProfileIndex = idx;
                             ClearLoaded();
-                            DataSender.FetchProfile(currentProfile);
+                            DataSender.FetchProfile(currentProfileIndex);
                             DataSender.FetchProfiles();
                         }
                         ImGuiUtil.SelectableHelpMarker("Select to edit profile");
@@ -756,6 +601,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
         }
 
+
+     
 
 
 
@@ -809,6 +656,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                         using (StreamReader reader = new StreamReader($"{dataPath}"))
                         {
+                            Story storyData = new Story();
+                            List<ProfileGalleryImage> galleryimagedata = new List<ProfileGalleryImage>();
+                            List<Chapter> chapterData = new List<Chapter>();
+                            List<Hooks> hookData = new List<Hooks>();
+                            List<descriptor> descriptorData = new List<descriptor>();
+                            List<field> fieldData = new List<field>();
+                            List<trait> traitData = new List<trait>();
+
                             string backupContent = File.ReadAllText(dataPath);
                             // Read avatar bytes
                             string avatarByteString = Misc.ExtractTextBetweenTags(backupContent, "avatar");
@@ -821,17 +676,49 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             string height = Misc.ExtractTextBetweenTags(backupContent, "height");
                             string weight = Misc.ExtractTextBetweenTags(backupContent, "weight");
                             string afg = Misc.ExtractTextBetweenTags(backupContent, "afg");
-
                             int alignment = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "alignment"));
                             int pers1 = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "personality_1"));
                             int pers2 = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "personality_2"));
                             int pers3 = int.Parse(Misc.ExtractTextBetweenTags(backupContent, "personality_3"));
 
+                            //Traits
+                            string traitsPattern = @"<traits>(.*?)</traits>";
+                            Regex traitsRegex = new Regex(traitsPattern, RegexOptions.Singleline);
 
-                            Story storyData = new Story();
-                            List<ProfileGalleryImage> galleryimagedata = new List<ProfileGalleryImage>();
-                            List<Chapter> chapterData = new List<Chapter>();
-                            List<Hooks> hookData = new List<Hooks>();
+                            string traitNamePattern = @"<name>(.*?)</name>";
+                            string traitDescPattern = @"<description>(.*?)</description>";
+                            string traitIconPattern = @"<iconID>(.*?)</iconID>";
+
+                            MatchCollection traitMatchces = traitsRegex.Matches(backupContent);
+
+                            foreach (Match traitMatch in traitMatchces)
+                            {
+                                string traitContent = traitMatch.Groups[1].Value; 
+
+                                // Extract all <hookname> and <hookcontent> tags, even if they are empty
+                                MatchCollection traitNameMatches = Regex.Matches(traitContent, traitNamePattern);
+                                MatchCollection traitDescMatches = Regex.Matches(traitContent, traitDescPattern);
+                                MatchCollection traitIconMatches = Regex.Matches(traitContent, traitIconPattern);
+
+                                // Get the maximum count of occurrences between hook names and hook content
+                                int traitCount = Math.Max(traitNameMatches.Count, traitDescMatches.Count);
+
+                                for (int i = 0; i < traitCount; i++)
+                                {
+                                    // Check if the current index is within bounds for hookNameMatches
+                                    string traitName = i < traitNameMatches.Count ? traitNameMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Check if the current index is within bounds for hookContentMatches
+                                    string traitDescription = i < traitDescMatches.Count ? traitDescMatches[i].Groups[1].Value : string.Empty;
+
+                                    string traitIconID = i < traitIconMatches.Count ? traitIconMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Add to hookData even if the name or content is empty
+                                    traitData.Add(new trait { name = traitName, description = traitDescription, iconID=int.Parse(traitIconID) });
+                                }
+                            }
+
+
 
                             //get hooks
                             string hookPattern = @"<hooks>(.*?)</hooks>";
@@ -959,6 +846,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 Personality_1 = pers1,
                                 Personality_2 = pers2,
                                 Personality_3 = pers3,
+                                //dynamic fields
+                                fields = fieldData,
+                                descriptors = descriptorData,
+                                traits = traitData,
                                 //ooc
                                 OOC = OOC,
                                 //story
@@ -970,7 +861,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             };
 
                             //send data to server
-                            DataSender.SubmitProfileBio(currentProfile, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3);
+                            DataSender.SubmitProfileBio(currentProfileIndex, avatarBytesData, name, race, gender, age, height, weight, afg, alignment, pers1, pers2, pers3, fieldData, descriptorData, traitData);
                             var hooks = new List<Tuple<int, string, string>>();
                             for (var i = 0; i < hookData.Count; i++)
                             {
@@ -978,7 +869,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 var hook = Tuple.Create(i, hookData[i].name, hookData[i].content);
                                 hooks.Add(hook);
                             }
-                            DataSender.SendHooks(currentProfile, hooks);
+                            DataSender.SendHooks(currentProfileIndex, hooks);
 
                             //create a new list for our stories to be held in
                             var storyChapters = new List<Tuple<string, string>>();
@@ -991,18 +882,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 storyChapters.Add(chapter);
                             }
                             //finally send the story data to the server
-                            DataSender.SendStory(currentProfile, storytitle, storyChapters);
+                            DataSender.SendStory(currentProfileIndex, storytitle, storyChapters);
 
                             for (var i = 0; i < galleryimagedata.Count; i++)
                             {
                                 //pretty simple stuff, just send the gallery related array values to the server
-                                DataSender.SendGalleryImage(currentProfile, galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, galleryimagedata[i].tooltip, i);
+                                DataSender.SendGalleryImage(currentProfileIndex, galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, galleryimagedata[i].tooltip, i);
 
                             }
                             //send the OOC info to the server, just a string really
-                            DataSender.SendOOCInfo(currentProfile, OOC);
+                            DataSender.SendOOCInfo(currentProfileIndex, OOC);
 
-                            DataSender.FetchProfile(currentProfile);
+                            DataSender.FetchProfile(currentProfileIndex);
 
 
 
@@ -1077,14 +968,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
             try
             {
 
-                DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfile, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
+                DataSender.SetProfileStatus(isPrivate, activeProfile, currentProfileIndex, ProfileTitle, color,  SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
 
 
 
-                DataSender.SendLayouts(currentProfile, DynamicInputs.layouts);
+              
 
 
-                DataSender.SubmitProfileBio(currentProfile,
+                DataSender.SubmitProfileBio(currentProfileIndex,
                                                   BioTab.avatarBytes,
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name].Replace("'", "''"),
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race].Replace("'", "''"),
@@ -1093,38 +984,40 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height].Replace("'", "''"),
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight].Replace("'", "''"),
                                                   BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg].Replace("'", "''"),
-                                                  BioTab.currentAlignment, BioTab.currentPersonality_1, BioTab.currentPersonality_2, BioTab.currentPersonality_3
-                                                  );
-            var hooks = new List<Tuple<int, string, string>>();
-            for (var i = 0; i < HooksTab.hookCount; i++)
-            {
-                //create a new hook tuple to add to the list
-                var hook = Tuple.Create(i, HooksTab.HookNames[i], HooksTab.HookContents[i]);
-                hooks.Add(hook);
-            }
-            DataSender.SendHooks(currentProfile, hooks);
+                                                  BioTab.currentAlignment, BioTab.currentPersonality_1, BioTab.currentPersonality_2, BioTab.currentPersonality_3,
+                                                  BioTab.fields, BioTab.descriptors, BioTab.personalities);
+                var hooks = new List<Tuple<int, string, string>>();
+                for (var i = 0; i < HooksTab.hookCount; i++)
+                {
+                    //create a new hook tuple to add to the list
+                    var hook = Tuple.Create(i, HooksTab.HookNames[i], HooksTab.HookContents[i]);
+                    hooks.Add(hook);
+                }
+                DataSender.SendHooks(currentProfileIndex, hooks);
 
-            //create a new list for our stories to be held in
-            var storyChapters = new List<Tuple<string, string>>();
-            for (var i = 0; i < StoryTab.storyChapterCount + 1; i++)
-            {
-                //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
-                var chapterName = StoryTab.ChapterNames[i].ToString();
-                var chapterContent = StoryTab.ChapterContents[i].ToString();
-                var chapter = Tuple.Create(chapterName, chapterContent);
-                storyChapters.Add(chapter);
-            }
-            //finally send the story data to the server
-            DataSender.SendStory(currentProfile, StoryTab.storyTitle, storyChapters);
+                //create a new list for our stories to be held in
+                var storyChapters = new List<Tuple<string, string>>();
+                for (var i = 0; i < StoryTab.storyChapterCount + 1; i++)
+                {
+                    //get the data from our chapterNames and Content and store them in a tuple ot be added in the storyChapters list
+                    var chapterName = StoryTab.ChapterNames[i].ToString();
+                    var chapterContent = StoryTab.ChapterContents[i].ToString();
+                    var chapter = Tuple.Create(chapterName, chapterContent);
+                    storyChapters.Add(chapter);
+                }
+                //finally send the story data to the server
+                DataSender.SendStory(currentProfileIndex, StoryTab.storyTitle, storyChapters);
 
-            for (var i = 0; i < GalleryTab.galleryImageCount; i++)
-            {
-                //pretty simple stuff, just send the gallery related array values to the server
-                DataSender.SendGalleryImage(currentProfile, GalleryTab.NSFW[i], GalleryTab.TRIGGER[i], GalleryTab.imageURLs[i], GalleryTab.imageTooltips[i], i);
+                for (var i = 0; i < GalleryTab.galleryImageCount; i++)
+                {
+                    //pretty simple stuff, just send the gallery related array values to the server
+                    DataSender.SendGalleryImage(currentProfileIndex, GalleryTab.NSFW[i], GalleryTab.TRIGGER[i], GalleryTab.imageURLs[i], GalleryTab.imageTooltips[i], i);
 
-            }
-            //send the OOC info to the server, just a string really
-            DataSender.SendOOCInfo(currentProfile, oocInfo);
+                }
+                //send the OOC info to the server, just a string really
+                DataSender.SendOOCInfo(currentProfileIndex, oocInfo);
+
+                //DataSender.SendCustomLayouts(currentProfileIndex, DynamicInputs.layouts);
 
             }
             catch(Exception ex)
@@ -1134,7 +1027,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             finally
             {
                 DataSender.FetchProfiles();
-                DataSender.FetchProfile(currentProfile);
+                DataSender.FetchProfile(currentProfileIndex);
             }
         }
         public void SaveBackupFile()
@@ -1157,15 +1050,36 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine($"<age>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age])}</age>");
                     writer.WriteLine($"<height>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height])}</height>");
                     writer.WriteLine($"<weight>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight])}</weight>");
+                    writer.WriteLine("<descriptors>");
+                    for (int i = 0; i <= BioTab.descriptors.Count; i++)
+                    {
+                        writer.WriteLine($"<name>{BioTab.descriptors[i].name}</name>");
+                        writer.WriteLine($"<description>{BioTab.descriptors[i].description}</description>");
+                    }
+                    writer.WriteLine("</descriptors>");
                     writer.WriteLine($"<afg>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg])}</afg>");
+                    writer.WriteLine("<fields>");
+                    for (int i = 0; i <= BioTab.fields.Count; i++)
+                    {
+                        writer.WriteLine($"<name>{BioTab.fields[i].name}</name>");
+                        writer.WriteLine($"<description>{BioTab.fields[i].description}</description>");
+                    }
+                    writer.WriteLine("</fields>");
                     writer.WriteLine($"<alignment>{BioTab.currentAlignment}</alignment>");
                     writer.WriteLine($"<personality_1>{BioTab.currentPersonality_1}</personality_1>");
                     writer.WriteLine($"<personality_2>{BioTab.currentPersonality_2}</personality_2>");
                     writer.WriteLine($"<personality_3>{BioTab.currentPersonality_3}</personality_3>");
-
+                    writer.WriteLine("<traits>");
+                    for (int i = 0; i <= BioTab.personalities.Count; i++)
+                    {
+                        writer.WriteLine($"<name>{BioTab.personalities[i].name}</name>");
+                        writer.WriteLine($"<description>{BioTab.personalities[i].description}</description>");
+                        writer.WriteLine($"<iconID>{BioTab.personalities[i].iconID}</iconID>");
+                    }
+                    writer.WriteLine("</traits>");
                     // Hooks
                     writer.WriteLine("<hooks>");
-                    for (int i = 0; i < HooksTab.hookCount; i++)
+                    for (int i = 0; i <= HooksTab.hookCount; i++)
                     {
                         writer.WriteLine($"<hookname>{EscapeTagContent(HooksTab.HookNames[i])}</hookname>");
                         writer.WriteLine($"<hookcontent>{EscapeTagContent(HooksTab.HookContents[i])}</hookcontent>");

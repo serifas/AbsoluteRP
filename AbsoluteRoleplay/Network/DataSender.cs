@@ -9,6 +9,10 @@ using System.Xml.Linq;
 using AbsoluteRoleplay.Windows.Profiles;
 using System.Threading.Tasks;
 using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using System.Numerics;
+using Dalamud.Interface.Textures.TextureWraps;
 
 namespace Networking
 {
@@ -71,6 +75,8 @@ namespace Networking
         SortItems = 55,
         FetchProfileItems = 56,
         SendCustomLayouts = 58,
+        RequestOwnedListings = 59,
+        CSendTreeData = 60,
     }
     public class DataSender
     {
@@ -423,8 +429,8 @@ namespace Networking
         }
 
         public static async void SubmitProfileBio(int profileIndex, byte[] avatarBytes, string name, string race, string gender, string age,
-                                            string height, string weight, string atFirstGlance, int alignment, int personality_1, int personality_2, int personality_3
-                                            )
+                                            string height, string weight, string atFirstGlance, int alignment, int personality_1, int personality_2, int personality_3,
+                                            List<field> customFields, List<descriptor> customDescriptors, List<trait> customPersonalities)
         {
             if (ClientTCP.IsConnected())
             {
@@ -451,6 +457,28 @@ namespace Networking
                         buffer.WriteInt(personality_1);
                         buffer.WriteInt(personality_2);
                         buffer.WriteInt(personality_3);
+                        buffer.WriteInt(customFields.Count);
+                        buffer.WriteInt(customDescriptors.Count);
+                        buffer.WriteInt(customPersonalities.Count);
+
+                        for(int i = 0; i < customFields.Count; i++)
+                        {
+                            buffer.WriteString(customFields[i].name);
+                            buffer.WriteString(customFields[i].description);
+                        }
+                        for(int i = 0; i < customDescriptors.Count; i++)
+                        {
+                            buffer.WriteString(customDescriptors[i].name);
+                            buffer.WriteString(customDescriptors[i].description);
+                        }
+                        for(int i = 0; i < customPersonalities.Count; i++)
+                        {
+                            buffer.WriteString(customPersonalities[i].name);
+                            buffer.WriteString(customPersonalities[i].description);
+                            buffer.WriteInt(customPersonalities[i].iconID);
+                        }
+
+
 
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -683,7 +711,7 @@ namespace Networking
         }
 
 
-        internal static async void RequestConnections(string username, string password)
+        internal static async void RequestConnections(string username, string password, bool windowRequest)
         {
             if (ClientTCP.IsConnected())
             {
@@ -705,7 +733,7 @@ namespace Networking
         }
 
 
-        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
+        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
         {
             if (ClientTCP.IsConnected())
             {
@@ -718,6 +746,11 @@ namespace Networking
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(profileTitle);
+                        buffer.WriteFloat(color.X);
+                        buffer.WriteFloat(color.Y);
+                        buffer.WriteFloat(color.Z);
+                        buffer.WriteFloat(color.W);
                         buffer.WriteBool(status);
                         buffer.WriteBool(tooltipStatus);
                         buffer.WriteBool(spoilerARR);
@@ -1028,7 +1061,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendItemOrder(int profileIndex, List<Item> slotContents)
+        internal static async void SendItemOrder(int profileIndex, List<ItemDefinition> slotContents)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1086,7 +1119,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendLayouts(int profileIndex, SortedList<int, Layout> layouts)
+        internal static async void RequestOwnedListings(int profileIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1094,60 +1127,19 @@ namespace Networking
                 {
                     using (var buffer = new ByteBuffer())
                     {
-                        buffer.WriteInt((int)ClientPackets.SendCustomLayouts);
+                        buffer.WriteInt((int)ClientPackets.FetchProfileItems);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(layouts.Count);
-                        for (int i = 0; i < layouts.Count; i++)
-                        {
-                            buffer.WriteInt(layouts[i].id);
-                            buffer.WriteString(layouts[i].name);
-                            buffer.WriteInt(layouts[i].elements.Count);
-                            for(int e = 0; e < layouts[i].elements.Count; e++)
-                            {
-                                List<LayoutElement> elements = layouts[i].elements;
-                                if (elements[e].GetType() == typeof(ImageElement))
-                                {
-                                    buffer.WriteInt(0);
-                                    ImageElement imageElement = (ImageElement)elements[e];
-                                    buffer.WriteInt(imageElement.id);
-                                    buffer.WriteInt(imageElement.bytes.Length);                                    
-                                    buffer.WriteBytes(imageElement.bytes);
-                                    buffer.WriteBool(imageElement.hasTooltip);
-                                    buffer.WriteString(imageElement.tooltip);
-                                    buffer.WriteFloat(imageElement.width);
-                                    buffer.WriteFloat(imageElement.height);
-                                    buffer.WriteFloat(imageElement.PosX);
-                                    buffer.WriteFloat(imageElement.PosY);
-                                }
-                                if (elements[e].GetType() == typeof(TextElement))
-                                {
-                                    buffer.WriteInt(1);
-                                    TextElement textElement = (TextElement)elements[e];
-                                    buffer.WriteInt(textElement.id);
-                                    buffer.WriteInt(textElement.type);
-                                    buffer.WriteString(textElement.text);
-                                    buffer.WriteString(textElement.color.X + "," + textElement.color.Y + "," + textElement.color.Z + "," + textElement.color.W);
-                                    buffer.WriteFloat(textElement.PosX);
-                                    buffer.WriteFloat(textElement.PosY);
-
-                                }
-                               
-                            }
-                        }
-                        
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendCustomLayouts: " + ex.ToString());
+                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
                 }
             }
         }
-     
+
+      
     }
 }

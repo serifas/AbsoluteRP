@@ -1,9 +1,15 @@
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal;
+using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using ImGuiNET;
 using Lumina.Data;
 using Microsoft.VisualBasic;
+using OtterGuiInternal.Structs;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -22,7 +28,12 @@ namespace AbsoluteRoleplay
     
     public class PlayerProfile
     {
+        public int index {  get; set; }
         public IDalamudTextureWrap avatar;
+        internal string title;
+        public Vector4 titleColor { get; set; }
+        public bool isPrivate { get; set; }
+        public bool isActive { get; set; }
         public string Name { get; set; }
         public string Race { get; set; }
         public string Gender { get; set; }
@@ -37,6 +48,9 @@ namespace AbsoluteRoleplay
         public List<Hooks> Hooks { get; set; }
         public List<ProfileGalleryImage> GalleryImages { get; set; }
         public Story Story { get; set; }
+        public List<field> fields { get; set; }
+        public List<descriptor> descriptors { get; set; }
+        public List<trait> traits { get; set; }
         public string OOC { get; set; }
    
     }
@@ -95,6 +109,7 @@ namespace AbsoluteRoleplay
     }
     internal class UI
     {
+        public static List<ImFontPtr> fontList = new List<ImFontPtr>();
         public enum AlertPositions
         {
             BottomLeft = 0, 
@@ -277,6 +292,17 @@ namespace AbsoluteRoleplay
             inventoryTab = 38,
             patreonBtn = 39,
             move = 40,
+            circleMask = 41,
+            starMask = 42,
+            heartMask = 43,
+            pin = 44,
+            unpin = 45,
+            display = 46,
+            hide = 47,
+            dock = 48,
+            undock = 49,
+            edit = 50,
+            move_cancel = 51,
         }
         public enum ListingCategory
         {
@@ -322,56 +348,68 @@ namespace AbsoluteRoleplay
         }
         public static IDalamudTextureWrap UICommonImage(CommonImageTypes imageType)
         {
-            IDalamudTextureWrap commonImage = null;
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
             {
-                if (imageType == CommonImageTypes.discordBtn) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/disc_btn.png"))).Result; }
-                if (imageType == CommonImageTypes.kofiBtn) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/kofi_btn.png"))).Result; }
-                if (imageType == CommonImageTypes.patreonBtn) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/patreon_btn.png"))).Result; }
-                if (imageType == CommonImageTypes.blankPictureTab) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result; }
-                if (imageType == CommonImageTypes.NSFW) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result;}
-                if (imageType == CommonImageTypes.NSFWTRIGGER) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result;}
-                if (imageType == CommonImageTypes.TRIGGER) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result;}
-                if (imageType == CommonImageTypes.avatarHolder) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result;}
-                if (imageType == CommonImageTypes.profileSection) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_profiles.png"))).Result;}
-                if (imageType == CommonImageTypes.systemsSection) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_systems.png"))).Result;}
-                if (imageType == CommonImageTypes.eventsSection) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_events.png"))).Result;}
-                if (imageType == CommonImageTypes.connectionsSection) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_connections.png"))).Result;}
+                if (imageType == CommonImageTypes.discordBtn) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/disc_btn.png"))).Result; }
+                if (imageType == CommonImageTypes.kofiBtn) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/kofi_btn.png"))).Result; }
+                if (imageType == CommonImageTypes.patreonBtn) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/patreon_btn.png"))).Result; }
+                if (imageType == CommonImageTypes.blankPictureTab) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result; }
+                if (imageType == CommonImageTypes.NSFW) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result;}
+                if (imageType == CommonImageTypes.NSFWTRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result;}
+                if (imageType == CommonImageTypes.TRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result;}
+                if (imageType == CommonImageTypes.avatarHolder) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result;}
+                if (imageType == CommonImageTypes.profileSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_profiles.png"))).Result;}
+                if (imageType == CommonImageTypes.systemsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_systems.png"))).Result;}
+                if (imageType == CommonImageTypes.eventsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_events.png"))).Result;}
+                if (imageType == CommonImageTypes.connectionsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_connections.png"))).Result;}
                 //profiles
-                if (imageType == CommonImageTypes.profileCreateProfile) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_create.png"))).Result;}
-                if (imageType == CommonImageTypes.profileCreateNPC) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_create.png"))).Result;}
-                if (imageType == CommonImageTypes.profileBookmarkProfile) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_bookmarks.png"))).Result;}
-                if (imageType == CommonImageTypes.profileBookmarkNPC) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_bookmarks.png"))).Result;}
+                if (imageType == CommonImageTypes.profileCreateProfile) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_create.png"))).Result;}
+                if (imageType == CommonImageTypes.profileCreateNPC) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_create.png"))).Result;}
+                if (imageType == CommonImageTypes.profileBookmarkProfile) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_bookmarks.png"))).Result;}
+                if (imageType == CommonImageTypes.profileBookmarkNPC) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_bookmarks.png"))).Result;}
                 //target images
-                if (imageType == CommonImageTypes.targetConnections) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/assign_connection.png"))).Result;}
-                if (imageType == CommonImageTypes.targetBookmark) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/bookmark.png"))).Result;}
-                if (imageType == CommonImageTypes.targetGroupInvite) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result;}
-                if (imageType == CommonImageTypes.targetViewProfile) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result;}
-                if (imageType == CommonImageTypes.reconnect) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result;}
+                if (imageType == CommonImageTypes.targetConnections) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/assign_connection.png"))).Result;}
+                if (imageType == CommonImageTypes.targetBookmark) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/bookmark.png"))).Result;}
+                if (imageType == CommonImageTypes.targetGroupInvite) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result;}
+                if (imageType == CommonImageTypes.targetViewProfile) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result;}
+                if (imageType == CommonImageTypes.reconnect) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result;}
                 //listings
-                if (imageType == CommonImageTypes.listingsCampaign) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsEvent) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsFC) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsGroup) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsPersonal) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsVenue) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsCampaignBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsEventBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsFCBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsGroupBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsPersonalBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsVenueBig) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
-                if (imageType == CommonImageTypes.move) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/move.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsCampaign) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsEvent) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsFC) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsGroup) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsPersonal) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsVenue) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsCampaignBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsEventBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsFCBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsGroupBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsPersonalBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result; }
+                if (imageType == CommonImageTypes.listingsVenueBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
                 //misc
-                if (imageType == CommonImageTypes.blank) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result; }
-                if (imageType == CommonImageTypes.inventoryTab) { commonImage = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result; }
+                if (imageType == CommonImageTypes.blank) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result; }
+                if (imageType == CommonImageTypes.inventoryTab) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result; }
+                //masks
 
+                if (imageType == CommonImageTypes.circleMask) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/circle.png"))).Result; }
+                if (imageType == CommonImageTypes.starMask) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/star.png"))).Result; }
+                if (imageType == CommonImageTypes.heartMask) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/heart.png"))).Result; }
+
+                if (imageType == CommonImageTypes.pin) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/pin.png"))).Result; }
+                if (imageType == CommonImageTypes.unpin) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/unpin.png"))).Result; }
+                if (imageType == CommonImageTypes.display) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/display.png"))).Result; }
+                if (imageType == CommonImageTypes.hide) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/hide.png"))).Result; }
+                if (imageType == CommonImageTypes.dock) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/dock.png"))).Result; }
+                if (imageType == CommonImageTypes.undock) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/undock.png"))).Result; }
+                if (imageType == CommonImageTypes.edit) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/edit.png"))).Result; }
+                if (imageType == CommonImageTypes.move) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move.png"))).Result; }
+                if (imageType == CommonImageTypes.move_cancel) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move_cancel.png"))).Result; }
             }
 
-            return commonImage;
+            return null;
             
         }
-
+     
         public static string AlignmentName(int alignment)
         {
             string alignmentName = string.Empty;
@@ -915,6 +953,78 @@ namespace AbsoluteRoleplay
             return SettingName;
         }
 
+    public enum ShapeType
+        {
+            None,
+            Square,
+            Circle,
+            Star,
+            Heart
+        }
+
+        public static void DrawAvatarAndMaskSelection(Vector2 size)
+        {
+            Vector2 imageSize = new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f); // Image size
+
+
+            // Initialize the shapeBounds to default (zero area)
+            // Options for the dropdown (using Unicode characters for square, circle, star, heart)
+            string[] symbols = new string[]
+            {
+            "■ Square",  // Unicode: U+25A0
+            "● Circle",  // Unicode: U+25CF
+            "★ Star",    // Unicode: U+2605
+            "♥ Heart"    // Unicode: U+2665
+            };
+
+            // Variable to store the selected index
+            int selectedSymbolIndex = -1;
+
+            // Create the dropdown (combo box)
+            if (ImGui.Combo("Select Symbol", ref selectedSymbolIndex, symbols, symbols.Length))
+            {
+                // Action when the user selects a symbol
+                string selectedSymbol = symbols[selectedSymbolIndex];
+
+                // Based on the selected option, create the shape and return the corresponding shape type
+                if (selectedSymbol.Contains("Square"))
+                {
+                    ImGui.Image(ProfileWindow.currentAvatarImg.ImGuiHandle, size, new Vector2(0, 0), new Vector2(1, 1)); 
+                }
+                else if (selectedSymbol.Contains("Circle"))
+                {
+                    DrawMaskedImage(ProfileWindow.currentAvatarImg, UI.UICommonImage(CommonImageTypes.circleMask),  size);
+                }
+                else if (selectedSymbol.Contains("Star"))
+                {
+                    DrawMaskedImage(ProfileWindow.currentAvatarImg, UI.UICommonImage(CommonImageTypes.starMask), size);
+                }
+                else if (selectedSymbol.Contains("Heart"))
+                {
+                    DrawMaskedImage(ProfileWindow.currentAvatarImg, UI.UICommonImage(CommonImageTypes.heartMask),  size);
+                }
+            }
+
+        }
+        public static void DrawMaskedImage(IDalamudTextureWrap baseImageTexture, IDalamudTextureWrap maskImageTexture,  Vector2 size)
+        {
+            var drawList = ImGui.GetWindowDrawList();
+
+            Vector2 currentPos = ImGui.GetCursorPos();
+            // Draw the base image
+            ImGui.Image(baseImageTexture.ImGuiHandle, size, new Vector2(0, 0), new Vector2(1, 1)); // Adjust coordinates if needed
+
+
+            // Here you can push a clipping rectangle (to restrict the drawing area to the mask region)
+            drawList.PushClipRect(currentPos, currentPos + baseImageTexture.Size, true);
+
+            // Draw the mask image over the base image
+            ImGui.Image(maskImageTexture.ImGuiHandle, baseImageTexture.Size, new Vector2(0, 0), new Vector2(1, 1));
+
+            // Reset the clipping area after drawing
+            drawList.PopClipRect();
+        }
+
 
 
     }
@@ -925,34 +1035,41 @@ namespace AbsoluteRoleplay
         public string Description { get; set; }
 
     }
+    public class BaseListingData
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+    }
     public class Listing
-        {
-            public string name { get; set; }
-            public string description { get; set; }
-            public string rules { get; set; }
-            public int category { get; set; }
-            public int type { get; set; }
-            public int focus { get; set; }
-            public int setting { get; set; }
-            public IDalamudTextureWrap banner { get; set; }
-            public int inclusion { get; set; }
-            public string startDate { get; set; }
-            public string endDate { get; set; }
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public string rules { get; set; }
+        public int category { get; set; }
+        public int type { get; set; }
+        public int focus { get; set; }
+        public int setting { get; set; }
+        public IDalamudTextureWrap banner { get; set; }
+        public int inclusion { get; set; }
+        public string startDate { get; set; }
+        public string endDate { get; set; }
 
-            public Listing(string Name, string Description, string Rules, int Category, int Type, int Focus, int Setting, IDalamudTextureWrap Banner, int Inclusion, string StartDate, string EndDate)
-            {
-                name = Name;
-                description = Description;
-                rules = Rules;
-                category = Category;
-                type = Type;
-                focus = Focus;
-                setting = Setting;
-                banner = Banner;
-                inclusion = Inclusion;
-                startDate = StartDate;
-                endDate = EndDate;
-            }
+        public Listing(int Id, string Name, string Description, string Rules, int Category, int Type, int Focus, int Setting, IDalamudTextureWrap Banner, int Inclusion, string StartDate, string EndDate)
+        {
+            id = Id;
+            name = Name;
+            description = Description;
+            rules = Rules;
+            category = Category;
+            type = Type;
+            focus = Focus;
+            setting = Setting;
+            banner = Banner;
+            inclusion = Inclusion;
+            startDate = StartDate;
+            endDate = EndDate;
         }
+    }
 }
 

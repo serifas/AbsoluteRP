@@ -6,6 +6,7 @@ using System;
 using Dalamud.Interface.GameFonts;
 using AbsoluteRoleplay.Helpers;
 using OtterGui;
+using Dalamud.Interface.Colors;
 namespace AbsoluteRoleplay.Windows
 {
     public class OptionsWindow : Window, IDisposable
@@ -36,7 +37,7 @@ namespace AbsoluteRoleplay.Windows
         }
         public override void Draw()
         {
-            Misc.SetTitle(plugin, false, "Options");
+            Misc.SetTitle(plugin, false, "Options", ImGuiColors.TankBlue);
             //okay that's done.
             ImGui.Spacing();
             //now for some simple toggles

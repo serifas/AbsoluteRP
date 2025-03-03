@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 
 namespace Networking
@@ -44,6 +45,7 @@ namespace Networking
             Buff.Add(input);
             buffUpdated = true;
         }
+
         public void WriteBytes(byte[] input)
         {
             Buff.AddRange(input);

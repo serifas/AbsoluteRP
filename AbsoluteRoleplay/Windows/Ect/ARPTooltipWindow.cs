@@ -27,6 +27,8 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using Dalamud.Interface.Utility;
 
 namespace AbsoluteRoleplay.Windows.Ect
 {
@@ -52,6 +54,9 @@ namespace AbsoluteRoleplay.Windows.Ect
         internal static bool showPersonality3 = false;
         internal static bool showPersonalities = false;
 
+        public static List<field> fields = new List<field>();
+        public static List<descriptor> descriptors = new List<descriptor>();
+        public static List<trait> personalities = new List<trait>();    
         public ARPTooltipWindow(Plugin plugin) : base(
        "TOOLTIP", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoNav |
                                               ImGuiWindowFlags.NoMouseInputs
@@ -65,36 +70,39 @@ namespace AbsoluteRoleplay.Windows.Ect
         public override void Draw()
         {
 
-            if (config.tooltip_showName && profile.Name != string.Empty && profile.Name != "New Profile") Misc.SetTitle(plugin, false, profile.Name);
+            if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(plugin, false, profile.title, profile.titleColor);
             if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
-            if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"Race: {profile.Race}");
-            if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"Gender: {profile.Gender}");
-            if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"Age: {profile.Age}");
-            if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"Height: {profile.Height}");
-            if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"Weight: {profile.Weight}");
-
+            if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text($"NAME: {profile.Name}");
+            if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: {profile.Race}");
+            if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: {profile.Gender}");
+            if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: {profile.Age}");
+            if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT: {profile.Height}");
+            if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: {profile.Weight}");
+            foreach (descriptor descriptor in descriptors)
+            {
+                ImGui.Spacing();
+                ImGui.Text(descriptor.name.ToUpper() + ": " + descriptor.description);
+            }
             if (config.tooltip_showAlignment)
             {
                 if (hasAlignment == true)
                 {
-                    ImGui.Text("Alignment:");
+                    ImGui.Text("ALIGNMENT:");
                     ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
                     ImGui.SameLine();
                     ImGui.Text(UI.AlignmentName(profile.Alignment));
-
                 }
             }
             if (config.tooltip_showPersonalityTraits)
             {
                 if (showPersonalities == true)
                 {
-                    ImGui.Text("Personality Traits:");
+                    ImGui.Text("TRAITS:");
                     if (showPersonality1 == true)
                     {
                         ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
                         ImGui.SameLine();
                         ImGui.Text(UI.PersonalityNames(profile.Personality_1));
-
                     }
                     if (showPersonality2 == true)
                     {
@@ -108,6 +116,13 @@ namespace AbsoluteRoleplay.Windows.Ect
                         ImGui.SameLine();
                         ImGui.Text(UI.PersonalityNames(profile.Personality_3));
                     }
+                    foreach (trait personality in personalities)
+                    {
+                        ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
+                        ImGui.SameLine();
+                        ImGui.Text(personality.name);
+                    }
+
                 }
             }
             if (config.tooltip_draggable)

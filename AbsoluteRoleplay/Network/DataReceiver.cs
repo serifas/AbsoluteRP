@@ -14,12 +14,12 @@ using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
-using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel;
 using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Windows.Inventory;
+using System.Threading.Tasks;
+using Lumina.Excel.Sheets;
 
 namespace Networking
 {
@@ -78,6 +78,7 @@ namespace Networking
         ReceiveProfiles = 60,
         CreateItem = 61,
         ReceiveProfileWarning = 62,
+        ReceiveProfileSettings = 63,
     }
     class DataReceiver
     {
@@ -181,10 +182,15 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();      
                     string profileName = buffer.ReadString();
+                    float colX = buffer.ReadFloat();
+                    float colY = buffer.ReadFloat();
+                    float colZ = buffer.ReadFloat();
+                    float colW = buffer.ReadFloat();
                     string characterName = buffer.ReadString();
                     string characterWorld = buffer.ReadString();
                     bool self = buffer.ReadBool();
                     TargetWindow.self = self;
+                    TargetWindow.TitleColor = new Vector4(colX, colY, colZ, colW);
                     TargetWindow.ExistingProfile = true;
                     TargetWindow.ClearUI();
                     ReportWindow.reportStatus = "";
@@ -239,8 +245,7 @@ namespace Networking
             {
                 using (var buffer = new ByteBuffer())
                 {
-                    InventoryWindow.ProfileBaseData.Clear();
-                    ProfileWindow.ProfileBaseData.Clear();
+                    ProfileWindow.profiles.Clear();
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     loggedIn = true;
@@ -262,10 +267,8 @@ namespace Networking
                     ProfileWindow.editProfile = false;
                     ProfileWindow.ClearUI();
                     ProfileWindow.ExistingProfile = false;
-                    InventoryWindow.ExistingProfile = false;
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = false;
-                    InventoryWindow.ExistingProfile = false;
                     
                     ProfileWindow.ClearOnLoad();
                 }
@@ -364,7 +367,7 @@ namespace Networking
                     var currentAvatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                     if (currentAvatar != null)
                     {
-                        BioTab.currentAvatarImg = currentAvatar;
+                        ProfileWindow.currentAvatarImg = currentAvatar;
                     }
 
                     BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name] = "";
@@ -439,7 +442,6 @@ namespace Networking
                     string profileName = buffer.ReadString();
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = true;
-                    InventoryWindow.ExistingProfile = true;
                     ProfileWindow.ResetOnChangeOrRemoval();
                     ProfileWindow.ClearOnLoad();
                     loggedIn = true;
@@ -480,6 +482,7 @@ namespace Networking
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.loggedIn = true;
                         plugin.loginAttempted = true;
+                        plugin.loggedIn = true;
                     }
                     if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
@@ -605,8 +608,9 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     for (int i = 0; i < 30; i++)
                     {
-                        GalleryTab.galleryImages[i] = ProfileWindow.pictureTab;
-                        GalleryTab.galleryThumbs[i] = ProfileWindow.pictureTab;
+                        var pictureTabImage = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        GalleryTab.galleryImages[i] = pictureTabImage;
+                        GalleryTab.galleryThumbs[i] = pictureTabImage;
                         GalleryTab.imageURLs[i] = string.Empty;
                         GalleryTab.imageTooltips[i] = string.Empty;
                     }
@@ -664,6 +668,7 @@ namespace Networking
                     var packetID = buffer.ReadInt();
 
                     int profileID = buffer.ReadInt();
+                    string profileTitle = buffer.ReadString();
                     int avatarLen = buffer.ReadInt();
                     byte[] avatarBytes = buffer.ReadBytes(avatarLen);
                     string name = buffer.ReadString();
@@ -677,7 +682,42 @@ namespace Networking
                     int personality_1 = buffer.ReadInt();
                     int personality_2 = buffer.ReadInt();
                     int personality_3 = buffer.ReadInt();
-
+                    int customFieldsCount = buffer.ReadInt();
+                    int customDescriptorsCount = buffer.ReadInt();
+                    int customPersonalitiesCount = buffer.ReadInt();
+                    TargetWindow.fields.Clear();
+                    TargetWindow.descriptors.Clear();
+                    TargetWindow.personalities.Clear();
+                    for (int i = 0; i < customFieldsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        TargetWindow.fields.Add(
+                           new field()
+                           {
+                               index = i,
+                               name = customName,
+                               description = customDescription
+                           });
+                    }
+                    for (int i = 0; i < customDescriptorsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        TargetWindow.descriptors.Add(new descriptor() { index = i, name = customName, description = customDescription });
+                    }
+                    for (int i = 0; i < customPersonalitiesCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        int customIconID = buffer.ReadInt();
+                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(plugin, customIconID).GetAwaiter().GetResult();
+                        if (customIcon == null)
+                        {
+                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
+                        TargetWindow.personalities.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
+                    }
                     if (alignment != 9)
                     {
                         TargetWindow.showAlignment = true;
@@ -693,6 +733,7 @@ namespace Networking
                     else { TargetWindow.showPersonality = true; }
 
                     TargetWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    TargetWindow.Title = profileTitle;
                     TargetWindow.characterEditName = name.Replace("''", "'"); TargetWindow.characterEditRace = race.Replace("''", "'"); TargetWindow.characterEditGender = gender.Replace("''", "'");
                     TargetWindow.characterEditAge = age.Replace("''", "'"); TargetWindow.characterEditHeight = height.Replace("''", "'"); TargetWindow.characterEditWeight = weight.Replace("''", "'");
                     TargetWindow.characterEditAfg = atFirstGlance.Replace("''", "'");
@@ -725,7 +766,7 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveTargetBio message: {ex}");
             }
         }
-        public static void ReceiveProfileBio(byte[] data)
+        public static async void ReceiveProfileBio(byte[] data)
         {
             try
             {
@@ -747,8 +788,46 @@ namespace Networking
                     int personality_1 = buffer.ReadInt();
                     int personality_2 = buffer.ReadInt();
                     int personality_3 = buffer.ReadInt();
+                    int customFieldsCount = buffer.ReadInt();
+                    int customDescriptorsCount = buffer.ReadInt();
+                    int customPersonalitiesCount = buffer.ReadInt();
+                    BioTab.fields.Clear();
+                    BioTab.descriptors.Clear();
+                    BioTab.personalities.Clear();
+                    for (int i = 0; i < customFieldsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        BioTab.fields.Add(
+                           new field()
+                            {
+                                index = i,
+                                name = customName,
+                                description = customDescription
+                            });
+                    }
+                    for(int i = 0; i < customDescriptorsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        BioTab.descriptors.Add(new descriptor() {index=i, name = customName, description = customDescription });
+                    }
+                    for(int i = 0; i < customPersonalitiesCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        int customIconID = buffer.ReadInt();
+                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(plugin, customIconID).GetAwaiter().GetResult();
+                        if(customIcon == null)
+                        {
+                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
+                        BioTab.personalities.Add(new trait() { index =i, name = customName, description = customDescription, iconID=customIconID, icon = new IconElement { icon = customIcon } });
+                    }
 
-                    BioTab.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+
+
+                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     BioTab.avatarBytes = avatarBytes;
                     BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name] = name.Replace("''", "'");
                     BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race] = race.Replace("''", "'");
@@ -785,7 +864,6 @@ namespace Networking
                     ProfileWindow.isPrivate = status;
                     ProfileWindow.activeProfile = tooltipStatus;
                     ProfileWindow.ExistingProfile = true;
-                    InventoryWindow.ExistingProfile = true;
                     ProfileWindow.ClearOnLoad();
 
                 }
@@ -834,16 +912,14 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int profileCount = buffer.ReadInt();
-                    ProfileWindow.ProfileBaseData.Clear();
-                    InventoryWindow.ProfileBaseData.Clear();
+                    ProfileWindow.profiles.Clear();
                     for (int i =0; i < profileCount; i++)
                     {
                         
                         int index = buffer.ReadInt();
                         string name = buffer.ReadString();
                         bool active = buffer.ReadBool();
-                        ProfileWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
-                        InventoryWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
+                        ProfileWindow.profiles.Add(new PlayerProfile(){index = index, Name = name, isActive= active});
                     }
                 }
             }
@@ -1140,7 +1216,6 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
-                    ListingsWindow.percentage = listingCount;
                     for (int i = 0; i < listingCount; i++)
                     {
                         string name = buffer.ReadString();
@@ -1157,8 +1232,6 @@ namespace Networking
                       //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
                       //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
                      //   ListingsWindow.listings.Add(listing);
-                        ListingsWindow.loading = "Listing: " + i;
-                        ListingsWindow.loaderInd = i;
                     }
                     ListingsLoadStatus = 1;
                 }
@@ -1185,7 +1258,30 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
             }
         }
-
+        internal static void ReceiveConnectedPlayers(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int connectionsCount = buffer.ReadInt();
+                    
+                    for (int i = 0; i < connectionsCount; i++)
+                    {
+                        string playerName = buffer.ReadString();
+                        string playerWorld = buffer.ReadString();
+                        PlayerData playerData = new PlayerData() { playername = playerName, worldname = playerWorld };
+                        PlayerInteraction.playerDataMap.Add(playerData);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnections message: {ex}");
+            }        
+        }
         internal static void ReceiveConnections(byte[] data)
         {
             try
@@ -1219,6 +1315,8 @@ namespace Networking
                             }
                             if (status == (int)UI.ConnectionStatus.accepted)
                             {
+                                PlayerData playerData = new PlayerData() { playername = requesterName, worldname = requesterWorld };
+                                PlayerInteraction.playerDataMap.Add(playerData);
                                 ConnectionsWindow.connetedProfileList.Add(requester);
                             }
                             if (status == (int)UI.ConnectionStatus.blocked)
@@ -1241,6 +1339,8 @@ namespace Networking
                             }
                             if (status == (int)UI.ConnectionStatus.accepted)
                             {
+                                PlayerData playerData = new PlayerData() { playername = receiverName, worldname = receiverWorld };
+                                PlayerInteraction.playerDataMap.Add(playerData);
                                 ConnectionsWindow.connetedProfileList.Add(receiver);
                             }
                             if (status == (int)UI.ConnectionStatus.blocked)
@@ -1253,10 +1353,10 @@ namespace Networking
                             }
                         }
                     }
+                   
                     plugin.OpenConnectionsWindow();
                     plugin.newConnection = false;
                     plugin.CheckConnectionsRequestStatus();
-
 
                 }
             }
@@ -1285,53 +1385,7 @@ namespace Networking
             }
         }
 
-        internal static void ReceiveProfileItems(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int itemsCount = buffer.ReadInt();
-
-                    InventoryWindow.percentage = itemsCount;
-                    for (int i = 0; i < itemsCount; i++)
-                    {
-
-                        string name = buffer.ReadString();
-                        string description = buffer.ReadString();
-                        int type = buffer.ReadInt();
-                        int subType = buffer.ReadInt();
-                        int iconID = buffer.ReadInt(); 
-                        int slotID = buffer.ReadInt();
-                        int quality = buffer.ReadInt();
-                        InvTab.inventorySlotContents[type][slotID] = new Item
-                        {
-                            name = name,
-                            description = description,
-                            type = type,
-                            subtype = subType,
-                            iconID = iconID, // Ensure iconID is valid
-                            slot = slotID,
-                            quality = quality
-                        };
-                        // Validate and ensure compatibility
-                        if (WindowOperations.RenderIconAsync(plugin, iconID) == null)
-                        {
-                            throw new InvalidOperationException($"Invalid iconID: {iconID}");
-                        }
-                        InventoryWindow.loaderInd = i;
-
-                    }
-
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveProfileItems message: {ex}");
-            }
-        }
+     
         internal static void RecieveProfileWarning(byte[] data)
         {
             try
@@ -1367,15 +1421,15 @@ namespace Networking
                     {
                         message += "Triggering content \n";
                     }
-                    if(NSFW || TRIGGERING)
+                    if (NSFW || TRIGGERING)
                     {
 
                     }
-                    if(spoilers.Count > 0)
+                    if (spoilers.Count > 0)
                     {
                         message += "Spoilers from the expansions \n";
                     }
-                    for(int i = 0; i< spoilers.Count; i++)
+                    for (int i = 0; i < spoilers.Count; i++)
                     {
                         message += spoilers[i] + "\n";
                     }
@@ -1388,6 +1442,48 @@ namespace Networking
                 plugin.logger.Error($"Error handling RecieveProfileWarning message: {ex}");
             }
         }
+
+        internal static void ReceiveProfileSettings(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    string NAME = buffer.ReadString();
+                    float colX = buffer.ReadFloat();
+                    float colY = buffer.ReadFloat();
+                    float colZ = buffer.ReadFloat();
+                    float colW = buffer.ReadFloat();
+                    bool ARR = buffer.ReadBool();
+                    bool HW = buffer.ReadBool();
+                    bool SB = buffer.ReadBool();
+                    bool SHB = buffer.ReadBool();
+                    bool EW = buffer.ReadBool();
+                    bool DT = buffer.ReadBool();
+                    bool NSFW = buffer.ReadBool();
+                    bool TRIGGERING = buffer.ReadBool();
+
+                    ProfileWindow.ProfileTitle = NAME;
+                    ProfileWindow.color = new Vector4(colX, colY, colZ, colW);
+                    ProfileWindow.SpoilerARR = ARR;
+                    ProfileWindow.SpoilerHW = HW;
+                    ProfileWindow.SpoilerSB = SB;
+                    ProfileWindow.SpoilerSHB = SHB;
+                    ProfileWindow.SpoilerEW = EW;
+                    ProfileWindow.SpoilerDT = DT;
+                    ProfileWindow.NSFW = NSFW;
+                    ProfileWindow.Triggering = TRIGGERING;
+                    
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling RecieveProfileWarning message: {ex}");
+            }
+        }
+
         internal static void ReceiveTargetTooltip(byte[] data)
         {
             try
@@ -1396,6 +1492,11 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
+                    string title = buffer.ReadString();
+                    float colX = buffer.ReadFloat();
+                    float colY = buffer.ReadFloat();
+                    float colZ = buffer.ReadFloat();
+                    float colW = buffer.ReadFloat();
                     int avatarLen = buffer.ReadInt();
                     byte[] avatarBytes = buffer.ReadBytes(avatarLen);
                     string Name = buffer.ReadString();
@@ -1409,8 +1510,46 @@ namespace Networking
                     int Personality_2 = buffer.ReadInt();
                     int Personality_3 = buffer.ReadInt();
 
+                    int customFieldsCount = buffer.ReadInt();
+                    int customDescriptorsCount = buffer.ReadInt();
+                    int customPersonalitiesCount = buffer.ReadInt();
+                    ARPTooltipWindow.fields.Clear();
+                    ARPTooltipWindow.descriptors.Clear();
+                    ARPTooltipWindow.personalities.Clear();
+                    for (int i = 0; i < customFieldsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        ARPTooltipWindow.fields.Add(
+                           new field()
+                           {
+                               index = i,
+                               name = customName,
+                               description = customDescription
+                           });
+                    }
+                    for (int i = 0; i < customDescriptorsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        ARPTooltipWindow.descriptors.Add(new descriptor() { index = i, name = customName, description = customDescription });
+                    }
+                    for (int i = 0; i < customPersonalitiesCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        int customIconID = buffer.ReadInt();
+                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(plugin, customIconID).GetAwaiter().GetResult();
+                        if (customIcon == null)
+                        {
+                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
+                        ARPTooltipWindow.personalities.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
+                    }
                     PlayerProfile profile = new PlayerProfile();
                     profile.avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    profile.title = title;
+                    profile.titleColor = new Vector4(colX, colY, colZ, colW);
                     profile.Name = Name.Replace("''", "'");
                     profile.Race = Race.Replace("''", "'");
                     profile.Gender = Gender.Replace("''", "'");
@@ -1448,6 +1587,10 @@ namespace Networking
                     ARPTooltipWindow.personality_2Img = UI.PersonalityIcon(Personality_2);
                     ARPTooltipWindow.personality_3Img = UI.PersonalityIcon(Personality_3);
 
+
+
+
+
                     Plugin.tooltipLoaded = true;
                     plugin.OpenARPTooltip();
 
@@ -1457,29 +1600,6 @@ namespace Networking
             catch (Exception ex)
             {
                 plugin.logger.Error($"Error handling ReceiveTooltip message: {ex}");
-            }
-        }
-
-        internal static void ReceiveChatMessage(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    string profileName = buffer.ReadString();
-                    int avatarBytesLen = buffer.ReadInt();
-                    byte[] avatarBytes = buffer.ReadBytes(avatarBytesLen);
-                    string message = buffer.ReadString();
-                    IDalamudTextureWrap avatar =  Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    ARPChatWindow.messages.Add(new ChatMessage { authorName = profileName, avatar = avatar, message = message });
-
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
     }

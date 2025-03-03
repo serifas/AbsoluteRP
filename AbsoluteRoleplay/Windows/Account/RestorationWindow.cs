@@ -11,6 +11,7 @@ using Dalamud.Interface.GameFonts;
 using Networking;
 using Dalamud.Interface.Utility;
 using Dalamud.IoC;
+using Dalamud.Interface.Style;
 
 namespace AbsoluteRoleplay.Windows.Account
 {
@@ -37,7 +38,7 @@ namespace AbsoluteRoleplay.Windows.Account
         }
         public override void Draw()
         {
-            Misc.SetTitle(pg, true, "Account Restoration");
+            Misc.SetTitle(pg, true, "Account Restoration", ImGuiColors.TankBlue);
             //set everything back
             //okay that's done.
             ImGui.Text("We sent a restoration key to the email address provided. \nPlease enter the key with a new password below.");
