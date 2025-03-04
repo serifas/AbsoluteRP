@@ -133,7 +133,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (!AllLoaded())
             {
                 Misc.StartLoader(currentInd, max, loading, ImGui.GetWindowSize());
-                return;
             }
 
             if (warning)
@@ -163,7 +162,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
 
             if (!ExistingProfile)
+            {
+                ImGuiHelpers.SafeTextWrapped("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
+                if (ImGui.Button("Request access"))
+                {
+                    DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
+                }
                 return;
+            }
 
             if (firstDraw)
             {
