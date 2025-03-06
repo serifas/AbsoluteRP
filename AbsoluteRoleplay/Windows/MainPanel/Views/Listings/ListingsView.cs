@@ -74,6 +74,11 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views.Listings
                     ImGui.SetTooltip("Manage your personals");
                 }
             }
+            //row 3
+            if(ImGui.Button("View Public Listings", new Vector2(buttonWidth * 2f, buttonHeight / 2f)))
+            {
+                pluginInstance.OpenListingsWindow();
+            }
         }
     }
 }

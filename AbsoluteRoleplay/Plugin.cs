@@ -31,10 +31,12 @@ using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
 using FFXIVClientStructs.FFXIV.Client.Game.Object;
 using System.Timers;
 using Lumina.Excel.Sheets;
+using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.MainPanel;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Inventory;
 using OtterGui.Filesystem;
 using AbsoluteRoleplay.Windows.MainPanel.Views;
 using Dalamud.Interface;
@@ -93,13 +95,17 @@ namespace AbsoluteRoleplay
         private VerificationWindow VerificationWindow { get; init; }
         public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
+        private ListingsWindow ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
         private ProfileWindow ProfileWindow { get; init; }
         private BookmarksWindow BookmarksWindow { get; init; }
+        private ARPChatWindow ArpChatWindow { get; init; }
         private TargetWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
+        public ItemTooltip ItemTooltip { get; init; }
+        public InventoryWindow InventoryWindow { get; init; }
         private TOS TermsWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
@@ -172,12 +178,16 @@ namespace AbsoluteRoleplay
             BookmarksWindow = new BookmarksWindow(this);
             TargetWindow = new TargetWindow(this);
             VerificationWindow = new VerificationWindow(this);
+            ArpChatWindow = new ARPChatWindow(this, chatgui);
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
             AlertWindow = new AlertWindow(this);
+            InventoryWindow = new InventoryWindow(this);
+            ListingWindow = new ListingsWindow(this);
+            ItemTooltip = new ItemTooltip(this);
             Configuration.Initialize(PluginInterface);
             
             //add the windows to the windowsystem
@@ -195,6 +205,10 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
             WindowSystem.AddWindow(AlertWindow);
+            WindowSystem.AddWindow(ListingWindow);
+            WindowSystem.AddWindow(ItemTooltip);
+            WindowSystem.AddWindow(InventoryWindow);
+            WindowSystem.AddWindow(ArpChatWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
 
@@ -208,6 +222,7 @@ namespace AbsoluteRoleplay
             ClientState.Login += LoadConnection;            
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
+            TreeManager.plugin = this;
             plugin = this;
             if (IsOnline())
             {
@@ -298,6 +313,15 @@ namespace AbsoluteRoleplay
                     DataSender.RequestTargetProfileByCharacter(name, worldname);
                 },
             });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Absolute RP Trade",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+                    
+                },
+            });
 
         }
 
@@ -326,6 +350,16 @@ namespace AbsoluteRoleplay
                 OnClicked = _ => {
 
                     DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Absolute RP Trade",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+
+                   // DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
         }
@@ -466,6 +500,9 @@ namespace AbsoluteRoleplay
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
+            ListingWindow?.Dispose();
+            InventoryWindow?.Dispose();
+            ItemTooltip?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -540,6 +577,11 @@ namespace AbsoluteRoleplay
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
+        public void OpenListingsWindow() => ListingWindow.IsOpen = true;
+        public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
+        public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
+        public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
+        public void ToggleChatWindow() => ArpChatWindow.Toggle();
         public void OpenAlertWindow()
         {
             AlertWindow.increment = true;

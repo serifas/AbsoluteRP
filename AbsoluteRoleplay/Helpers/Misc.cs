@@ -155,8 +155,14 @@ namespace AbsoluteRoleplay
                 var imageBytes = File.ReadAllBytes(image);
                 if (avatar == true)
                 {
-                    BioTab.avatarBytes = File.ReadAllBytes(imagePath);
+                    BioTab.avatarBytes = imageBytes;
                     ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes( BioTab.avatarBytes, 100,100)).Result;
+                }
+                else
+                {
+                    GalleryTab.imageBytes[imageIndex] = imageBytes;
+                    GalleryTab.galleryThumbs[imageIndex] = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 250, 250)).Result;
+                    GalleryTab.galleryImages[imageIndex] = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 2000, 2000)).Result;
                 }
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
 

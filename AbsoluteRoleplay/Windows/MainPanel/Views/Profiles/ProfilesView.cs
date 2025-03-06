@@ -50,6 +50,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
                 {
                     DataSender.FetchProfiles();
                     DataSender.FetchProfile(ProfileWindow.currentProfileIndex);
+                    pluginInstance.OpenInventoryWindow();
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -73,6 +74,12 @@ namespace AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip("View NPC bookmarks - WIP");
+            }
+            var chatPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, chatPos));
+            if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+            {
+                pluginInstance.ToggleChatWindow();
             }
             var optionPos = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(buttonWidth / 14, optionPos));

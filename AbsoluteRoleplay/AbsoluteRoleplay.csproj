@@ -2,7 +2,7 @@
 <Project Sdk="Dalamud.NET.Sdk/11.2.0">
     <PropertyGroup>
         <Authors>Lynie</Authors>
-        <Version>0.0.0.20</Version>
+        <Version>0.0.0.21</Version>
         <Description>An all around Roleplay Plugin.</Description>
         <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
         <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
@@ -14,9 +14,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="client\**" />
-      <EmbeddedResource Remove="client\**" />
-      <None Remove="client\**" />
+        <Compile Remove="client\**" />
+        <EmbeddedResource Remove="client\**" />
+        <None Remove="client\**" />
     </ItemGroup>
 
     <!-- Explicit dependencies -->

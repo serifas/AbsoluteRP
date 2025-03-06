@@ -13,6 +13,7 @@ using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using System.Numerics;
 using Dalamud.Interface.Textures.TextureWraps;
+using OtterGui.Text.EndObjects;
 
 namespace Networking
 {
@@ -171,7 +172,7 @@ namespace Networking
             }
 
         }
-        public static async void SendGalleryImage(int profileIndex, bool NSFW, bool TRIGGER, string url, string tooltip, int index)
+        public static async void SendGalleryImages(int profileIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -186,11 +187,17 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
-                        buffer.WriteString(url);
-                        buffer.WriteString(tooltip);
-                        buffer.WriteBool(NSFW);
-                        buffer.WriteBool(TRIGGER);
-                        buffer.WriteInt(index);
+                        buffer.WriteInt(GalleryTab.galleryImageCount);
+                        for (int i = 0; i < GalleryTab.galleryImageCount; i++)
+                        {
+                            buffer.WriteString(GalleryTab.imageURLs[i]);
+                            buffer.WriteInt(GalleryTab.imageBytes[i].Length);
+                            buffer.WriteBytes(GalleryTab.imageBytes[i]);
+                            buffer.WriteString(GalleryTab.imageTooltips[i]);
+                            buffer.WriteBool(GalleryTab.NSFW[i]);
+                            buffer.WriteBool(GalleryTab.TRIGGER[i]);
+                            buffer.WriteInt(i);
+                        }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1140,6 +1147,152 @@ namespace Networking
             }
         }
 
-      
+        internal static async void SendCustomLayouts(int currentProfileIndex, SortedList<int, Layout> layouts)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendCustomLayouts);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(currentProfileIndex);
+                        buffer.WriteInt(layouts.Count);
+                        for(int i = 0; i < layouts.Count; i++)
+                        {
+                            buffer.WriteInt(layouts.Values[i].id);
+                            buffer.WriteString(layouts.Values[i].name);
+                            List<LayoutElement> elements = layouts.Values[i].elements;
+                            buffer.WriteInt(elements.Count);
+                            for (int e = 0; e < elements.Count; e++)
+                            {  
+                                LayoutElement element = elements[e];
+                                if(element.canceled)
+                                buffer.WriteInt(element.id);
+                                buffer.WriteString(element.name);
+                                buffer.WriteInt(element.type);
+                                buffer.WriteBool(element.canceled);    
+                            }
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                }
+            }
+        }
+        /*
+public static async void SendTreeData(int profileIndex, TreeNode rootNode)
+{
+   if (ClientTCP.IsConnected())
+   {
+       try
+       {
+           using (var buffer = new ByteBuffer())
+           {
+               buffer.WriteInt((int)ClientPackets.CSendTreeData);
+               buffer.WriteString(plugin.username);
+               buffer.WriteString(plugin.password);
+               buffer.WriteString(plugin.playername);
+               buffer.WriteString(plugin.playerworld);
+               buffer.WriteInt(profileIndex);
+
+               // Serialize the tree nodes and their related elements
+               SerializeTreeNodes(buffer, rootNode);
+
+               await ClientTCP.SendDataAsync(buffer.ToArray());
+           }
+       }
+       catch (Exception ex)
+       {
+           plugin.logger.Error("Error in SendTreeData: " + ex.ToString());
+       }
+   }
+}
+
+private static void SerializeTreeNodes(ByteBuffer buffer, TreeNode node)
+{
+   // Write the node's basic information
+   buffer.WriteString(node.Name);
+   buffer.WriteBool(node.IsFolder);
+   buffer.WriteInt(node.ID);
+   buffer.WriteInt(node.layoutID);
+
+   // Write the related element's information if it exists
+   if (node.relatedElement != null)
+   {
+       buffer.WriteBool(true); // Indicates that the related element exists
+       SerializeLayoutElement(buffer, node.relatedElement);
+   }
+   else
+   {
+       buffer.WriteBool(false); // No related element
+   }
+
+   // Write the number of children
+   buffer.WriteInt(node.Children.Count);
+
+   // Recursively serialize children
+   foreach (var child in node.Children)
+   {
+       SerializeTreeNodes(buffer, child);
+   }
+}
+
+private static void SerializeLayoutElement(ByteBuffer buffer, LayoutElement element)
+{
+   buffer.WriteInt(element.id);
+   buffer.WriteString(element.name);
+   buffer.WriteInt(element.type);
+   buffer.WriteFloat(element.PosX);
+   buffer.WriteFloat(element.PosY);
+   buffer.WriteBool(element.locked);
+   buffer.WriteBool(element.modifying);
+   buffer.WriteBool(element.canceled);
+
+   // Handle specific element types
+   if (element is TextElement textElement)
+   {
+       buffer.WriteString(textElement.text);
+       buffer.WriteFloat(textElement.color.X);
+       buffer.WriteFloat(textElement.color.Y);
+       buffer.WriteFloat(textElement.color.Z);
+       buffer.WriteFloat(textElement.color.W);
+   }
+   else if (element is ImageElement imageElement)
+   {
+       buffer.WriteInt(imageElement.bytes.Length);
+       buffer.WriteBytes(imageElement.bytes);
+       buffer.WriteString(imageElement.tooltip);
+       buffer.WriteFloat(imageElement.width);
+       buffer.WriteFloat(imageElement.height);
+       buffer.WriteBool(imageElement.initialized);
+       buffer.WriteBool(imageElement.proprotionalEditing);
+       buffer.WriteBool(imageElement.hasTooltip);
+       buffer.WriteBool(imageElement.maximizable);
+   }
+   else if (element is IconElement iconElement)
+   {
+       buffer.WriteInt((int)iconElement.State);
+   }
+   else if (element is FolderElement folderElement)
+   {
+       buffer.WriteString(folderElement.text);
+   }
+   else if (element is EmptyElement emptyElement)
+   {
+       buffer.WriteString(emptyElement.text);
+       buffer.WriteFloat(emptyElement.color.X);
+       buffer.WriteFloat(emptyElement.color.Y);
+       buffer.WriteFloat(emptyElement.color.Z);
+       buffer.WriteFloat(emptyElement.color.W);
+   }
+}*/
     }
 }

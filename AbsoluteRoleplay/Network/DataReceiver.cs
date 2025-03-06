@@ -14,10 +14,12 @@ using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel;
 using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Windows.Inventory;
 using System.Threading.Tasks;
 using Lumina.Excel.Sheets;
 
@@ -245,6 +247,7 @@ namespace Networking
             {
                 using (var buffer = new ByteBuffer())
                 {
+                    InventoryWindow.ProfileBaseData.Clear();
                     ProfileWindow.profiles.Clear();
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
@@ -267,8 +270,10 @@ namespace Networking
                     ProfileWindow.editProfile = false;
                     ProfileWindow.ClearUI();
                     ProfileWindow.ExistingProfile = false;
+                    InventoryWindow.ExistingProfile = false;
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = false;
+                    InventoryWindow.ExistingProfile = false;
                     
                     ProfileWindow.ClearOnLoad();
                 }
@@ -442,6 +447,7 @@ namespace Networking
                     string profileName = buffer.ReadString();
                     plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = true;
+                    InventoryWindow.ExistingProfile = true;
                     ProfileWindow.ResetOnChangeOrRemoval();
                     ProfileWindow.ClearOnLoad();
                     loggedIn = true;
@@ -721,6 +727,7 @@ namespace Networking
                     if (alignment != 9)
                     {
                         TargetWindow.showAlignment = true;
+                        TargetWindow.alignment = alignment;
                     }
                     else
                     {
@@ -864,6 +871,7 @@ namespace Networking
                     ProfileWindow.isPrivate = status;
                     ProfileWindow.activeProfile = tooltipStatus;
                     ProfileWindow.ExistingProfile = true;
+                    InventoryWindow.ExistingProfile = true;
                     ProfileWindow.ClearOnLoad();
 
                 }
@@ -913,6 +921,7 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int profileCount = buffer.ReadInt();
                     ProfileWindow.profiles.Clear();
+                    InventoryWindow.ProfileBaseData.Clear();
                     for (int i =0; i < profileCount; i++)
                     {
                         
@@ -920,6 +929,7 @@ namespace Networking
                         string name = buffer.ReadString();
                         bool active = buffer.ReadBool();
                         ProfileWindow.profiles.Add(new PlayerProfile(){index = index, Name = name, isActive= active});
+                        InventoryWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
                     }
                 }
             }
@@ -1216,6 +1226,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
+                    ListingsWindow.percentage = listingCount;
                     for (int i = 0; i < listingCount; i++)
                     {
                         string name = buffer.ReadString();
@@ -1232,6 +1243,8 @@ namespace Networking
                       //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
                       //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
                      //   ListingsWindow.listings.Add(listing);
+                        ListingsWindow.loading = "Listing: " + i;
+                        ListingsWindow.loaderInd = i;
                     }
                     ListingsLoadStatus = 1;
                 }
@@ -1385,7 +1398,53 @@ namespace Networking
             }
         }
 
-     
+        internal static void ReceiveProfileItems(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int itemsCount = buffer.ReadInt();
+
+                    InventoryWindow.percentage = itemsCount;
+                    for (int i = 0; i < itemsCount; i++)
+                    {
+
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        int type = buffer.ReadInt();
+                        int subType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt(); 
+                        int slotID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+                        InvTab.inventorySlotContents[type][slotID] = new ItemDefinition
+                        {
+                            name = name,
+                            description = description,
+                            type = type,
+                            subtype = subType,
+                            iconID = iconID, // Ensure iconID is valid
+                            slot = slotID,
+                            quality = quality
+                        };
+                        // Validate and ensure compatibility
+                        if (WindowOperations.RenderIconAsync(plugin, iconID) == null)
+                        {
+                            throw new InvalidOperationException($"Invalid iconID: {iconID}");
+                        }
+                        InventoryWindow.loaderInd = i;
+
+                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveProfileItems message: {ex}");
+            }
+        }
         internal static void RecieveProfileWarning(byte[] data)
         {
             try
@@ -1602,5 +1661,61 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveTooltip message: {ex}");
             }
         }
+
+        internal static void ReceiveChatMessage(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int id = buffer.ReadInt();
+                    string Name = buffer.ReadString();
+                    string World = buffer.ReadString();
+                    string profileName = buffer.ReadString();
+                    int avatarBytesLen = buffer.ReadInt();
+                    byte[] avatarBytes = buffer.ReadBytes(avatarBytesLen);
+                    string message = buffer.ReadString();
+                    IDalamudTextureWrap avatar =  Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    ARPChatWindow.messages.Add(new ChatMessage { author=id, name=Name, world=World, authorName = profileName, avatar = avatar, message = message });
+
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+        }
+
+
+        //SYNC
+
+        internal static void ReceivePlayerSyncData(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    string name = buffer.ReadString();
+                    int modDataCount = buffer.ReadInt();
+
+                    for(int i = 0; i < modDataCount; i++)
+                    {
+                        int byteLen = buffer.ReadInt();
+                        byte[] bytes = buffer.ReadBytes(byteLen);
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+        }
+
+
     }
 }

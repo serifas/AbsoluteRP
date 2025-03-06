@@ -16,6 +16,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using System.Collections.Generic;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using System.Net.Http;
 
 namespace AbsoluteRoleplay.Helpers
 {
@@ -23,10 +24,11 @@ namespace AbsoluteRoleplay.Helpers
     {
         public static Plugin plugin;
         private static Dictionary<uint, IconInfo?> IconInfoCache = [];
-     
+      
         public static IDalamudTextureWrap DownloadImage(string url)
         {
-            if (!IsImageUrl(url))
+            bool isImage = IsImageUrlAsync(url).GetAwaiter().GetResult();
+            if(!isImage)
             {
                 return UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
             }
@@ -59,7 +61,8 @@ namespace AbsoluteRoleplay.Helpers
         }
         public static void DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
          {
-             if (IsImageUrl(url))
+            bool isImage = IsImageUrlAsync(url).GetAwaiter().GetResult();
+            if (isImage)
              {
                  try
                  {
@@ -73,24 +76,26 @@ namespace AbsoluteRoleplay.Helpers
                              // Load the image from the memory stream
                              Image baseImage = Image.FromStream(ms);
     
-                             // Scale the image
-                             Image scaledImage = ScaleImage(baseImage, 1000, 800);
-    
                              // Convert scaled image to byte array
-                             byte[] scaledImageBytes = ImageToByteArray(scaledImage);
-    
+                             byte[] scaledImageBytes = ImageToByteArray(baseImage); 
+                             
                              // If self is true, process for ProfileWindow, else for TargetWindow
-                             if (self)
-                             {
-                                 var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
-                                 if (image != null)
-                                 {
+                            if (self)
+                            {
+                                var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
+                                if (image != null)
+                                {
                                     GalleryTab.galleryImages[index] = image;
-                                 }
-                                 GalleryTab.imageURLs[index] = url;
-                                 GalleryTab.NSFW[index] = nsfw;
-                                 GalleryTab.TRIGGER[index] = trigger;
-                                 GalleryTab.imageTooltips[index] = tooltip;
+                                }
+                                if (url.Contains("absolute-roleplay"))
+                                {
+                                    url = string.Empty;
+                                }
+                                GalleryTab.imageURLs[index] = url;
+                                GalleryTab.NSFW[index] = nsfw;
+                                GalleryTab.TRIGGER[index] = trigger;
+                                GalleryTab.imageTooltips[index] = tooltip;
+                                GalleryTab.imageBytes[index] = scaledImageBytes;
                              }
                              else
                              {
@@ -212,40 +217,45 @@ namespace AbsoluteRoleplay.Helpers
             }
         }
 
-        public static bool IsImageUrl(string url)
+        private static readonly HttpClient httpClient = new HttpClient();
+
+        public static async Task<bool> IsImageUrlAsync(string url)
         {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
             try
             {
-                if (url != string.Empty)
+                using (HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Head, url))
                 {
-                    // Send a HEAD request to fetch only the headers
-                    HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-                    request.Method = "HEAD";
+                    HttpResponseMessage response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
 
-                    // Get the response
-                    using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+                    if (!response.IsSuccessStatusCode)
                     {
-                        // Check if the Content-Type header indicates an image
-                        if (response.ContentType.ToLower().StartsWith("image/"))
-                        {
-                            return true;
-                        }
+                        Console.WriteLine($"[Error] Failed to fetch URL: {response.StatusCode}");
+                        return false;
                     }
+
+                    // Check if Content-Type is an image
+                    if (response.Content.Headers.ContentType?.MediaType?.StartsWith("image/") == true)
+                        return true;
                 }
             }
-            catch (WebException)
+            catch (HttpRequestException ex)
             {
-                // URL is invalid or inaccessible
+                Console.WriteLine($"[Error] HTTP Request failed: {ex.Message}");
                 return false;
             }
             catch (Exception ex)
             {
-                // Handle other exceptions
-                throw new Exception($"An error occurred: {ex.Message}");
+                Console.WriteLine($"[Error] Unexpected error: {ex.Message}");
+                return false;
             }
 
             return false;
         }
+
+
 
 
         static void SaveImage(Image image, string directoryPath, string fileName)

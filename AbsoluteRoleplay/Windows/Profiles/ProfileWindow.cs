@@ -13,13 +13,15 @@ using Dalamud.Interface.Textures.TextureWraps;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Inventory;
 using System.Transactions;
 using JetBrains.Annotations;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using AbsoluteRoleplay.Helpers;
 using K4os.Compression.LZ4.Internal;
-using static AbsoluteRoleplay.UI;
+using SixLabors.ImageSharp.PixelFormats;
+using System.Buffers.Text;
 
 
 namespace AbsoluteRoleplay.Windows.Profiles
@@ -78,6 +80,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static int currentElementID = 0;
         public static bool customTabSelected = false;
         public static bool Locked = false;
+        public static Layout currentLayout;
+        public static LayoutElement currentElement;
         public bool AddInputTextElement { get; private set; }
         public bool AddInputTextMultilineElement { get; private set; }
         public bool AddInputImageElement { get; private set; }
@@ -115,6 +119,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 showInputPopup[i] = false;
                 availableTabs[i] = "";
             }
+            InvTab.InitInventory();
             profiles.Clear();
             TabOpen.Clear(); //clear our TabOpen array before populating again
             var avatarHolderImage = UI.UICommonImage(UI.CommonImageTypes.avatarHolder); //Load the avatarHolder TextureWrap from Constants.UICommonImage
@@ -140,6 +145,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 TabOpen.Add(tab, false); //set all tabs to be closed by default
             }
+            byte[] imageBytes = new byte[0];
+            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } imagePath })
+            {
+                imageBytes = Misc.ImageToByteArray(Path.Combine(imagePath, "UI/common/profiles/galleries/picturetab.png"));
+            }
             //set the base value for our arrays and lists
             for (var i = 0; i < 31; i++)
             {
@@ -157,6 +167,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 GalleryTab.galleryImagesList.Add(pictureTab);
                 GalleryTab.galleryThumbsList.Add(pictureTab);
                 GalleryTab.imageURLs[i] = string.Empty;
+                GalleryTab.imageBytes[i] = imageBytes;
             }
             GalleryTab.galleryImages = GalleryTab.galleryImagesList.ToArray();
             GalleryTab.galleryThumbs = GalleryTab.galleryThumbsList.ToArray();
@@ -168,9 +179,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (BioTab.avatarBytes == null)
             {
                 //set the avatar to the avatar_holder.png by default
-                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } avatarPath })
                 {
-                    BioTab.avatarBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/profiles/avatar_holder.png"));
+                    BioTab.avatarBytes = File.ReadAllBytes(Path.Combine(avatarPath, "UI/common/profiles/avatar_holder.png"));
                 }
             }
 
@@ -194,6 +205,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
         public override void Draw()
         {
+            if (customTabSelected && currentLayout.elements.Count > 0 && !DynamicInputs.AnyLockedOrScaling(currentLayout) || Locked == true)
+            {
+                this.Flags = ImGuiWindowFlags.NoMove;
+            }
+            else
+            {
+                this.Flags = ImGuiWindowFlags.None;
+            }
             if (plugin.IsOnline())
             {
                 //if we have loaded all
@@ -345,6 +364,18 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (ImGui.BeginTabItem("OOC")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.OOC] = true; ImGui.EndTabItem(); }
                     if (ImGui.BeginTabItem("Gallery")) { ClearUI(); customTabSelected = false; TabOpen[TabValue.Gallery] = true; ImGui.EndTabItem(); }
 
+                   // RenderCustomTabs();
+
+                    // Render the popup for adding a new tab
+                   /* if (ImGui.TabItemButton("  +  ##AddTab", ImGuiTabItemFlags.NoCloseWithMiddleMouseButton))
+                    {
+                        if (customTabsCount < MaxTabs)
+                        {
+                            showInputPopup[customTabsCount] = true; // Open the popup for the new tab
+                            availableTabs[customTabsCount] = ""; // Reset the name field
+                            ImGui.OpenPopup($"New Page##{customTabsCount}"); // Trigger popup
+                        }
+                    }*/
                     ImGui.EndTabBar();
 
 
@@ -423,11 +454,208 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 Misc.StartLoader(loaderInd, percentage, loading, ImGui.GetWindowSize());
             }
         }
+        private void RenderDeleteConfirmationPopup()
+        {
+            if (showDeleteConfirmationPopup && ImGui.BeginPopupModal("Delete Tab Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text($"Are you sure you want to delete the tab \"{availableTabs[tabToDeleteIndex]}\"?");
+                ImGui.Spacing();
+
+                // Confirm button
+                if (ImGui.Button("Confirm"))
+                {
+                    openTabs[tabToDeleteIndex] = false; // Mark the tab as closed
+                    showDeleteConfirmationPopup = false; // Close the popup
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.SameLine();
+
+                // Cancel button
+                if (ImGui.Button("Cancel"))
+                {
+                    showDeleteConfirmationPopup = false; // Close the popup without deleting
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+        }
        
+       
+        public void RenderCustomTabs()
+        {
+            // Render all active popups
+            for (int i = 0; i < MaxTabs; i++)
+            {
+                if (showInputPopup[i])
+                {
+                    if (ImGui.BeginPopupModal($"New Page##{i}", ref showInputPopup[i], ImGuiWindowFlags.AlwaysAutoResize))
+                    {
+                        ImGui.Text($"Enter the name for the page:");
+                        ImGui.InputText($"##TabInput{i}", ref availableTabs[i], 100);
+
+                        // Detect Enter key submission
+                        var io = ImGui.GetIO();
+
+
+                        if (ImGui.Button("Submit") || io.KeysDown[(int)ImGuiKey.Enter] && !string.IsNullOrWhiteSpace(availableTabs[i]))
+                        {
+                            openTabs[i] = true; // Mark the tab as open
+                            customTabsCount++; // Increment the tab count
+                            showInputPopup[i] = false; // Close the popup
+                            ImGui.CloseCurrentPopup();
+
+                        }
+                        ImGui.SameLine();
+                        // Optional cancel button
+                        if (ImGui.Button("Cancel"))
+                        {
+                            showInputPopup[i] = false; // Close the popup without saving
+                            availableTabs[i] = ""; // Clear the name
+                            ImGui.CloseCurrentPopup();
+                        }
+
+                        ImGui.EndPopup();
+                    }
+                }
+            }
+
+            // Render all tabs
+            for (int i = 0; i < customTabsCount; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(availableTabs[i]))
+                {
+                    RenderTab(i, ref openTabs[i], availableTabs[i]);
+                }
+            }
+
+            // Render the delete confirmation popup
+            RenderDeleteConfirmationPopup();
+
+            // Clean up closed tabs
+            for (int i = customTabsCount - 1; i >= 0; i--)
+            {
+                if (!openTabs[i])
+                {
+                    for (int j = i; j < customTabsCount - 1; j++)
+                    {
+                        availableTabs[j] = availableTabs[j + 1];
+                        openTabs[j] = openTabs[j + 1];
+                        showInputPopup[j] = showInputPopup[j + 1];
+                    }
+                    customTabsCount--;
+                }
+            }
+        }
 
 
 
-     
+        private void RenderTab(int index, ref bool isOpen, string tabName)
+        {
+            string uniqueId = $"{tabName}##{index}";
+
+            // Render the tab with a close button
+            if (ImGui.BeginTabItem(uniqueId, ref isOpen))
+            {
+                ClearUI();
+                customTabSelected = true;
+                // Ensure the layout exists
+                currentLayout = DynamicInputs.layouts.Values.FirstOrDefault(l => l.id == index);
+                if (currentLayout == null)
+                {
+                    currentLayout = new Layout
+                    {
+                        id = index,
+                        name = tabName,
+                        elements = new List<LayoutElement>()
+
+                    };
+                    int ind = DynamicInputs.layouts.Count;
+                    DynamicInputs.layouts.Add(ind, currentLayout);
+                }
+                var PIN_IMG = Locked
+                ? unpinImg
+                : pinImg;
+                var VIEW_IMG = HideHeiarchy
+                ? viewImg
+                : hideImg;
+                var DOCK_IMG = DockHeiarchy
+                ? dockImg
+                : undockImg; 
+                
+                if (ImGui.ImageButton(PIN_IMG.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 20)))
+                {
+                    Locked = !Locked;                                
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Pin/Unpin Window");
+                }
+                ImGui.SameLine();
+                if (ImGui.ImageButton(VIEW_IMG.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 20)))
+                {
+                    HideHeiarchy = !HideHeiarchy;
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Hide/Display hierarchy");
+                }
+                ImGui.SameLine();
+                if (ImGui.ImageButton(DOCK_IMG.ImGuiHandle,  new Vector2(ImGui.GetIO().FontGlobalScale * 20)))
+                {
+                    DockHeiarchy = !DockHeiarchy;
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Dock/Undock hierarchy");
+                }
+                // Render the Add Element button
+                if (!HideHeiarchy)
+                {
+                    if (firstDraw)
+                    {
+                        // Set the initial position and size of the window
+                        ImGui.SetNextWindowPos(new Vector2(100, 100), ImGuiCond.FirstUseEver);  // Initial position
+                        ImGui.SetNextWindowSize(new Vector2(400, 300), ImGuiCond.FirstUseEver); // Initial size
+                        firstDraw = false; // Ensure it's set only once
+                    }
+                    if (DockHeiarchy)
+                    {
+                        ImGui.Begin($"ElementTree##tree_{index}", ImGuiWindowFlags.NoCollapse);                        
+                        TreeManager.RenderTree(currentLayout);                        
+                        ImGui.End();
+                    }
+                    else
+                    {
+                        if(ImGui.BeginChild($"ElementTree##tree_{index}", new Vector2(ImGui.GetWindowSize().X / 5, ImGui.GetWindowSize().Y), true))
+                        {
+                            TreeManager.RenderTree(currentLayout);
+                            ImGui.EndChild();
+                        }
+                        ImGui.SameLine();
+
+                    }
+                }
+                // Create a child window to contain the draggable elements
+                if (ImGui.BeginChild($"DraggableContent##content_{index}", new Vector2(-1, -1), true, ImGuiWindowFlags.AlwaysUseWindowPadding))
+                {
+                    DynamicInputs.RenderElements(currentLayout, false, plugin);
+
+                    ImGui.EndChild();
+                }
+                ImGui.EndTabItem();
+            }
+
+            // Handle the case where the tab is closed (close button pressed)
+            if (!isOpen)
+            {
+                isOpen = true; // Reopen the tab temporarily to show the confirmation popup
+                tabToDeleteIndex = index; // Store the index of the tab to delete
+                showDeleteConfirmationPopup = true; // Show the delete confirmation popup
+                ImGui.OpenPopup("Delete Tab Confirmation");
+            }
+        }
 
 
 
@@ -501,8 +729,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static void ResetOnChangeOrRemoval()
         {
             isPrivate = true;
-
-            for (int i = 0; i < HooksTab.hookCount; i++)
+            
+            for(int i = 0; i < HooksTab.hookCount; i++)
             {
                 HooksTab.hookExists[i] = false;
                 HooksTab.HookNames[i] = string.Empty;
@@ -511,18 +739,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
             GalleryTab.ResetGallery();
             StoryTab.ResetStory();
             oocInfo = string.Empty;
-
-            // Ensure bio fields are cleared
-            for (int i = 0; i < BioTab.bioFieldsArr.Length; i++)
+            for(int i = 0; i < BioTab.bioFieldsArr.Length; i++)
             {
                 BioTab.bioFieldsArr[i] = string.Empty;
             }
-
-            // Clear descriptors, fields, and personalities
-            BioTab.descriptors.Clear();
-            BioTab.fields.Clear();
-            BioTab.personalities.Clear();  // <-- Ensure custom traits are cleared
-
             currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
             BioTab.currentAlignment = 9;
             BioTab.currentPersonality_1 = 26;
@@ -812,6 +1032,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             string galleryNSFWPattern = @"<nsfw>(.*?)</nsfw>";
                             string galleryTRIGGERPattern = @"<trigger>(.*?)</trigger>";
                             string galleryUrlPattern = @"<url>(.*?)</url>";
+                            string galleryImgBytesPattern = @"<bytes>(.*?)</bytes>";
                             string galleryTooltipPattern = @"<tooltip>(.*?)</tooltip>";
 
                             MatchCollection galleryMatches = galleryRegex.Matches(backupContent);
@@ -825,6 +1046,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                 MatchCollection nsfwMatches = Regex.Matches(galleryContent, galleryNSFWPattern);
                                 MatchCollection triggerMatches = Regex.Matches(galleryContent, galleryTRIGGERPattern);
                                 MatchCollection urlMatches = Regex.Matches(galleryContent, galleryUrlPattern);
+                                MatchCollection bytesMatches = Regex.Matches(galleryContent, galleryImgBytesPattern);
                                 MatchCollection tooltipMatches = Regex.Matches(galleryContent, galleryTooltipPattern);
 
                                 for (int i = 0; i < urlMatches.Count; i++)
@@ -832,11 +1054,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     bool nsfw = bool.TryParse(nsfwMatches[i].Groups[1].Value, out bool nsfwResult) ? nsfwResult : false;
                                     bool trigger = bool.TryParse(triggerMatches[i].Groups[1].Value, out bool triggerResult) ? triggerResult : false;
                                     string url = urlMatches[i].Groups[1].Value;
+                                    string bytes = bytesMatches[i].Groups[1].Value;
                                     string tooltip = tooltipMatches[i].Groups[1].Value;
-
+                                    byte[] imageBytesData = Convert.FromBase64String(bytes);
                                     if (!string.IsNullOrWhiteSpace(url))
                                     {
-                                        galleryimagedata.Add(new ProfileGalleryImage { url = url, nsfw = nsfw, trigger = trigger, tooltip = tooltip });
+                                        galleryimagedata.Add(new ProfileGalleryImage { url = url, nsfw = nsfw, trigger = trigger, imageBytes=imageBytesData, tooltip = tooltip });
                                     }
                                 }
                             }
@@ -896,7 +1119,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             for (var i = 0; i < galleryimagedata.Count; i++)
                             {
                                 //pretty simple stuff, just send the gallery related array values to the server
-                                DataSender.SendGalleryImage(currentProfileIndex, galleryimagedata[i].nsfw, galleryimagedata[i].trigger, galleryimagedata[i].url, galleryimagedata[i].tooltip, i);
+                                DataSender.SendGalleryImages(currentProfileIndex);
 
                             }
                             //send the OOC info to the server, just a string really
@@ -1017,12 +1240,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 //finally send the story data to the server
                 DataSender.SendStory(currentProfileIndex, StoryTab.storyTitle, storyChapters);
 
-                for (var i = 0; i < GalleryTab.galleryImageCount; i++)
-                {
                     //pretty simple stuff, just send the gallery related array values to the server
-                    DataSender.SendGalleryImage(currentProfileIndex, GalleryTab.NSFW[i], GalleryTab.TRIGGER[i], GalleryTab.imageURLs[i], GalleryTab.imageTooltips[i], i);
+                DataSender.SendGalleryImages(currentProfileIndex);
 
-                }
                 //send the OOC info to the server, just a string really
                 DataSender.SendOOCInfo(currentProfileIndex, oocInfo);
 
@@ -1115,6 +1335,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         writer.WriteLine($"<nsfw>{GalleryTab.NSFW[i]}</nsfw>");
                         writer.WriteLine($"<trigger>{GalleryTab.TRIGGER[i]}</trigger>");
                         writer.WriteLine($"<url>{EscapeTagContent(GalleryTab.imageURLs[i])}</url>");
+                        writer.WriteLine($"<bytes>{EscapeTagContent(Convert.ToBase64String(GalleryTab.imageBytes[i]))}</bytes>");
                         writer.WriteLine($"<tooltip>{EscapeTagContent(GalleryTab.imageTooltips[i])}</tooltip>");
                     }
                     writer.WriteLine("</gallery>");

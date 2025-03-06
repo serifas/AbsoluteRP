@@ -1,3 +1,4 @@
+using AbsoluteRoleplay.Windows.Inventory;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -399,6 +400,7 @@ namespace AbsoluteRoleplay.Helpers
                 if (ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize)))
                 {
                     selectedIcon = texture; // Handle icon click
+                    InvTab.createItemIconID = iconId;
                 }
                 ImGui.PopID();
 
@@ -430,13 +432,22 @@ namespace AbsoluteRoleplay.Helpers
                 ImGui.SameLine();
                 if (ImGui.Button("Set Icon"))
                 {
-                    if (icon == null)
+                    if (inventory)
                     {
-                        ImGui.Text("Error: icon parameter is null!");
+                        InvTab.icon = selectedIcon;
+                        InvTab.isIconBrowserOpen = false;
                     }
                     else
                     {
-                        icon.icon = selectedIcon;
+                        if (icon == null)
+                        {
+                            ImGui.Text("Error: icon parameter is null!");
+                        }
+                        else
+                        {
+                            icon.icon = selectedIcon;
+                            icon.modifying = false;
+                        }
                     }
                 }
                 ImGui.Image(selectedIcon.ImGuiHandle, new Vector2(iconSize, iconSize));

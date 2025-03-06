@@ -110,7 +110,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 //text must be multiline so add the multiline field/fields
                 var biofield = UI.BioFieldVals[(int)UI.BioFieldTypes.afg];
                 ImGui.Text(biofield.Item1);
-                ImGui.InputTextMultiline(biofield.Item2, ref bioFieldsArr[(int)UI.BioFieldTypes.afg], 3100, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 5));
+                ImGui.InputTextMultiline(biofield.Item2, ref bioFieldsArr[(int)UI.BioFieldTypes.afg], 3100, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 15));
 
             }
             //simple for loop to get through our bio text fields
@@ -170,11 +170,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                         description = "Description"
                     });
                 }
-                for (int i =0; i < personalities.Count; i++)
+                foreach (var personality in personalities.ToList()) // Iterate over a copy of the list
                 {
-                    LoadCustomPersonality(plugin, personalities[i]);
+                    LoadCustomPersonality(plugin, personality);
                 }
-                
             }
         }
         public static void LoadCustomPersonality(Plugin plugin, trait personality)

@@ -46,10 +46,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static bool ExistingGallery;
         public static bool ExistingProfile;
         public static string storyTitle = "";
+        public static int alignment = 9;
         public static byte[] existingAvatarBytes;
         public static string currentTab = null;
         public static bool isActive = currentTab == "Bio";
-        public static int alignment = 9;
         public static string[] imageTooltips = new string[30];
         //BIO VARS
         public static IDalamudTextureWrap alignmentImg, personalityImg1, personalityImg2, personalityImg3;
@@ -133,6 +133,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             if (!AllLoaded())
             {
                 Misc.StartLoader(currentInd, max, loading, ImGui.GetWindowSize());
+                return;
             }
 
             if (warning)
@@ -299,13 +300,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     ImGui.Spacing();
                     ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: \n" + characterEditAfg);
                 }
-                if(showAlignment == true)
+                if (showAlignment == true)
                 {
                     ImGui.Text("ALIGNMENT:");
                     ImGui.Image(alignmentImg.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 38));
+                    (string, string) alignmentVal = UI.AlignmentVals[alignment];
                     if (ImGui.IsItemHovered())
                     {
-                        ImGui.SetTooltip(UI.AlignmentName(alignment));
+                        ImGui.SetTooltip($"{alignmentVal.Item1}\n{alignmentVal.Item2}");
                     }
                 }
                 foreach (var field in fields)
@@ -342,7 +344,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (showPersonality3 == true)
                     {
                         ImGui.Image(personalityImg3.ImGuiHandle, alignmentSize);
-
                         if (ImGui.IsItemHovered())
                         {
                             ImGui.SetTooltip(personality3Tooltip);
@@ -355,7 +356,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                         ImGui.TableSetupColumn("Column 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
                         ImGui.TableSetupColumn("Column 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
                         ImGui.TableSetupColumn("Column 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-
                         foreach (trait personality in personalities)
                         {
                             ImGui.TableNextColumn();
@@ -366,7 +366,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             }
                         }
                     }
-                  
                 }
             }
 

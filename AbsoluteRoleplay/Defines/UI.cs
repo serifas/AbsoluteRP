@@ -80,10 +80,12 @@ namespace AbsoluteRoleplay
 
     public class ProfileGalleryImage
     {
+        public int index;
         public string url;
         public string tooltip;
         public bool nsfw;
         public bool trigger;
+        public byte[] imageBytes;
     }
 
     public class Story

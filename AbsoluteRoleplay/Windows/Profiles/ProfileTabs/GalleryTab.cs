@@ -22,6 +22,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
         public static bool[] TRIGGER = new bool[31]; //gallery images TRIGGER status
         public static bool[] ImageExists = new bool[31]; //used to check if an image exists in the gallery
         public static string[] imageTooltips = new string[31];
+        public static byte[][] imageBytes = new byte[31][];
         public static List<IDalamudTextureWrap> galleryThumbsList = new List<IDalamudTextureWrap>();
         public static List<IDalamudTextureWrap> galleryImagesList = new List<IDalamudTextureWrap>();
         public static IDalamudTextureWrap[] galleryImages, galleryThumbs = new IDalamudTextureWrap[31];
@@ -43,6 +44,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
             ImGui.NewLine();
             addGalleryImageGUI = true;
             ImageExists[galleryImageCount] = true;
+
         }
         //adds an image to the gallery with the specified index with a table 4 columns wide
         public static void AddImageToGallery(Plugin plugin, int imageIndex)
@@ -84,11 +86,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 ImGui.Text("Will this image be 18+ ?");
                 if (ImGui.Checkbox("Yes 18+##" + i, ref NSFW[i]))
                 {
-                    for (var g = 0; g < galleryImageCount; g++)
-                    {
                         //send galleryImages on value change of 18+ incase the user forgets to hit submit gallery
-                        DataSender.SendGalleryImage(ProfileWindow.currentProfileIndex, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
-                    }
+                        DataSender.SendGalleryImages(ProfileWindow.currentProfileIndex);
                 }
                 ImGui.Text("Is this a possible trigger ?");
                 if (ImGui.Checkbox("Yes Triggering##" + i, ref TRIGGER[i]))
@@ -96,7 +95,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     for (var g = 0; g < galleryImageCount; g++)
                     {
                         //same for triggering, we don't want to lose this info if the user is forgetful
-                        DataSender.SendGalleryImage(ProfileWindow.currentProfileIndex, NSFW[g], TRIGGER[g], imageURLs[g], imageTooltips[i], g);
+                        DataSender.SendGalleryImages(ProfileWindow.currentProfileIndex);
                     }
                 }
                 ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref imageURLs[i], 300);
@@ -115,6 +114,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     ImagePreview.height = galleryImages[i].Height;
                     ImagePreview.PreviewImage = galleryImages[i];
                     loadPreview = true;
+                }
+                if(ImGui.Button("Upload##" + i))
+                {
+                    Misc.EditImage(plugin, ProfileWindow._fileDialogManager, false, i);
                 }
                 using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
                 {
@@ -174,6 +177,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     imageURLs[i] = imageURLs[i + 1];
                     NSFW[i] = NSFW[i + 1];
                     TRIGGER[i] = TRIGGER[i + 1];
+                    imageBytes[i] = imageBytes[i + 1];
                 }
             }
             //lower the overall image count
