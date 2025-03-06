@@ -79,11 +79,11 @@ namespace Networking
         }
         public void WriteString(string input)
         {
-            Buff.AddRange(BitConverter.GetBytes(input.Length));
-            Buff.AddRange(Encoding.ASCII.GetBytes(input));
+            byte[] stringBytes = Encoding.UTF8.GetBytes(input);
+            Buff.AddRange(BitConverter.GetBytes(stringBytes.Length)); // Store length first
+            Buff.AddRange(stringBytes); // Store UTF-8 encoded string
             buffUpdated = true;
         }
-        
         public byte[] ReadBytes(int length, bool Peek = true)
         {
             if (Buff.Count > readPos)
@@ -220,28 +220,26 @@ namespace Networking
         {
             try
             {
-                var length = ReadInt(true);
+                int length = ReadInt(true);
                 if (buffUpdated)
                 {
                     readBuff = Buff.ToArray();
                     buffUpdated = false;
                 }
-                var value = Encoding.ASCII.GetString(readBuff, readPos, length);
+                string value = Encoding.UTF8.GetString(readBuff, readPos, length);
                 if (Peek & Buff.Count > readPos)
                 {
                     if (value.Length > 0)
                         readPos += length;
-
                 }
                 return value;
             }
             catch
             {
-
-                throw new Exception("you are not trying" +
-                    " to read out a 'STRING'");
+                throw new Exception("You are not trying to read out a 'STRING'");
             }
         }
+
 
         private bool disposedValue = false;
         protected virtual void Dispose(bool disposing)
