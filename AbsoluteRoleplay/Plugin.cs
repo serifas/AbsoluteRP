@@ -225,28 +225,49 @@ namespace AbsoluteRoleplay
             TreeManager.plugin = this;
             plugin = this;
             if (IsOnline())
-            {
+            {            
                 playerCharacter = ClientState.LocalPlayer;
                 LoadConnection();
             }
         }
 
-
-        private void CheckConnection(object? sender, ElapsedEventArgs e)
+        public async Task<Version> GetOnlineVersionAsync()
         {
-            if (IsOnline() && !ClientTCP.IsConnected())
+            try
             {
-                LoadConnection();
-                loginAttempted = false;
-            }
-            if (IsOnline() && ClientTCP.IsConnected() && loginAttempted == false)
-            {
-                if (username != string.Empty && password != string.Empty)
+                using HttpClient client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(5); // Prevents hanging requests
+
+                string versionText = await client.GetStringAsync("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Version.txt");
+
+                if (Version.TryParse(versionText.Trim(), out Version version))
                 {
-                    DataSender.Login(username, password, playername, playerworld);
+                    return version;
+                }
+                else
+                {
+                    logger.Error($"Failed to parse version from response: {versionText}");
+                    return new Version(0, 0, 0, 0); // Default version
                 }
             }
+            catch (TaskCanceledException)
+            {
+                logger.Error("Request timed out while fetching the online version.");
+                return new Version(0, 0, 0, 0); // Prevents crashes due to timeouts
+            }
+            catch (HttpRequestException ex)
+            {
+                logger.Error($"HTTP error while fetching version: {ex.Message}");
+                return new Version(0, 0, 0, 0);
+            }
+            catch (Exception ex)
+            {
+                logger.Error($"Unexpected error in GetOnlineVersionAsync: {ex}");
+                return new Version(0, 0, 0, 0);
+            }
         }
+
+
 
         public void OpenAndLoadProfileWindow()
         {
@@ -313,6 +334,7 @@ namespace AbsoluteRoleplay
                     DataSender.RequestTargetProfileByCharacter(name, worldname);
                 },
             });
+            /*
             args.AddMenuItem(new MenuItem
             {
                 Name = "Absolute RP Trade",
@@ -321,7 +343,7 @@ namespace AbsoluteRoleplay
                 OnClicked = _ => {
                     
                 },
-            });
+            });*/
 
         }
 
@@ -352,6 +374,7 @@ namespace AbsoluteRoleplay
                     DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
+            /*
             args.AddMenuItem(new MenuItem
             {
                 Name = "Absolute RP Trade",
@@ -361,14 +384,26 @@ namespace AbsoluteRoleplay
 
                    // DataSender.RequestTargetProfileByCharacter(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
-            });
+            });*/
         }
+        private Version? cachedVersion = null;
+        private bool isCheckingVersion = false;
 
-
-        public void LoadConnection()
+        public async Task<bool> IsToSVersionUpdated()
         {
+            if (!isCheckingVersion)
+            {
+                isCheckingVersion = true;
+                cachedVersion = await GetOnlineVersionAsync();
+                isCheckingVersion = false;
+            }
+
+            return cachedVersion != null && cachedVersion == Configuration.TOSVersion;
+        }
+        public void LoadConnection()
+        {                     
             ClientHandleData.InitializePackets();
-            Connect();            
+            Connect();
             //update the statusBarEntry with out connection status
             UpdateStatus();
             //check for existing connection requests
@@ -557,31 +592,66 @@ namespace AbsoluteRoleplay
         private void DrawUI()
         {
             WindowSystem.Draw();
-         //   PlayerInteraction.GetConnectionsInRange(1000, ClientState.LocalPlayer);
+            //   PlayerInteraction.GetConnectionsInRange(1000, ClientState.LocalPlayer);
         }
-        public void ToggleConfigUI() => OptionsWindow.Toggle();
-        public void ToggleMainUI() => MainPanel.Toggle();
+        public async Task LoadWindow(Window window, bool Toggle)
+        {
+            if (window == null)
+            {
+                logger.Error("LoadWindow called with a null window.");
+                return;
+            }
 
-        public void OpenMainPanel() => MainPanel.IsOpen = true;
-        public void OpenTermsWindow() => TermsWindow.IsOpen = true;
-        public void OpenImagePreview() => ImagePreview.IsOpen = true;
-        public void OpenProfileWindow() => ProfileWindow.IsOpen = true;
+            if (await IsToSVersionUpdated()) // Now runs asynchronously
+            {
+                logger.Debug($"Version matched, loading window: {window}");
+                if (Toggle)
+                {
+                    window.Toggle();
+                }
+                else
+                {
+                    window.IsOpen = true;
+                }
+            }
+            else
+            {
+                logger.Debug("Version mismatch, opening Terms of Service window.");
+
+                if (Configuration.TOSVersion == null)
+                {
+                    Configuration.TOSVersion = new Version(0, 0, 0, 0);
+                }
+
+                TermsWindow.version = await GetOnlineVersionAsync(); // ✅ Now runs asynchronously
+                TermsWindow.IsOpen = true;
+            }
+        }
+
+
+        public void ToggleConfigUI() =>  LoadWindow(OptionsWindow, true).GetAwaiter().GetResult();
+        public void ToggleMainUI() => LoadWindow(MainPanel, true).GetAwaiter().GetResult();
+
+        public void OpenMainPanel() => LoadWindow(MainPanel, false).GetAwaiter().GetResult();
+        public void OpenTermsWindow() => LoadWindow(TermsWindow, false).GetAwaiter().GetResult();
+        public void OpenImagePreview() => LoadWindow(ImagePreview, false).GetAwaiter().GetResult();
+        public void OpenProfileWindow() => LoadWindow(ProfileWindow, false).GetAwaiter().GetResult();
         public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
-        public void OpenTargetWindow() => TargetWindow.IsOpen = true;
-        public void OpenBookmarksWindow() => BookmarksWindow.IsOpen = true;
-        public void OpenVerificationWindow() => VerificationWindow.IsOpen = true;
-        public void OpenRestorationWindow() => RestorationWindow.IsOpen = true;
-        public void OpenReportWindow() => ReportWindow.IsOpen = true;
-        public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
-        public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
-        public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
+        public void OpenTargetWindow() => LoadWindow(TargetWindow, false).GetAwaiter().GetResult();
+        public void OpenBookmarksWindow() => LoadWindow(BookmarksWindow, false).GetAwaiter().GetResult();
+        public void OpenVerificationWindow() => LoadWindow(VerificationWindow, false).GetAwaiter().GetResult();
+        public void OpenRestorationWindow() => LoadWindow(RestorationWindow, false).GetAwaiter().GetResult();
+        public void OpenReportWindow() => LoadWindow(ReportWindow, false).GetAwaiter().GetResult();
+        public void OpenOptionsWindow() => LoadWindow(OptionsWindow, false).GetAwaiter().GetResult();
+        public void OpenConnectionsWindow() => LoadWindow(ConnectionsWindow, false).GetAwaiter().GetResult();
+        public void OpenARPTooltip() => LoadWindow(TooltipWindow, false).GetAwaiter().GetResult();
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
-        public void OpenProfileNotes() => NotesWindow.IsOpen = true;
-        public void OpenListingsWindow() => ListingWindow.IsOpen = true;
-        public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
+        public void OpenProfileNotes() => LoadWindow(NotesWindow, false).GetAwaiter().GetResult();
+        public void OpenListingsWindow() => LoadWindow(ListingWindow, false).GetAwaiter().GetResult();
+        public void OpenItemTooltip() => LoadWindow(ItemTooltip, false).GetAwaiter().GetResult();
         public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
-        public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
-        public void ToggleChatWindow() => ArpChatWindow.Toggle();
+        public void OpenInventoryWindow() => LoadWindow(InventoryWindow, false).GetAwaiter().GetResult();
+        public void ToggleChatWindow() => LoadWindow(ArpChatWindow, true).GetAwaiter().GetResult();
         public void OpenAlertWindow()
         {
             AlertWindow.increment = true;

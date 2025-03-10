@@ -188,8 +188,25 @@ namespace Networking
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(GalleryTab.galleryImageCount);
+                        byte[] imageBytes = new byte[0];
+                        if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } imagePath })
+                        {
+                            imageBytes = File.ReadAllBytes(Path.Combine(imagePath, "UI/common/profiles/galleries/picturetab.png"));                            
+                        }
+
+
                         for (int i = 0; i < GalleryTab.galleryImageCount; i++)
                         {
+
+                            if (GalleryTab.imageBytes[i] == imageBytes)
+                            {
+                                buffer.WriteBool(false);
+                            }
+                            else
+                            {
+                                buffer.WriteBool(true);
+                            }
+
                             buffer.WriteString(GalleryTab.imageURLs[i]);
                             buffer.WriteInt(GalleryTab.imageBytes[i].Length);
                             buffer.WriteBytes(GalleryTab.imageBytes[i]);

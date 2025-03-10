@@ -748,6 +748,9 @@ namespace AbsoluteRoleplay.Windows.Profiles
             BioTab.currentPersonality_1 = 26;
             BioTab.currentPersonality_2 = 26;
             BioTab.currentPersonality_3 = 26;
+            BioTab.descriptors.Clear();
+            BioTab.fields.Clear();
+            BioTab.personalities.Clear();
         }
         public void Dispose()
         {
@@ -912,21 +915,27 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                             //Traits
                             string traitsPattern = @"<traits>(.*?)</traits>";
+                            string descriptorPattern = @"<descriptors>(.*?)</descriptors>";
+                            string fieldPattern = @"<fields>(.*?)</fields>";
                             Regex traitsRegex = new Regex(traitsPattern, RegexOptions.Singleline);
+                            Regex descriptorsRegex = new Regex(descriptorPattern, RegexOptions.Singleline);
+                            Regex fieldRegex = new Regex(fieldPattern, RegexOptions.Singleline);
 
-                            string traitNamePattern = @"<name>(.*?)</name>";
-                            string traitDescPattern = @"<description>(.*?)</description>";
+                            string namePattern = @"<name>(.*?)</name>";
+                            string descPattern = @"<description>(.*?)</description>";
                             string traitIconPattern = @"<iconID>(.*?)</iconID>";
 
-                            MatchCollection traitMatchces = traitsRegex.Matches(backupContent);
+                            MatchCollection traitMatches = traitsRegex.Matches(backupContent);
+                            MatchCollection fieldMatches = fieldRegex.Matches(backupContent);
+                            MatchCollection descriptorMatches = descriptorsRegex.Matches(backupContent);
 
-                            foreach (Match traitMatch in traitMatchces)
+                            foreach (Match traitMatch in traitMatches)
                             {
                                 string traitContent = traitMatch.Groups[1].Value; 
 
                                 // Extract all <hookname> and <hookcontent> tags, even if they are empty
-                                MatchCollection traitNameMatches = Regex.Matches(traitContent, traitNamePattern);
-                                MatchCollection traitDescMatches = Regex.Matches(traitContent, traitDescPattern);
+                                MatchCollection traitNameMatches = Regex.Matches(traitContent, namePattern);
+                                MatchCollection traitDescMatches = Regex.Matches(traitContent, descPattern);
                                 MatchCollection traitIconMatches = Regex.Matches(traitContent, traitIconPattern);
 
                                 // Get the maximum count of occurrences between hook names and hook content
@@ -944,6 +953,54 @@ namespace AbsoluteRoleplay.Windows.Profiles
 
                                     // Add to hookData even if the name or content is empty
                                     traitData.Add(new trait { name = traitName, description = traitDescription, iconID=int.Parse(traitIconID) });
+                                }
+                            }
+                            foreach (Match fieldMatch in fieldMatches)
+                            {
+                                string fieldContent = fieldMatch.Groups[1].Value;
+
+                                // Extract all <hookname> and <hookcontent> tags, even if they are empty
+                                MatchCollection fieldNameMatches = Regex.Matches(fieldContent, namePattern);
+                                MatchCollection fieldDescMatches = Regex.Matches(fieldContent, descPattern);
+
+                                // Get the maximum count of occurrences between hook names and hook content
+                                int fieldCount = Math.Max(fieldNameMatches.Count, fieldDescMatches.Count);
+
+                                for (int i = 0; i < fieldCount; i++)
+                                {
+                                    // Check if the current index is within bounds for hookNameMatches
+                                    string fieldName = i < fieldNameMatches.Count ? fieldNameMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Check if the current index is within bounds for hookContentMatches
+                                    string fieldDescription = i < fieldDescMatches.Count ? fieldDescMatches[i].Groups[1].Value : string.Empty;
+
+
+                                    // Add to hookData even if the name or content is empty
+                                    fieldData.Add(new field { name = fieldName, description = fieldDescription});
+                                }
+                            }
+                            foreach (Match descriptorMatch in descriptorMatches)
+                            {
+                                string traitContent = descriptorMatch.Groups[1].Value;
+
+                                // Extract all <hookname> and <hookcontent> tags, even if they are empty
+                                MatchCollection descriptorNameMatches = Regex.Matches(traitContent, namePattern);
+                                MatchCollection traitDescMatches = Regex.Matches(traitContent, descPattern);
+                                MatchCollection traitIconMatches = Regex.Matches(traitContent, traitIconPattern);
+
+                                // Get the maximum count of occurrences between hook names and hook content
+                                int descCount = Math.Max(descriptorNameMatches.Count, traitDescMatches.Count);
+
+                                for (int i = 0; i < descCount; i++)
+                                {
+                                    // Check if the current index is within bounds for hookNameMatches
+                                    string descName = i < descriptorNameMatches.Count ? descriptorNameMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Check if the current index is within bounds for hookContentMatches
+                                    string descDescription = i < traitDescMatches.Count ? traitDescMatches[i].Groups[1].Value : string.Empty;
+
+                                    // Add to hookData even if the name or content is empty
+                                    descriptorData.Add(new descriptor { name = descName, description = descDescription});
                                 }
                             }
 
@@ -1280,7 +1337,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine($"<height>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height])}</height>");
                     writer.WriteLine($"<weight>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight])}</weight>");
                     writer.WriteLine("<descriptors>");
-                    for (int i = 0; i <= BioTab.descriptors.Count; i++)
+                    for (int i = 0; i < BioTab.descriptors.Count; i++)
                     {
                         writer.WriteLine($"<name>{BioTab.descriptors[i].name}</name>");
                         writer.WriteLine($"<description>{BioTab.descriptors[i].description}</description>");
@@ -1288,7 +1345,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine("</descriptors>");
                     writer.WriteLine($"<afg>{EscapeTagContent(BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg])}</afg>");
                     writer.WriteLine("<fields>");
-                    for (int i = 0; i <= BioTab.fields.Count; i++)
+                    for (int i = 0; i < BioTab.fields.Count; i++)
                     {
                         writer.WriteLine($"<name>{BioTab.fields[i].name}</name>");
                         writer.WriteLine($"<description>{BioTab.fields[i].description}</description>");
@@ -1299,7 +1356,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine($"<personality_2>{BioTab.currentPersonality_2}</personality_2>");
                     writer.WriteLine($"<personality_3>{BioTab.currentPersonality_3}</personality_3>");
                     writer.WriteLine("<traits>");
-                    for (int i = 0; i <= BioTab.personalities.Count; i++)
+                    for (int i = 0; i < BioTab.personalities.Count; i++)
                     {
                         writer.WriteLine($"<name>{BioTab.personalities[i].name}</name>");
                         writer.WriteLine($"<description>{BioTab.personalities[i].description}</description>");
@@ -1308,7 +1365,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     writer.WriteLine("</traits>");
                     // Hooks
                     writer.WriteLine("<hooks>");
-                    for (int i = 0; i <= HooksTab.hookCount; i++)
+                    for (int i = 0; i < HooksTab.hookCount; i++)
                     {
                         writer.WriteLine($"<hookname>{EscapeTagContent(HooksTab.HookNames[i])}</hookname>");
                         writer.WriteLine($"<hookcontent>{EscapeTagContent(HooksTab.HookContents[i])}</hookcontent>");
@@ -1318,7 +1375,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     // Story chapters
                     writer.WriteLine($"<storytitle>{StoryTab.storyTitle}</storytitle>");      
                     writer.WriteLine("<storychapters>");
-                    for (int i = 0; i <= StoryTab.storyChapterCount; i++)
+                    for (int i = 0; i < StoryTab.storyChapterCount + 1; i++)
                     {
                         writer.WriteLine($"<chaptername>{EscapeTagContent(StoryTab.ChapterNames[i])}</chaptername>");
                         writer.WriteLine($"<chaptercontent>{EscapeTagContent(StoryTab.ChapterContents[i])}</chaptercontent>");

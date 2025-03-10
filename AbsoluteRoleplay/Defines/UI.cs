@@ -45,12 +45,12 @@ namespace AbsoluteRoleplay
         public int Personality_1 { get; set; }
         public int Personality_2 { get; set; }
         public int Personality_3 { get; set; }
-        public List<Hooks> Hooks { get; set; }
+        public List<Hooks> Hooks { get; set; } = new List<Hooks>();
         public List<ProfileGalleryImage> GalleryImages { get; set; }
         public Story Story { get; set; }
-        public List<field> fields { get; set; }
-        public List<descriptor> descriptors { get; set; }
-        public List<trait> traits { get; set; }
+        public List<field> fields { get; set; } = new List<field>();
+        public List<descriptor> descriptors { get; set; } = new List<descriptor>();
+        public List<trait> traits { get; set; } = new List<trait>();
         public string OOC { get; set; }
    
     }
@@ -347,6 +347,20 @@ namespace AbsoluteRoleplay
             Bathhouse = 9,
             Other = 10,
             Infirmary = 11,
+        }
+        public static byte[] imageBytes(string ImgPath)
+        {
+            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+            {
+                if(File.Exists(Path.Combine(path, ImgPath)))
+                {
+                    return Misc.ImageToByteArray(Path.Combine(path, ImgPath));
+                }
+                return null;
+                
+            }
+            return null;
+            
         }
         public static IDalamudTextureWrap UICommonImage(CommonImageTypes imageType)
         {

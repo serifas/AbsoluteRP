@@ -18,8 +18,10 @@ using Lumina.Excel.Sheets;
 using Microsoft.Extensions.Configuration;
 using OtterGui;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -144,6 +146,7 @@ namespace AbsoluteRoleplay
             ImGui.PopItemWidth();
             return centeredInput;
         }
+     
         public static void EditImage(Plugin plugin, FileDialogManager _fileDialogManager, bool avatar, int imageIndex)
         {
             _fileDialogManager.OpenFileDialog("Select Image", "Image{.png,.jpg}", (s, f) =>

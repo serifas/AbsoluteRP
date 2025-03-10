@@ -11,6 +11,7 @@ public class Configuration : IPluginConfiguration
 {
     public int uiScale { get; set; }
     public int Version { get; set; } = 0;
+    public Version TOSVersion { get; set; } = new Version("0.0.0.0");
     public bool AlwaysOpenDefaultImport { get; set; } = false;
     public string username { get; set; } = "";
     public string password { get; set; } = "";

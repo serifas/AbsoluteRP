@@ -3,6 +3,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using Networking;
+using OtterGui.Text.EndObjects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -153,6 +154,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                 {
                     galleryImages[i] = ProfileWindow.pictureTab;
                     galleryThumbs[i] = ProfileWindow.pictureTab;
+                    imageTooltips[i] = string.Empty;
+                    imageURLs[i] = string.Empty;
                 }
             }
             catch (Exception ex)
@@ -178,6 +181,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTabs
                     NSFW[i] = NSFW[i + 1];
                     TRIGGER[i] = TRIGGER[i + 1];
                     imageBytes[i] = imageBytes[i + 1];
+                    imageTooltips[i] = imageTooltips[i + 1];
                 }
             }
             //lower the overall image count

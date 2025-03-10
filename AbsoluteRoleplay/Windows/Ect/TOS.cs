@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Colors;
+using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 namespace AbsoluteRoleplay.Windows.Ect
 {
     public class TOS : Window, IDisposable
@@ -18,7 +19,10 @@ namespace AbsoluteRoleplay.Windows.Ect
         public static string verificationStatus = string.Empty;
         public static Vector4 verificationCol = new Vector4(1, 1, 1, 1);
         public static string ToS1, ToS2, Rules1, Rules2;
-        public static bool load;
+
+        public bool Agreed = false;
+        internal Version version;
+
         public TOS(Plugin plugin) : base(
         "TERMS OF SERVICE")
         {
@@ -28,13 +32,15 @@ namespace AbsoluteRoleplay.Windows.Ect
                 MaximumSize = new Vector2(1200, 1200)
             };
             pg = plugin;
+            Task.Run(() =>
+            {
 
-            load = true;
-            //get our online tos and rules
-            ToS1 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/TOS1.txt");
-            ToS2 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/TOS2.txt");
-            Rules1 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Rules1.txt");
-            Rules2 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Rules2.txt");
+                //get our online tos and rules
+                ToS1 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/TOS1.txt");
+                ToS2 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/TOS2.txt");
+                Rules1 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Rules1.txt");
+                Rules2 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Rules2.txt");
+            } );
         }
         public override async void Draw()
         {
@@ -46,6 +52,27 @@ namespace AbsoluteRoleplay.Windows.Ect
             Misc.SetTitle(pg, true, "Rules", ImGuiColors.TankBlue);
             ImGuiHelpers.SafeTextWrapped(Rules1);
             ImGuiHelpers.SafeTextWrapped(Rules2);
+
+            var windowSize = ImGui.GetWindowSize();
+
+
+            var buttonSize = ImGui.CalcTextSize("I Agree") + new Vector2(30, 30);
+            float xPos = (windowSize.X - buttonSize.X) / 2;
+            ImGui.SetCursorPosX(xPos);
+            ImGui.Checkbox("I Agree##Agree", ref Agreed);
+
+            using (OtterGui.Raii.ImRaii.Disabled(!Agreed))
+            {
+                ImGui.SetCursorPosX(xPos);
+                if (ImGui.Button("Submit"))
+                {
+                    pg.Configuration.TOSVersion = version;
+                    pg.Configuration.Save();
+                    pg.LoadConnection();
+                    this.IsOpen = false;
+                }
+            }
+            
         }
 
         public void Dispose()
