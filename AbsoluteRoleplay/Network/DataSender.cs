@@ -14,6 +14,7 @@ using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using System.Numerics;
 using Dalamud.Interface.Textures.TextureWraps;
 using OtterGui.Text.EndObjects;
+using AbsoluteRoleplay.Windows.Moderator;
 
 namespace Networking
 {
@@ -78,6 +79,7 @@ namespace Networking
         SendCustomLayouts = 58,
         RequestOwnedListings = 59,
         CSendTreeData = 60,
+        SendModeratorAction = 61,
     }
     public class DataSender
     {
@@ -89,6 +91,7 @@ namespace Networking
             {
                 try
                 {
+                    Plugin.justRegistered = false;
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.CLogin);
@@ -132,6 +135,7 @@ namespace Networking
             {
                 try
                 {
+                    Plugin.justRegistered = true;
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.CRegister);
@@ -1231,6 +1235,35 @@ namespace Networking
                 }
             }
         }
+
+        internal static async void SubmitModeratorAction(int capturedAuthor, string capturedMessage, string moderatorMessage, string moderatorNotes, ModeratorAction currentAction)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendModeratorAction);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(capturedAuthor);
+                        buffer.WriteString(capturedMessage);
+                        buffer.WriteString(moderatorMessage);
+                        buffer.WriteString(moderatorNotes);
+                        buffer.WriteInt((int)currentAction);
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                }
+            }
+        }
         /*
 public static async void SendTreeData(int profileIndex, TreeNode rootNode)
 {
@@ -1238,24 +1271,24 @@ if (ClientTCP.IsConnected())
 {
 try
 {
-  using (var buffer = new ByteBuffer())
-  {
-      buffer.WriteInt((int)ClientPackets.CSendTreeData);
-      buffer.WriteString(plugin.username);
-      buffer.WriteString(plugin.password);
-      buffer.WriteString(plugin.playername);
-      buffer.WriteString(plugin.playerworld);
-      buffer.WriteInt(profileIndex);
+using (var buffer = new ByteBuffer())
+{
+buffer.WriteInt((int)ClientPackets.CSendTreeData);
+buffer.WriteString(plugin.username);
+buffer.WriteString(plugin.password);
+buffer.WriteString(plugin.playername);
+buffer.WriteString(plugin.playerworld);
+buffer.WriteInt(profileIndex);
 
-      // Serialize the tree nodes and their related elements
-      SerializeTreeNodes(buffer, rootNode);
+// Serialize the tree nodes and their related elements
+SerializeTreeNodes(buffer, rootNode);
 
-      await ClientTCP.SendDataAsync(buffer.ToArray());
-  }
+await ClientTCP.SendDataAsync(buffer.ToArray());
+}
 }
 catch (Exception ex)
 {
-  plugin.logger.Error("Error in SendTreeData: " + ex.ToString());
+plugin.logger.Error("Error in SendTreeData: " + ex.ToString());
 }
 }
 }

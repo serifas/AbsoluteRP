@@ -1,4 +1,5 @@
 using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Windows.Moderator;
 using Dalamud.Game.Text;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
@@ -70,7 +71,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                             // First column: Avatar and Author Name
                             Vector2 aviSize = new Vector2(messages[i].avatar.Width / 2 * size, messages[i].avatar.Height / 2 * size);
                             Vector2 btnSize = new Vector2(viewProfileImg.Width / 4 * size, viewProfileImg.Height / 5 * size);
-                            if (messages[i].author == 0)
+                            if (messages[i].authorProfileID == 0)
                             {
                                 aviSize = aviSize / 3f;
                             }
@@ -87,38 +88,19 @@ namespace AbsoluteRoleplay.Windows.Ect
                                         // Moderate Button
                                         if (ImGui.Button($"Moderate##{i}"))
                                         {
-                                            ImGui.OpenPopup($"ModeratePopup{i}{messages.Count}");
+
                                         }
 
                                     }
 
-                                    // Popup menu for moderation actions
-                                    if (ImGui.BeginPopup($"ModeratePopup{i}{messages.Count}"))
-                                    {
-                                        if (DataReceiver.permissions.can_suspend)
-                                        {
-                                            if (ImGui.Selectable("Suspend"))
-                                            {
-                                                pg.logger.Error("Suspended Clicked");
-                                            }
-                                        }
-                                        if (DataReceiver.permissions.can_ban)
-                                        {
-                                            if (ImGui.Selectable("Ban"))
-                                            {
-                                                pg.logger.Error("Ban Clicked");
-                                            }
-                                        }
-                                        ImGui.EndPopup();
-                                    }
                                     ImGui.TableNextColumn();
                                     //set the controls in the next column if the author is not 0
-                                    if (messages[i].author != 0)
+                                    if (messages[i].authorProfileID != 0)
                                     {
                                         ImGui.PushID("##Message" + i);
                                         if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
                                         {
-                                            DataSender.RequestTargetProfile(messages[i].author);
+                                            DataSender.RequestTargetProfile(messages[i].authorProfileID);
                                         }
                                         if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
                                         {
@@ -143,44 +125,22 @@ namespace AbsoluteRoleplay.Windows.Ect
                                     // Moderate Button
                                     if (ImGui.Button($"Moderate##{i}"))
                                     {
-                                        ImGui.OpenPopup($"ModeratePopup{i}{messages.Count}");
+                                        ModPanel.capturedAuthor = messages[i].authorUserID;
+                                        ModPanel.capturedMessage = messages[i].message;
+                                        
+                                        pg.OpenModeratorPanel();
                                     }
 
                                 }
 
-                                // Popup menu for moderation actions
-                                if (ImGui.BeginPopup($"ModeratePopup{i}{messages.Count}"))
-                                {
-                                    if (DataReceiver.permissions.can_warn)
-                                    {
-                                        if(ImGui.Selectable("Assign Warning"))
-                                        {
-                                            DataSender.AssignWarning(messages[i].author);
-                                        }
-                                    }
-                                    if (DataReceiver.permissions.can_strike)
-                                    {
-                                        if (ImGui.Selectable("Strike"))
-                                        {
-                                            pg.logger.Error("Suspended Clicked");
-                                        }
-                                    }
-                                    if (DataReceiver.permissions.can_ban)
-                                    {
-                                        if (ImGui.Selectable("Ban"))
-                                        {
-                                            pg.logger.Error("Ban Clicked");
-                                        }
-                                    }
-                                    ImGui.EndPopup();
-                                }
+                              
                                 ImGui.TableNextColumn();
-                                if(messages[i].author != 0)
+                                if(messages[i].authorProfileID != 0)
                                 {
                                     ImGui.PushID("##Message" + i);
                                     if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
                                     {
-                                        DataSender.RequestTargetProfile(messages[i].author);
+                                        DataSender.RequestTargetProfile(messages[i].authorProfileID);
                                     }
                                     if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
                                     {
@@ -269,12 +229,13 @@ namespace AbsoluteRoleplay.Windows.Ect
     }
     public  class ChatMessage
     {
-        public int author {  get; set; }
+        public int authorProfileID {  get; set; }
         public string name { get; set; }
         public string world { get; set; }
         public string authorName { get; set; }
         public  IDalamudTextureWrap avatar {  get; set; }
         public  string message { get; set; }
         public bool isAnnouncement { get; set; }
+        public int authorUserID { get; internal set; }
     }
 }

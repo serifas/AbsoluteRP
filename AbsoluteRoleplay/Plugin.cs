@@ -41,6 +41,7 @@ using OtterGui.Filesystem;
 using AbsoluteRoleplay.Windows.MainPanel.Views;
 using Dalamud.Interface;
 using FFXIVClientStructs.FFXIV.Client.System.Framework;
+using AbsoluteRoleplay.Windows.Moderator;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -55,6 +56,12 @@ namespace AbsoluteRoleplay
         public string playerworld = string.Empty;
         private const string CommandName = "/arp";
         public static ImGuiViewportPtr viewport = ImGui.GetMainViewport();
+
+        private IntPtr lastTargetAddress = IntPtr.Zero;
+        public static bool lockedtarget = false;
+        private bool openItemTooltip;
+        public bool loggedIn;
+        public static bool justRegistered;
 
         public float screenWidth = viewport.WorkSize.X;
         public float screenHeight = viewport.WorkSize.Y;
@@ -94,12 +101,13 @@ namespace AbsoluteRoleplay
         public OptionsWindow OptionsWindow { get; init; }
         public NotesWindow NotesWindow { get; init; }
         private VerificationWindow VerificationWindow { get; init; }
-        public AlertWindow AlertWindow { get; init; }
         private RestorationWindow RestorationWindow { get; init; }
+        private ModPanel ModeratorPanel { get; init; }
         private ListingsWindow ListingWindow { get; init; }
         public ARPTooltipWindow TooltipWindow { get; init; }
         private ReportWindow ReportWindow { get; init; }
         private MainPanel MainPanel { get; init; }
+        private ImportantNotice ImportantNoticeWindow { get; init; }
         private ProfileWindow ProfileWindow { get; init; }
         private BookmarksWindow BookmarksWindow { get; init; }
         private ARPChatWindow ArpChatWindow { get; init; }
@@ -138,7 +146,7 @@ namespace AbsoluteRoleplay
             IGameGui gameGui,
             IChatGui ChatGui
             )
-        {
+            {
             
             // Wrap the original service
             this.dtrBar = dtrBar;
@@ -177,15 +185,16 @@ namespace AbsoluteRoleplay
             ProfileWindow = new ProfileWindow(this);
             ImagePreview = new ImagePreview(this);
             BookmarksWindow = new BookmarksWindow(this);
+            ImportantNoticeWindow = new ImportantNotice(this);
             TargetWindow = new TargetWindow(this);
             VerificationWindow = new VerificationWindow(this);
+            ModeratorPanel = new ModPanel(this);
             ArpChatWindow = new ARPChatWindow(this, chatgui);
             RestorationWindow = new RestorationWindow(this);
             ReportWindow = new ReportWindow(this);
             ConnectionsWindow = new ConnectionsWindow(this);
             TooltipWindow = new ARPTooltipWindow(this);
             NotesWindow = new NotesWindow(this);
-            AlertWindow = new AlertWindow(this);
             InventoryWindow = new InventoryWindow(this);
             ListingWindow = new ListingsWindow(this);
             ItemTooltip = new ItemTooltip(this);
@@ -200,16 +209,17 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(BookmarksWindow);
             WindowSystem.AddWindow(TargetWindow);
             WindowSystem.AddWindow(VerificationWindow);
+            WindowSystem.AddWindow(ModeratorPanel);
             WindowSystem.AddWindow(RestorationWindow);
             WindowSystem.AddWindow(ReportWindow);
             WindowSystem.AddWindow(ConnectionsWindow);
             WindowSystem.AddWindow(TooltipWindow);
             WindowSystem.AddWindow(NotesWindow);
-            WindowSystem.AddWindow(AlertWindow);
             WindowSystem.AddWindow(ListingWindow);
             WindowSystem.AddWindow(ItemTooltip);
             WindowSystem.AddWindow(InventoryWindow);
             WindowSystem.AddWindow(ArpChatWindow);
+            WindowSystem.AddWindow(ImportantNoticeWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
             ConnectionsWindow.plugin = this;
 
@@ -419,8 +429,7 @@ namespace AbsoluteRoleplay
                 ClientTCP.AttemptConnect();
             }
         }
-
-        private void OnLogout(int type, int code)
+        public void DisconnectAndLogOut()
         {
             //remove our bar entries
             connectionsBarEntry = null;
@@ -434,6 +443,10 @@ namespace AbsoluteRoleplay
             loginAttempted = false;
             playername = string.Empty;
             playerworld = string.Empty;
+        }
+        private void OnLogout(int type, int code)
+        {
+            DisconnectAndLogOut();
         }
         private void UnobservedTaskExceptionHandler(object sender, UnobservedTaskExceptionEventArgs e)
         {
@@ -527,8 +540,10 @@ namespace AbsoluteRoleplay
             MainPanel?.Dispose();
             TermsWindow?.Dispose();
             ImagePreview?.Dispose();
+            ArpChatWindow?.Dispose();
             ProfileWindow?.Dispose();
             NotesWindow?.Dispose();
+            ImportantNoticeWindow?.Dispose();
             TargetWindow?.Dispose();
             BookmarksWindow?.Dispose();
             VerificationWindow?.Dispose();
@@ -539,6 +554,7 @@ namespace AbsoluteRoleplay
             ListingWindow?.Dispose();
             InventoryWindow?.Dispose();
             ItemTooltip?.Dispose();
+            ModeratorPanel?.Dispose();
             Misc.Jupiter?.Dispose();
             Imaging.RemoveAllImages(this); //delete all images downloaded by the plugin namely the gallery
         }
@@ -636,6 +652,7 @@ namespace AbsoluteRoleplay
         public void OpenMainPanel() => System.Threading.Tasks.Task.Run(() => LoadWindow(MainPanel, false));
         public void OpenTermsWindow() => TermsWindow.IsOpen = true;
         public void OpenImagePreview() => ImagePreview.IsOpen = true;
+        public void OpenModeratorPanel() => ModeratorPanel.IsOpen = true;
         public void OpenProfileWindow() => ProfileWindow.IsOpen = true;
         public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
         public void OpenTargetWindow() => TargetWindow.IsOpen = true;
@@ -653,13 +670,8 @@ namespace AbsoluteRoleplay
         public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
         public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
         public void ToggleChatWindow() => ArpChatWindow.IsOpen = true;
-        public void OpenAlertWindow()
-        {
-            AlertWindow.increment = true;
-            AlertWindow.length = 0;
-            AlertWindow.IsOpen = true;
-        }
-        public void CloseAlertWindow() => AlertWindow.IsOpen = false;
+        public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
+
 
         internal void UpdateStatus()
         {
@@ -676,11 +688,6 @@ namespace AbsoluteRoleplay
                 logger.Error("Error updating status: " + ex.ToString());
             }
         }
-
-        private IntPtr lastTargetAddress = IntPtr.Zero;
-        public static bool lockedtarget = false;
-        private bool openItemTooltip;
-        public bool loggedIn;
 
         public void Update(IFramework framework)
         {

@@ -22,6 +22,8 @@ using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Windows.Inventory;
 using System.Threading.Tasks;
 using Lumina.Excel.Sheets;
+using AbsoluteRoleplay.Windows.Moderator;
+using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 
 namespace Networking
 {
@@ -474,7 +476,9 @@ namespace Networking
                     bool announce = buffer.ReadBool();
                     bool suspend = buffer.ReadBool();
                     bool ban = buffer.ReadBool();
-                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank=rank };
+                    bool warn = buffer.ReadBool();
+                    string message = buffer.ReadString();
+                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank=rank , can_warn=warn};
                     //account window
                     if (status == (int)UI.StatusMessages.LOGIN_BANNED)
                     {
@@ -566,11 +570,51 @@ namespace Networking
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Please fill all fields.";
                     }
-                    if (status == (int)UI.StatusMessages.NO_AVAILABLE_PROFILE)
+                    if (status == (int)UI.StatusMessages.ACCOUNT_WARNING)
                     {
-                        AlertWindow.alertColor = new Vector4(255, 0, 0, 255);
-                        AlertWindow.alertStatus = "No profile available.";
-                        plugin.OpenAlertWindow();
+                        ImportantNotice.messageTitle = "Warning";
+                        ImportantNotice.moderatorMessage = message;
+                        plugin.OpenImportantNoticeWindow();
+                    }
+                    if (status == (int)UI.StatusMessages.ACCOUNT_STRIKE)
+                    {
+                        ImportantNotice.messageTitle = "Your account received a strike!";
+                        ImportantNotice.moderatorMessage = message;
+                        plugin.OpenImportantNoticeWindow();
+                    }
+                    if (status == (int)UI.StatusMessages.ACCOUNT_SUSPENDED)
+                    {
+                        plugin.loginAttempted = true;
+                        plugin.DisconnectAndLogOut();
+                        plugin.username = string.Empty;
+                        plugin.password = string.Empty;
+                        Login.username = string.Empty;
+                        Login.password = string.Empty;
+                        plugin.Configuration.username = string.Empty;
+                        plugin.Configuration.password = string.Empty;
+                        plugin.Configuration.Save();
+                        MainPanel.statusColor = new Vector4(255, 0, 0, 255);
+                        MainPanel.status = "Account suspended"; ;
+                        if(message != string.Empty)
+                        {
+                            ImportantNotice.messageTitle = "Account Suspended!";
+                            ImportantNotice.moderatorMessage = message;
+                            plugin.OpenImportantNoticeWindow();
+                        }
+                    }
+                    if (status == (int)UI.StatusMessages.ACCOUNT_BANNED)
+                    {
+                        plugin.DisconnectAndLogOut();
+                        MainPanel.statusColor = new Vector4(255, 0, 0, 255);
+                        MainPanel.status = "Account banned";
+                        ImportantNotice.messageTitle = "Account Banned!";
+                        ImportantNotice.moderatorMessage = message;
+                        plugin.OpenImportantNoticeWindow();
+                    }
+                    if(status == (int)UI.StatusMessages.ACTION_SUCCESS)
+                    {
+                        ModPanel.status = "Action was submitted";
+                        ModPanel.statusColor = new Vector4(255, 0, 0, 255);
                     }
                 }
             }
@@ -1680,7 +1724,8 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    int id = buffer.ReadInt();
+                    int userID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
                     string Name = buffer.ReadString();
                     string World = buffer.ReadString();
                     string profileName = buffer.ReadString();
@@ -1693,7 +1738,7 @@ namespace Networking
                     {
                         message = message.Replace("/announce", "[ANNOUNCEMENT]");
                     }
-                    ARPChatWindow.messages.Add(new ChatMessage { isAnnouncement=isAnnouncement, author=id, name=Name, world=World, authorName = profileName, avatar = avatar, message = message });
+                    ARPChatWindow.messages.Add(new ChatMessage { isAnnouncement=isAnnouncement, authorUserID=userID, authorProfileID=profileID, name=Name, world=World, authorName = profileName, avatar = avatar, message = message });
 
                 }
             }
