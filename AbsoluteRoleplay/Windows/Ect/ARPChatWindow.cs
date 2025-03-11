@@ -1,3 +1,4 @@
+using AbsoluteRoleplay.Defines;
 using Dalamud.Game.Text;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
@@ -81,7 +82,35 @@ namespace AbsoluteRoleplay.Windows.Ect
                                 {
                                     ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
                                     ImGui.TextUnformatted(messages[i].authorName);
+                                    if (DataReceiver.permissions.rank >= (int)Rank.Moderator)
+                                    {
+                                        // Moderate Button
+                                        if (ImGui.Button($"Moderate##{i}"))
+                                        {
+                                            ImGui.OpenPopup($"ModeratePopup{i}{messages.Count}");
+                                        }
 
+                                    }
+
+                                    // Popup menu for moderation actions
+                                    if (ImGui.BeginPopup($"ModeratePopup{i}{messages.Count}"))
+                                    {
+                                        if (DataReceiver.permissions.can_suspend)
+                                        {
+                                            if (ImGui.Selectable("Suspend"))
+                                            {
+                                                pg.logger.Error("Suspended Clicked");
+                                            }
+                                        }
+                                        if (DataReceiver.permissions.can_ban)
+                                        {
+                                            if (ImGui.Selectable("Ban"))
+                                            {
+                                                pg.logger.Error("Ban Clicked");
+                                            }
+                                        }
+                                        ImGui.EndPopup();
+                                    }
                                     ImGui.TableNextColumn();
                                     //set the controls in the next column if the author is not 0
                                     if (messages[i].author != 0)
@@ -100,7 +129,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                                 }
                                 else
                                 {
-                                    ImGui.TextUnformatted(messages[i].authorName);
+                                    ImGui.TextUnformatted(messages[i].authorName);                                   
                                     ImGui.TableNextColumn();
                                 }
                             }
@@ -109,6 +138,42 @@ namespace AbsoluteRoleplay.Windows.Ect
                                 ImGui.TableNextColumn();
                                 ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
                                 ImGui.TextUnformatted(messages[i].authorName);
+                                if (DataReceiver.permissions.rank >= (int)Rank.Moderator)
+                                {
+                                    // Moderate Button
+                                    if (ImGui.Button($"Moderate##{i}"))
+                                    {
+                                        ImGui.OpenPopup($"ModeratePopup{i}{messages.Count}");
+                                    }
+
+                                }
+
+                                // Popup menu for moderation actions
+                                if (ImGui.BeginPopup($"ModeratePopup{i}{messages.Count}"))
+                                {
+                                    if (DataReceiver.permissions.can_warn)
+                                    {
+                                        if(ImGui.Selectable("Assign Warning"))
+                                        {
+                                            DataSender.AssignWarning(messages[i].author);
+                                        }
+                                    }
+                                    if (DataReceiver.permissions.can_strike)
+                                    {
+                                        if (ImGui.Selectable("Strike"))
+                                        {
+                                            pg.logger.Error("Suspended Clicked");
+                                        }
+                                    }
+                                    if (DataReceiver.permissions.can_ban)
+                                    {
+                                        if (ImGui.Selectable("Ban"))
+                                        {
+                                            pg.logger.Error("Ban Clicked");
+                                        }
+                                    }
+                                    ImGui.EndPopup();
+                                }
                                 ImGui.TableNextColumn();
                                 if(messages[i].author != 0)
                                 {
@@ -127,7 +192,16 @@ namespace AbsoluteRoleplay.Windows.Ect
                             }
                             // Second column: Message
                             ImGui.TableNextColumn();
-                            ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                            if (messages[i].isAnnouncement)
+                            {
+                                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0.5f,0, 1));
+                                ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                                ImGui.PopStyleColor();
+                            }
+                            else
+                            {
+                                ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                            }                                
                         }
                     }
                     if (ImGui.GetScrollY() == ImGui.GetScrollMaxY())
@@ -136,6 +210,11 @@ namespace AbsoluteRoleplay.Windows.Ect
                     }
                 }
                 ImGui.EndChild();
+            }
+            bool isAnnouncement = false;
+            if (messageInput.StartsWith("/announce"))
+            {
+                isAnnouncement = true;
             }
             // Input field and send button
             ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - 50);
@@ -150,23 +229,26 @@ namespace AbsoluteRoleplay.Windows.Ect
             {
                 canSend = false;
             }
-            ImGui.SameLine();
-            if (ImGui.Button("Send"))
-            {
-                SendMessage(messageInput);
-            }
             if (ImGui.IsKeyPressed(ImGuiKey.Enter))
             {
                 if (canSend == true)
                 {
-                    SendMessage(messageInput);
+                    SendMessage(messageInput, isAnnouncement);
                 }
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("Send"))
+            {
+                SendMessage(messageInput, isAnnouncement);
             }
            
         }
-        public void SendMessage(string input)
+          
+           
+        
+        public void SendMessage(string input, bool announcement)
         {
-            DataSender.SendARPChatMessage(input);
+            DataSender.SendARPChatMessage(input, announcement);
             messageInput = string.Empty;
         }
 
@@ -193,6 +275,6 @@ namespace AbsoluteRoleplay.Windows.Ect
         public string authorName { get; set; }
         public  IDalamudTextureWrap avatar {  get; set; }
         public  string message { get; set; }
-
+        public bool isAnnouncement { get; set; }
     }
 }

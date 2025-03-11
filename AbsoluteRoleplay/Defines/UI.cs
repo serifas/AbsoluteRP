@@ -139,12 +139,14 @@ namespace AbsoluteRoleplay
             LOGIN_UNVERIFIED = 0,
             LOGIN_VERIFIED = 1,
             LOGIN_WRONG_INFORMATION = 2,
+            LOGIN_SUSPENDED = 14,
             //Forgot Info
             FORGOT_REQUEST_RECEIVED = 3,
             FORGOT_REQUEST_INCORRECT = 4,
             //Registration
             REGISTRATION_DUPLICATE_EMAIL = 5,
             REGISTRATION_DUPLICATE_USERNAME = 6,
+            REGISTRATION_SUCCESSFUL = 15,
             //Password Change
             PASSCHANGE_PASSWORD_CHANGED = 7,
             PASSCHANGE_INCORRECT_RESTORATION_KEY = 8,
@@ -157,7 +159,6 @@ namespace AbsoluteRoleplay
             REGISTRATION_INSUFFICIENT_DATA = 12,
             //Profile Access
             NO_AVAILABLE_PROFILE = 13,
-
         }
         public enum BioFieldTypes
         {

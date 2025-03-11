@@ -93,6 +93,7 @@ namespace Networking
                           lawfulNeutralEditVal, trueNeutralEditVal, chaoticNeutralEditVal,
                           lawfulEvilEditVal, neutralEvilEditVal, chaoticEvilEditVal;
 
+        public static RankPermissions permissions { get; set; }
         public static Vector4 accounStatusColor, verificationStatusColor, forgotStatusColor, restorationStatusColor = new Vector4(255, 255, 255, 255);
         public static Plugin plugin;
         public static Dictionary<int, string> characters = new Dictionary<int, string>();
@@ -469,6 +470,11 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int status = buffer.ReadInt();
+                    int rank = buffer.ReadInt();
+                    bool announce = buffer.ReadBool();
+                    bool suspend = buffer.ReadBool();
+                    bool ban = buffer.ReadBool();
+                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank=rank };
                     //account window
                     if (status == (int)UI.StatusMessages.LOGIN_BANNED)
                     {
@@ -495,6 +501,11 @@ namespace Networking
                         MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
                         MainPanel.status = "Incorrect login details";
                         plugin.loginAttempted = true;
+                    }
+                    if(status == (int)UI.StatusMessages.REGISTRATION_SUCCESSFUL)
+                    {
+                        MainPanel.statusColor = new Vector4(0, 255, 0, 255);
+                        MainPanel.status = "Registration Successful";
                     }
                     if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
                     {
@@ -620,8 +631,7 @@ namespace Networking
                         GalleryTab.imageURLs[i] = string.Empty;
                         GalleryTab.imageTooltips[i] = string.Empty;
                     }
-                    GalleryTab.ImageExists[0] = true;
-                    GalleryTab.galleryImageCount = 2;
+                    GalleryTab.galleryImageCount = 0;
                     GalleryLoadStatus = 0;
                     ProfileWindow.ClearOnLoad();
                 }
@@ -1677,8 +1687,13 @@ namespace Networking
                     int avatarBytesLen = buffer.ReadInt();
                     byte[] avatarBytes = buffer.ReadBytes(avatarBytesLen);
                     string message = buffer.ReadString();
+                    bool isAnnouncement = buffer.ReadBool();
                     IDalamudTextureWrap avatar =  Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    ARPChatWindow.messages.Add(new ChatMessage { author=id, name=Name, world=World, authorName = profileName, avatar = avatar, message = message });
+                    if (isAnnouncement)
+                    {
+                        message = message.Replace("/announce", "[ANNOUNCEMENT]");
+                    }
+                    ARPChatWindow.messages.Add(new ChatMessage { isAnnouncement=isAnnouncement, author=id, name=Name, world=World, authorName = profileName, avatar = avatar, message = message });
 
                 }
             }

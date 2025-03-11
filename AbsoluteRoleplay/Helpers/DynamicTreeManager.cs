@@ -588,17 +588,17 @@ namespace AbsoluteRoleplay.Helpers
 
             plugin.logger.Error($"[DEBUG] Queuing '{node.Name}' for deletion.");
 
-            // ✅ Remove from parent before queuing for deletion
+            //  Remove from parent before queuing for deletion
             if (node.Parent != null)
             {
                 node.Parent.Children.Remove(node);
-                plugin.logger.Error($"✅ '{node.Name}' removed from '{node.Parent.Name}'");
+                plugin.logger.Error($"'{node.Name}' removed from '{node.Parent.Name}'");
             }
 
-            // ✅ Remove from layout elements
+            //  Remove from layout elements
             layout.elements.Remove(node.relatedElement);
 
-            // ✅ Queue for safe deletion in 'RenderTree'
+            //  Queue for safe deletion in 'RenderTree'
             nodesToDelete.Add(node);
         }
 

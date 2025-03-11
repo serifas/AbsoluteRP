@@ -40,6 +40,7 @@ using AbsoluteRoleplay.Windows.Inventory;
 using OtterGui.Filesystem;
 using AbsoluteRoleplay.Windows.MainPanel.Views;
 using Dalamud.Interface;
+using FFXIVClientStructs.FFXIV.Client.System.Framework;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
@@ -594,7 +595,7 @@ namespace AbsoluteRoleplay
             WindowSystem.Draw();
             //   PlayerInteraction.GetConnectionsInRange(1000, ClientState.LocalPlayer);
         }
-        public async Task LoadWindow(Window window, bool Toggle)
+        public async System.Threading.Tasks.Task LoadWindow(Window window, bool Toggle)
         {
             if (window == null)
             {
@@ -623,35 +624,35 @@ namespace AbsoluteRoleplay
                     Configuration.TOSVersion = new Version(0, 0, 0, 0);
                 }
 
-                TermsWindow.version = await GetOnlineVersionAsync(); // ✅ Now runs asynchronously
+                TermsWindow.version = await GetOnlineVersionAsync(); //Now runs asynchronously
                 TermsWindow.IsOpen = true;
             }
         }
 
 
-        public void ToggleConfigUI() =>  LoadWindow(OptionsWindow, true).GetAwaiter().GetResult();
-        public void ToggleMainUI() => LoadWindow(MainPanel, true).GetAwaiter().GetResult();
+        public void ToggleConfigUI() => OptionsWindow.IsOpen = true;
+        public void ToggleMainUI() => System.Threading.Tasks.Task.Run(()=>LoadWindow(MainPanel, true));
 
-        public void OpenMainPanel() => LoadWindow(MainPanel, false).GetAwaiter().GetResult();
-        public void OpenTermsWindow() => LoadWindow(TermsWindow, false).GetAwaiter().GetResult();
-        public void OpenImagePreview() => LoadWindow(ImagePreview, false).GetAwaiter().GetResult();
-        public void OpenProfileWindow() => LoadWindow(ProfileWindow, false).GetAwaiter().GetResult();
+        public void OpenMainPanel() => System.Threading.Tasks.Task.Run(() => LoadWindow(MainPanel, false));
+        public void OpenTermsWindow() => TermsWindow.IsOpen = true;
+        public void OpenImagePreview() => ImagePreview.IsOpen = true;
+        public void OpenProfileWindow() => ProfileWindow.IsOpen = true;
         public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
-        public void OpenTargetWindow() => LoadWindow(TargetWindow, false).GetAwaiter().GetResult();
-        public void OpenBookmarksWindow() => LoadWindow(BookmarksWindow, false).GetAwaiter().GetResult();
-        public void OpenVerificationWindow() => LoadWindow(VerificationWindow, false).GetAwaiter().GetResult();
-        public void OpenRestorationWindow() => LoadWindow(RestorationWindow, false).GetAwaiter().GetResult();
-        public void OpenReportWindow() => LoadWindow(ReportWindow, false).GetAwaiter().GetResult();
-        public void OpenOptionsWindow() => LoadWindow(OptionsWindow, false).GetAwaiter().GetResult();
-        public void OpenConnectionsWindow() => LoadWindow(ConnectionsWindow, false).GetAwaiter().GetResult();
-        public void OpenARPTooltip() => LoadWindow(TooltipWindow, false).GetAwaiter().GetResult();
+        public void OpenTargetWindow() => TargetWindow.IsOpen = true;
+        public void OpenBookmarksWindow() => BookmarksWindow.IsOpen = true;
+        public void OpenVerificationWindow() => VerificationWindow.IsOpen = true;
+        public void OpenRestorationWindow() => RestorationWindow.IsOpen = true;
+        public void OpenReportWindow() => ReportWindow.IsOpen = true;
+        public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
+        public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
+        public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
-        public void OpenProfileNotes() => LoadWindow(NotesWindow, false).GetAwaiter().GetResult();
-        public void OpenListingsWindow() => LoadWindow(ListingWindow, false).GetAwaiter().GetResult();
-        public void OpenItemTooltip() => LoadWindow(ItemTooltip, false).GetAwaiter().GetResult();
+        public void OpenProfileNotes() => NotesWindow.IsOpen=true;
+        public void OpenListingsWindow() => ListingWindow.IsOpen = true;
+        public void OpenItemTooltip() => ItemTooltip.IsOpen = true;
         public void CloseItemTooltip() => ItemTooltip.IsOpen = false;
-        public void OpenInventoryWindow() => LoadWindow(InventoryWindow, false).GetAwaiter().GetResult();
-        public void ToggleChatWindow() => LoadWindow(ArpChatWindow, true).GetAwaiter().GetResult();
+        public void OpenInventoryWindow() => InventoryWindow.IsOpen = true;
+        public void ToggleChatWindow() => ArpChatWindow.IsOpen = true;
         public void OpenAlertWindow()
         {
             AlertWindow.increment = true;
