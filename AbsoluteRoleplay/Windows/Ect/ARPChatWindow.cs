@@ -83,12 +83,15 @@ namespace AbsoluteRoleplay.Windows.Ect
                                 {
                                     ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
                                     ImGui.TextUnformatted(messages[i].authorName);
-                                    if (DataReceiver.permissions.rank >= (int)Rank.Moderator)
+                                    if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
                                     {
                                         // Moderate Button
                                         if (ImGui.Button($"Moderate##{i}"))
                                         {
+                                            ModPanel.capturedAuthor = messages[i].authorUserID;
+                                            ModPanel.capturedMessage = messages[i].message;
 
+                                            pg.OpenModeratorPanel();
                                         }
 
                                     }
@@ -120,7 +123,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                                 ImGui.TableNextColumn();
                                 ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
                                 ImGui.TextUnformatted(messages[i].authorName);
-                                if (DataReceiver.permissions.rank >= (int)Rank.Moderator)
+                                if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
                                 {
                                     // Moderate Button
                                     if (ImGui.Button($"Moderate##{i}"))
