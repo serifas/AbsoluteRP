@@ -349,21 +349,22 @@ namespace AbsoluteRoleplay.Windows.Profiles
                             ImGui.SetTooltip(personality3Tooltip);
                         }
                     }
-                    ImGui.Spacing();
-                    using var table = ImRaii.Table("table_name", 3);
-                    if (table)
+
+                }
+                ImGui.Spacing();
+                using var table = ImRaii.Table("table_name", 3);
+                if (table)
+                {
+                    ImGui.TableSetupColumn("Column 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                    ImGui.TableSetupColumn("Column 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                    ImGui.TableSetupColumn("Column 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                    foreach (trait personality in personalities)
                     {
-                        ImGui.TableSetupColumn("Column 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-                        ImGui.TableSetupColumn("Column 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-                        ImGui.TableSetupColumn("Column 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-                        foreach (trait personality in personalities)
+                        ImGui.TableNextColumn();
+                        ImGui.Image(personality.icon.icon.ImGuiHandle, alignmentSize);
+                        if (ImGui.IsItemHovered())
                         {
-                            ImGui.TableNextColumn();
-                            ImGui.Image(personality.icon.icon.ImGuiHandle, alignmentSize);
-                            if (ImGui.IsItemHovered())
-                            {
-                                ImGui.SetTooltip(personality.name + ": \n" + personality.description);
-                            }
+                            ImGui.SetTooltip(personality.name + ": \n" + personality.description);
                         }
                     }
                 }

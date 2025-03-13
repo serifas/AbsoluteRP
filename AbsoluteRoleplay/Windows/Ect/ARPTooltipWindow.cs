@@ -116,13 +116,14 @@ namespace AbsoluteRoleplay.Windows.Ect
                         ImGui.SameLine();
                         ImGui.Text(UI.PersonalityNames(profile.Personality_3));
                     }
-                    foreach (trait personality in personalities)
-                    {
-                        ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
-                        ImGui.SameLine();
-                        ImGui.Text(personality.name);
-                    }
 
+
+                }
+                foreach (trait personality in personalities)
+                {
+                    ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
+                    ImGui.SameLine();
+                    ImGui.Text(personality.name);
                 }
             }
             if (config.tooltip_draggable)
