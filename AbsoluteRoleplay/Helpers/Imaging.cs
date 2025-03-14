@@ -24,69 +24,38 @@ namespace AbsoluteRoleplay.Helpers
     {
         public static Plugin plugin;
         private static Dictionary<uint, IconInfo?> IconInfoCache = [];
-      
-        public static IDalamudTextureWrap DownloadImage(string url)
-        {
-            bool isImage = IsImageUrlAsync(url).GetAwaiter().GetResult();
-            if(!isImage)
-            {
-                return UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-            }
-            byte[] bannerBytes = null;
-                //set the avatar to the avatar_holder.png by default
-            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
-            {
-                bannerBytes = File.ReadAllBytes(Path.Combine(path, "UI/common/blank.png"));
-            }
-            
-            IDalamudTextureWrap image = Plugin.TextureProvider.CreateFromImageAsync(bannerBytes).Result;
-            using (WebClient webClient = new WebClient())
-            {
-                try
-                {
-                    // Download the image data as a byte array
-                    byte[] imageBytes = webClient.DownloadData(url);
 
-                    // Convert the byte array to a Dalamud texture
-                    image = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
-                }
-                catch (Exception ex)
+
+        public static async Task DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
+        {
+            try
+            {
+                using (HttpClientHandler handler = new HttpClientHandler
                 {
-                    // Handle exceptions, e.g., logging errors or falling back to default image
-                    plugin.logger.Error($"Failed to download image from {url}: {ex.Message}");
-                }
-            }
-            
-            return image;
-        }
-        public static void DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
-         {
-            bool isImage = IsImageUrlAsync(url).GetAwaiter().GetResult();
-            if (isImage)
-             {
-                 try
-                 {
-                     using (WebClient webClient = new WebClient())
-                     {
-                         // Get image data as byte array
-                         byte[] imageBytes = webClient.DownloadData(url);
-    
-                         using (MemoryStream ms = new MemoryStream(imageBytes))
-                         {
-                             // Load the image from the memory stream
-                             Image baseImage = Image.FromStream(ms);
-    
-                             // Convert scaled image to byte array
-                             byte[] scaledImageBytes = ImageToByteArray(baseImage); 
-                             
-                             // If self is true, process for ProfileWindow, else for TargetWindow
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                })
+                using (HttpClient client = new HttpClient(handler))
+                {
+                    client.Timeout = TimeSpan.FromSeconds(10); // Set a timeout of 10 seconds
+
+
+                    // Download the image as a byte array
+                    byte[] imageBytes = await client.GetByteArrayAsync(url);
+
+                    using (MemoryStream ms = new MemoryStream(imageBytes))
+                    {
+                        Image baseImage = Image.FromStream(ms);
+
+                        // Convert scaled image to byte array
+                        byte[] scaledImageBytes = ImageToByteArray(baseImage);
+
+                        // If self is true, process for ProfileWindow, else for TargetWindow
+                        var image = await Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes);
+                        if (image != null)
+                        {
                             if (self)
                             {
-                                var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
-                                if (image != null)
-                                {
-                                    GalleryTab.galleryImages[index] = image;
-                                }
+                                GalleryTab.galleryImages[index] = image;
                                 if (url.Contains("absolute-roleplay"))
                                 {
                                     url = string.Empty;
@@ -96,113 +65,63 @@ namespace AbsoluteRoleplay.Helpers
                                 GalleryTab.TRIGGER[index] = trigger;
                                 GalleryTab.imageTooltips[index] = tooltip;
                                 GalleryTab.imageBytes[index] = scaledImageBytes;
-                             }
-                             else
-                             {
-                                 var image = Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes).Result;
-                                 if (image != null)
-                                 {
-                                    TargetWindow.galleryImages[index] = image;
-                                    TargetWindow.imageTooltips[index] = tooltip;
-                                 }
-                             }
-    
-                             // Handle NSFW/trigger thumbnail logic
-                             if (trigger && !nsfw)
-                             {
-                                 var triggerImage = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
-                                 if (self)
-                                 {
-                                     GalleryTab.galleryThumbs[index] = triggerImage;
-                                 }
-                                 else
-                                 {
-                                     TargetWindow.galleryThumbs[index] = triggerImage;
-                                 }
-                             }
-                             else if (nsfw && !trigger)
-                             {
-                                 var nsfwImage = UI.UICommonImage(UI.CommonImageTypes.NSFW);
-                                 if (self)
-                                 {
-                                     GalleryTab.galleryThumbs[index] = nsfwImage;
-                                 }
-                                 else
-                                 {
-                                     TargetWindow.galleryThumbs[index] = nsfwImage;
-                                 }
-                             }
-                             else if (nsfw && trigger)
-                             {
-                                 var nsfwTriggerImage = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
-                                 if (self)
-                                 {
-                                     GalleryTab.galleryThumbs[index] = nsfwTriggerImage;
-                                 }
-                                 else
-                                 {
-                                     TargetWindow.galleryThumbs[index] = nsfwTriggerImage;
-                                 }
-                             }
-                             else if (!nsfw && !trigger)
-                             {
-                                 // Scale and create the thumbnail
-                                 Image thumbImage = ScaleImage(baseImage, 200,200);
-                                 byte[] thumbImageBytes = ImageToByteArray(thumbImage);
-    
-                                 var thumbTexture = Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes).Result;
-                                 if (self)
-                                 {
-                                    GalleryTab.galleryThumbs[index] = thumbTexture;
-                                 }
-                                 else
-                                 {
-                                     TargetWindow.galleryThumbs[index] = thumbTexture;
-                                 }
-                             }
-                         }
-                     }
-                 }
-                 catch (Exception ex)
-                 {
-                     plugin.logger.Error($"Unable to Read or Process Image: {ex.Message}");
-                 }
-             }
-         }
+                            }
+                            else
+                            {
+                                TargetWindow.galleryImages[index] = image;
+                                TargetWindow.imageTooltips[index] = tooltip;
+                            }
+                        }
 
-     
+                        // Handle NSFW/trigger thumbnail logic
+                        if (trigger && !nsfw)
+                        {
+                            var triggerImage = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
+                            if (self) GalleryTab.galleryThumbs[index] = triggerImage;
+                            else TargetWindow.galleryThumbs[index] = triggerImage;
+                        }
+                        else if (nsfw && !trigger)
+                        {
+                            var nsfwImage = UI.UICommonImage(UI.CommonImageTypes.NSFW);
+                            if (self) GalleryTab.galleryThumbs[index] = nsfwImage;
+                            else TargetWindow.galleryThumbs[index] = nsfwImage;
+                        }
+                        else if (nsfw && trigger)
+                        {
+                            var nsfwTriggerImage = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
+                            if (self) GalleryTab.galleryThumbs[index] = nsfwTriggerImage;
+                            else TargetWindow.galleryThumbs[index] = nsfwTriggerImage;
+                        }
+                        else if (!nsfw && !trigger)
+                        {
+                            // Scale and create the thumbnail
+                            Image thumbImage = ScaleImage(baseImage, 200, 200);
+                            byte[] thumbImageBytes = ImageToByteArray(thumbImage);
 
-        static string GetImageFileExtension(string url)
-        {
-            try
-            {
-                // Send a HEAD request to fetch only the headers
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
-                request.Method = "HEAD";
-
-                // Get the response
-                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
-                {
-                    // Check if the Content-Type header indicates an image
-                    if (response.ContentType.ToLower().StartsWith("image/"))
-                    {
-                        // Extract the file extension from the Content-Type header
-                        string contentType = response.ContentType;
-                        string fileExtension = GetFileExtensionFromContentType(contentType);
-
-                        return fileExtension;
-                    }
-                    else
-                    {
-                        throw new Exception("The URL does not point to an image.");
+                            var thumbTexture = await Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes);
+                            if (self) GalleryTab.galleryThumbs[index] = thumbTexture;
+                            else TargetWindow.galleryThumbs[index] = thumbTexture;
+                        }
                     }
                 }
             }
-            catch (WebException ex)
+            catch (HttpRequestException httpEx)
             {
-                throw new Exception($"An error occurred: {ex.Message}");
+                plugin.logger.Error($"HTTP Request Error: {httpEx.Message}");
+            }
+            catch (TaskCanceledException)
+            {
+                plugin.logger.Error("Download request timed out.");
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Unexpected error: {ex.Message}");
             }
         }
+
+
+
+       
 
         static string GetFileExtensionFromContentType(string contentType)
         {
@@ -258,22 +177,7 @@ namespace AbsoluteRoleplay.Helpers
 
 
 
-        static void SaveImage(Image image, string directoryPath, string fileName)
-        {
-            // Check if the directory exists, if not, create it
-            if (!System.IO.Directory.Exists(directoryPath))
-            {
-                System.IO.Directory.CreateDirectory(directoryPath);
-            }
-
-            // Combine the directory path and file name to get the full file path
-            string filePath = System.IO.Path.Combine(directoryPath, fileName);
-
-            // Save the image to the specified file path
-            image.Save(filePath);
-
-            Console.WriteLine("Image saved successfully.");
-        }
+       
         public static byte[] BlurBytes(this Bitmap image, Int32 blurSize)
         {
             var rectangle = new System.Drawing.Rectangle(0, 0, image.Width, image.Height);

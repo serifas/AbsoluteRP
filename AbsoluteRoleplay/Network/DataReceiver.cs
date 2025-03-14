@@ -642,7 +642,7 @@ namespace Networking
                         string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(false, url, tooltip, profileID, nsfw, trigger, plugin, i);
+                        Imaging.DownloadProfileImage(false, url, tooltip, profileID, nsfw, trigger, plugin, i).GetAwaiter().GetResult();
                         TargetWindow.loading = "Gallery Image" + i;
                         TargetWindow.currentInd = i;
                     }
@@ -702,7 +702,7 @@ namespace Networking
                         string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, plugin, i);
+                        Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, plugin, i).GetAwaiter().GetResult();
                         GalleryTab.galleryImageCount = i + 1;
                         GalleryTab.ImageExists[i] = true;
                         ProfileWindow.loading = "Loading Gallery Image: " + i;
