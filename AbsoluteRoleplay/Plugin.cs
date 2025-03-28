@@ -235,11 +235,6 @@ namespace AbsoluteRoleplay
             MainPanel.pluginInstance = this;
             TreeManager.plugin = this;
             plugin = this;
-            if (IsOnline())
-            {            
-                playerCharacter = ClientState.LocalPlayer;
-                LoadConnection();
-            }
         }
 
         public async Task<Version> GetOnlineVersionAsync()
@@ -613,6 +608,10 @@ namespace AbsoluteRoleplay
         }
         public async System.Threading.Tasks.Task LoadWindow(Window window, bool Toggle)
         {
+            if (!ClientTCP.IsConnected())
+            {
+                LoadConnection();
+            }
             if (window == null)
             {
                 logger.Error("LoadWindow called with a null window.");
