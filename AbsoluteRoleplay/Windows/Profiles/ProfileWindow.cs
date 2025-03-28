@@ -20,7 +20,6 @@ using System.Runtime.InteropServices;
 using System.Diagnostics;
 using AbsoluteRoleplay.Helpers;
 using K4os.Compression.LZ4.Internal;
-using SixLabors.ImageSharp.PixelFormats;
 using System.Buffers.Text;
 
 

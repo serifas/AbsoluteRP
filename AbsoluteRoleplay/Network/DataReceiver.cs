@@ -1371,8 +1371,6 @@ namespace Networking
                         string receiverWorld = buffer.ReadString();
                         int status = buffer.ReadInt();
                         bool isReceiver = buffer.ReadBool();
-                        string playerName = Plugin.ClientState.LocalPlayer.Name.ToString();
-                        string playerWorld = Plugin.ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
                         Tuple<string, string> requester = Tuple.Create(requesterName, requesterWorld);
                         Tuple<string, string> receiver = Tuple.Create(receiverName, receiverWorld);
                         if (isReceiver)
