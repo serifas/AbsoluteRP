@@ -1,6 +1,5 @@
 using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.GameFonts;
@@ -28,7 +27,6 @@ using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using static AbsoluteRoleplay.PlayerProfile;
 namespace AbsoluteRoleplay
 {
     public class Misc
@@ -44,41 +42,6 @@ namespace AbsoluteRoleplay
         public static List<ImFontPtr> availableFonts = new();
         public static ImFontPtr selectedFont;
         private static int selectedFontIndex = 0;
-        private static List<string> fontNames = new();
-        private static bool fontsLoaded = false;
-
-        public static void LoadFonts(Plugin plugin)
-        {
-            availableFonts.Clear();
-        }
-
-
-        public static void LoadFontSelector()
-        {
-
-            if (ImGui.BeginCombo("Select Font", selectedFontIndex >= 0 && selectedFontIndex < availableFonts.Count ? $"Font {selectedFontIndex}" : "Select a Font"))
-            {
-                for (int i = 0; i < availableFonts.Count; i++)
-                {
-                    bool isSelected = (selectedFontIndex == i);
-                    if (ImGui.Selectable($"Font {i}", isSelected))
-                    {
-                        selectedFontIndex = i;
-                        selectedFont = availableFonts[i];
-                    }
-                    if (isSelected)
-                    {
-                        ImGui.SetItemDefaultFocus();
-                    }
-                }
-                ImGui.EndCombo();
-            }
-
-            ImGui.PushFont(selectedFont);
-            ImGui.Text("Sample Text in Selected Font");
-            ImGui.PopFont();
-        }
-
 
         public static float ConvertToPercentage(float value)
         {
@@ -89,7 +52,56 @@ namespace AbsoluteRoleplay
             return value / 100f * 100f;
         }
         //sets position of content to center
+        public static void RenderHtmlColoredTextInline(string text)
+        {
+            var htmlDoc = new HtmlAgilityPack.HtmlDocument();
+            htmlDoc.LoadHtml(text);
 
+            bool first = true;
+            foreach (var node in htmlDoc.DocumentNode.ChildNodes)
+            {
+                string nodeText = node.InnerText.Replace("\r", "");
+                string[] lines = nodeText.Split('\n');
+
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    // Only use SameLine if not the first segment and not after a line break
+                    if (!first) ImGui.SameLine(0, 0);
+
+                    if (node.Name == "color" && node.Attributes["hex"] != null)
+                    {
+                        var hexColor = node.Attributes["hex"].Value;
+                        if (TryParseHexColor(hexColor, out Vector4 color))
+                            ImGui.TextColored(color, lines[i]);
+                        else
+                            ImGui.TextUnformatted(lines[i]);
+                    }
+                    else
+                    {
+                        ImGui.TextUnformatted(lines[i]);
+                    }
+
+                    // If this is a line break, reset first so next segment starts a new line
+                    first = (i < lines.Length - 1);
+                }
+            }
+        }
+        private static bool TryParseHexColor(string hex, out Vector4 color)
+        {
+            color = new Vector4(1, 1, 1, 1);
+            if (hex.StartsWith("#"))
+                hex = hex.Substring(1);
+            if (hex.Length != 6)
+                return false;
+            if (int.TryParse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out int r) &&
+                int.TryParse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out int g) &&
+                int.TryParse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out int b))
+            {
+                color = new Vector4(r / 255f, g / 255f, b / 255f, 1);
+                return true;
+            }
+            return false;
+        }
         public static void SetCenter(Plugin plugin, string name)
         {
          
@@ -130,15 +142,14 @@ namespace AbsoluteRoleplay
         }
         public static bool DrawXCenteredInput(string label, string id, ref string input, uint length)
         {
-
             var size = ImGui.CalcTextSize(label).X + 400;
 
             var windowSize = ImGui.GetWindowSize();
 
             // Set the cursor position to center the button horizontally
-            float xPos = (windowSize.X - size) / 2; // Center horizontally
             var currentCursorY = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(xPos, currentCursorY));
+            float centeredX = (ImGui.GetContentRegionAvail().X - size) / 2.0f;
+            ImGui.SetCursorPos(new Vector2(centeredX, currentCursorY));
             ImGui.Text(label);
             ImGui.SameLine();
             ImGui.PushItemWidth(350);
@@ -147,7 +158,7 @@ namespace AbsoluteRoleplay
             return centeredInput;
         }
      
-        public static void EditImage(Plugin plugin, FileDialogManager _fileDialogManager, bool avatar, int imageIndex)
+        public static void EditImage(Plugin plugin, FileDialogManager _fileDialogManager, GalleryLayout layout, bool avatar, bool background, int imageIndex)
         {
             _fileDialogManager.OpenFileDialog("Select Image", "Image{.png,.jpg}", (s, f) =>
             {
@@ -158,14 +169,19 @@ namespace AbsoluteRoleplay
                 var imageBytes = File.ReadAllBytes(image);
                 if (avatar == true)
                 {
-                    BioTab.avatarBytes = imageBytes;
-                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes( BioTab.avatarBytes, 100,100)).Result;
+                    ProfileWindow.avatarBytes = imageBytes;
+                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes( ProfileWindow.avatarBytes, 100,100)).Result;
+                }
+                else if(background == true)
+                {
+                    ProfileWindow.backgroundBytes = imageBytes;
+                    ProfileWindow.backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(ProfileWindow.backgroundBytes, 1000, 1500)).Result;
                 }
                 else
                 {
-                    GalleryTab.imageBytes[imageIndex] = imageBytes;
-                    GalleryTab.galleryThumbs[imageIndex] = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 250, 250)).Result;
-                    GalleryTab.galleryImages[imageIndex] = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 2000, 2000)).Result;
+                    layout.images[imageIndex].imageBytes = imageBytes;
+                    layout.images[imageIndex].thumbnail = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 250, 250)).Result;
+                    layout.images[imageIndex].image = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(imageBytes, 2000, 2000)).Result;
                 }
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
 
@@ -182,10 +198,11 @@ namespace AbsoluteRoleplay
         }
         public static bool DrawButton(string label)
         {
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.3f, 0.3f, 0.3f, 1.0f)); // Dark gray
-            var button = ImGui.Button(label);
-            ImGui.PopStyleColor();
-            return button;
+            using (ImRaii.PushColor(ImGuiCol.Button, new Vector4(0.3f, 0.3f, 0.3f, 1.0f))) // Light gray on hover
+            {
+                var button = ImGui.Button(label);
+                return button;
+            }
         }
         public static void DrawCenteredButtonTable(int rows, List<ProfileTab> profileTabs)
         {
@@ -206,30 +223,32 @@ namespace AbsoluteRoleplay
             ImGui.SetCursorPosX(startX);
 
             // Create a table layout for the buttons
-            if (ImGui.BeginTable("ButtonTable", columns))
+            using (var table = ImRaii.Table("ButtonTable", columns))
             {
-                int buttonIndex = 0;
-                for (int row = 0; row < rows; row++)
+                if (table)
                 {
-                    ImGui.TableNextRow(); // Move to the next row in the table
-
-                    for (int column = 0; column < columns; column++)
+                    int buttonIndex = 0;
+                    for (int row = 0; row < rows; row++)
                     {
-                        ImGui.TableSetColumnIndex(column); // Move to the next column in the table
+                        ImGui.TableNextRow(); // Move to the next row in the table
 
-                        if (buttonIndex < profileTabs.Count)
+                        for (int column = 0; column < columns; column++)
                         {
-                            // Draw a button
-                            if (ImGui.Button(profileTabs[buttonIndex].name, buttonSize))
+                            ImGui.TableSetColumnIndex(column); // Move to the next column in the table
+
+                            if (buttonIndex < profileTabs.Count)
                             {
-                                profileTabs[buttonIndex].action();
-                                profileTabs[buttonIndex].showValue = true;
+                                // Draw a button
+                                if (ImGui.Button(profileTabs[buttonIndex].name, buttonSize))
+                                {
+                                    profileTabs[buttonIndex].action();
+                                    profileTabs[buttonIndex].showValue = true;
+                                }
+                                buttonIndex++;
                             }
-                            buttonIndex++;
                         }
                     }
                 }
-                ImGui.EndTable();
             }
         }
 

@@ -1,29 +1,19 @@
 
 
-using FFXIVClientStructs.FFXIV.Common.Math;
 using AbsoluteRoleplay;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
+using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Helpers;
-using Dalamud.Game.Gui.Dtr;
-using Dalamud.Interface.Textures;
-using AbsoluteRoleplay.Windows.Profiles;
-//using AbsoluteRoleplay.Windows.Chat;
-using Dalamud.Interface.Textures.TextureWraps;
-using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
-using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.Account;
 using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRoleplay.Windows.Listings;
 using AbsoluteRoleplay.Windows.MainPanel;
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Windows.Inventory;
-using System.Threading.Tasks;
-using Lumina.Excel.Sheets;
-using AbsoluteRoleplay.Windows.Moderator;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
+using AbsoluteRoleplay.Windows.Moderator;
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using Dalamud.Interface.Textures.TextureWraps;
+using FFXIVClientStructs.FFXIV.Common.Math;
 
 namespace Networking
 {
@@ -83,17 +73,29 @@ namespace Networking
         CreateItem = 61,
         ReceiveProfileWarning = 62,
         ReceiveProfileSettings = 63,
+        ReceiveProfileListings = 64,
+        ReceiveProfileDetails = 65,
+        ReceiveReloadProfiles = 66,
+        ReceiveTabCount = 67,
+        ReceiveGalleryTab = 68,
+        ReceiveInfoTab = 69,
+        ReceiveTabsUpdate = 70,
+        ReceiveInventoryTab = 71,
+        ReceiveDynamicTab = 72, 
+        ReceiveRelationshipsTab = 73,
+        ReceiveSingleTab = 74,
+        ReceiveTradeRequest = 75,
+        ReceiveTradeUpdate = 76,
+        ReceiveTradeStatus = 77,
+        ReceiveTradeInventory = 78,
+        ReceiveTreeLayout = 79
     }
     class DataReceiver
     {
         public static string restorationStatus = "";
         public static bool LoadedSelf = false;
         public static int BioLoadStatus = -1, HooksLoadStatus = -1, StoryLoadStatus = -1, OOCLoadStatus = -1, GalleryLoadStatus = -1, BookmarkLoadStatus = -1,
-                          TargetBioLoadStatus = -1, TargetHooksLoadStatus = -1, TargetStoryLoadStatus = -1, TargetOOCLoadStatus = -1, TargetGalleryLoadStatus = -1, TargetNotesLoadStatus = -1,
-                          targetHookEditCount, ExistingGalleryImageCount, ExistingGalleryThumbCount,
-                          lawfulGoodEditVal, neutralGoodEditVal, chaoticGoodEditVal,
-                          lawfulNeutralEditVal, trueNeutralEditVal, chaoticNeutralEditVal,
-                          lawfulEvilEditVal, neutralEvilEditVal, chaoticEvilEditVal;
+                          TargetBioLoadStatus = -1, TargetHooksLoadStatus = -1, TargetStoryLoadStatus = -1, TargetOOCLoadStatus = -1, TargetGalleryLoadStatus = -1, TargetNotesLoadStatus = -1;
 
         public static RankPermissions permissions { get; set; }
         public static Vector4 accounStatusColor, verificationStatusColor, forgotStatusColor, restorationStatusColor = new Vector4(255, 255, 255, 255);
@@ -108,9 +110,24 @@ namespace Networking
         public static Dictionary<int, int> characterVerificationStatuses = new Dictionary<int, int>();
         public static bool loggedIn;
         public static bool isAdmin;
+        public static int tabsCount = 0, loadedTabsCount = 0;
+        public static bool silentUpdate;
+        public static bool allLoaded;
+        public static int loadedGalleryImages = 0;
+        public static int GalleryImagesToLoad = 0;
+        internal static int loadedTargetTabsCount;
+        internal static int tabsTargetCount;
+        internal static int loadedTargetGalleryImages;
 
         public static int ListingsLoadStatus { get; internal set; }
-
+        public static int TargetGalleryImagesToLoad { get; internal set; }
+        private static void EnsureTargetProfileData()
+        {
+            if (TargetProfileWindow.profileData == null)
+                TargetProfileWindow.profileData = new ProfileData();
+            if (TargetProfileWindow.profileData.customTabs == null)
+                TargetProfileWindow.profileData.customTabs = new List<CustomTab>();
+        }
         public static void RecBookmarks(byte[] data)
         {
             try
@@ -176,40 +193,9 @@ namespace Networking
                 plugin.logger.Error($"Error handling BadLogin message: {ex}");
             }
         }
-     
-     
-        public static void ExistingTargetProfile(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();      
-                    string profileName = buffer.ReadString();
-                    float colX = buffer.ReadFloat();
-                    float colY = buffer.ReadFloat();
-                    float colZ = buffer.ReadFloat();
-                    float colW = buffer.ReadFloat();
-                    string characterName = buffer.ReadString();
-                    string characterWorld = buffer.ReadString();
-                    bool self = buffer.ReadBool();
-                    TargetWindow.self = self;
-                    TargetWindow.TitleColor = new Vector4(colX, colY, colZ, colW);
-                    TargetWindow.ExistingProfile = true;
-                    TargetWindow.ClearUI();
-                    ReportWindow.reportStatus = "";
-                    TargetWindow.ReloadTarget();
-                    TargetWindow.viewBio = true;
-                    plugin.OpenTargetWindow();
-                    TargetWindow.currentTab = "Bio"; // Set the "Bio" tab as active
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ExistingTargetProfile message: {ex}");
-            }
-        }
+
+
+   
         public static void RecProfileReportedSuccessfully(byte[] data)
         {
             try
@@ -250,7 +236,7 @@ namespace Networking
             {
                 using (var buffer = new ByteBuffer())
                 {
-                    InventoryWindow.ProfileBaseData.Clear();
+                    Inventory.ProfileBaseData.Clear();
                     ProfileWindow.profiles.Clear();
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
@@ -261,24 +247,18 @@ namespace Networking
                     OOCLoadStatus = 0;
                     GalleryLoadStatus = 0;
 
-                    StoryTab.storyTitle = string.Empty;
-                    GalleryTab.galleryImageCount = 0; 
-                    for (int i = 0; i < GalleryTab.galleryThumbs.Length; i++)
-                    {
-                        GalleryTab.galleryThumbs[i] = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                    }
+                    AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.Story.storyTitle = string.Empty;
+                    ProfileWindow.CurrentProfile.GalleryLayouts.Clear();
                     BookmarkLoadStatus = 0;
-                    
+
                     ProfileWindow.addProfile = false;
                     ProfileWindow.editProfile = false;
-                    ProfileWindow.ClearUI();
                     ProfileWindow.ExistingProfile = false;
-                    InventoryWindow.ExistingProfile = false;
-                    plugin.OpenProfileWindow();
+                    Inventory.ExistingProfile = false;
                     ProfileWindow.ExistingProfile = false;
-                    InventoryWindow.ExistingProfile = false;
-                    
-                    ProfileWindow.ClearOnLoad();
+                    Inventory.ExistingProfile = false;
+
+
                 }
             }
             catch (Exception ex)
@@ -297,22 +277,17 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     string characterName = buffer.ReadString();
                     string characterWorld = buffer.ReadString();
-                    TargetWindow.characterName = characterName;
-                    TargetWindow.characterWorld = characterWorld;
+                    TargetProfileWindow.characterName = characterName;
+                    TargetProfileWindow.characterWorld = characterWorld;
                     loggedIn = true;
-                    TargetWindow.ExistingProfile = false;
-                    TargetWindow.ExistingBio = false;
-                    TargetWindow.ExistingHooks = false;
-                    TargetWindow.ExistingStory = false;
-                    TargetWindow.ExistingOOC = false;
-                    TargetWindow.ExistingGallery = false;
+                    TargetProfileWindow.ExistingProfile = false;
                     TargetBioLoadStatus = 0;
                     TargetHooksLoadStatus = 0;
                     TargetStoryLoadStatus = 0;
                     TargetOOCLoadStatus = 0;
                     TargetGalleryLoadStatus = 0;
                     TargetNotesLoadStatus = 0;
-                    TargetWindow.ClearUI();
+                    TargetProfileWindow.addNotes = false;
                     BookmarksWindow.DisableBookmarkSelection = false;
                     ReportWindow.reportStatus = "";
                     plugin.OpenTargetWindow();
@@ -323,121 +298,9 @@ namespace Networking
                 plugin.logger.Error($"Error handling NoTargetProfile message: {ex}");
             }
         }
-        public static void NoTargetGallery(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    loggedIn = true;
-                    TargetWindow.ExistingGallery = false;
-                    BookmarksWindow.DisableBookmarkSelection = false;
-                    TargetGalleryLoadStatus = 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoTargetGallery message: {ex}");
-            }
-        }
-        public static void NoTargetStory(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    loggedIn = true;
-                    TargetWindow.ExistingStory = false;
-                    TargetStoryLoadStatus = 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoTargetStory message: {ex}");
-            }
-        }
+      
+     
 
-
-
-        public static void NoProfileBio(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    ProfileWindow.ClearUI();
-                    var currentAvatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
-                    if (currentAvatar != null)
-                    {
-                        ProfileWindow.currentAvatarImg = currentAvatar;
-                    }
-
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name] = "";
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race] = "";
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.gender] = "";
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age] = "";
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height] = "";
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight] = "";
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg] = "";
-                    BioTab.currentAlignment = 9;
-
-                    BioTab.currentPersonality_1 = 26;
-                    BioTab.currentPersonality_2 = 26;
-                    BioTab.currentPersonality_3 = 26;
-                    loggedIn = true;
-                    BioLoadStatus = 0;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoProfileBio message: {ex}");
-            }
-
-
-        }
-        public static void NoTargetBio(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    TargetWindow.ExistingBio = false;
-                    loggedIn = true;
-                    TargetBioLoadStatus = 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoTargetBio message: {ex}");
-            }
-        }
-        
-        public static void NoTargetHooks(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    TargetWindow.ExistingHooks = false;
-                    TargetHooksLoadStatus = 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoTargetHooks message: {ex}");
-            }
-        }
         public static void ReceiveProfile(byte[] data)
         {
             try
@@ -448,11 +311,8 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int profileID = buffer.ReadInt();
                     string profileName = buffer.ReadString();
-                    plugin.OpenProfileWindow();
                     ProfileWindow.ExistingProfile = true;
-                    InventoryWindow.ExistingProfile = true;
-                    ProfileWindow.ResetOnChangeOrRemoval();
-                    ProfileWindow.ClearOnLoad();
+                    Inventory.ExistingProfile = true;
                     loggedIn = true;
                 }
             }
@@ -478,7 +338,18 @@ namespace Networking
                     bool ban = buffer.ReadBool();
                     bool warn = buffer.ReadBool();
                     string message = buffer.ReadString();
-                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank=rank , can_warn=warn};
+                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = rank, can_warn = warn };
+
+                    //Receive Status
+                    if (status == (int)UI.StatusMessages.RECEIVE_SILENT)
+                    {
+                        silentUpdate = true;
+                    }
+                    if (status == (int)UI.StatusMessages.RECEIVE_UPDATES)
+                    {
+                        silentUpdate = false;
+                    }
+
                     //account window
                     if (status == (int)UI.StatusMessages.LOGIN_BANNED)
                     {
@@ -506,7 +377,7 @@ namespace Networking
                         MainPanel.status = "Incorrect login details";
                         plugin.loginAttempted = true;
                     }
-                    if(status == (int)UI.StatusMessages.REGISTRATION_SUCCESSFUL)
+                    if (status == (int)UI.StatusMessages.REGISTRATION_SUCCESSFUL)
                     {
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.status = "Registration Successful";
@@ -595,7 +466,7 @@ namespace Networking
                         plugin.Configuration.Save();
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account suspended"; ;
-                        if(message != string.Empty)
+                        if (message != string.Empty)
                         {
                             ImportantNotice.messageTitle = "Account Suspended!";
                             ImportantNotice.moderatorMessage = message;
@@ -611,7 +482,7 @@ namespace Networking
                         ImportantNotice.moderatorMessage = message;
                         plugin.OpenImportantNoticeWindow();
                     }
-                    if(status == (int)UI.StatusMessages.ACTION_SUCCESS)
+                    if (status == (int)UI.StatusMessages.ACTION_SUCCESS)
                     {
                         ModPanel.status = "Action was submitted";
                         ModPanel.statusColor = new Vector4(255, 0, 0, 255);
@@ -625,40 +496,6 @@ namespace Networking
         }
 
 
-        public static void ReceiveTargetGalleryImage(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int imageCount = buffer.ReadInt();
-                    int profileID = buffer.ReadInt();
-                    TargetWindow.max = imageCount;
-                    for (int i = 0; i < imageCount; i++)
-                    {
-                        string url = buffer.ReadString();
-                        string tooltip = buffer.ReadString();
-                        bool nsfw = buffer.ReadBool();
-                        bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(false, url, tooltip, profileID, nsfw, trigger, plugin, i).GetAwaiter().GetResult();
-                        TargetWindow.loading = "Gallery Image" + i;
-                        TargetWindow.currentInd = i;
-                    }
-                    TargetWindow.existingGalleryImageCount = imageCount;
-                    TargetWindow.ExistingGallery = true;
-                    //BookmarksWindow.DisableBookmarkSelection = false;
-
-                    TargetGalleryLoadStatus = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveTargetGalleryImage message: {ex}");
-            }
-
-        }
         public static void ReceiveNoProfileGallery(byte[] data)
         {
             try
@@ -667,17 +504,9 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    for (int i = 0; i < 30; i++)
-                    {
-                        var pictureTabImage = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        GalleryTab.galleryImages[i] = pictureTabImage;
-                        GalleryTab.galleryThumbs[i] = pictureTabImage;
-                        GalleryTab.imageURLs[i] = string.Empty;
-                        GalleryTab.imageTooltips[i] = string.Empty;
-                    }
-                    GalleryTab.galleryImageCount = 0;
+                    ProfileWindow.CurrentProfile.GalleryLayouts.Clear();
                     GalleryLoadStatus = 0;
-                    ProfileWindow.ClearOnLoad();
+
                 }
             }
             catch (Exception ex)
@@ -685,234 +514,13 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveNoProfileGallery message: {ex}");
             }
         }
-        public static void ReceiveProfileGalleryImage(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int imageCount = buffer.ReadInt();
-                    int profileID = buffer.ReadInt();
-                    ProfileWindow.percentage = imageCount;
-                    for (int i = 0; i < imageCount; i++)
-                    {
-                        string url = buffer.ReadString();
-                        string tooltip = buffer.ReadString();
-                        bool nsfw = buffer.ReadBool();
-                        bool trigger = buffer.ReadBool();
-                        Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, plugin, i).GetAwaiter().GetResult();
-                        GalleryTab.galleryImageCount = i + 1;
-                        GalleryTab.ImageExists[i] = true;
-                        ProfileWindow.loading = "Loading Gallery Image: " + i;
-                        ProfileWindow.loaderInd = i;
-                    }
 
-                    GalleryLoadStatus = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveProfileGalleryImage message: {ex}");
-            }
+  
+  
 
-        }
-        public static void ReceiveTargetBio(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-
-                    int profileID = buffer.ReadInt();
-                    string profileTitle = buffer.ReadString();
-                    int avatarLen = buffer.ReadInt();
-                    byte[] avatarBytes = buffer.ReadBytes(avatarLen);
-                    string name = buffer.ReadString();
-                    string race = buffer.ReadString();
-                    string gender = buffer.ReadString();
-                    string age = buffer.ReadString();
-                    string height = buffer.ReadString();
-                    string weight = buffer.ReadString();
-                    string atFirstGlance = buffer.ReadString();
-                    int alignment = buffer.ReadInt();
-                    int personality_1 = buffer.ReadInt();
-                    int personality_2 = buffer.ReadInt();
-                    int personality_3 = buffer.ReadInt();
-                    int customFieldsCount = buffer.ReadInt();
-                    int customDescriptorsCount = buffer.ReadInt();
-                    int customPersonalitiesCount = buffer.ReadInt();
-                    TargetWindow.fields.Clear();
-                    TargetWindow.descriptors.Clear();
-                    TargetWindow.personalities.Clear();
-                    for (int i = 0; i < customFieldsCount; i++)
-                    {
-                        string customName = buffer.ReadString();
-                        string customDescription = buffer.ReadString();
-                        TargetWindow.fields.Add(
-                           new field()
-                           {
-                               index = i,
-                               name = customName,
-                               description = customDescription
-                           });
-                    }
-                    for (int i = 0; i < customDescriptorsCount; i++)
-                    {
-                        string customName = buffer.ReadString();
-                        string customDescription = buffer.ReadString();
-                        TargetWindow.descriptors.Add(new descriptor() { index = i, name = customName, description = customDescription });
-                    }
-                    for (int i = 0; i < customPersonalitiesCount; i++)
-                    {
-                        string customName = buffer.ReadString();
-                        string customDescription = buffer.ReadString();
-                        int customIconID = buffer.ReadInt();
-                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(plugin, customIconID).GetAwaiter().GetResult();
-                        if (customIcon == null)
-                        {
-                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        }
-                        TargetWindow.personalities.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
-                    }
-                    if (alignment != 9)
-                    {
-                        TargetWindow.showAlignment = true;
-                        TargetWindow.alignment = alignment;
-                    }
-                    else
-                    {
-                        TargetWindow.showAlignment = false;
-                    }
-                    if (personality_1 == 26) { TargetWindow.showPersonality1 = false; } else { TargetWindow.showPersonality1 = true; }
-                    if (personality_2 == 26) { TargetWindow.showPersonality2 = false; } else { TargetWindow.showPersonality2 = true; }
-                    if (personality_3 == 26) { TargetWindow.showPersonality3 = false; } else { TargetWindow.showPersonality3 = true; }
-                    if (personality_1 == 26 && personality_2 == 26 && personality_3 == 26) { TargetWindow.showPersonality = false; }
-                    
-                    else { TargetWindow.showPersonality = true; }
-
-                    TargetWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    TargetWindow.Title = profileTitle;
-                    TargetWindow.characterEditName = name.Replace("''", "'"); TargetWindow.characterEditRace = race.Replace("''", "'"); TargetWindow.characterEditGender = gender.Replace("''", "'");
-                    TargetWindow.characterEditAge = age.Replace("''", "'"); TargetWindow.characterEditHeight = height.Replace("''", "'"); TargetWindow.characterEditWeight = weight.Replace("''", "'");
-                    TargetWindow.characterEditAfg = atFirstGlance.Replace("''", "'");
-                    var alignmentImage = UI.AlignementIcon(alignment);
-                    var personality1Image = UI.PersonalityIcon(personality_1);
-                    var personality2Image = UI.PersonalityIcon(personality_2);
-                    var personality3Image = UI.PersonalityIcon(personality_3);
-
-                    if (alignmentImage != null) { TargetWindow.alignmentImg = alignmentImage; }
-                    if (personality1Image != null) { TargetWindow.personalityImg1 = personality1Image; }
-                    if (personality2Image != null) { TargetWindow.personalityImg2 = personality2Image; }
-                    if (personality3Image != null) { TargetWindow.personalityImg3 = personality3Image; }
-
-                    var (text, desc) = UI.AlignmentVals[alignment];
-                    var (textpers1, descpers1) = UI.PersonalityValues[personality_1];
-                    var (textpers2, descpers2) = UI.PersonalityValues[personality_2];
-                    var (textpers3, descpers3) = UI.PersonalityValues[personality_3];
-                    TargetWindow.alignmentTooltip = text + ": \n" + desc;
-                    TargetWindow.personality1Tooltip = textpers1 + ": \n" + descpers1;
-                    TargetWindow.personality2Tooltip = textpers2 + ": \n" + descpers2;
-                    TargetWindow.personality3Tooltip = textpers3 + ": \n" + descpers3;
-
-                    TargetWindow.existingAvatarBytes = avatarBytes;
-                    TargetWindow.ExistingBio = true;
-                    TargetBioLoadStatus = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveTargetBio message: {ex}");
-            }
-        }
-        public static async void ReceiveProfileBio(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int profileID = buffer.ReadInt();
-                    int avatarLen = buffer.ReadInt();
-                    byte[] avatarBytes = buffer.ReadBytes(avatarLen);
-                    string name = buffer.ReadString();
-                    string race = buffer.ReadString();
-                    string gender = buffer.ReadString();
-                    string age = buffer.ReadString();
-                    string height = buffer.ReadString();
-                    string weight = buffer.ReadString();
-                    string atFirstGlance = buffer.ReadString();
-                    int alignment = buffer.ReadInt();
-                    int personality_1 = buffer.ReadInt();
-                    int personality_2 = buffer.ReadInt();
-                    int personality_3 = buffer.ReadInt();
-                    int customFieldsCount = buffer.ReadInt();
-                    int customDescriptorsCount = buffer.ReadInt();
-                    int customPersonalitiesCount = buffer.ReadInt();
-                    BioTab.fields.Clear();
-                    BioTab.descriptors.Clear();
-                    BioTab.personalities.Clear();
-                    for (int i = 0; i < customFieldsCount; i++)
-                    {
-                        string customName = buffer.ReadString();
-                        string customDescription = buffer.ReadString();
-                        BioTab.fields.Add(
-                           new field()
-                            {
-                                index = i,
-                                name = customName,
-                                description = customDescription
-                            });
-                    }
-                    for(int i = 0; i < customDescriptorsCount; i++)
-                    {
-                        string customName = buffer.ReadString();
-                        string customDescription = buffer.ReadString();
-                        BioTab.descriptors.Add(new descriptor() {index=i, name = customName, description = customDescription });
-                    }
-                    for(int i = 0; i < customPersonalitiesCount; i++)
-                    {
-                        string customName = buffer.ReadString();
-                        string customDescription = buffer.ReadString();
-                        int customIconID = buffer.ReadInt();
-                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(plugin, customIconID).GetAwaiter().GetResult();
-                        if(customIcon == null)
-                        {
-                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        }
-                        BioTab.personalities.Add(new trait() { index =i, name = customName, description = customDescription, iconID=customIconID, icon = new IconElement { icon = customIcon } });
-                    }
-
-
-
-                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    BioTab.avatarBytes = avatarBytes;
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.name] = name.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.race] = race.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.gender] = gender.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.age] = age.ToString().Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.height] = height.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.weight] = weight.Replace("''", "'");
-                    BioTab.bioFieldsArr[(int)UI.BioFieldTypes.afg] = atFirstGlance.Replace("''", "'");
-                    BioTab.currentAlignment = alignment;
-
-                    BioTab.currentPersonality_1 = personality_1;
-                    BioTab.currentPersonality_2 = personality_2;
-                    BioTab.currentPersonality_3 = personality_3;
-
-                    BioLoadStatus = 1;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveProfileBio message: {ex}");
-            }
-        }
+       
+        
+     
         public static void ExistingProfile(byte[] data)
         {
             try
@@ -921,51 +529,37 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    bool status = buffer.ReadBool();
-                    bool tooltipStatus = buffer.ReadBool();
-                    ProfileWindow.isPrivate = status;
-                    ProfileWindow.activeProfile = tooltipStatus;
-                    ProfileWindow.ExistingProfile = true;
-                    InventoryWindow.ExistingProfile = true;
-                    ProfileWindow.ClearOnLoad();
+                    int index = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+                    if (self)
+                    {
+                        ProfileWindow.ExistingProfile = true;
+                        Inventory.ExistingProfile = true;
+                        if (index >= 0 && index < ProfileWindow.profiles.Count)
+                        {
 
+                            ProfileWindow.CurrentProfile = ProfileWindow.profiles[index];
+                        }
+                        else
+                        {
+                            ProfileWindow.CurrentProfile = new ProfileData();
+                            if (ProfileWindow.CurrentProfile.customTabs == null)
+                                ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        }
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.ExistingProfile = true;
+                    }
                 }
             }
             catch (Exception ex)
             {
                 plugin.logger.Error($"Error handling ExistingProfile message: {ex}");
             }
-
         }
-        public static void ReceiveProfileHooks(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int hookCount = buffer.ReadInt();
 
-                    for (int i = 0; i < hookCount; i++)
-                    {
-                        string hookName = buffer.ReadString();
-                        string hookContent = buffer.ReadString();
-                        HooksTab.hookExists[i] = true;
-                        HooksTab.HookNames[i] = hookName;
-                        HooksTab.HookContents[i] = hookContent;
-
-                    }
-                    HooksTab.hookCount = hookCount;
-                    HooksLoadStatus = 1;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveProfileHooks message: {ex}");
-            }
-        }
         public static void ReceiveProfiles(byte[] data)
         {
             try
@@ -976,15 +570,14 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int profileCount = buffer.ReadInt();
                     ProfileWindow.profiles.Clear();
-                    InventoryWindow.ProfileBaseData.Clear();
-                    for (int i =0; i < profileCount; i++)
+                    Inventory.ProfileBaseData.Clear();
+                    for (int i = 0; i < profileCount; i++)
                     {
-                        
+
                         int index = buffer.ReadInt();
                         string name = buffer.ReadString();
-                        bool active = buffer.ReadBool();
-                        ProfileWindow.profiles.Add(new PlayerProfile(){index = index, Name = name, isActive= active});
-                        InventoryWindow.ProfileBaseData.Add(Tuple.Create(index, name, active));
+                        ProfileWindow.profiles.Add(new ProfileData() { index = index, Name = name });
+                        Inventory.ProfileBaseData.Add(Tuple.Create(index, name));
                     }
                 }
             }
@@ -993,142 +586,10 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveProfileHooks message: {ex}");
             }
         }
-        public static void ReceiveProfileStory(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int chapterCount = buffer.ReadInt();
-                    string storyTitle = buffer.ReadString();
-                    StoryTab.ResetStory();
-                    StoryTab.storyTitle = storyTitle;
-                    for (int i = 0; i < chapterCount; i++)
-                    {
-                        string chapterName = buffer.ReadString();
-                        string chapterContent = buffer.ReadString();
-                        StoryTab.storyChapterCount = i;
-                        StoryTab.ChapterNames[i] = chapterName;
-                        StoryTab.ChapterContents[i] = chapterContent;
-                        StoryTab.storyChapterExists[i] = true;
-                    }
-                    StoryLoadStatus = 1;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveProfileStory message: {ex}");
-            }
-        }
 
-        public static void ReceiveTargetStory(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int chapterCount = buffer.ReadInt();
-                    string storyTitle = buffer.ReadString();
-                    TargetWindow.ExistingStory = true;
-                    TargetWindow.storyTitle = storyTitle;
-                    for (int i = 0; i < chapterCount; i++)
-                    {
-                        string chapterName = buffer.ReadString();
-                        string chapterContent = buffer.ReadString();
-                        TargetWindow.chapterCount = i + 1;
-                        TargetWindow.ChapterTitle[i] = chapterName;
-                        TargetWindow.ChapterContent[i] = chapterContent;
-                        TargetWindow.ChapterExists[i] = true;
-                    }
-                    TargetStoryLoadStatus = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveTargetStory message: {ex}");
-            }
-        }
-        public static void ReceiveTargetHooks(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int hookCount = buffer.ReadInt();
-                    TargetWindow.ExistingHooks = true;
 
-                    TargetWindow.hookEditCount = hookCount;
-                    for (int i = 0; i < hookCount; i++)
-                    {
-                        string hookName = buffer.ReadString();
-                        string hookContent = buffer.ReadString();
-                        TargetWindow.HookNames[i] = hookName;
-                        TargetWindow.HookContents[i] = hookContent;
-                    }
-                    TargetHooksLoadStatus = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveTargetHooks message: {ex}");
-            }
-        }
-        public static void NoProfileHooks(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    HooksTab.hookCount = 0;
-                    for (int i = 0; i < HooksTab.HookContents.Length; i++)
-                    {
-                        HooksTab.HookContents[i] = string.Empty;
-                    }
-                    for (int f = 0; f < HooksTab.HookNames.Length; f++)
-                    {
-                        HooksTab.HookNames[f] = string.Empty;
-                    }
-                    HooksLoadStatus = 0;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoProfileHooks message: {ex}");
-            }
-        }
-        public static void NoProfileStory(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    StoryTab.storyTitle = string.Empty;
-                    for (int i = 0; i < StoryTab.ChapterNames.Count(); i++)
-                    {
-                        StoryTab.ChapterNames[i] = string.Empty;
-                        StoryTab.ChapterContents[i] = string.Empty;
-                    }
-                    StoryLoadStatus = 0;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling NoProfileStory message: {ex}");
-            }
-        }
+   
+     
         public static void NoProfileNotes(byte[] data)
         {
             try
@@ -1218,60 +679,8 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceivePasswordModificationForm message: {ex}");
             }
         }
-        public static void ReceiveProfileOOC(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    string ooc = buffer.ReadString();
-                    ProfileWindow.oocInfo = ooc;
-                    OOCLoadStatus = 1;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveProfileOOC message: {ex}");
-            }
-        }
-        public static void ReceiveNoOOCInfo(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    ProfileWindow.oocInfo = string.Empty;
-                    ProfileWindow.ClearOnLoad();
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveNoOOCInfo message: {ex}");
-            }
-        }
-        public static void ReceiveTargetOOCInfo(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    string ooc = buffer.ReadString();
-                    TargetWindow.oocInfo = ooc;
-                    TargetWindow.ExistingOOC = true;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveTargetOOCInfo message: {ex}");
-            }
-        }
+
+
         public static void ReceiveListingsByType(byte[] data)
         {
             try
@@ -1295,30 +704,13 @@ namespace Networking
                         int inclusion = buffer.ReadInt();
                         string startDate = buffer.ReadString();
                         string endDate = buffer.ReadString();
-                      //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
-                      //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
-                     //   ListingsWindow.listings.Add(listing);
+                        //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
+                        //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
+                        //   ListingsWindow.listings.Add(listing);
                         ListingsWindow.loading = "Listing: " + i;
                         ListingsWindow.loaderInd = i;
                     }
                     ListingsLoadStatus = 1;
-                }
-            }
-            catch (Exception ex)
-            {
-                plugin.logger.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
-            }
-        }
-        public static void ReceiveNoTargetOOCInfo(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    TargetWindow.oocInfo = string.Empty;
-                    TargetWindow.ExistingOOC = false;
                 }
             }
             catch (Exception ex)
@@ -1335,7 +727,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int connectionsCount = buffer.ReadInt();
-                    
+
                     for (int i = 0; i < connectionsCount; i++)
                     {
                         string playerName = buffer.ReadString();
@@ -1348,7 +740,7 @@ namespace Networking
             catch (Exception ex)
             {
                 plugin.logger.Error($"Error handling ReceiveConnections message: {ex}");
-            }        
+            }
         }
         internal static void ReceiveConnections(byte[] data)
         {
@@ -1419,7 +811,7 @@ namespace Networking
                             }
                         }
                     }
-                   
+
                     plugin.OpenConnectionsWindow();
                     plugin.newConnection = false;
                     plugin.CheckConnectionsRequestStatus();
@@ -1461,7 +853,7 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int itemsCount = buffer.ReadInt();
 
-                    InventoryWindow.percentage = itemsCount;
+                    Inventory.percentage = itemsCount;
                     for (int i = 0; i < itemsCount; i++)
                     {
 
@@ -1469,10 +861,10 @@ namespace Networking
                         string description = buffer.ReadString();
                         int type = buffer.ReadInt();
                         int subType = buffer.ReadInt();
-                        int iconID = buffer.ReadInt(); 
+                        int iconID = buffer.ReadInt();
                         int slotID = buffer.ReadInt();
                         int quality = buffer.ReadInt();
-                        InvTab.inventorySlotContents[type][slotID] = new ItemDefinition
+                        ItemDefinition itemDefinition = new ItemDefinition
                         {
                             name = name,
                             description = description,
@@ -1487,7 +879,7 @@ namespace Networking
                         {
                             throw new InvalidOperationException($"Invalid iconID: {iconID}");
                         }
-                        InventoryWindow.loaderInd = i;
+                        Inventory.loaderInd = i;
 
                     }
 
@@ -1533,10 +925,6 @@ namespace Networking
                     {
                         message += "Triggering content \n";
                     }
-                    if (NSFW || TRIGGERING)
-                    {
-
-                    }
                     if (spoilers.Count > 0)
                     {
                         message += "Spoilers from the expansions \n";
@@ -1545,8 +933,8 @@ namespace Networking
                     {
                         message += spoilers[i] + "\n";
                     }
-                    TargetWindow.warning = true;
-                    TargetWindow.warningMessage = message;
+                    TargetProfileWindow.warning = true;
+                    TargetProfileWindow.warningMessage = message;
                 }
             }
             catch (Exception ex)
@@ -1563,11 +951,17 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
+                    int AVATARLEN = buffer.ReadInt();
+                    byte[] AVATARBYTES = buffer.ReadBytes(AVATARLEN);
+                    int BACKGROUNDBYTESLEN = buffer.ReadInt();
+                    byte[] BACKGROUNDBYTES = buffer.ReadBytes(BACKGROUNDBYTESLEN);
                     string NAME = buffer.ReadString();
                     float colX = buffer.ReadFloat();
                     float colY = buffer.ReadFloat();
                     float colZ = buffer.ReadFloat();
                     float colW = buffer.ReadFloat();
+                    bool isPrivate = buffer.ReadBool();
+                    bool isTooltip = buffer.ReadBool();
                     bool ARR = buffer.ReadBool();
                     bool HW = buffer.ReadBool();
                     bool SB = buffer.ReadBool();
@@ -1576,23 +970,93 @@ namespace Networking
                     bool DT = buffer.ReadBool();
                     bool NSFW = buffer.ReadBool();
                     bool TRIGGERING = buffer.ReadBool();
+                    bool self = buffer.ReadBool();
+                    if (self)
+                    {
+                        ProfileWindow.ResetProfile();
+                        if (AVATARBYTES == null || AVATARBYTES.Length == 0)
+                        {
+                            AVATARBYTES = UI.baseAvatarBytes();
+                        }
+                        if (BACKGROUNDBYTES != null || BACKGROUNDBYTES.Length != 0)
+                        {
+                            ProfileWindow.backgroundBytes = BACKGROUNDBYTES;
+                            ProfileWindow.backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES).Result;
+                        }
+                        ProfileWindow.isPrivate = isPrivate;
+                        ProfileWindow.activeProfile = isTooltip;
+                        ProfileWindow.avatarBytes = AVATARBYTES;
+                        ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES).Result;
+                        ProfileWindow.ProfileTitle = NAME;
+                        ProfileWindow.color = new Vector4(colX, colY, colZ, colW);
+                        ProfileWindow.SpoilerARR = ARR;
+                        ProfileWindow.SpoilerHW = HW;
+                        ProfileWindow.SpoilerSB = SB;
+                        ProfileWindow.SpoilerSHB = SHB;
+                        ProfileWindow.SpoilerEW = EW;
+                        ProfileWindow.SpoilerDT = DT;
+                        ProfileWindow.NSFW = NSFW;
+                    }
+                    else
+                    {
+                        TargetProfileWindow.ExistingProfile = true;
+                        TargetProfileWindow.addNotes = false;
 
-                    ProfileWindow.ProfileTitle = NAME;
-                    ProfileWindow.color = new Vector4(colX, colY, colZ, colW);
-                    ProfileWindow.SpoilerARR = ARR;
-                    ProfileWindow.SpoilerHW = HW;
-                    ProfileWindow.SpoilerSB = SB;
-                    ProfileWindow.SpoilerSHB = SHB;
-                    ProfileWindow.SpoilerEW = EW;
-                    ProfileWindow.SpoilerDT = DT;
-                    ProfileWindow.NSFW = NSFW;
-                    ProfileWindow.Triggering = TRIGGERING;
-                    
+                        List<string> spoilers = new List<string>();
+
+                        if (ARR) { spoilers.Add("A Realm Reborn"); }
+                        if (HW) { spoilers.Add("Heavensward"); }
+                        if (SB) { spoilers.Add("Stormblood"); }
+                        if (SHB) { spoilers.Add("Shadowbringers"); }
+                        if (EW) { spoilers.Add("Endwalker"); }
+                        if (DT) { spoilers.Add("Dawntrail"); }
+                        string message = "The profile you are about to view contains:\n";
+                        if (NSFW)
+                        {
+                            message += "NSFW (18+) content \n";
+                        }
+                        if (TRIGGERING)
+                        {
+                            message += "Triggering content \n";
+                        }
+                        if (spoilers.Count > 0)
+                        {
+                            message += "Spoilers from the expansions \n";
+                        }
+                        for (int i = 0; i < spoilers.Count; i++)
+                        {
+                            message += spoilers[i] + "\n";
+                        }
+                        if (ARR || HW || SB || SHB || EW || DT || NSFW || TRIGGERING)
+                        {
+                            TargetProfileWindow.warning = true;
+                        }
+                        TargetProfileWindow.warningMessage = message;
+                        if (AVATARBYTES == null || AVATARBYTES.Length == 0)
+                        {
+                            AVATARBYTES = UI.baseAvatarBytes();
+                        }
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.avatar = Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES).Result;
+                        TargetProfileWindow.profileData.title = NAME.Replace("''", "'");
+                        TargetProfileWindow.profileData.titleColor = new Vector4(colX, colY, colZ, colW);
+                        if (BACKGROUNDBYTES == null || BACKGROUNDBYTES.Length == 0)
+                        {
+                            TargetProfileWindow.backgroundBytes = UI.baseImageBytes();
+                        }
+                        IDalamudTextureWrap backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES).Result;
+                        if (backgroundImage != null && backgroundImage.ImGuiHandle != IntPtr.Zero && backgroundImage.Size.X > 32)
+                        {
+                            TargetProfileWindow.backgroundImage = backgroundImage;
+                        }
+                        TargetProfileWindow.profileData.isPrivate = isPrivate;
+                        TargetProfileWindow.profileData.isActive = isTooltip;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Error handling RecieveProfileWarning message: {ex}");
+                plugin.logger.Error($"Error handling ReceiveProfileSettings message: {ex}");
             }
         }
 
@@ -1658,7 +1122,7 @@ namespace Networking
                         }
                         ARPTooltipWindow.personalities.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
                     }
-                    PlayerProfile profile = new PlayerProfile();
+                    ProfileData profile = new ProfileData();
                     profile.avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     profile.title = title;
                     profile.titleColor = new Vector4(colX, colY, colZ, colW);
@@ -1668,11 +1132,11 @@ namespace Networking
                     profile.Age = Age.Replace("''", "'");
                     profile.Height = Height.Replace("''", "'");
                     profile.Weight = Weight.Replace("''", "'");
-                    if(Alignment != 9)
+                    if (Alignment != 9)
                     {
                         ARPTooltipWindow.hasAlignment = true;
                     }
-                    
+
                     else
                     {
                         ARPTooltipWindow.hasAlignment = false;
@@ -1680,7 +1144,7 @@ namespace Networking
                     if (Personality_1 == 26) { ARPTooltipWindow.showPersonality1 = false; } else { ARPTooltipWindow.showPersonality1 = true; }
                     if (Personality_2 == 26) { ARPTooltipWindow.showPersonality2 = false; } else { ARPTooltipWindow.showPersonality2 = true; }
                     if (Personality_3 == 26) { ARPTooltipWindow.showPersonality3 = false; } else { ARPTooltipWindow.showPersonality3 = true; }
-                    if(Personality_1 == 26 && Personality_2 == 26 && Personality_3 == 26)
+                    if (Personality_1 == 26 && Personality_2 == 26 && Personality_3 == 26)
                     {
                         ARPTooltipWindow.showPersonalities = false;
                     }
@@ -1705,7 +1169,6 @@ namespace Networking
 
                     Plugin.tooltipLoaded = true;
                     plugin.OpenARPTooltip();
-
 
                 }
             }
@@ -1732,12 +1195,12 @@ namespace Networking
                     byte[] avatarBytes = buffer.ReadBytes(avatarBytesLen);
                     string message = buffer.ReadString();
                     bool isAnnouncement = buffer.ReadBool();
-                    IDalamudTextureWrap avatar =  Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                    IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     if (isAnnouncement)
                     {
                         message = message.Replace("/announce", "[ANNOUNCEMENT]");
                     }
-                    ARPChatWindow.messages.Add(new ChatMessage { isAnnouncement=isAnnouncement, authorUserID=userID, authorProfileID=profileID, name=Name, world=World, authorName = profileName, avatar = avatar, message = message });
+                    ARPChatWindow.messages.Add(new ChatMessage { isAnnouncement = isAnnouncement, authorUserID = userID, authorProfileID = profileID, name = Name, world = World, authorName = profileName, avatar = avatar, message = message });
 
                 }
             }
@@ -1746,9 +1209,228 @@ namespace Networking
                 plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
+        internal static void ReceiveDynamicTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    int layoutID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    int nodeCount = buffer.ReadInt();
+
+                    DynamicLayout dynamicLayout = new DynamicLayout
+                    {
+                        id = layoutID,
+                        tabIndex = tabIndex,
+                        tabName = tabName,
+                        elements = new List<LayoutElement>() // Ensure it's initialized
+                    };
+                    // 1. Build all nodes and store by ID
+                    var nodeLookup = new Dictionary<int, LayoutTreeNode>();
+                    var parentIdLookup = new Dictionary<int, int>(); // nodeID -> parentID
+
+                    for (int i = 0; i < nodeCount; i++)
+                    {
+                        int ID = buffer.ReadInt();
+                        int ParentID = buffer.ReadInt();
+                        string Name = buffer.ReadString();
+                        bool IsFolder = buffer.ReadBool();
+                        LayoutTreeNode node = new LayoutTreeNode(Name, IsFolder, ID, null)
+                        {
+                            ID = ID,
+                            ParentID = ParentID,
+                            Name = Name,
+                            IsFolder = IsFolder,
+                            Children = new List<LayoutTreeNode>(),
+                        };
+                        int elementType = buffer.ReadInt();
+
+                        switch (elementType)
+                        {
+                            case (int)LayoutElementTypes.Empty:
+                                EmptyElement emptyElement = new EmptyElement() { id = ID, name = Name };
+                                node.relatedElement = emptyElement;
+                                emptyElement.relatedNode = node;
+                                dynamicLayout.elements.Add(emptyElement);
+                                break;
+                            case (int)LayoutElementTypes.Folder:
+                                FolderElement folderElement = new FolderElement()
+                                {
+                                    name = Name
+                                };
+                                node.relatedElement = folderElement;
+                                folderElement.relatedNode = node;
+                                dynamicLayout.elements.Add(folderElement);
+                                break;
+                            case (int)LayoutElementTypes.Text:
+                                TextElement textElement = new TextElement()
+                                {
+                                    id = buffer.ReadInt(),
+                                    text = buffer.ReadString(),
+                                    subType = buffer.ReadInt(),
+                                    PosX = buffer.ReadFloat(),
+                                    PosY = buffer.ReadFloat(),
+                                    width = buffer.ReadFloat(),
+                                    height = buffer.ReadFloat(),
+                                };
+                                node.relatedElement = textElement;
+                                textElement.relatedNode = node;
+                                dynamicLayout.elements.Add(textElement);
+                                break;
+                            case (int)LayoutElementTypes.Image:
+                                ImageElement imageElement = new ImageElement()
+                                {
+                                    id = buffer.ReadInt(),
+                                    url = buffer.ReadString(),
+                                    hasTooltip = buffer.ReadBool(),
+                                    tooltip = buffer.ReadString(),
+                                    PosX = buffer.ReadFloat(),
+                                    PosY = buffer.ReadFloat(),
+                                    width = buffer.ReadFloat(),
+                                    height = buffer.ReadFloat(),
+                                    maximizable = buffer.ReadBool(),
+                                };
+                                imageElement.textureWrap = Imaging.DownloadElementImage(true, imageElement.url, imageElement).GetAwaiter().GetResult();
+                                node.relatedElement = imageElement;
+                                imageElement.relatedNode = node;
+                                dynamicLayout.elements.Add(imageElement);
+                                break;
+                            case (int)LayoutElementTypes.Icon:
+                                IconElement iconElement = new IconElement()
+                                {
+                                    id = buffer.ReadInt(),
+                                    iconID = buffer.ReadInt(),
+                                    PosX = buffer.ReadFloat(),
+                                    PosY = buffer.ReadFloat(),
+                                };
+                                node.relatedElement = iconElement;
+                                iconElement.relatedNode = node;
+                                dynamicLayout.elements.Add(iconElement);
+                                break;
+                            default:
+                                throw new InvalidOperationException($"Unknown element type: {elementType}");
+                        }
+                        nodeLookup[ID] = node;
+                    }
+                    // 2. Build parent-child relationships
+                    foreach (var node in nodeLookup.Values)
+                    {
+                        if (node.ParentID != -1 && nodeLookup.TryGetValue(node.ParentID, out var parentNode))
+                        {
+                            parentNode.AddChild(node);
+                        }
+                        else if (node.ParentID == -1)
+                        {
+                            // Root node, no parent
+                            dynamicLayout.RootNode.AddChild(node);
+                        }
+                        else
+                        {
+                            // Invalid parent ID, log error
+                            plugin.logger.Error($"Node {node.ID} has invalid parent ID {node.ParentID}");
+                        }
+                    }
 
 
-        //SYNC
+                    CustomTab tab = new CustomTab()
+                    {
+                        Name = tabName,
+                        Layout = dynamicLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Dynamic
+                    };
+
+                    ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveDynamicTab message: {ex}");
+            }
+        }
+
+        internal static void ReceivePersonalListings(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int listingCount = buffer.ReadInt();
+                    ListingsWindow.percentage = listingCount;
+                    ListingsWindow.listings.Clear();
+                    for (int i = 0; i < listingCount; i++)
+                    {
+                        int profileID = buffer.ReadInt();
+                        string name = buffer.ReadString();
+                        int avatarLen = buffer.ReadInt();
+                        byte[] avatarBytes = buffer.ReadBytes(avatarLen);
+
+                        // Read all fields regardless of avatar validity
+                        bool spoilerARR = buffer.ReadBool();
+                        bool spoilerHW = buffer.ReadBool();
+                        bool spoilerSB = buffer.ReadBool();
+                        bool spoilerSHB = buffer.ReadBool();
+                        bool spoilerEW = buffer.ReadBool();
+                        bool spoilerDT = buffer.ReadBool();
+                        bool nsfw = buffer.ReadBool();
+                        bool triggering = buffer.ReadBool();
+                        float colX = buffer.ReadFloat();
+                        float colY = buffer.ReadFloat();
+                        float colZ = buffer.ReadFloat();
+                        float colW = buffer.ReadFloat();
+
+                        IDalamudTextureWrap avatar = null;
+                        if (avatarBytes != null && avatarBytes.Length > 0)
+                        {
+                            try
+                            {
+                                avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                            }
+                            catch (Exception ex)
+                            {
+                                plugin.logger.Error($"Invalid avatar image for profile {profileID}: {ex.Message}");
+                                avatar = null;
+                            }
+                        }
+
+                        // Now skip adding the listing if avatar is null, but all fields have been read
+                        if (avatar == null)
+                            continue;
+
+                        ListingsWindow.type = 6;
+                        ListingsWindow.listings.Add(
+                            new Listing
+                            {
+                                type = 6,
+                                id = profileID,
+                                name = name,
+                                avatar = avatar,
+                                ARR = spoilerARR,
+                                HW = spoilerHW,
+                                SB = spoilerSB,
+                                SHB = spoilerSHB,
+                                EW = spoilerEW,
+                                DT = spoilerDT,
+                                color = new Vector4(colX, colY, colZ, colW),
+                            });
+
+                        ListingsWindow.loading = "Personal Listing: " + i;
+                        ListingsWindow.loaderInd = i;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceivePersonalListings message: {ex}");
+            }
+        }
 
         internal static void ReceivePlayerSyncData(byte[] data)
         {
@@ -1761,7 +1443,7 @@ namespace Networking
                     string name = buffer.ReadString();
                     int modDataCount = buffer.ReadInt();
 
-                    for(int i = 0; i < modDataCount; i++)
+                    for (int i = 0; i < modDataCount; i++)
                     {
                         int byteLen = buffer.ReadInt();
                         byte[] bytes = buffer.ReadBytes(byteLen);
@@ -1775,6 +1457,859 @@ namespace Networking
             }
         }
 
+ 
 
+        internal static void ReceiveTabCount(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int tabCount = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+                    if (self)
+                    {
+                        tabsCount = tabCount;
+                    }
+                    else
+                    {
+                        tabsTargetCount = tabCount;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+        }
+        internal static void ReceiveTabsUpdate(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int tabCount = buffer.ReadInt();
+                    for (int i = 0; i < tabCount; i++)
+                    {
+                        int profileID = buffer.ReadInt();
+                        string tabName = buffer.ReadString();
+                        int tabIndex = buffer.ReadInt();
+                        int tabType = buffer.ReadInt();
+
+                      
+
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+        }
+
+
+        /* internal static void ReceiveTradeRequest(byte[] data)
+         {
+             try
+             {
+                 using (var buffer = new ByteBuffer())
+                 {
+                     buffer.WriteBytes(data);
+                     var packetID = buffer.ReadInt();
+                     int profileID = buffer.ReadInt();
+                     string requesterProfileName = buffer.ReadString();
+                     string receiverProfileName = buffer.ReadString();
+                     string requesterCharacterName = buffer.ReadString();
+                     string requesterCharacterWorld = buffer.ReadString();
+                     int inventoryTabCount = buffer.ReadInt();
+                     Dictionary<int, ItemDefinition> inventory = new Dictionary<int, ItemDefinition>();
+                     for (int i = 0; i < inventoryCount; i++)
+                     {
+                         string itemName = buffer.ReadString();
+                         string itemDescription = buffer.ReadString();
+                         int itemType = buffer.ReadInt();
+                         int itemSubType = buffer.ReadInt();
+                         int iconID = buffer.ReadInt(); // Ensure iconID is valid
+                         int slotID = buffer.ReadInt();
+                         int quality = buffer.ReadInt();
+                         ItemDefinition itemDefinition = new ItemDefinition
+                         {
+                             name = itemName,
+                             description = itemDescription,
+                             type = itemType,
+                             subtype = itemSubType,
+                             iconID = iconID, // Ensure iconID is valid
+                             slot = slotID,
+                             quality = quality
+                         };
+                         Plugin.plugin.logger.Error(itemDefinition.name);
+                         inventory.Add(slotID, itemDefinition);
+                         // Validate and ensure compatibility
+                     }
+                     InventoryLayout inventoryLayout = new InventoryLayout
+                     {
+                         id = inventoryID,
+                         inventorySlotContents = inventory
+                     };
+                     TradeWindow.inventoryLayout = inventoryLayout;
+                     TradeWindow.slotContents = inventory; // <-- Add this line
+                     TradeWindow.targetProfile = profileID;
+                     Plugin.plugin.logger.Error(requesterProfileName + " is requesting a trade with you.");
+
+                 }
+             }
+             catch (Exception ex)
+             {
+                 plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+             }
+             finally
+             {
+                 Plugin.plugin.OpenTradeWindow();
+             }
+         }
+        */
+   
+        internal static void ReceiveTradeRequest(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string requesterProfileName = buffer.ReadString();
+                    string receiverProfileName = buffer.ReadString();
+                    string requesterCharacterName = buffer.ReadString();
+                    string requesterCharacterWorld = buffer.ReadString();
+                    string receiverCharacterName = buffer.ReadString(); 
+                    string receiverCharacterWorld = buffer.ReadString();
+                    TradeWindow.tradeTargetName = receiverCharacterName;
+                    TradeWindow.tradeTargetWorld = receiverCharacterWorld;
+                    int inventoryTabCount = buffer.ReadInt();
+                    TradeWindow.inventoryTabs.Clear();
+                    for (int i = 0; i < inventoryTabCount; i++)
+                    {
+                        int index = buffer.ReadInt();
+                        int id = buffer.ReadInt();
+                        string tabName = buffer.ReadString();
+                        Tuple<int, int, string> tab = Tuple.Create(index, id, tabName);
+
+                        TradeWindow.inventoryTabs.Add(tab);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+            finally
+            {
+                Plugin.plugin.OpenTradeWindow();
+            }
+        }
+        internal static void ReceiveTradeInventory(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int inventoryID = buffer.ReadInt();
+                    int inventoryCount = buffer.ReadInt();
+                    TradeWindow.inventoryLayout.inventorySlotContents.Clear();
+                    TradeWindow.inventoryLayout.tradeSlotContents.Clear();
+                    TradeWindow.inventoryLayout.traderSlotContents.Clear();
+                    for (int i = 0; i < inventoryCount; i++)
+                    {
+                        string itemName = buffer.ReadString();
+                        string itemDescription = buffer.ReadString();
+                        int itemType = buffer.ReadInt();
+                        int itemSubType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt(); // Ensure iconID is valid
+                        int slotID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+                        ItemDefinition itemDefinition = new ItemDefinition
+                        {
+                            name = itemName,
+                            description = itemDescription,
+                            type = itemType,
+                            subtype = itemSubType,
+                            iconID = iconID, // Ensure iconID is valid
+                            slot = slotID,
+                            quality = quality
+                        };
+                        TradeWindow.inventoryLayout.inventorySlotContents.Add(slotID, itemDefinition);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+            }
+            finally
+            {
+                Plugin.plugin.OpenTradeWindow();
+            }
+        }
+        internal static void ReceiveTradeUpdate(byte[] data)
+        {
+            try
+            {
+                Dictionary<int, ItemDefinition> traderItems = new Dictionary<int, ItemDefinition>();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    int itemCount = buffer.ReadInt();
+
+                    for (int i = 0; i < itemCount; i++)
+                    {
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        int type = buffer.ReadInt();
+                        int subtype = buffer.ReadInt();
+                        int iconID = buffer.ReadInt();
+                        int slot = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+
+                        ItemDefinition itemDefinition = new ItemDefinition
+                        {
+                            name = name,
+                            description = description,
+                            type = type,
+                            subtype = subtype,
+                            iconID = iconID,
+                            slot = slot,
+                            quality = quality
+                        };
+                        Plugin.plugin.logger.Error($"Received item for trade: {itemDefinition.name} (Slot: {slot})");
+                        traderItems[slot] = itemDefinition;
+                    }
+
+                    // Update the active trade window's InventoryLayout
+                    if (TradeWindow.inventoryLayout != null)
+                    {
+                        TradeWindow.inventoryLayout.traderSlotContents = traderItems;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveTradeUpdate message: {ex}");
+            }
+            finally
+            {
+                Plugin.plugin.OpenTradeWindow();
+            }
+        }
+        internal static void ReceiveTradeStatus(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    bool senderStatus = buffer.ReadBool(); 
+                    bool receiverStatus = buffer.ReadBool();
+                    TradeWindow.receiverReady = receiverStatus;
+                    TradeWindow.senderReady = senderStatus;
+                    Plugin.plugin.logger.Error($"Trade status updated - Sender: {senderStatus}, Receiver: {receiverStatus}");
+                    Plugin.plugin.CloseTradeWindow();
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveTradeUpdate message: {ex}");
+            }
+        }
+        public static void ReceiveInventoryTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int inventoryID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+                    int inventoryCount = buffer.ReadInt();
+
+                    Dictionary<int, ItemDefinition> inventory = new Dictionary<int, ItemDefinition>();
+                    for (int i = 0; i < inventoryCount; i++)
+                    {
+                        string itemName = buffer.ReadString();
+                        string itemDescription = buffer.ReadString();
+                        int itemType = buffer.ReadInt();
+                        int itemSubType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt();
+                        int slotID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+                        ItemDefinition itemDefinition = new ItemDefinition
+                        {
+                            name = itemName,
+                            description = itemDescription,
+                            type = itemType,
+                            subtype = itemSubType,
+                            iconID = iconID,
+                            slot = slotID,
+                            quality = quality
+                        };
+                        inventory.Add(i, itemDefinition);
+                    }
+                    InventoryLayout inventoryLayout = new InventoryLayout
+                    {
+                        id = inventoryID,
+                        tabIndex = tabIndex,
+                        tabName = tabName,
+                        inventorySlotContents = inventory
+                    };
+                    CustomTab tab = new CustomTab()
+                    {
+                        Name = tabName,
+                        Layout = inventoryLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Inventory
+                    };
+
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                    }
+                    loadedTabsCount += 1;
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveInventoryTab message: {ex}");
+            }
+        }
+
+        public static void ReceiveInfoTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    string info = buffer.ReadString();
+                    bool self = buffer.ReadBool();
+
+                    InfoLayout infoLayout = new InfoLayout
+                    {
+                        name = tabName,
+                        tabIndex = tabIndex,
+                        text = info.Replace("''", "'")
+                    };
+                    CustomTab tab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = infoLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Info
+                    };
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                        loadedTabsCount += 1;
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        loadedTargetTabsCount += 1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveTargetOOCInfo message: {ex}");
+            }
+        }
+
+        public static void ReceiveStoryTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    string storyTitle = buffer.ReadString();
+                    bool self = buffer.ReadBool();
+                    Plugin.plugin.logger.Error($"Story Title: {storyTitle}");
+                    int chapterCount = buffer.ReadInt();
+                    List<StoryChapter> chapters = new List<StoryChapter>();
+                    for (int i = 0; i < chapterCount; i++)
+                    {
+                        int chapterIndex = buffer.ReadInt();
+                        string chapterName = buffer.ReadString().Replace("''", "'");
+                        string chapterContent = buffer.ReadString().Replace("''", "'");
+                        chapters.Add(new StoryChapter()
+                        {
+                            id = chapterIndex,
+                            title = chapterName,
+                            content = chapterContent
+                        });
+                    }
+                    StoryLayout storyLayout = new StoryLayout
+                    {
+                        tabIndex = tabIndex,
+                        name = storyTitle.Replace("''", "'"),
+                        chapters = chapters
+                    };
+                    CustomTab tab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = storyLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Story
+                    };
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                        loadedTabsCount += 1;
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        loadedTargetTabsCount += 1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+            }
+        }
+
+        public static void ReceiveDetailsTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+                    int detailsCount = buffer.ReadInt();
+                    List<Detail> details = new List<Detail>();
+
+                    for (int i = 0; i < detailsCount; i++)
+                    {
+                        int id = buffer.ReadInt();
+                        string name = buffer.ReadString().Replace("''", "'");
+                        string content = buffer.ReadString().Replace("''", "'");
+                        details.Add(new Detail()
+                        {
+                            id = id,
+                            name = name,
+                            content = content
+                        });
+                        Plugin.plugin.logger.Error($"{name}  {content} {id}");
+                    }
+
+                    DetailsLayout detailsLayout = new DetailsLayout
+                    {
+                        name = tabName.Replace("''", "'"),
+                        tabIndex = tabIndex,
+                        details = details
+                    };
+
+                    BioLoadStatus = 1;
+                    CustomTab tab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = detailsLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Details
+                    };
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                        loadedTabsCount += 1;
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        loadedTargetTabsCount += 1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+            }
+            finally
+            {
+                loadedTabsCount += 1;
+            }
+        }
+
+        public static void ReceiveProfileGalleryTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+                    int galleryImageCount = buffer.ReadInt();
+                    List<ProfileGalleryImage> gallery = new List<ProfileGalleryImage>();
+
+                    for (int i = 0; i < galleryImageCount; i++)
+                    {
+                        string url = buffer.ReadString();
+                        string tooltip = buffer.ReadString();
+                        bool nsfw = buffer.ReadBool();
+                        bool trigger = buffer.ReadBool();
+                        ProfileGalleryImage galleryImage = Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, Plugin.plugin, i).GetAwaiter().GetResult();
+                        gallery.Add(galleryImage);
+
+                        if (self)
+                        {
+                            loadedGalleryImages += 1;
+                            GalleryImagesToLoad = galleryImageCount;
+                            ProfileWindow.loading = "Gallery Image" + i;
+                        }
+                        else
+                        {
+                            loadedTargetGalleryImages += 1;
+                            TargetGalleryImagesToLoad = galleryImageCount;
+                            TargetProfileWindow.loading = "Gallery Image" + i;
+                        }
+                    }
+
+                    GalleryLayout galleryLayout = new GalleryLayout
+                    {
+                        name = tabName.Replace("''", "'"),
+                        tabIndex = tabIndex,
+                        images = gallery
+                    };
+                    CustomTab tab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = galleryLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Gallery
+                    };
+
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+
+                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                        loadedTabsCount += 1;
+                        loadedGalleryImages = 0;
+                        GalleryImagesToLoad = 0;
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        loadedTargetTabsCount += 1;
+                        loadedTargetGalleryImages = 0;
+                        TargetGalleryImagesToLoad = 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+            }
+        }
+        public static void ReceiveTreeLayout(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    int packetID = buffer.ReadInt();
+
+                    int profileIndex = buffer.ReadInt();
+                    int tabID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+
+                    // --- Read Paths ---
+                    int pathCount = buffer.ReadInt();
+                    var paths = new List<List<(int x, int y)>>();
+                    for (int i = 0; i < pathCount; i++)
+                    {
+                        int slotCount = buffer.ReadInt();
+                        var path = new List<(int x, int y)>();
+                        for (int j = 0; j < slotCount; j++)
+                        {
+                            int x = buffer.ReadInt();
+                            int y = buffer.ReadInt();
+                            path.Add((x, y));
+                        }
+                        paths.Add(path);
+                    }
+
+                    // --- Read PathConnections ---
+                    int pathConnCount = buffer.ReadInt();
+                    var pathConnections = new List<List<((int x, int y) from, (int x, int y) to)>>();
+                    for (int i = 0; i < pathConnCount; i++)
+                    {
+                        int connCount = buffer.ReadInt();
+                        var conns = new List<((int x, int y) from, (int x, int y) to)>();
+                        for (int j = 0; j < connCount; j++)
+                        {
+                            int fromX = buffer.ReadInt();
+                            int fromY = buffer.ReadInt();
+                            int toX = buffer.ReadInt();
+                            int toY = buffer.ReadInt();
+                            conns.Add(((fromX, fromY), (toX, toY)));
+                            Plugin.plugin.logger.Error($"Path Connection: From ({fromX}, {fromY}) To ({toX}, {toY})");
+                        }
+                        pathConnections.Add(conns);
+                    }
+
+                    // --- Read Relationships ---
+                    int relCount = buffer.ReadInt();
+                    var relationships = new List<Relationship>();
+                    for (int i = 0; i < relCount; i++)
+                    {
+                        var rel = new Relationship();
+                        rel.Name = buffer.ReadString();
+                        rel.Description = buffer.ReadString();
+                        rel.IconID = buffer.ReadInt();
+                        rel.IconTexture = WindowOperations.RenderIconAsync(plugin, rel.IconID).GetAwaiter().GetResult();
+                        bool hasSlot = buffer.ReadBool();
+                        if (hasSlot)
+                        {
+                            int slotX = buffer.ReadInt();
+                            int slotY = buffer.ReadInt();
+                            rel.Slot = (slotX, slotY);
+                        }
+                        else
+                        {
+                            rel.Slot = null;
+                        }
+
+                        int linkCount = buffer.ReadInt();
+                        rel.Links = new List<RelationshipLink>();
+                        for (int l = 0; l < linkCount; l++)
+                        {
+                            var link = new RelationshipLink();
+                            link.From = (buffer.ReadInt(), buffer.ReadInt());
+                            link.To = (buffer.ReadInt(), buffer.ReadInt());
+                            rel.Links.Add(link);
+                        }
+
+                        relationships.Add(rel);
+                    }
+
+                    // Defensive: Ensure all collections are initialized
+                    if (paths == null) paths = new List<List<(int x, int y)>>();
+                    if (pathConnections == null) pathConnections = new List<List<((int x, int y) from, (int x, int y) to)>>();
+                    if (relationships == null) relationships = new List<Relationship>();
+
+                    var treeLayout = new TreeLayout
+                    {
+                        tabName = tabName,
+                        tabIndex = tabIndex,
+                        Paths = paths,
+                        PathConnections = pathConnections,
+                        relationships = relationships
+                    };
+
+                    // Defensive: Ensure TreeLayout collections are not null
+                    if (treeLayout.Paths == null) treeLayout.Paths = new List<List<(int x, int y)>>();
+                    if (treeLayout.PathConnections == null) treeLayout.PathConnections = new List<List<((int x, int y) from, (int x, int y) to)>>();
+                    if (treeLayout.relationships == null) treeLayout.relationships = new List<Relationship>();
+
+                    foreach (var path in treeLayout.PathConnections)
+                    {
+                        if (path == null) continue;
+                        foreach (var conn in path)
+                        {
+                            Plugin.plugin.logger.Error($"Path Connection: From ({conn.from.x}, {conn.from.y}) To ({conn.to.x}, {conn.to.y})");
+                        }
+                    }
+
+                    var customTab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = treeLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Tree
+                    };
+
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile?.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        ProfileWindow.CurrentProfile.customTabs.Add(customTab);
+                        loadedTabsCount += 1;
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(customTab);
+                        loadedTargetTabsCount += 1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveTreeLayout: {ex}");
+            }
+        }
+        public static void RecieveBioTab(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string tabName = buffer.ReadString();
+                    int tabIndex = buffer.ReadInt();
+                    string name = buffer.ReadString();
+                    string race = buffer.ReadString();
+                    string gender = buffer.ReadString();
+                    string age = buffer.ReadString();
+                    string height = buffer.ReadString();
+                    string weight = buffer.ReadString();
+                    string atFirstGlance = buffer.ReadString();
+                    int alignment = buffer.ReadInt();
+                    int personality_1 = buffer.ReadInt();
+                    int personality_2 = buffer.ReadInt();
+                    int personality_3 = buffer.ReadInt();
+                    bool self = buffer.ReadBool();
+                    int customFieldsCount = buffer.ReadInt();
+                    int customDescriptorsCount = buffer.ReadInt();
+                    int customPersonalitiesCount = buffer.ReadInt();
+                    bool isTooltip = buffer.ReadBool();
+                    List<descriptor> descriptors = new List<descriptor>();
+                    List<trait> traits = new List<trait>();
+                    List<field> fields = new List<field>();
+
+                    for (int i = 0; i < customFieldsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        fields.Add(
+                           new field()
+                           {
+                               index = i,
+                               name = customName,
+                               description = customDescription
+                           });
+                    }
+                    for (int i = 0; i < customDescriptorsCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        descriptors.Add(new descriptor() { index = i, name = customName, description = customDescription });
+                    }
+                    for (int i = 0; i < customPersonalitiesCount; i++)
+                    {
+                        string customName = buffer.ReadString();
+                        string customDescription = buffer.ReadString();
+                        int customIconID = buffer.ReadInt();
+                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(plugin, customIconID).GetAwaiter().GetResult();
+                        if (customIcon == null)
+                        {
+                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
+                        traits.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
+                    }
+
+                    BioLayout bioLayout = new BioLayout
+                    {
+                        tabIndex = tabIndex,
+                        name = name.Replace("''", "'"),
+                        race = race.Replace("''", "'"),
+                        gender = gender.Replace("''", "'"),
+                        age = age.Replace("''", "'"),
+                        height = height.Replace("''", "'"),
+                        weight = weight.Replace("''", "'"),
+                        afg = atFirstGlance.Replace("''", "'"),
+                        alignment = alignment,
+                        personality_1 = personality_1,
+                        personality_2 = personality_2,
+                        personality_3 = personality_3,
+                        isTooltip = isTooltip,
+                        descriptors = descriptors,
+                        traits = traits,
+                        fields = fields,
+                    };
+
+                    BioLoadStatus = 1;
+                    CustomTab tab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = bioLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Bio
+                    };
+
+                    if (self)
+                    {
+                        if (ProfileWindow.CurrentProfile.customTabs == null)
+                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                        loadedTabsCount += 1;
+                    }
+                    else
+                    {
+                        EnsureTargetProfileData();
+                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        loadedTargetTabsCount += 1;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+            }
+        }
     }
 }

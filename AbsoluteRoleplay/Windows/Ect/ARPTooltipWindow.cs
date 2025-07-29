@@ -27,8 +27,8 @@ using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using Dalamud.Interface.Utility;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 
 namespace AbsoluteRoleplay.Windows.Ect
 {
@@ -36,7 +36,7 @@ namespace AbsoluteRoleplay.Windows.Ect
     {
         public static bool isAdmin;
         public Configuration config;
-        public static PlayerProfile profile;
+        public static ProfileData profile;
         public string msg;
         public Vector2 windowPos;
         public bool openedProfile = false;
@@ -58,98 +58,130 @@ namespace AbsoluteRoleplay.Windows.Ect
         public static List<descriptor> descriptors = new List<descriptor>();
         public static List<trait> personalities = new List<trait>();    
         public ARPTooltipWindow(Plugin plugin) : base(
-       "TOOLTIP", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoNav |
-                                              ImGuiWindowFlags.NoMouseInputs
+       "TOOLTIP", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoNav
                                               | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse |
                                               ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoFocusOnAppearing)
         {
             config = plugin.Configuration;
             this.plugin = plugin;
+
+            SizeConstraints = new WindowSizeConstraints
+            {
+
+                MinimumSize = new Vector2(50, 50),
+                MaximumSize = new Vector2(300, 1000)
+            };
+
         }
 
         public override void Draw()
         {
-
-            if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(plugin, false, profile.title, profile.titleColor);
-            if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
-            if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text($"NAME: {profile.Name}");
-            if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: {profile.Race}");
-            if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: {profile.Gender}");
-            if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: {profile.Age}");
-            if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT: {profile.Height}");
-            if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: {profile.Weight}");
-            foreach (descriptor descriptor in descriptors)
+            try
             {
-                ImGui.Spacing();
-                ImGui.Text(descriptor.name.ToUpper() + ": " + descriptor.description);
-            }
-            if (config.tooltip_showAlignment)
-            {
-                if (hasAlignment == true)
+                if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(plugin, false, profile.title, profile.titleColor);
+                if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
+                if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text($"NAME: {profile.Name}");
+                if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: {profile.Race}");
+                if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: {profile.Gender}");
+                if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: {profile.Age}");
+                if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT: {profile.Height}");
+                if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: {profile.Weight}");
+                if (config.tooltip_ShowCustomDescriptors)
                 {
-                    ImGui.Text("ALIGNMENT:");
-                    ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
-                    ImGui.SameLine();
-                    ImGui.Text(UI.AlignmentName(profile.Alignment));
-                }
-            }
-            if (config.tooltip_showPersonalityTraits)
-            {
-                if (showPersonalities == true)
-                {
-                    ImGui.Text("TRAITS:");
-                    if (showPersonality1 == true)
+                    foreach (descriptor descriptor in descriptors)
                     {
-                        ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
-                        ImGui.SameLine();
-                        ImGui.Text(UI.PersonalityNames(profile.Personality_1));
+                        ImGui.Spacing();
+                        ImGui.Text(descriptor.name.ToUpper() + ": " + descriptor.description);
                     }
-                    if (showPersonality2 == true)
-                    {
-                        ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
-                        ImGui.SameLine();
-                        ImGui.Text(UI.PersonalityNames(profile.Personality_2));
-                    }
-                    if (showPersonality3 == true)
-                    {
-                        ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
-                        ImGui.SameLine();
-                        ImGui.Text(UI.PersonalityNames(profile.Personality_3));
-                    }
-
-
-                }
-                foreach (trait personality in personalities)
+                }             
+                if (config.tooltip_showAlignment)
                 {
-                    ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
-                    ImGui.SameLine();
-                    ImGui.Text(personality.name);
+                    if (hasAlignment == true)
+                    {
+                        ImGui.Text("ALIGNMENT:");
+                        ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
+                        ImGui.SameLine();
+                        ImGui.Text(UI.AlignmentName(profile.Alignment));
+                    }
                 }
-            }
-            if (config.tooltip_draggable)
-            {
-                if (Plugin.lockedtarget == false)
+                if (config.tooltip_showPersonalityTraits)
                 {
-                    windowPos = ImGui.GetMousePos();
-                    ImGui.SetWindowPos(windowPos);
+                    if (showPersonalities == true)
+                    {
+                        ImGui.Text("TRAITS:");
+                        if (showPersonality1 == true)
+                        {
+                            ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.SameLine();
+                            ImGui.Text(UI.PersonalityNames(profile.Personality_1));
+                        }
+                        if (showPersonality2 == true)
+                        {
+                            ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.SameLine();
+                            ImGui.Text(UI.PersonalityNames(profile.Personality_2));
+                        }
+                        if (showPersonality3 == true)
+                        {
+                            ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.SameLine();
+                            ImGui.Text(UI.PersonalityNames(profile.Personality_3));
+                        }
+
+
+                    }
+                    if (config.tooltip_showCustomTraits)
+                    {
+                        foreach (trait personality in personalities)
+                        {
+                            ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.SameLine();
+                            ImGui.Text(personality.name);
+                        }
+                    }
+                }
+                if (config.tooltip_draggable)
+                {
+                    if (Plugin.lockedtarget == false)
+                    {
+                        windowPos = new Vector2(ImGui.GetMousePos().X + 20, ImGui.GetMousePos().Y + 20);
+                        ImGui.SetWindowPos(windowPos);
+                    }
+                }
+                else
+                {
+                    var operations = new WindowOperations();
+                    var position = operations.CalculateTooltipPos();
+                    ImGui.SetWindowPos(position);
                 }
             }
-            else
+            catch (Exception ex)
             {
-                var operations = new WindowOperations();
-                var position = operations.CalculateTooltipPos();
-                ImGui.SetWindowPos(position);
+                plugin.logger.Error("ARPTooltipWindow Draw Error: " + ex.Message);
             }
-
         }
-
-
 
 
 
         public void Dispose()
         {
-
+            try
+            {
+                WindowOperations.SafeDispose(alignmentImg);
+                WindowOperations.SafeDispose(personality_1Img);
+                WindowOperations.SafeDispose(personality_2Img);
+                WindowOperations.SafeDispose(personality_3Img);
+                foreach(trait personality in personalities)
+                {
+                    WindowOperations.SafeDispose(personality.icon.icon);
+                }
+                // If you have other IDisposable fields, dispose them here with null checks
+                // If you have lists of IDisposable, iterate and dispose each with null checks
+            }
+            catch (Exception ex)
+            {
+                plugin?.logger?.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
+            }
         }
 
 

@@ -1,3 +1,4 @@
+using AbsoluteRoleplay.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,15 +20,10 @@ namespace Networking
             packets.Clear();
             packets.Add((int)ServerPackets.SWelcomeMessage, DataReceiver.HandleWelcomeMessage);
             packets.Add((int)ServerPackets.SRecLoginStatus, DataReceiver.StatusMessage);
-            packets.Add((int)ServerPackets.SRecProfileBio, DataReceiver.ReceiveProfileBio);
-            packets.Add((int)ServerPackets.SNoProfileBio, DataReceiver.NoProfileBio);
+            packets.Add((int)ServerPackets.SRecProfileBio, DataReceiver.RecieveBioTab);
             packets.Add((int)ServerPackets.SNoProfile, DataReceiver.NoProfile);
             packets.Add((int)ServerPackets.SSendProfile, DataReceiver.ReceiveProfile);
             packets.Add((int)ServerPackets.SRecExistingProfile, DataReceiver.ExistingProfile);
-            packets.Add((int)ServerPackets.SSendProfileHook, DataReceiver.ReceiveProfileHooks);
-            packets.Add((int)ServerPackets.SSendNoProfileHooks, DataReceiver.NoProfileHooks);
-            packets.Add((int)ServerPackets.SRecProfileStory, DataReceiver.ReceiveProfileStory);
-            packets.Add((int)ServerPackets.SRecNoProfileStory, DataReceiver.NoProfileStory);
             packets.Add((int)ServerPackets.SSendNoProfileNotes, DataReceiver.NoProfileNotes);
             packets.Add((int)ServerPackets.SSendProfileNotes, DataReceiver.RecProfileNotes);
             packets.Add((int)ServerPackets.SRecNoProfileGallery, DataReceiver.ReceiveNoProfileGallery);
@@ -35,23 +31,9 @@ namespace Networking
             packets.Add((int)ServerPackets.CProfileReportedSuccessfully, DataReceiver.RecProfileReportedSuccessfully);
             packets.Add((int)ServerPackets.CProfileAlreadyReported, DataReceiver.RecProfileAlreadyReported);
             packets.Add((int)ServerPackets.SRecNoTargetProfile, DataReceiver.NoTargetProfile);
-            packets.Add((int)ServerPackets.SRecTargetProfile, DataReceiver.ExistingTargetProfile);
-            packets.Add((int)ServerPackets.SRecNoTargetBio, DataReceiver.NoTargetBio);
-            packets.Add((int)ServerPackets.SRecTargetBio, DataReceiver.ReceiveTargetBio);
-            packets.Add((int)ServerPackets.SRecNoTargetHooks, DataReceiver.NoTargetHooks);
-            packets.Add((int)ServerPackets.SRecTargetHooks, DataReceiver.ReceiveTargetHooks);
-            packets.Add((int)ServerPackets.SRecNoTargetStory, DataReceiver.NoTargetStory);
-            packets.Add((int)ServerPackets.SRecTargetStory, DataReceiver.ReceiveTargetStory);
-            packets.Add((int)ServerPackets.SRecProfileGallery, DataReceiver.ReceiveProfileGalleryImage);
-            packets.Add((int)ServerPackets.SRecNoTargetGallery, DataReceiver.NoTargetGallery);
-            packets.Add((int)ServerPackets.SRecTargetGallery, DataReceiver.ReceiveTargetGalleryImage);
             packets.Add((int)ServerPackets.SSendNoAuthorization, DataReceiver.ReceiveNoAuthorization);
             packets.Add((int)ServerPackets.SSendVerificationMessage, DataReceiver.ReceiveVerificationMessage);
             packets.Add((int)ServerPackets.SSendPasswordModificationForm, DataReceiver.ReceivePasswordModificationForm);
-            packets.Add((int)ServerPackets.SSendNoOOCInfo, DataReceiver.ReceiveNoOOCInfo);
-            packets.Add((int)ServerPackets.SSendOOC, DataReceiver.ReceiveProfileOOC);
-            packets.Add((int)ServerPackets.SSendTargetOOC, DataReceiver.ReceiveTargetOOCInfo);
-            packets.Add((int)ServerPackets.SSendNoTargetOOCInfo, DataReceiver.ReceiveNoTargetOOCInfo);
             packets.Add((int)ServerPackets.ReceiveConnections, DataReceiver.ReceiveConnections);
             packets.Add((int)ServerPackets.ReceiveNewConnectionRequest, DataReceiver.ReceiveConnectionsRequest);
             packets.Add((int)ServerPackets.RecieveTargetTooltip, DataReceiver.ReceiveTargetTooltip);
@@ -61,7 +43,20 @@ namespace Networking
 
             packets.Add((int)ServerPackets.ReceiveChatMessage, DataReceiver.ReceiveChatMessage);
             packets.Add((int)ServerPackets.ReceiveProfileWarning, DataReceiver.RecieveProfileWarning);
-            // packets.Add((int)ServerPackets.ReceiveGroupMemberships, DataReceiver.ReceiveGroupMemberships);
+            packets.Add((int)ServerPackets.ReceiveProfileListings, DataReceiver.ReceivePersonalListings);
+            packets.Add((int)ServerPackets.ReceiveProfileDetails, DataReceiver.ReceiveDetailsTab);
+            packets.Add((int)ServerPackets.ReceiveTabCount, DataReceiver.ReceiveTabCount);
+            packets.Add((int)ServerPackets.ReceiveGalleryTab, DataReceiver.ReceiveProfileGalleryTab);
+            packets.Add((int)ServerPackets.ReceiveInfoTab, DataReceiver.ReceiveInfoTab);
+            packets.Add((int)ServerPackets.SRecProfileStory, DataReceiver.ReceiveStoryTab);
+            packets.Add((int)ServerPackets.ReceiveTabsUpdate, DataReceiver.ReceiveTabsUpdate);
+            packets.Add((int)ServerPackets.ReceiveInventoryTab, DataReceiver.ReceiveInventoryTab);
+            packets.Add((int)ServerPackets.ReceiveDynamicTab, DataReceiver.ReceiveDynamicTab);
+            packets.Add((int)ServerPackets.ReceiveTradeRequest, DataReceiver.ReceiveTradeRequest);
+            packets.Add((int)ServerPackets.ReceiveTradeUpdate, DataReceiver.ReceiveTradeUpdate);
+            packets.Add((int)ServerPackets.ReceiveTradeStatus, DataReceiver.ReceiveTradeStatus);
+            packets.Add((int)ServerPackets.ReceiveTradeInventory, DataReceiver.ReceiveTradeInventory);
+            packets.Add((int)ServerPackets.ReceiveTreeLayout, DataReceiver.ReceiveTreeLayout);
 
 
             //simple message back from server, simply for verification that the user is connected
@@ -149,7 +144,7 @@ namespace Networking
             var buffer = new ByteBuffer();
             buffer.WriteBytes(data);
             var packetID = buffer.ReadInt();
-            buffer.Dispose();
+            WindowOperations.SafeDispose(buffer);
             if (packets.TryGetValue(packetID, out var packet))
             {
                 packet.Invoke(data);

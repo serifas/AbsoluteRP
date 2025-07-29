@@ -38,6 +38,7 @@ namespace AbsoluteRoleplay.Windows.Account
         }
         public override void Draw()
         {
+            try { 
             Misc.SetTitle(pg, true, "Account Restoration", ImGuiColors.TankBlue);
             //set everything back
             //okay that's done.
@@ -72,6 +73,12 @@ namespace AbsoluteRoleplay.Windows.Account
 
             }
             ImGui.TextColored(restorationCol, restorationStatus);
+            }catch(Exception e)
+            {
+                restorationStatus = "An error occurred";
+                Plugin.plugin.logger.Error(e.Message);
+                restorationCol = new Vector4(255, 0, 0, 255);
+            }
         }
         public void Dispose()
         {

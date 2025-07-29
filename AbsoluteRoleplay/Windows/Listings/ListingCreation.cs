@@ -11,6 +11,7 @@ using Networking;
 using OtterGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Textures.TextureWraps;
+using OtterGui.Extensions;
 
 namespace AbsoluteRoleplay.Windows.Listings
 {
@@ -99,7 +100,6 @@ namespace AbsoluteRoleplay.Windows.Listings
                 {
                     Misc.StartLoader(loaderInd, percentage, loading, ImGui.GetWindowSize());
                 }
-
             }
 
          }
@@ -274,7 +274,6 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 if (ImGui.Selectable(newText, idx == currentCategory))
                     currentCategory = idx;
-
                 ImGuiUtil.SelectableHelpMarker(newDesc);
             }
         }

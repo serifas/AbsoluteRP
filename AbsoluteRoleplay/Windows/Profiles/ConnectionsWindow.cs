@@ -23,6 +23,7 @@ using Dalamud.Game.ClientState.Objects;
 using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Helpers;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using OtterGui.Extensions;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -50,157 +51,163 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void Draw()
         {
-            AddConnectionListingOptions();
-            Vector2 windowSize = ImGui.GetWindowSize();
-            var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
-            localPlayerName = plugin.playername;
-            localPlayerWorld = plugin.playerworld;
-            if (currentListing == 2)
+            try
             {
-                using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
-                if (receivedRequestsTable)
+                AddConnectionListingOptions();
+                Vector2 windowSize = ImGui.GetWindowSize();
+                var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
+                localPlayerName = plugin.playername;
+                localPlayerWorld = plugin.playerworld;
+                if (currentListing == 2)
                 {
-                    for (var i = 0; i < receivedProfileRequests.Count; i++)
+                    using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
+                    if (receivedRequestsTable)
                     {
-                        var requesterName = receivedProfileRequests[i].Item1;
-                        var requesterWorld = receivedProfileRequests[i].Item2;
-                        ImGui.TextUnformatted(requesterName + " @ " + requesterWorld);
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                        for (var i = 0; i < receivedProfileRequests.Count; i++)
                         {
-                            if (ImGui.Button("Decline##Decline" + i))
+                            var requesterName = receivedProfileRequests[i].Item1;
+                            var requesterWorld = receivedProfileRequests[i].Item2;
+                            ImGui.TextUnformatted(requesterName + " @ " + requesterWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
+                                if (ImGui.Button("Decline##Decline" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
+                                }
                             }
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
-                        }
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
-                        {
-                            if (ImGui.Button("Accept##Accept" + i))
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
+                                ImGui.SetTooltip("Ctrl Click to Enable");
                             }
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
-                        }
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
-                        {
-                            if (ImGui.Button("Block##Block" + i))
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
+                                if (ImGui.Button("Accept##Accept" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
+                                }
                             }
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ImGui.Button("Block##Block" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
                         }
                     }
                 }
-            }
-            if (currentListing == 0)
-            {
-                using var connectedTable = ImRaii.Child("Connected", childSize, true);
-                if (connectedTable)
+                if (currentListing == 0)
                 {
-
-                    for (var i = 0; i < connetedProfileList.Count; i++)
+                    using var connectedTable = ImRaii.Child("Connected", childSize, true);
+                    if (connectedTable)
                     {
-                        var connectionName = connetedProfileList[i].Item1;
-                        var connectionWorld = connetedProfileList[i].Item2;
-                        ImGui.TextUnformatted(connectionName + " @ " + connectionWorld);
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+
+                        for (var i = 0; i < connetedProfileList.Count; i++)
                         {
-                            if (ImGui.Button("Remove##Remove" + i))
+                            var connectionName = connetedProfileList[i].Item1;
+                            var connectionWorld = connetedProfileList[i].Item2;
+                            ImGui.TextUnformatted(connectionName + " @ " + connectionWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
+                                if (ImGui.Button("Remove##Remove" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ImGui.Button("Block##Block" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
                             }
                         }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    }
+
+                }
+                if (currentListing == 1)
+                {
+                    using var sentRequestsTable = ImRaii.Child("SentRequests", childSize, true);
+                    if (sentRequestsTable)
+                    {
+
+                        for (var i = 0; i < sentProfileRequests.Count; i++)
                         {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
-                        }
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
-                        {
-                            if (ImGui.Button("Block##Block" + i))
+
+                            var receiverName = sentProfileRequests[i].Item1;
+                            var receiverWorld = sentProfileRequests[i].Item2;
+                            ImGui.TextUnformatted(receiverName + " @ " + receiverWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
+                                if (ImGui.Button("Cancel##Cancel" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
+                                }
                             }
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
                         }
                     }
                 }
-
-            }
-            if (currentListing == 1)
-            {
-                using var sentRequestsTable = ImRaii.Child("SentRequests", childSize, true);
-                if (sentRequestsTable)
+                if (currentListing == 3)
                 {
-
-                    for (var i = 0; i < sentProfileRequests.Count; i++)
+                    using var blockedRequestsTable = ImRaii.Child("BlockedRequests", childSize, true);
+                    if (blockedRequestsTable)
                     {
 
-                        var receiverName = sentProfileRequests[i].Item1;
-                        var receiverWorld = sentProfileRequests[i].Item2;
-                        ImGui.TextUnformatted(receiverName + " @ " + receiverWorld);
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                        for (var i = 0; i < blockedProfileRequests.Count; i++)
                         {
-                            if (ImGui.Button("Cancel##Cancel" + i))
+                            var blockedName = blockedProfileRequests[i].Item1;
+                            var blockedWorld = blockedProfileRequests[i].Item2;
+                            ImGui.TextUnformatted(blockedName + " @ " + blockedWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
+                                if (ImGui.Button("Unblock##Unblock" + i))
+                                {
+                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
                             }
                         }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
-                        }
                     }
+
+
                 }
+
             }
-            if (currentListing == 3)
+            catch (Exception ex)
             {
-                using var blockedRequestsTable = ImRaii.Child("BlockedRequests", childSize, true);
-                if (blockedRequestsTable)
-                {
-
-                    for (var i = 0; i < blockedProfileRequests.Count; i++)
-                    {
-                        var blockedName = blockedProfileRequests[i].Item1;
-                        var blockedWorld = blockedProfileRequests[i].Item2;
-                        ImGui.TextUnformatted(blockedName + " @ " + blockedWorld);
-                        ImGui.SameLine();
-                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
-                        {
-                            if (ImGui.Button("Unblock##Unblock" + i))
-                            {
-                                DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
-                            }
-                        }
-                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                        {
-                            ImGui.SetTooltip("Ctrl Click to Enable");
-                        }
-                    }
-                }
-
-
+                plugin.logger.Error("ConnectionsWindow Draw Error: " + ex.Message);
             }
-
         }
-
         public void AddConnectionListingOptions()
         {
             var (text, desc) = UI.ConnectionListingVals[currentListing];

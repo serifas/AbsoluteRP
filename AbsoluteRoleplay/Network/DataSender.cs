@@ -1,20 +1,23 @@
-using Dalamud.Hooking;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using AbsoluteRoleplay;
+using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Windows.Moderator;
+using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Hooking;
+using Dalamud.Interface.Textures.TextureWraps;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using OtterGui.Text.EndObjects;
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Xml.Linq;
-using AbsoluteRoleplay.Windows.Profiles;
-using System.Threading.Tasks;
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
 using System.Numerics;
-using Dalamud.Interface.Textures.TextureWraps;
-using OtterGui.Text.EndObjects;
-using AbsoluteRoleplay.Windows.Moderator;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
+using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace Networking
 {
@@ -33,7 +36,7 @@ namespace Networking
         CBanAccount = 11,
         CStrikeAccount = 12,
         CEditProfileBio = 13,
-        CSendHooks = 14,
+        SendProfileDetails = 14,
         SRequestTargetProfile = 15,
         CRegister = 16,
         CDeleteHook = 17,
@@ -54,7 +57,7 @@ namespace Networking
         SSubmitVerificationKey = 32,
         SSubmitRestorationRequest = 33,
         SSubmitRestorationKey = 34,
-        SSendOOC = 35,
+        SSendInfo = 35,
         SSendUserConfiguration = 36,
         SendProfileConfiguration = 37,
         SSendProfileViewRequest = 38,
@@ -80,6 +83,19 @@ namespace Networking
         RequestOwnedListings = 59,
         CSendTreeData = 60,
         SendModeratorAction = 61,
+        SendPersonalsRequest = 62,
+        CreateTab = 63,
+        CreateBio = 64,
+        DeleteTab = 65,
+        SendDynamicTab = 66,
+        SendTradeRequest = 67,
+        SendTradeUpdate = 68,
+        SendTradeStatus = 69,
+        SInventorySelection = 70,
+        SendItemDeletion = 71,
+        SendTradeSessionTargetInventory = 72,
+        SendTreeLayout = 73,
+        SendInventoryLayout = 74,
     }
     public class DataSender
     {
@@ -176,7 +192,7 @@ namespace Networking
             }
 
         }
-        public static async void SendGalleryImages(int profileIndex)
+        public static async void SubmitGalleryLayout(int profileIndex, GalleryLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -186,38 +202,23 @@ namespace Networking
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.CSendGallery);
+                        buffer.WriteInt(layout.tabIndex);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(GalleryTab.galleryImageCount);
-                        byte[] imageBytes = new byte[0];
-                        if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } imagePath })
+                        buffer.WriteInt(layout.images.Count);
+
+                        for (int i = 0; i < layout.images.Count; i++)
                         {
-                            imageBytes = File.ReadAllBytes(Path.Combine(imagePath, "UI/common/profiles/galleries/picturetab.png"));                            
-                        }
-
-
-                        for (int i = 0; i < GalleryTab.galleryImageCount; i++)
-                        {
-
-                            if (GalleryTab.imageBytes[i] == imageBytes)
-                            {
-                                buffer.WriteBool(false);
-                            }
-                            else
-                            {
-                                buffer.WriteBool(true);
-                            }
-
-                            buffer.WriteString(GalleryTab.imageURLs[i]);
-                            buffer.WriteInt(GalleryTab.imageBytes[i].Length);
-                            buffer.WriteBytes(GalleryTab.imageBytes[i]);
-                            buffer.WriteString(GalleryTab.imageTooltips[i]);
-                            buffer.WriteBool(GalleryTab.NSFW[i]);
-                            buffer.WriteBool(GalleryTab.TRIGGER[i]);
-                            buffer.WriteInt(i);
+                            buffer.WriteString(layout.images[i].url);
+                            buffer.WriteInt(layout.images[i].imageBytes.Length);
+                            buffer.WriteBytes(layout.images[i].imageBytes);
+                            buffer.WriteString(layout.images[i].tooltip);
+                            buffer.WriteBool(layout.images[i].nsfw);
+                            buffer.WriteBool(layout.images[i].trigger);
+                            buffer.WriteInt(layout.images[i].index);
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -255,7 +256,7 @@ namespace Networking
                 }
             }
         }
-        public static async void SendStory(int profileIndex, string storyTitle,   List<Tuple<string, string>> storyChapters)
+        public static async void SubmitStoryLayout(int profileIndex, StoryLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -269,12 +270,14 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(storyChapters.Count);
-                        buffer.WriteString(storyTitle);
-                        for (int i = 0; i < storyChapters.Count; i++)
+                        buffer.WriteInt(layout.tabIndex);
+                        buffer.WriteInt(layout.chapters.Count);
+
+                        buffer.WriteString(layout.name);
+                        for (int i = 0; i < layout.chapters.Count; i++)
                         {
-                            buffer.WriteString(storyChapters[i].Item1);
-                            buffer.WriteString(storyChapters[i].Item2);
+                            buffer.WriteString(layout.chapters[i].title);
+                            buffer.WriteString(layout.chapters[i].content);
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -311,51 +314,35 @@ namespace Networking
                 }
             }
         }
-        public static async void RenameProfile(int profileIndex, string name)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.RenameProfile);
-                        buffer.WriteString(plugin.username);
-                        buffer.WriteString(plugin.password);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(profileIndex);
-                        buffer.WriteString(name);
-
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    plugin.logger.Error("Error in RenameProfile: " + ex.ToString());
-                }
-            }
-        }
-    
    
-        public static async void FetchProfile(int profileIndex)
+        public static async void FetchProfile(bool self, int profileIndex, string targetName, string targetWorld, int profileID)
         {
+            
             if (ClientTCP.IsConnected())
             {
                 try
                 {
-                   
-                    using (var buffer = new ByteBuffer())
+                    if (self)
                     {
-                        buffer.WriteInt((int)ClientPackets.CFetchProfile);
-                        buffer.WriteString(plugin.username);
-                        buffer.WriteString(plugin.password);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(profileIndex);
-                        
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        ProfileWindow.Clear();
                     }
+                    else
+                    {
+                        TargetProfileWindow.Clear();
+                    }
+                        using (var buffer = new ByteBuffer())
+                        {
+                            buffer.WriteInt((int)ClientPackets.CFetchProfile);
+                            buffer.WriteString(plugin.username);
+                            buffer.WriteString(plugin.password);
+                            buffer.WriteString(targetName);
+                            buffer.WriteString(targetWorld);
+                            buffer.WriteInt(profileIndex);
+                            buffer.WriteInt(profileID);
+                            buffer.WriteBool(self); // Indicate if this is a self profile fetc
+                            await ClientTCP.SendDataAsync(buffer.ToArray());
+                        }
+
                 }
                 catch (Exception ex)
                 {
@@ -363,7 +350,7 @@ namespace Networking
                 }
             }
         }
-        public static async void CreateProfile(int index)
+        public static async void CreateProfile(string profileTitle, int profileType, int index)
         {
             if (ClientTCP.IsConnected())
             {
@@ -377,7 +364,9 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(index);
-                       
+                        buffer.WriteInt(profileType);
+                        buffer.WriteString(profileTitle);
+
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -456,9 +445,7 @@ namespace Networking
 
         }
 
-        public static async void SubmitProfileBio(int profileIndex, byte[] avatarBytes, string name, string race, string gender, string age,
-                                            string height, string weight, string atFirstGlance, int alignment, int personality_1, int personality_2, int personality_3,
-                                            List<field> customFields, List<descriptor> customDescriptors, List<trait> customPersonalities)
+        public static async void SubmitProfileBio(int profileIndex, BioLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -472,43 +459,43 @@ namespace Networking
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(avatarBytes.Length);
-                        buffer.WriteBytes(avatarBytes);
-                        buffer.WriteString(name);
-                        buffer.WriteString(race);
-                        buffer.WriteString(gender);
-                        buffer.WriteString(age);
-                        buffer.WriteString(height);
-                        buffer.WriteString(weight);
-                        buffer.WriteString(atFirstGlance);
-                        buffer.WriteInt(alignment);
-                        buffer.WriteInt(personality_1);
-                        buffer.WriteInt(personality_2);
-                        buffer.WriteInt(personality_3);
-                        buffer.WriteInt(customFields.Count);
-                        buffer.WriteInt(customDescriptors.Count);
-                        buffer.WriteInt(customPersonalities.Count);
-
-                        for(int i = 0; i < customFields.Count; i++)
+                        buffer.WriteBool(layout.isTooltip);
+                        buffer.WriteInt(layout.tabIndex);
+                        buffer.WriteString(layout.name);
+                        buffer.WriteString(layout.race);
+                        buffer.WriteString(layout.gender);
+                        buffer.WriteString(layout.age);
+                        buffer.WriteString(layout.height);
+                        buffer.WriteString(layout.weight);
+                        buffer.WriteString(layout.afg);
+                        buffer.WriteInt(layout.alignment);
+                        buffer.WriteInt(layout.personality_1);
+                        buffer.WriteInt(layout.personality_2);
+                        buffer.WriteInt(layout.personality_3);
+                        buffer.WriteInt(layout.fields.Count);
+                        buffer.WriteInt(layout.descriptors.Count);
+                        buffer.WriteInt(layout.traits.Count);
+                        for (int i = 0; i < layout.fields.Count; i++)
                         {
-                            buffer.WriteString(customFields[i].name);
-                            buffer.WriteString(customFields[i].description);
+                            buffer.WriteString(layout.fields[i].name);
+                            buffer.WriteString(layout.fields[i].description);
                         }
-                        for(int i = 0; i < customDescriptors.Count; i++)
+                        for(int i = 0; i < layout.descriptors.Count; i++)
                         {
-                            buffer.WriteString(customDescriptors[i].name);
-                            buffer.WriteString(customDescriptors[i].description);
+                            buffer.WriteString(layout.descriptors[i].name);
+                            buffer.WriteString(layout.descriptors[i].description);
                         }
-                        for(int i = 0; i < customPersonalities.Count; i++)
+                        for(int i = 0; i < layout.traits.Count; i++)
                         {
-                            buffer.WriteString(customPersonalities[i].name);
-                            buffer.WriteString(customPersonalities[i].description);
-                            buffer.WriteInt(customPersonalities[i].iconID);
+                            buffer.WriteString(layout.traits[i].name);
+                            buffer.WriteString(layout.traits[i].description);
+                            buffer.WriteInt(layout.traits[i].iconID);
                         }
 
 
 
                         await ClientTCP.SendDataAsync(buffer.ToArray());
+
                     }
                 }
                 catch (Exception ex)
@@ -591,7 +578,7 @@ namespace Networking
             }
 
         }
-        public static async void SendHooks(int profileIndex, List<Tuple<int, string, string>> hooks)
+        public static async void SubmitProfileDetails(int profileIndex, DetailsLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -599,18 +586,19 @@ namespace Networking
                 {
                     using (var buffer = new ByteBuffer())
                     {
-                        buffer.WriteInt((int)ClientPackets.CSendHooks);
+                        buffer.WriteInt((int)ClientPackets.SendProfileDetails);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(hooks.Count);
-                        for (int i = 0; i < hooks.Count; i++)
+                        buffer.WriteInt(layout.tabIndex);
+                        buffer.WriteInt(layout.details.Count);
+                        for (int i = 0; i < layout.details.Count; i++)
                         {
-                            buffer.WriteInt(hooks[i].Item1);
-                            buffer.WriteString(hooks[i].Item2);
-                            buffer.WriteString(hooks[i].Item3);
+                            buffer.WriteInt(layout.details[i].id);
+                            buffer.WriteString(layout.details[i].name);
+                            buffer.WriteString(layout.details[i].content);
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -713,7 +701,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendOOCInfo(int currentProfile, string OOC)
+        internal static async void SubmitInfoLayout(int currentProfile, InfoLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -721,19 +709,20 @@ namespace Networking
                 {
                     using (var buffer = new ByteBuffer())
                     {
-                        buffer.WriteInt((int)ClientPackets.SSendOOC);
+                        buffer.WriteInt((int)ClientPackets.SSendInfo);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(currentProfile);
-                        buffer.WriteString(OOC);
+                        buffer.WriteInt(layout.tabIndex);
+                        buffer.WriteString(layout.text);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendOOCInfo: " + ex.ToString());
+                    plugin.logger.Error("Error in SendInfoLayout: " + ex.ToString());
                 }
             }
         }
@@ -761,7 +750,7 @@ namespace Networking
         }
 
 
-        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
+        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
         {
             if (ClientTCP.IsConnected())
             {
@@ -779,6 +768,10 @@ namespace Networking
                         buffer.WriteFloat(color.Y);
                         buffer.WriteFloat(color.Z);
                         buffer.WriteFloat(color.W);
+                        buffer.WriteInt(avatarBytes.Length);
+                        buffer.WriteBytes(avatarBytes);
+                        buffer.WriteInt(backgroundBytes.Length);
+                        buffer.WriteBytes(backgroundBytes);
                         buffer.WriteBool(status);
                         buffer.WriteBool(tooltipStatus);
                         buffer.WriteBool(spoilerARR);
@@ -790,6 +783,7 @@ namespace Networking
                         buffer.WriteBool(NSFW);
                         buffer.WriteBool(TRIGGERING);
                         buffer.WriteInt(profileIndex);
+
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1060,7 +1054,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendItemCreation(int currentProfile, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality)
+        internal static async void SendItemCreation(int currentProfile, int tabIndex, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1068,12 +1062,14 @@ namespace Networking
                 {
                     using (var buffer = new ByteBuffer())
                     {
+                        Plugin.plugin.logger.Error("profile = " + currentProfile);
                         buffer.WriteInt((int)ClientPackets.CreateItem);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(currentProfile);
+                        buffer.WriteInt(tabIndex);
                         buffer.WriteString(itemName);
                         buffer.WriteString(itemDescription);
                         buffer.WriteInt(selectedItemType);
@@ -1090,7 +1086,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendItemOrder(int profileIndex, List<ItemDefinition> slotContents)
+        internal static async void SendItemOrder(int profileIndex, InventoryLayout layout, List<ItemDefinition> slotContents)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1103,7 +1099,45 @@ namespace Networking
                         buffer.WriteString(plugin.password);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(layout.tabIndex);
                         buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(slotContents.Count);
+                        for (int i = 0; i < slotContents.Count; i++)
+                        {
+                            buffer.WriteString(slotContents[i].name);
+                            buffer.WriteString(slotContents[i].description);
+                            buffer.WriteInt(slotContents[i].type);
+                            buffer.WriteInt(slotContents[i].subtype);
+                            buffer.WriteInt(slotContents[i].iconID);
+                            buffer.WriteInt(slotContents[i].slot);
+                            buffer.WriteInt(slotContents[i].quality);
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
+                }
+            }
+        }
+        internal static async void SendTradeUpdate(int profileIndex, string targetPlayerName, string targetPlayerWorld, InventoryLayout layout, List<ItemDefinition> slotContents)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendTradeUpdate);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(layout.tabIndex);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteString(targetPlayerName);
+                        buffer.WriteString(targetPlayerWorld);
                         buffer.WriteInt(slotContents.Count);
                         for (int i = 0; i < slotContents.Count; i++)
                         {
@@ -1169,72 +1203,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendCustomLayouts(int currentProfileIndex, SortedList<int, Layout> layouts)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.SendCustomLayouts);
-                        buffer.WriteString(plugin.username);
-                        buffer.WriteString(plugin.password);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(currentProfileIndex);
-                        buffer.WriteInt(layouts.Count);
-                        for(int i = 0; i < layouts.Count; i++)
-                        {
-                            buffer.WriteInt(layouts.Values[i].id);
-                            buffer.WriteString(layouts.Values[i].name);
-                            List<LayoutElement> elements = layouts.Values[i].elements;
-                            buffer.WriteInt(elements.Count);
-                            for (int e = 0; e < elements.Count; e++)
-                            {  
-                                LayoutElement element = elements[e];
-                                if(element.canceled)
-                                buffer.WriteInt(element.id);
-                                buffer.WriteString(element.name);
-                                buffer.WriteInt(element.type);
-                                buffer.WriteBool(element.canceled);    
-                            }
-                        }
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
-                }
-            }
-        }
-
-        internal static async void AssignWarning(int author, string message)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.SendCustomLayouts);
-                        buffer.WriteString(plugin.username);
-                        buffer.WriteString(plugin.password);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(author);
-                        buffer.WriteString(message);
-                     
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
-                }
-            }
-        }
+       
 
         internal static async void SubmitModeratorAction(int capturedAuthor, string capturedMessage, string moderatorMessage, string moderatorNotes, ModeratorAction currentAction)
         {
@@ -1261,6 +1230,522 @@ namespace Networking
                 catch (Exception ex)
                 {
                     plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void RequestPersonals(string searchWorld, int index, int pageSize, string searchProfile, int selectedCategory)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendPersonalsRequest);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(searchWorld);
+                        buffer.WriteString(searchProfile);
+                        buffer.WriteInt(selectedCategory);
+                        buffer.WriteInt(index);
+                        buffer.WriteInt(pageSize);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                }
+            }
+        }
+        internal static async void CreateTab(string name, int type, int profileIndex, int index)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CreateTab);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteString(name);
+                        buffer.WriteInt(type);
+                        buffer.WriteInt(index);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in Tab Creation: " + ex.ToString());
+                }
+            }
+        }
+
+
+        
+
+        internal static async void CreateProfileBio(int index, int tabIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CreateBio);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(index);
+                        buffer.WriteInt(tabIndex);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in Bio Creation: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteTab(int profileIndex, int tabIndex, int tab_type)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.DeleteTab);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(tabIndex);
+                        buffer.WriteInt(tab_type);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in Bio Creation: " + ex.ToString());
+                }
+            }
+        }
+        internal static async void SubmitDynamicLayout(int profileIndex, DynamicLayout dynamicLayout)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    List<string> nodes = new List<string>();
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendDynamicTab);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(dynamicLayout.tabIndex);
+                        var nonCanceledChildren = dynamicLayout.RootNode.Children
+                      .Where(n => !n.relatedElement.canceled)
+                      .ToList();
+
+                        buffer.WriteInt(nonCanceledChildren.Count);
+
+                        foreach (var node in nonCanceledChildren)
+                        {
+                            bool nullName = node.Name == null;
+
+                            buffer.WriteBool(nullName);
+                            if(!nullName)
+                            {
+                                WriteLayoutNodeData(buffer, node);
+                            }
+                        }
+
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in SendDynamicData: {ex}");
+                }
+            }
+        }
+        internal static void WriteLayoutNodeData(ByteBuffer buffer, LayoutTreeNode node)
+        {
+            try
+            {
+                buffer.WriteInt(node.relatedElement.type);
+                buffer.WriteInt(node.ID); 
+                Plugin.plugin.logger.Error($"WriteInt: node.ID = {node.ID}");    
+                Plugin.plugin.logger.Error($"WriteString: node.Name = '{node.Name ?? "NULL"}'");
+                buffer.WriteString(node.Name);
+                buffer.WriteBool(node.IsFolder);                
+                buffer.WriteInt(node.Parent != null ? node.Parent.ID : -1);
+                int layoutElementType = node.relatedElement.type;
+
+                if (layoutElementType == (int)LayoutElementTypes.Folder)
+                {
+                    FolderElement folderElement = (FolderElement)node.relatedElement;
+                    buffer.WriteInt(folderElement.id);
+                    Plugin.plugin.logger.Error(folderElement.id + " " + node.ID);
+                }
+                if (layoutElementType == (int)LayoutElementTypes.Text)
+                {
+                    TextElement textElement = (TextElement)node.relatedElement;
+                    buffer.WriteInt(textElement.id);
+                    buffer.WriteInt(textElement.type);
+                    buffer.WriteInt(textElement.subType);
+                    buffer.WriteFloat(textElement.width);
+                    buffer.WriteFloat(textElement.height);
+                    buffer.WriteFloat(textElement.PosX);
+                    buffer.WriteFloat(textElement.PosY);
+                    buffer.WriteString(textElement.text);
+                }
+                if (layoutElementType == (int)LayoutElementTypes.Image)
+                {
+                    ImageElement imageElement = (ImageElement)node.relatedElement;
+                    buffer.WriteInt(imageElement.id);
+                    buffer.WriteInt(imageElement.type);
+                    buffer.WriteInt(imageElement.bytes.Length); // <-- use imageBytes
+                    buffer.WriteBytes(imageElement.bytes);      // <-- use imageBytes
+                    buffer.WriteFloat(imageElement.width);
+                    buffer.WriteFloat(imageElement.height);
+                    buffer.WriteFloat(imageElement.PosX);
+                    buffer.WriteFloat(imageElement.PosY);
+                    buffer.WriteBool(imageElement.proprotionalEditing);
+                    buffer.WriteBool(imageElement.hasTooltip);
+                    buffer.WriteString(imageElement.tooltip);
+                    buffer.WriteBool(imageElement.maximizable);
+                }
+                if (layoutElementType == (int)LayoutElementTypes.Icon)
+                {
+                    IconElement iconElement = (IconElement)node.relatedElement;
+                    buffer.WriteInt(iconElement.id);
+                    buffer.WriteInt(iconElement.type);
+                    buffer.WriteInt(iconElement.iconID);
+                    buffer.WriteFloat(iconElement.PosX);
+                    buffer.WriteFloat(iconElement.PosY);
+
+                }
+                if (layoutElementType == (int)LayoutElementTypes.Empty)
+                {
+                    EmptyElement empty = (EmptyElement)node.relatedElement;
+                    buffer.WriteInt(empty.id);
+                    buffer.WriteString(empty.name);
+                }
+                var nonCanceledChildren = node.Children
+            .Where(n => !n.relatedElement.canceled)
+            .ToList();
+
+                buffer.WriteInt(nonCanceledChildren.Count);
+                foreach (var child in nonCanceledChildren)
+                {
+                    WriteLayoutNodeData(buffer, child);
+                }
+                Plugin.plugin.logger.Error($"Wrote node: {node.Name} with ID: {node.ID} and Type: {layoutElementType}");
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error($"Error writing layout node data: {ex}");
+            }   
+        }
+        
+        internal static async void RequestTargetTrade(string targetCharName, string targetCharWorld)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendTradeRequest);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(targetCharName);
+                        buffer.WriteString(targetCharWorld);
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in Request target trade: {ex}");
+                }
+                finally
+                {
+                    Plugin.plugin.logger.Error($"Requesting trade with {targetCharName} on {targetCharWorld}");
+                }
+            }
+        }
+        internal static async void SendTradeStatus(int tradeTabIndex, InventoryLayout layout, string targetName, string targetWorld, bool status, bool canceled)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendTradeStatus);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password); 
+                        buffer.WriteBool(status); // true if sender is ready, false if not
+                        buffer.WriteBool(canceled); // true for cancel, false for not canceled
+                        buffer.WriteInt(tradeTabIndex);
+                        buffer.WriteInt(layout.tradeSlotContents.Count);
+                        buffer.WriteInt(layout.traderSlotContents.Count);
+
+
+                        for (int i = 0; i < layout.tradeSlotContents.Count; i++)
+                        {
+                            buffer.WriteString(layout.tradeSlotContents[i].name);
+                            buffer.WriteString(layout.tradeSlotContents[i].description);
+                            buffer.WriteInt(layout.tradeSlotContents[i].type);
+                            buffer.WriteInt(layout.tradeSlotContents[i].subtype);
+                            buffer.WriteInt(layout.tradeSlotContents[i].iconID);
+                            buffer.WriteInt(layout.tradeSlotContents[i].quality);
+                            Plugin.plugin.logger.Error($"Trade Slot {i}: {layout.tradeSlotContents[i].name}");
+                        }
+                        for(int i = 0; i < layout.traderSlotContents.Count; i++)
+                        {
+                            buffer.WriteString(layout.traderSlotContents[i].name);
+                            buffer.WriteString(layout.traderSlotContents[i].description);
+                            buffer.WriteInt(layout.traderSlotContents[i].type);
+                            buffer.WriteInt(layout.traderSlotContents[i].subtype);
+                            buffer.WriteInt(layout.traderSlotContents[i].iconID);
+                            buffer.WriteInt(layout.traderSlotContents[i].quality);
+                            Plugin.plugin.logger.Error($"Trader Slot {i}: {layout.traderSlotContents[i].name}");
+                        }
+                  
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error in Request target trade: {ex}");
+                }
+            }
+        }
+
+        internal static async void SendInventorySelection(int index, int tabID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SInventorySelection);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(tabID);
+                        buffer.WriteInt(index);
+                        Plugin.plugin.logger.Error("Index=" + index);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendInventorySelection: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendDeleteItem(int profileIndex, InventoryLayout layout, int slotIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendItemDeletion);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(layout.tabIndex);
+                        buffer.WriteInt(layout.id);
+                        buffer.WriteInt(slotIndex);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendInventorySelection: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendTradeSessionTargetInventory(int tabIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendTradeSessionTargetInventory);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(tabIndex);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SendInventoryTargetSelection: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SubmitTreeLayout(int profileIndex, TreeLayout treeLayout)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendTreeLayout);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(treeLayout.tabIndex);
+
+                        // Serialize Paths
+                        buffer.WriteInt(treeLayout.Paths.Count);
+                        foreach (var path in treeLayout.Paths)
+                        {
+                            buffer.WriteInt(path.Count);
+                            foreach (var slot in path)
+                            {
+                                buffer.WriteInt(slot.x);
+                                buffer.WriteInt(slot.y);
+                            }
+                        }
+
+                        // Serialize PathConnections
+                        buffer.WriteInt(treeLayout.PathConnections.Count);
+                        foreach (var pathConnections in treeLayout.PathConnections)
+                        {
+                            buffer.WriteInt(pathConnections.Count);
+                            foreach (var conn in pathConnections)
+                            {
+                                bool all0 = conn.from.x == 0 && conn.from.y == 0 && conn.to.x == 0 && conn.to.y == 0;
+                                if (all0)
+                                {
+                                    buffer.WriteBool(true);
+                                }
+                                else
+                                {
+                                    buffer.WriteBool(false);
+                                }
+
+                                buffer.WriteInt(conn.from.x);
+                                buffer.WriteInt(conn.from.y);
+                                buffer.WriteInt(conn.to.x);
+                                buffer.WriteInt(conn.to.y);
+                            }
+                        }
+
+                        // Serialize Relationships (nodes)
+                        buffer.WriteInt(treeLayout.relationships.Count);
+                        foreach (var rel in treeLayout.relationships)
+                        {
+                            buffer.WriteString(rel.Name ?? "");
+
+                            buffer.WriteString(rel.Description ?? "");
+
+                            buffer.WriteInt(rel.IconID);
+
+                            buffer.WriteBool(rel.Slot.HasValue);
+                            if (rel.Slot.HasValue)
+                            {
+                                buffer.WriteInt(rel.Slot.Value.x);
+                                buffer.WriteInt(rel.Slot.Value.y);
+                                Plugin.plugin.logger.Error($"[PreSend] Slot: {rel.Slot.Value.x}, {rel.Slot.Value.y}");
+                            }
+
+                            // Serialize Links
+                            buffer.WriteInt(rel.Links?.Count ?? 0);
+                            if (rel.Links != null)
+                            {
+                                foreach (var link in rel.Links)
+                                {
+                                    buffer.WriteInt(link.From.x);
+                                    buffer.WriteInt(link.From.y);
+                                    buffer.WriteInt(link.To.x);
+                                    buffer.WriteInt(link.To.y);
+                                }
+                            }
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
+                }
+            }
+        }
+        internal static async void SubmitInventoryLayout(int profileIndex, InventoryLayout inventoryLayout)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendInventoryLayout);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(inventoryLayout.tabIndex);
+                        buffer.WriteInt(inventoryLayout.inventorySlotContents.Count);
+                        foreach (var item in inventoryLayout.inventorySlotContents.Values)
+                        {
+                            buffer.WriteString(item.name);
+                            buffer.WriteString(item.description);
+                            buffer.WriteInt(item.type);
+                            buffer.WriteInt(item.subtype);
+                            buffer.WriteInt(item.iconID);
+                            buffer.WriteInt(item.slot);
+                            buffer.WriteInt(item.quality);
+                            Plugin.plugin.logger.Error($"Inventory Slot {item.slot}: {item.name}");
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
                 }
             }
         }

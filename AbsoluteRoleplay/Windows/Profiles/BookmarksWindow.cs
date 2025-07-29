@@ -22,6 +22,7 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -44,63 +45,69 @@ namespace AbsoluteRoleplay.Windows.Profiles
         }
         public override void Draw()
         {
-            Vector2 windowSize = ImGui.GetWindowSize();
-            float padding = 10f; // Padding between the two columns
-            float childWidth = (windowSize.X - padding * 3); // Divide width between two children with padding
-            float childHeight = windowSize.Y - 80; // Subtract space for top text
-            Vector2 childSize = new Vector2(childWidth, childHeight);
-            // Start grouping for Bookmarks section
-            ImGui.BeginGroup();
-            ImGui.Text("Bookmarks");
-
-            using (var profileTable = ImRaii.Child("Profiles", childSize, true))
+            try
             {
-                if (profileTable)
+                Vector2 windowSize = ImGui.GetWindowSize();
+                float padding = 10f; // Padding between the two columns
+                float childWidth = (windowSize.X - padding * 3); // Divide width between two children with padding
+                float childHeight = windowSize.Y - 80; // Subtract space for top text
+                Vector2 childSize = new Vector2(childWidth, childHeight);
+                // Start grouping for Bookmarks section
+                ImGui.BeginGroup();
+                ImGui.Text("Bookmarks");
+
+                using (var profileTable = ImRaii.Child("Profiles", childSize, true))
                 {
-                    if (plugin.IsOnline())
+                    if (profileTable)
                     {
-                        for (var i = 0; i < profileList.Count; i++)
+                        if (plugin.IsOnline())
                         {
-                            if (DisableBookmarkSelection)
-                                ImGui.BeginDisabled();
-
-                            if (ImGui.Button(profileList[i].ProfileName))
+                            for (var i = 0; i < profileList.Count; i++)
                             {
-                                ReportWindow.reportCharacterName = profileList[i].PlayerName;
-                                ReportWindow.reportCharacterWorld = profileList[i].PlayerWorld;
-                                TargetWindow.characterNameVal = profileList[i].PlayerName;
-                                TargetWindow.characterWorldVal = profileList[i].PlayerWorld;
-                                DataSender.RequestTargetProfile(profileList[i].profileIndex);
-                            }
-
-                            ImGui.SameLine();
-
-                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
-                            {
-                                if (ImGui.Button("Remove##Removal" + i))
+                                if (DisableBookmarkSelection)
+                                    ImGui.BeginDisabled();
+                                 
+                                if (ImGui.Button(profileList[i].ProfileName))
                                 {
-                                    DataSender.RemoveBookmarkedPlayer(profileList[i].PlayerName, profileList[i].profileIndex);
+                                        ReportWindow.reportCharacterName = profileList[i].PlayerName;
+                                        ReportWindow.reportCharacterWorld = profileList[i].PlayerWorld;
+                                        TargetProfileWindow.characterName = profileList[i].PlayerName;
+                                        TargetProfileWindow.characterWorld = profileList[i].PlayerWorld;
+                                        Plugin.plugin.OpenTargetWindow();
+                                        DataSender.FetchProfile(false, -1, profileList[i].PlayerName, profileList[i].PlayerWorld, -1);
                                 }
+
+                                ImGui.SameLine();
+
+                                using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                                {
+                                    if (ImGui.Button("Remove##Removal" + i))
+                                    {
+                                        DataSender.RemoveBookmarkedPlayer(profileList[i].PlayerName, profileList[i].profileIndex);
+                                    }
+                                }
+
+                                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                                {
+                                    ImGui.SetTooltip("Ctrl Click to Enable");
+                                }
+
+                                if (DisableBookmarkSelection)
+                                    ImGui.EndDisabled();
                             }
 
-                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                            {
-                                ImGui.SetTooltip("Ctrl Click to Enable");
-                            }
-
-                            if (DisableBookmarkSelection)
-                                ImGui.EndDisabled();
                         }
-
                     }
                 }
+                ImGui.EndGroup();
+                // Position cursor to the right of the Profiles Available section for Bookmarks
             }
-            ImGui.EndGroup();
-            // Position cursor to the right of the Profiles Available section for Bookmarks
+            catch (Exception ex)
+            {
+                plugin.logger.Error("BookmarksWindow Draw Error: " + ex.Message);
 
-          
+            }
         }
-
 
 
         public void Dispose()

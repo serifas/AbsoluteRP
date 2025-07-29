@@ -1,6 +1,11 @@
 using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Moderator;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
@@ -8,7 +13,6 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using Dalamud.Storage.Assets;
 using Dalamud.Utility;
-using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using ImGuiNET;
 using Microsoft.Extensions.Configuration;
 using Networking;
@@ -18,6 +22,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+
 
 namespace AbsoluteRoleplay.Windows.Ect
 {
@@ -29,6 +34,32 @@ namespace AbsoluteRoleplay.Windows.Ect
         public static IChatGui chatgui; 
         public IDalamudTextureWrap viewProfileImg = UI.UICommonImage(UI.CommonImageTypes.profileCreateProfile);
         public IDalamudTextureWrap bookmarkProfileImg = UI.UICommonImage(UI.CommonImageTypes.profileBookmarkProfile);
+        private static readonly List<string> AllChannels = new()
+        {
+            "Say",
+            "Shout",
+            "Yell",
+            "Tell",
+            "Party",
+            "Alliance",
+            "FreeCompany",
+            "Linkshell1",
+            "Linkshell2",
+            "Linkshell3",
+            "Linkshell4",
+            "Linkshell5",
+            "Linkshell6",
+            "Linkshell7",
+            "Linkshell8",
+            "CrossWorldLinkshell1",
+            "CrossWorldLinkshell2",
+            "CrossWorldLinkshell3",
+            "CrossWorldLinkshell4",
+            "CrossWorldLinkshell5",
+            "PvPTeam",
+            "NoviceNetwork",
+        }; 
+        private int selectedTab = 0;
 
         public ARPChatWindow(Plugin plugin, IChatGui chatGui) : base(
        "CHAT", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
@@ -41,168 +72,218 @@ namespace AbsoluteRoleplay.Windows.Ect
             pg = plugin;
             chatgui = chatGui;
         }
-        private bool isScrolledToBottom = true; // Flag to track if the user is at the bottom
-        private float previousScrollY = 0f; // To track the previous scroll position
         private bool canSend = false;
-     
+       
         public override void Draw()
         {
-
-            if (ImGui.BeginChild("Chat", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y - 150)))
+            try
             {
-
-                // Create a table with 2 columns
-                using (var table = ImRaii.Table("ChatTable", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV))
+                List<ChatChannelTabs> channelTabs = Plugin.plugin.Configuration.chatChannelTabs;
+                using (var child = ImRaii.Child("Chat", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y - 150)))
                 {
-                    if (table != null)
+                    if (child)
                     {
-                        float size = ImGui.GetIO().FontGlobalScale;
-                        // Set up columns, first column is 200px wide
-                        ImGui.TableSetupColumn("Avatar & Author", ImGuiTableColumnFlags.WidthFixed, size * 150);
-                        ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthFixed, size * 80);
-                        ImGui.TableSetupColumn("Message", ImGuiTableColumnFlags.None, 0.0f); // The second column will take the remaining space
-
-                        // Table header (optional)
-                        ImGui.TableHeadersRow();
-
-                        // Render rows
-                        for (int i = 0; i < messages.Count; i++)
+                        if (ImGui.BeginTabBar("ChannelTabs", ImGuiTabBarFlags.NoCloseWithMiddleMouseButton))
                         {
-                            // First column: Avatar and Author Name
-                            Vector2 aviSize = new Vector2(messages[i].avatar.Width / 2 * size, messages[i].avatar.Height / 2 * size);
-                            Vector2 btnSize = new Vector2(viewProfileImg.Width / 4 * size, viewProfileImg.Height / 5 * size);
-                            if (messages[i].authorProfileID == 0)
-                            {
-                                aviSize = aviSize / 3f;
-                            }
-                            if (i > 0)//if there are any messages
-                            {
 
-                                ImGui.TableNextColumn();
-                                if (messages[i].authorName != messages[i - 1].authorName) //if the last author does not have the same name as the current author
+                            for (int i = 0; i < channelTabs.Count; i++)
+                            {
+                                if (ImGui.TabItemButton(channelTabs[i].name))
                                 {
-                                    ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
-                                    ImGui.TextUnformatted(messages[i].authorName);
-                                    if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
+                                    for(int t = 0; t < channelTabs[i].includedChannels.Count; t++)
                                     {
-                                        // Moderate Button
-                                        if (ImGui.Button($"Moderate##{i}"))
+                                        if (channelTabs[i].includedChannels[t] == 200)
                                         {
-                                            ModPanel.capturedAuthor = messages[i].authorUserID;
-                                            ModPanel.capturedMessage = messages[i].message;
 
-                                            pg.OpenModeratorPanel();
                                         }
-
                                     }
+                                }
+                            }
+                            ImGui.EndTabBar();
+                        }
+                        if (selectedTab == 0) // ARP Channel
+                        {
+                            // Create a table with 2 columns
+                            using (var table = ImRaii.Table("ChatTable", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV))
+                            {
+                                if (table != null)
+                                {
+                                    float size = ImGui.GetIO().FontGlobalScale;
+                                    // Set up columns, first column is 200px wide
+                                    ImGui.TableSetupColumn("Author", ImGuiTableColumnFlags.WidthFixed, size * 150);
+                                    ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthFixed, size * 80);
+                                    ImGui.TableSetupColumn("Message", ImGuiTableColumnFlags.None, 0.0f); // The second column will take the remaining space
 
-                                    ImGui.TableNextColumn();
-                                    //set the controls in the next column if the author is not 0
-                                    if (messages[i].authorProfileID != 0)
+                                    // Table header (optional)
+                                    ImGui.TableHeadersRow();
+
+                                    // Render rows
+                                    for (int i = 0; i < messages.Count; i++)
                                     {
-                                        ImGui.PushID("##Message" + i);
-                                        if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
+                                        // First column: Avatar and Author Name
+                                        Vector2 aviSize = new Vector2(messages[i].avatar.Width / 2 * size, messages[i].avatar.Height / 2 * size);
+                                        Vector2 btnSize = new Vector2(viewProfileImg.Width / 4 * size, viewProfileImg.Height / 5 * size);
+                                        if (messages[i].authorProfileID == 0)
                                         {
-                                            DataSender.RequestTargetProfile(messages[i].authorProfileID);
+                                            aviSize = aviSize / 3f;
                                         }
-                                        if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
+                                        if (i > 0)//if there are any messages
                                         {
-                                            DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
+
+                                            ImGui.TableNextColumn();
+                                            if (messages[i].authorName != messages[i - 1].authorName) //if the last author does not have the same name as the current author
+                                            {
+                                                if( messages[i].avatar != null && messages[i].avatar.ImGuiHandle != IntPtr.Zero)
+                                                {                                                    // Display avatar and author name
+                                                    ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
+                                                }
+                                                ImGui.TextUnformatted(messages[i].authorName);
+                                                if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
+                                                {
+                                                    // Moderate Button
+                                                    if (ImGui.Button($"Moderate##{i}"))
+                                                    {
+                                                        ModPanel.capturedAuthor = messages[i].authorUserID;
+                                                        ModPanel.capturedMessage = messages[i].message;
+
+                                                        pg.OpenModeratorPanel();
+                                                    }
+                                                }
+
+                                                ImGui.TableNextColumn();
+                                                //set the controls in the next column if the author is not 0
+                                                if (messages[i].authorProfileID != 0)
+                                                {
+                                                    ImGui.PushID("##Message" + i);
+
+                                                    if (viewProfileImg != null && viewProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                    {
+                                                        if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
+                                                        {
+                                                            DataSender.RequestTargetProfile(messages[i].authorProfileID);
+                                                        }
+                                                    }
+                                                    if(bookmarkProfileImg != null && viewProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                    {
+
+                                                    if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
+                                                    {
+                                                        DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
+                                                        }
+                                                    }
+                                                    ImGui.PopID();
+                                                }
+                                            }
+                                            else
+                                            {
+                                                ImGui.TextUnformatted(messages[i].authorName);
+                                                ImGui.TableNextColumn();
+                                            }
                                         }
-                                        ImGui.PopID();
+                                        else
+                                        {
+                                            ImGui.TableNextColumn();
+                                            if (messages[i].avatar != null && messages[i].avatar.ImGuiHandle != IntPtr.Zero)
+                                            {
+                                                ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
+                                            }
+                                            ImGui.TextUnformatted(messages[i].authorName);
+                                            if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
+                                            {
+                                                // Moderate Button
+                                                if (ImGui.Button($"Moderate##{i}"))
+                                                {
+                                                    ModPanel.capturedAuthor = messages[i].authorUserID;
+                                                    ModPanel.capturedMessage = messages[i].message;
+
+                                                    pg.OpenModeratorPanel();
+                                                }
+
+                                            }
+
+
+                                            ImGui.TableNextColumn();
+                                            if (messages[i].authorProfileID != 0)
+                                            {
+                                                ImGui.PushID("##Message" + i);
+                                                if(viewProfileImg != null && viewProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                {
+                                                    if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
+                                                    {
+                                                        DataSender.RequestTargetProfile(messages[i].authorProfileID);
+                                                    }
+
+                                                }
+                                                if(bookmarkProfileImg != null && bookmarkProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                {
+                                                    if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
+                                                    {
+                                                        DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
+                                                    }
+                                                }
+                                                ImGui.PopID();
+
+                                            }
+                                        }
+                                        // Second column: Message
+                                        ImGui.TableNextColumn();
+                                        if (messages[i].isAnnouncement)
+                                        {
+                                            using (ImRaii.PushColor(ImGuiCol.Text, new Vector4(1, 0.5f, 0, 1)))
+                                            {
+                                                ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                                        }
                                     }
                                 }
-                                else
+                                if (ImGui.GetScrollY() == ImGui.GetScrollMaxY())
                                 {
-                                    ImGui.TextUnformatted(messages[i].authorName);                                   
-                                    ImGui.TableNextColumn();
+                                    ImGui.SetScrollHereY(0f); // Scroll to the bottom
                                 }
                             }
-                            else
-                            {
-                                ImGui.TableNextColumn();
-                                ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
-                                ImGui.TextUnformatted(messages[i].authorName);
-                                if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
-                                {
-                                    // Moderate Button
-                                    if (ImGui.Button($"Moderate##{i}"))
-                                    {
-                                        ModPanel.capturedAuthor = messages[i].authorUserID;
-                                        ModPanel.capturedMessage = messages[i].message;
-                                        
-                                        pg.OpenModeratorPanel();
-                                    }
-
-                                }
-
-                              
-                                ImGui.TableNextColumn();
-                                if(messages[i].authorProfileID != 0)
-                                {
-                                    ImGui.PushID("##Message" + i);
-                                    if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
-                                    {
-                                        DataSender.RequestTargetProfile(messages[i].authorProfileID);
-                                    }
-                                    if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
-                                    {
-                                        DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
-                                    }
-                                    ImGui.PopID();
-
-                                }
-                            }
-                            // Second column: Message
-                            ImGui.TableNextColumn();
-                            if (messages[i].isAnnouncement)
-                            {
-                                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 0.5f,0, 1));
-                                ImGuiHelpers.SafeTextWrapped(messages[i].message);
-                                ImGui.PopStyleColor();
-                            }
-                            else
-                            {
-                                ImGuiHelpers.SafeTextWrapped(messages[i].message);
-                            }                                
                         }
                     }
-                    if (ImGui.GetScrollY() == ImGui.GetScrollMaxY())
+                }
+                bool isAnnouncement = false;
+                if (messageInput.StartsWith("/announce"))
+                {
+                    isAnnouncement = true;
+                }
+                // Input field and send button
+                ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - 50);
+                ImGui.Text("Message:");
+                ImGui.SameLine();
+                ImGui.InputText("##message", ref messageInput, 5000);
+                if (ImGui.IsItemFocused())
+                {
+                    canSend = true;
+                }
+                else
+                {
+                    canSend = false;
+                }
+                if (ImGui.IsKeyPressed(ImGuiKey.Enter))
+                {
+                    if (canSend == true)
                     {
-                        ImGui.SetScrollHereY(0f); // Scroll to the bottom
+                        SendMessage(messageInput, isAnnouncement);
                     }
                 }
-                ImGui.EndChild();
-            }
-            bool isAnnouncement = false;
-            if (messageInput.StartsWith("/announce"))
-            {
-                isAnnouncement = true;
-            }
-            // Input field and send button
-            ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - 50);
-            ImGui.Text("Message:");
-            ImGui.SameLine();
-            ImGui.InputText("##message",ref messageInput, 5000);
-            if (ImGui.IsItemFocused())
-            {
-                canSend = true;
-            }
-            else
-            {
-                canSend = false;
-            }
-            if (ImGui.IsKeyPressed(ImGuiKey.Enter))
-            {
-                if (canSend == true)
+                ImGui.SameLine();
+                if (ImGui.Button("Send"))
                 {
                     SendMessage(messageInput, isAnnouncement);
                 }
             }
-            ImGui.SameLine();
-            if (ImGui.Button("Send"))
+            catch (Exception ex)
             {
-                SendMessage(messageInput, isAnnouncement);
+                Plugin.plugin.logger.Error("ARPChatWindow Draw Error: " + ex.Message);
+                // Optionally, you can display an error message in the chat window
+                chatgui.PrintError($"Error in ARPChatWindow: {ex.Message}");
             }
            
         }
@@ -226,8 +307,23 @@ namespace AbsoluteRoleplay.Windows.Ect
         {
             for (int i = 0; i < messages.Count; i++)
             {
-                messages[i].avatar?.Dispose();  
+                WindowOperations.SafeDispose(messages[i].avatar);
             }
+        }
+
+        internal void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
+        {
+            // Example: Detect if message is sent on Linkshell1
+            if (type == XivChatType.Ls1)
+            {
+
+            }
+            // Example: Detect if message is sent on Party
+            if (type == XivChatType.Party)
+            {
+              
+            }
+            // You can check for any channel using XivChatType enum
         }
     }
     public  class ChatMessage

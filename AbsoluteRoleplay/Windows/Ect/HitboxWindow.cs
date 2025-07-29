@@ -25,9 +25,15 @@ public class HitboxWindow : Window
 
     public override void Draw()
     {
-        if (Player != null && gameGui != null)
+        try
         {
-            DrawTooltipHitbox(Player, gameGui, 0.300f);
+            if (Player != null && gameGui != null)
+            {
+                DrawTooltipHitbox(Player, gameGui, 0.300f);
+            }
+        }catch(Exception ex)
+        {
+            plugin.logger.Error("HitboxWindow Draw Error: " + ex.Message);
         }
     }
     public static void DrawTooltipHitbox(IPlayerCharacter player, IGameGui gui, float radius)

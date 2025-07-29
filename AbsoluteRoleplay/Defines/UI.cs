@@ -1,5 +1,7 @@
-using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using AbsoluteRoleplay;
+using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.ManagedFontAtlas;
@@ -22,15 +24,16 @@ using System.Text;
 using System.Xml.Linq;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
-
 namespace AbsoluteRoleplay
 {
     
-    public class PlayerProfile
+
+    
+    public class ProfileData
     {
         public int index {  get; set; }
         public IDalamudTextureWrap avatar;
-        internal string title;
+        public string title { get; set; }
         public Vector4 titleColor { get; set; }
         public bool isPrivate { get; set; }
         public bool isActive { get; set; }
@@ -45,14 +48,45 @@ namespace AbsoluteRoleplay
         public int Personality_1 { get; set; }
         public int Personality_2 { get; set; }
         public int Personality_3 { get; set; }
-        public List<Hooks> Hooks { get; set; } = new List<Hooks>();
-        public List<ProfileGalleryImage> GalleryImages { get; set; }
-        public Story Story { get; set; }
+        public List<HookValues> InfoLayouts { get; set; } = new List<HookValues>();
+        public List<ProfileGalleryImage> GalleryLayouts { get; set; } = new List<ProfileGalleryImage>();
+        public Story StoryLayouts { get; set; }
         public List<field> fields { get; set; } = new List<field>();
         public List<descriptor> descriptors { get; set; } = new List<descriptor>();
         public List<trait> traits { get; set; } = new List<trait>();
+        public List<CustomTab> customTabs { get; set; } = new List<CustomTab>();
         public string OOC { get; set; }
-   
+    
+    }
+
+    public class RosterLayout : CustomLayout
+    {
+        public int tabIndex { get; set; } = 0;
+        public List<ProfileData> members { get; set; } = new List<ProfileData>();
+        public List<ProfileData> affiliates { get; set; } = new List<ProfileData>();
+    }
+
+    public enum ProfileTypes
+    {
+        Personal = 0,
+        Character = 1,
+        Group = 2,
+        Venue = 3,
+        FC = 4,
+        Event = 5,
+        Campaign = 6,
+    }
+    public enum LayoutTypes
+    {
+        Relationship = 0,
+        Roster = 1,
+        Bio = 2,
+        Details = 3,
+        Story = 4,
+        Info = 5,
+        Gallery = 6,   
+        Inventory = 7,
+        VenueInfo = 8,
     }
     public enum SpoilerTypes
     {
@@ -81,23 +115,17 @@ namespace AbsoluteRoleplay
     public class ProfileGalleryImage
     {
         public int index;
-        public string url;
-        public string tooltip;
-        public bool nsfw;
-        public bool trigger;
-        public byte[] imageBytes;
+        public string url = string.Empty;
+        public string tooltip = string.Empty;
+        public bool nsfw = false;
+        public bool trigger = false;
+        public IDalamudTextureWrap image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+        public IDalamudTextureWrap thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+        public byte[] imageBytes = Misc.ImageToByteArray(Path.Combine(Plugin.PluginInterface.AssemblyLocation.Directory.FullName, "UI/common/profiles/galleries/picturetab.png"));
     }
 
-    public class Story
-    {
-        public List<Chapter> chapters { get; set; }
-    }
-    public class Chapter
-    {
-        public string name { get; set; }
-        public string content { get; set; }
-    }
-    public class Hooks
+
+    public class HookValues
     {
         public string name { get; set; }
         public string content { get; set; }
@@ -160,11 +188,18 @@ namespace AbsoluteRoleplay
             NO_AVAILABLE_PROFILE = 13,
             //Account Messages
             ACCOUNT_WARNING = 14,
-            ACCOUNT_SUSPENDED = 20,
             ACCOUNT_STRIKE = 16,
             ACCOUNT_BANNED = 17,
             NONE = 18,
-            ACTION_SUCCESS = 19
+            ACTION_SUCCESS = 19,
+            ACCOUNT_SUSPENDED = 20,
+            //Update
+            RECEIVE_UPDATES = 21,
+            //Silent
+            RECEIVE_SILENT = 22,
+            //Trade
+            TRADE_CANCEL = 23,
+            TRADE_ACCEPTED = 24,
         }
         public enum BioFieldTypes
         {
@@ -312,6 +347,7 @@ namespace AbsoluteRoleplay
             undock = 49,
             edit = 50,
             move_cancel = 51,
+            backgroundHolder = 52,
         }
         public enum ListingCategory
         {
@@ -341,6 +377,18 @@ namespace AbsoluteRoleplay
             Worship = 7,
             Mercenary = 8,
         }
+        public enum TabType
+        {
+            
+            Tree = 0,
+            Dynamic = 1,
+            Bio = 2,
+            Details = 3,
+            Story = 4,
+            Info = 5,
+            Gallery = 6,
+            Inventory = 7,
+        }
         public enum ListingSetting
         {
             Shop = 1,
@@ -355,6 +403,9 @@ namespace AbsoluteRoleplay
             Other = 10,
             Infirmary = 11,
         }
+        private static readonly Dictionary<CommonImageTypes, IDalamudTextureWrap> _imageCache = new();
+        private static readonly Dictionary<int, IDalamudTextureWrap> _alignmentIconCache = new();
+        private static readonly Dictionary<int, IDalamudTextureWrap> _personalityIconCache = new(); 
         public static byte[] imageBytes(string ImgPath)
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
@@ -369,6 +420,34 @@ namespace AbsoluteRoleplay
             return null;
             
         }
+    
+        public static byte[] baseAvatarBytes()
+        {
+            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+            {
+                if (File.Exists(Path.Combine(path, "UI/common/profiles/avatar_holder.png")))
+                {
+                    return Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"));
+                }
+            }
+            return null;
+        }
+        public static byte[] baseImageBytes()
+        {
+            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+            {
+                var fullPath = Path.Combine(path, "UI/common/profiles/background_holder.png");
+                if (!File.Exists(fullPath))
+                {
+                    Plugin.plugin.logger.Error($"[baseImageBytes] File does not exist: {fullPath}");
+                    return null;
+                }
+                // This should just read the file as bytes
+                return File.ReadAllBytes(fullPath);
+            }
+            Plugin.plugin.logger.Error("[baseImageBytes] PluginInterface or path is null.");
+            return null;
+        }
         public static IDalamudTextureWrap UICommonImage(CommonImageTypes imageType)
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
@@ -379,8 +458,9 @@ namespace AbsoluteRoleplay
                 if (imageType == CommonImageTypes.blankPictureTab) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result; }
                 if (imageType == CommonImageTypes.NSFW) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result;}
                 if (imageType == CommonImageTypes.NSFWTRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result;}
-                if (imageType == CommonImageTypes.TRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result;}
-                if (imageType == CommonImageTypes.avatarHolder) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result;}
+                if (imageType == CommonImageTypes.TRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result; }
+                if (imageType == CommonImageTypes.avatarHolder) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result; }
+                if (imageType == CommonImageTypes.backgroundHolder) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/background_holder.png"))).Result; }
                 if (imageType == CommonImageTypes.profileSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_profiles.png"))).Result;}
                 if (imageType == CommonImageTypes.systemsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_systems.png"))).Result;}
                 if (imageType == CommonImageTypes.eventsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_events.png"))).Result;}
@@ -759,7 +839,7 @@ namespace AbsoluteRoleplay
                                                                                                           "• I’m desperately trying to escape my past and never stay in one place—so I’ve been everywhere."),
 
 
-                //Worldly
+                //Unspecified
                 (PersonalityNames((int)Personalities.None),  "• Unspecified."),
         };
 
@@ -861,7 +941,8 @@ namespace AbsoluteRoleplay
         };
         public static readonly (string, string)[] ListingCategoryVals =
         {
-            ("Event",     "For advertising parts of a campaign or short term RPs."),
+
+            ("Event",     "Parts of a campaign or short term RPs."),
 
             ("Campaign",    "For an ongoing roleplay campaign, used for advertising long term Rps or a list of events."),
 
@@ -871,8 +952,31 @@ namespace AbsoluteRoleplay
 
             ("FC",  "Mainly for advertising Free Companies / FC recruitment."),
 
-            ("Personal",  "For trying to find any of the above as a single player or to find like-minded players to RP with."),
+            ("Character",  "For trying to find a single player or to find like-minded players to RP with."),
+
+            ("NPC",  "Create NPCs for public or private use."),
         };
+        public static readonly (string, string)[] ListingCategorySearchVals =
+        {
+
+            ("All",     "All categories."),
+
+            ("Event",     "For advertising parts of a campaign or short term RPs."),
+
+            ("Campaign",    "For an ongoing roleplay campaign, long term Rps or a list of events."),
+
+            ("Venue",    "RP held at estates or a persistant location."),
+
+            ("Group",  "Groups to roleplay with."),
+
+            ("FC",  "Free Companies / FC recruitment."),
+
+            ("Character",  "Individual character profiles."),
+
+            ("NPC",  "NPCs for public or private use."),
+        };
+
+
         public static readonly (string, string)[] ListingTypeVals =
         {
             ("Casual",     "Simple mindless RP for taking things easy."),
@@ -926,7 +1030,6 @@ namespace AbsoluteRoleplay
             ("Other",  "Setting unspecified."),
         };
 
-
         public static string ListingCategoryNames(int category)
         {
             string CategoryName = string.Empty;
@@ -976,123 +1079,407 @@ namespace AbsoluteRoleplay
             return SettingName;
         }
 
-    public enum ShapeType
+       
+   
+
+
+        public static readonly (string, string, Type)[] LayoutTypeVals =
         {
-            None,
-            Square,
-            Circle,
-            Star,
-            Heart
-        }
-
-        public static void DrawAvatarAndMaskSelection(Vector2 size)
-        {
-            Vector2 imageSize = new Vector2(ImGui.GetIO().FontGlobalScale / 0.015f); // Image size
-
-
-            // Initialize the shapeBounds to default (zero area)
-            // Options for the dropdown (using Unicode characters for square, circle, star, heart)
-            string[] symbols = new string[]
-            {
-            "■ Square",  // Unicode: U+25A0
-            "● Circle",  // Unicode: U+25CF
-            "★ Star",    // Unicode: U+2605
-            "♥ Heart"    // Unicode: U+2665
-            };
-
-            // Variable to store the selected index
-            int selectedSymbolIndex = -1;
-
-            // Create the dropdown (combo box)
-            if (ImGui.Combo("Select Symbol", ref selectedSymbolIndex, symbols, symbols.Length))
-            {
-                // Action when the user selects a symbol
-                string selectedSymbol = symbols[selectedSymbolIndex];
-
-                // Based on the selected option, create the shape and return the corresponding shape type
-                if (selectedSymbol.Contains("Square"))
-                {
-                    ImGui.Image(ProfileWindow.currentAvatarImg.ImGuiHandle, size, new Vector2(0, 0), new Vector2(1, 1)); 
-                }
-                else if (selectedSymbol.Contains("Circle"))
-                {
-                    DrawMaskedImage(ProfileWindow.currentAvatarImg, UI.UICommonImage(CommonImageTypes.circleMask),  size);
-                }
-                else if (selectedSymbol.Contains("Star"))
-                {
-                    DrawMaskedImage(ProfileWindow.currentAvatarImg, UI.UICommonImage(CommonImageTypes.starMask), size);
-                }
-                else if (selectedSymbol.Contains("Heart"))
-                {
-                    DrawMaskedImage(ProfileWindow.currentAvatarImg, UI.UICommonImage(CommonImageTypes.heartMask),  size);
-                }
-            }
-
-        }
-        public static void DrawMaskedImage(IDalamudTextureWrap baseImageTexture, IDalamudTextureWrap maskImageTexture,  Vector2 size)
-        {
-            var drawList = ImGui.GetWindowDrawList();
-
-            Vector2 currentPos = ImGui.GetCursorPos();
-            // Draw the base image
-            ImGui.Image(baseImageTexture.ImGuiHandle, size, new Vector2(0, 0), new Vector2(1, 1)); // Adjust coordinates if needed
-
-
-            // Here you can push a clipping rectangle (to restrict the drawing area to the mask region)
-            drawList.PushClipRect(currentPos, currentPos + baseImageTexture.Size, true);
-
-            // Draw the mask image over the base image
-            ImGui.Image(maskImageTexture.ImGuiHandle, baseImageTexture.Size, new Vector2(0, 0), new Vector2(1, 1));
-
-            // Reset the clipping area after drawing
-            drawList.PopClipRect();
-        }
-
-
+            ( "Tree", "For talent trees or social connections.", typeof(Relationship)),
+            ( "Roster", "Coming soon", typeof(Roster)),
+            ( "Bio", "Biography page with pre-defined and custom input elements.", typeof(Bio)),
+            ( "Details", "Details page with input element creation.", typeof(Details)),
+            ( "Story", "Story page with chapters creation.", typeof(Story)),
+            ( "Info", "A page with a single text field.", typeof(Info)),
+            ( "Gallery", "A gallery page to add all your favorite images.", typeof(Gallery)),
+            ( "Inventory", "A inventory page to hold all your items.", typeof(Inventory))
+        };
 
     }
-
+    public class CustomTab
+    {
+        public int ID;
+        public string Name = string.Empty;
+        public bool IsOpen;
+        public bool ShowPopup;
+        public int type;
+        public CustomLayout Layout;
+    }
     public class Attribute()
     {
         public string Name { get; set; }
         public string Description { get; set; }
 
     }
+
+
     public class BaseListingData
     {
         public int id { get; set; }
         public string name { get; set; }
     }
+    
     public class Listing
     {
         public int id { get; set; }
         public string name { get; set; }
+        public IDalamudTextureWrap avatar { get; set; } // Avatar for the listing, used in the gallery
         public string description { get; set; }
         public string rules { get; set; }
         public int category { get; set; }
-        public int type { get; set; }
+        public int type { get; set; } // 0 = all, 1 = personals
         public int focus { get; set; }
         public int setting { get; set; }
         public IDalamudTextureWrap banner { get; set; }
         public int inclusion { get; set; }
         public string startDate { get; set; }
         public string endDate { get; set; }
+        public bool ARR { get; set; }
+        public bool HW { get; set; }
+        public bool SB { get; set; }
+        public bool SHB { get; set; }
+        public bool EW { get; set; }
+        public bool DT { get; set; }
+        public Vector4 color { get; set; } = new Vector4(1, 1, 1, 1); // Default white color
 
-        public Listing(int Id, string Name, string Description, string Rules, int Category, int Type, int Focus, int Setting, IDalamudTextureWrap Banner, int Inclusion, string StartDate, string EndDate)
-        {
-            id = Id;
-            name = Name;
-            description = Description;
-            rules = Rules;
-            category = Category;
-            type = Type;
-            focus = Focus;
-            setting = Setting;
-            banner = Banner;
-            inclusion = Inclusion;
-            startDate = StartDate;
-            endDate = EndDate;
-        }
+
+
     }
 }
 
+public class SpellDefinition
+{
+    public string name { get; set; }
+    public string description { get; set; }
+    public SpellType type { get; set; } // 0 = Offensive, 1 = Defensive, 2 = Utility
+    public int iconID { get; set; }
+    public int level { get; set; } // Level required to use the spell
+    public int manaCost { get; set; } // Mana cost to use the spell
+}
+
+public class SpellType
+{
+    public int id { get; set; }
+    public string name { get; set; }
+}
+
+public class ItemDefinition
+{
+    public string name { get; set; }
+    public string description { get; set; }
+    public int type { get; set; }
+    public int subtype { get; set; }
+    public int iconID { get; set; }
+    public IDalamudTextureWrap iconTexture { get; set; } = null; // Texture for the item icon
+    public int slot { get; set; }
+    public int quality { get; set; }
+}
+
+public class Relationship
+{
+    public string Name { get; set; } = string.Empty;
+    public Vector4 NameColor { get; set; } = new Vector4(1, 1, 1, 1);
+    public string Description { get; set; } = string.Empty;
+    public Vector4 DescriptionColor { get; set; } = new Vector4(1, 1, 1, 1);
+    public int IconID { get; set; } = -1; // Icon ID for the relationship, -1 means no icon
+    public IDalamudTextureWrap ImageTexture { get; set; } = null;
+    public IDalamudTextureWrap IconTexture { get; set; } = null;
+    public (int x, int y)? Slot { get; set; } = null; // The grid slot this relationship is attached to
+
+    // Line/Link data
+    public List<RelationshipLink> Links { get; set; } = new(); // All connections/lines for this relationship
+
+    public Vector4 LineColor { get; set; } = new Vector4(1, 1, 0.3f, 1);
+    public float LineThickness { get; set; } = 6f;
+}
+
+public class RelationshipLink
+{
+    public (int x, int y) From { get; set; }
+    public (int x, int y) To { get; set; }
+    public Vector4? LineColor { get; set; } // Optional: override per-link
+    public float? LineThickness { get; set; } // Optional: override per-link
+}
+
+public class InventoryLayout : CustomLayout
+{
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab   
+    public string tabName { get; set; } = string.Empty;
+
+    public Dictionary<int, ItemDefinition> inventorySlotContents = new Dictionary<int, ItemDefinition>();
+    public Dictionary<int, ItemDefinition> tradeSlotContents = new Dictionary<int, ItemDefinition>();
+    public Dictionary<int, ItemDefinition> traderSlotContents = new Dictionary<int, ItemDefinition>();
+}
+public class StaticLayout : CustomLayout
+{
+    public  string tabName { get; set; } = string.Empty;
+    public List<LayoutElement> elements { get; set; } = new List<LayoutElement>();
+}
+public class DynamicLayout : CustomLayout
+{
+    internal int tabIndex;
+
+    public  string tabName { get; set; } = string.Empty;
+    public List<LayoutElement> elements { get; set; } = new List<LayoutElement>();
+    public LayoutTreeNode RootNode { get; set; } = new LayoutTreeNode("Root", true ,-1, null); // Each layout has its own tre
+}
+public class BioLayout : CustomLayout 
+{
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
+    public  string tabName { get; set; } = string.Empty;
+    public bool isTooltip { get; set; } = false; // Whether the layout is being used as a tooltip
+    public string name { get; set; } = string.Empty;
+    public string race { get; set; } = string.Empty;
+    public string gender { get; set; } = string.Empty;
+    public string age { get; set; } = string.Empty;
+    public string height { get; set; } = string.Empty;
+    public string weight { get; set; } = string.Empty;
+    public string afg { get; set; } = string.Empty; // Affiliation, e.g. Free Company, Group, etc.
+    public int alignment { get; set; } = 0; // 0 = None, 1 = Lawful Good, 2 = Neutral Good, etc.
+    public int personality_1 { get; set; } = 0; // 0 = None, 1 = Optimistic, 2 = Polite, etc.
+    public int personality_2 { get; set; } = 0; // 0 = None, 1 = Optimistic, 2 = Polite, etc.
+    public int personality_3 { get; set; } = 0; // 0 = None, 1 = Optimistic, 2 = Polite, etc.
+    public List<descriptor> descriptors { get; set; } = new List<descriptor>(); // List of descriptors
+    public List<trait> traits { get; set; } = new List<trait>(); // List of traits
+    public List<field> fields { get; set; } = new List<field>(); // List of custom fields
+
+}
+public class GalleryLayout : CustomLayout
+{
+    public  string tabName { get; set; } = string.Empty;
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
+    public List<ProfileGalleryImage> images { get; set; } = new List<ProfileGalleryImage>(); // List of images in the gallery
+}
+public class InfoLayout : CustomLayout
+{
+    public  string tabName { get; set; } = string.Empty;
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
+    public string text { get; set; } = string.Empty; // Text for the Info layout
+} //OOC
+public class DetailsLayout : CustomLayout
+{
+    public  string tabName { get; set; } = string.Empty;
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
+    public List<Detail> details { get; set; } = new List<Detail>(); // List of details for the Details layout
+}
+
+public class  Detail
+{
+    public int id { get; set; }
+    public string name { get; set; }
+    public string content { get; set; }
+}
+
+public class StoryLayout : CustomLayout
+{
+    public string tabName { get; set; } = string.Empty;
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
+    public List<StoryChapter> chapters { get; set; } = new List<StoryChapter>(); // List of chapters in the story
+    public bool loadChapters { get; set; } = false; // Whether to load chapters from the database
+
+}
+
+
+public class StoryChapter
+{
+    public int id { get; set; }
+    public string title { get; set; } = string.Empty;
+    public string content { get; set; } = string.Empty;
+}
+
+public class TreeLayout : CustomLayout
+{
+    public (int x, int y)? ActionSourceSlot { get; set; }
+    public string tabName { get; set; } = string.Empty;
+    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
+    public (int x, int y)? SelectedSlot { get; set; }
+    public (int x, int y)? PreviousSlot { get; set; }
+    public List<((int x, int y) from, (int x, int y) to)> Connections { get; set; } = new();
+    public List<List<(int x, int y)>> Paths { get; set; } = new(); // Each path is a list of slots
+    public List<List<((int x, int y) from, (int x, int y) to)>> PathConnections { get; set; } = new(); // Each path's connections
+    public int CurrentPathIndex { get; set; } = 0; 
+    public enum RelationshipAction { None, Create, Break }
+    public RelationshipAction CurrentAction { get; set; } = RelationshipAction.None;
+    public List<Relationship> relationships { get; set; } = new List<Relationship>(); // List of relationships in the layout
+}
+public enum RelationshipType
+{
+    Friend = 0,
+    Enemy = 1,
+    Rival = 2,
+    Mentor = 3,
+    Student = 4,
+    Family = 5,
+    Workplace = 6,
+    Other = 7
+}
+public class DateTimeElement
+{
+    public int selectedStartYear { get; set; }
+    public int selectedEndYear { get; set; }
+    public int selectedStartMonth { get; set; }
+    public int selectedEndMonth { get; set; }
+    public int selectedStartDay { get; set; }
+    public int selectedEndDay { get; set; }
+    public int selectedStartHour { get; set; }
+    public int selectedEndHour { get; set; }
+    public int selectedStartMinute { get; set; }
+    public int selectedEndMinute { get; set; }
+    public int selectedStartAmPm { get; set; }
+    public int selectedEndAmPm { get; set; }
+    public int selectedStartTimezone { get; set; }
+    public int selectedEndTimezone { get; set; }
+}
+public class LayoutElement
+{
+    public int layoutID { get; set; }
+    public bool IsFolder { get; set; }
+    public bool Lockstatus { get; set; } = true;
+    public bool EditStatus { get; set; } = false;
+    public int id { set; get; }
+    public string name { set; get; }
+    public bool isBeingRenamed { get; set; } = false; 
+    public bool locked { get; set; } = true;
+    public float PosX { get; set; }
+    public float PosY { get; set; }
+    public bool added { get; set; } = false;
+    public bool modifying { set; get; }
+    public bool canceled { set; get; } = false;
+    public bool dragging { set; get; }
+    public bool resizing { set; get; } = false;
+    public byte[] tooltipBGBytes { set; get; }
+    public IDalamudTextureWrap tooltipBG { set; get; } = null;
+    public string tooltipTitle { set; get; } = string.Empty;
+    public string tooltipDescription { set; get; } = string.Empty;
+    public int type { set; get; }
+    public Vector2 dragOffset { get; set; }
+    public LayoutTreeNode relatedNode { get; set;}
+
+
+}
+public class FolderElement : LayoutElement
+{
+    internal bool loaded { get; set; }
+    public int id { set; get; }
+    public string text { set; get; }
+
+}
+public class EmptyElement : LayoutElement
+{
+    internal bool loaded { get; set; }
+
+    public int id { set; get; }
+    public string text { set; get; }
+    public Vector4 color { set; get; }
+}
+public class IconElement : LayoutElement
+{
+    internal bool loaded { get; set; }
+
+    public enum IconState
+    {
+        Displaying,
+        Modifying
+    }
+    public int iconID { get; set; } // ID for the icon, used to fetch the icon from the database or resources
+    public IDalamudTextureWrap icon { get; set; }
+    public IconState State { get; set; } = IconState.Displaying; // Default state
+  
+}
+public enum LayoutElementTypes
+{
+    Empty = -1,
+    Folder = 0,
+    Text = 1,
+    TextMultiline = 2,
+    Image = 3,
+    Icon = 4,
+}
+
+public class TextElement : LayoutElement
+{
+    internal bool loaded { get; set; }
+    public int subType { set; get; }
+    public string text { set; get; } = string.Empty;
+    public Vector4 color { set; get; }
+    public float width = 300; // default dimensions
+    public float height = 120;
+    public bool resizing = false;
+}
+
+public class DynamicLayoutNode
+{
+    public int ID { get; set; } // Unique ID for ImGui elements
+    public string Name { get; set; } // Name of the node
+    public bool IsFolder { get; set; } // Whether the node is a folder
+    public int parentID { get; set; } // Parent ID for hierarchy
+
+}
+public class LayoutTreeNode
+{
+    private string _name = string.Empty;
+    public string Name
+    {
+        get => _name;
+        set
+        {
+            if (value == null)
+                Plugin.plugin.logger.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
+            _name = value ?? string.Empty;
+        }
+    }
+    public bool takenName = false; // Used to check if the name is already taken in the tree
+    public bool IsFolder { get; set; }
+    public List<LayoutTreeNode> Children { get; set; } = new List<LayoutTreeNode>();
+    public LayoutTreeNode? Parent { get; set; } // Needed for Drag & Drop
+    public LayoutElement relatedElement { get; set; }
+    public int ID { get; set; } // Unique ID for ImGui elements
+    public int ParentID { get; set; } // Parent ID for hierarchy
+    public bool IsBeingRenamed { get; set; } = false;
+    public IDalamudTextureWrap editBtn = UI.UICommonImage(UI.CommonImageTypes.edit);
+    public IDalamudTextureWrap moveBtn = UI.UICommonImage(UI.CommonImageTypes.move);
+    public IDalamudTextureWrap moveCancelBtn = UI.UICommonImage(UI.CommonImageTypes.move_cancel);
+    public int layoutID { get; set; }
+
+    private static int nextID = 0;
+
+    public LayoutTreeNode(string name, bool isFolder, int nodeID, LayoutTreeNode? parent = null)
+    {
+        Name = name;
+        IsFolder = isFolder;
+        Parent = parent;
+        ID = nodeID;
+    }
+
+    public void AddChild(LayoutTreeNode child)
+    {
+        child.Parent = this;
+        Children.Add(child);
+    }
+}
+
+
+public class ImageElement : LayoutElement
+{
+
+    internal bool loaded { get; set; } = false;
+    public float LastWindowWidth = -1f;
+    public float RelativeX = -1f;
+    public string url { get; set; } // URL for the image, used for fetching from the database or resources
+    public byte[] bytes { get; set; }
+    public IDalamudTextureWrap textureWrap { set; get; } = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+    public string tooltip { get; set; }
+    public float width { get; set; }
+    public float height { get; set; }
+    public bool initialized { get; set; }
+    public bool proprotionalEditing { set; get; } = true;
+    public bool hasTooltip { get; set; }
+    internal bool maximizable { get; set; }   
+
+}
+public class CustomLayout
+{
+    public int id { get; set; }
+    public string name { get; set; }
+    public LayoutTypes layoutType { get; set; }
+}

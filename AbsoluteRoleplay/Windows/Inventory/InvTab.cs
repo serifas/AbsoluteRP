@@ -1,8 +1,9 @@
+using AbsoluteRoleplay;
 using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Profiles;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface;
 using Dalamud.Interface.Internal.Windows.Data.Widgets;
 using Dalamud.Interface.Textures;
@@ -16,6 +17,7 @@ using Lumina.Excel.Sheets;
 using Lumina.Extensions;
 using Networking;
 using OtterGui;
+using OtterGui.Extensions;
 using OtterGui.Text.EndObjects;
 using System;
 using System.Collections.Generic;
@@ -27,7 +29,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AbsoluteRoleplay.Windows.Inventory
+namespace InventoryTab
 {
     public enum InvTabItem
     {
@@ -44,14 +46,14 @@ namespace AbsoluteRoleplay.Windows.Inventory
     {
         private const int GridSize = 10; // 10x10 grid for 200 slots
         private const int TotalSlots = GridSize * GridSize;
-        public static Dictionary<int, Defines.ItemDefinition> consumeableSlotContents = new(); // Slot contents, indexed by slot number
-        public static Dictionary<int, Defines.ItemDefinition> questSlotContents = new(); // Slot contents, indexed by slot number
-        public static Dictionary<int, Defines.ItemDefinition> armorSlotContents = new(); // Slot contents, indexed by slot number
-        public static Dictionary<int, Defines.ItemDefinition> weaponSlotContents = new(); // Slot contents, indexed by slot number
-        public static Dictionary<int, Defines.ItemDefinition> containerSlotContents = new(); // Slot contents, indexed by slot number
-        public static Dictionary<int, Defines.ItemDefinition> scriptSlotContents = new(); // Slot contents, indexed by slot number
-        public static Dictionary<int, Defines.ItemDefinition> keySlotContents = new(); // Slot contents, indexed by slot number
-        public static List<Dictionary<int, Defines.ItemDefinition>> inventorySlotContents = new List<Dictionary<int, Defines.ItemDefinition>>();
+        public static Dictionary<int, ItemDefinition> consumeableSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, ItemDefinition> questSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, ItemDefinition> armorSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, ItemDefinition> weaponSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, ItemDefinition> containerSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, ItemDefinition> scriptSlotContents = new(); // Slot contents, indexed by slot number
+        public static Dictionary<int, ItemDefinition> keySlotContents = new(); // Slot contents, indexed by slot number
+        public static List<Dictionary<int, ItemDefinition>> inventorySlotContents = new List<Dictionary<int, ItemDefinition>>();
         public static bool isIconBrowserOpen;
         public static string itemName = string.Empty;
         public static string itemDescription = string.Empty;
@@ -69,8 +71,8 @@ namespace AbsoluteRoleplay.Windows.Inventory
             {
                 throw new InvalidOperationException("Failed to initialize icon.");
             }
-            inventorySlotContents = new List<Dictionary<int, Defines.ItemDefinition>> { consumeableSlotContents, questSlotContents, armorSlotContents, weaponSlotContents, containerSlotContents, scriptSlotContents, keySlotContents};
-           
+            inventorySlotContents = new List<Dictionary<int, ItemDefinition>> { consumeableSlotContents, questSlotContents, armorSlotContents, weaponSlotContents, containerSlotContents, scriptSlotContents, keySlotContents };
+
             consumeableSlotContents.Clear();
             questSlotContents.Clear();
             armorSlotContents.Clear();
@@ -82,7 +84,7 @@ namespace AbsoluteRoleplay.Windows.Inventory
             {
                 for (int j = 0; j < inventorySlotContents.Count; j++)
                 {
-                    inventorySlotContents[j][i] = new Defines.ItemDefinition
+                    inventorySlotContents[j][i] = new ItemDefinition
                     {
                         name = string.Empty,
                         description = string.Empty,
@@ -92,12 +94,12 @@ namespace AbsoluteRoleplay.Windows.Inventory
                         slot = i
                     };
                 }
-              
+
             }
 
         }
 
-        public static async Task LoadInventoryTabAsync(Plugin plugin, InventoryWindow.InvTabItem invType)
+        public static async Task LoadInventoryTabAsync(Plugin plugin, InventoryLayout layout)
         {
             if (ImGui.Button("CreateItem"))
             {
@@ -105,18 +107,25 @@ namespace AbsoluteRoleplay.Windows.Inventory
             }
             if (itemCreation == true)
             {
-                LoadItemCreation(plugin);
+                LoadItemCreation(plugin, layout);
             }
             else
             {
-                ItemGrid.DrawGrid(plugin, inventorySlotContents[(int)invType], false);
+                ItemGrid.DrawGrid(plugin, layout, string.Empty, string.Empty, false);
             }
         }
 
 
-        private static void LoadItemCreation(Plugin plugin)
+        private static void LoadItemCreation(Plugin plugin, InventoryLayout layout)
         {
-            ImGui.Image(icon.ImGuiHandle, new Vector2(50, 50));
+            if (icon != null && icon.ImGuiHandle != null)
+            {
+                ImGui.Image(icon.ImGuiHandle, new Vector2(50, 50));
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(1, 0, 0, 1), "No icon selected or icon failed to load.");
+            }
 
             if (!isIconBrowserOpen)
             {
@@ -138,7 +147,30 @@ namespace AbsoluteRoleplay.Windows.Inventory
                 if (ImGui.Button("Create"))
                 {
                     itemCreation = false;
-                    DataSender.SendItemCreation(ProfileWindow.currentProfileIndex, itemName, itemDescription, selectedItemType, selectedSubType, createItemIconID, selectedItemQuality);
+                    // Find the first empty slot (not present or has empty name)
+                    int firstEmptySlotIndex = -1;
+                    for (int i = 0; i < TotalSlots; i++)
+                    {
+                        if (!layout.inventorySlotContents.ContainsKey(i) || string.IsNullOrEmpty(layout.inventorySlotContents[i].name))
+                        {
+                            firstEmptySlotIndex = i;
+                            break;
+                        }
+                    }
+                    if (firstEmptySlotIndex == -1)
+                        return; // No empty slot found
+
+                    layout.inventorySlotContents[firstEmptySlotIndex] = new ItemDefinition
+                    {
+                        name = itemName,
+                        description = itemDescription,
+                        type = selectedItemType,
+                        subtype = selectedSubType,
+                        iconID = (int)createItemIconID,
+                        slot = firstEmptySlotIndex,
+                        quality = selectedItemQuality,
+                        iconTexture = icon
+                    };
                 }
             }
             else
@@ -147,8 +179,8 @@ namespace AbsoluteRoleplay.Windows.Inventory
                 {
                     WindowOperations.LoadIconsLazy(plugin); // Load a small batch of icons
                 }
-
-                WindowOperations.RenderIcons(plugin, true, null);
+                IDalamudTextureWrap Icon = icon;
+                WindowOperations.RenderIcons(plugin, true, false, null, null, ref Icon);
             }
         }
 

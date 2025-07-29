@@ -1,0 +1,198 @@
+using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Utility.Raii;
+using ImGuiNET;
+using Networking;
+using OtterGui.Text.EndObjects;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+{
+    internal class Gallery
+    {
+        public static bool addGalleryImageGUI, ReorderGallery;
+        public static int galleryImageCount = 0;
+        public static bool loadPreview;
+
+        public static void RenderGalleryPreview(GalleryLayout galleryLayout, Vector4 TitleColor)
+        {
+            Misc.SetTitle(Plugin.plugin, true, galleryLayout.name, TitleColor);
+
+            using var table = ImRaii.Table("GalleryTargetTable", 4);
+            if (table)
+            {
+                Vector2 cellSize = ImGui.GetContentRegionAvail() / 4f; // 4 columns
+                foreach (ProfileGalleryImage image in galleryLayout.images)
+                {
+                    ImGui.TableNextColumn();
+                    if (image.thumbnail != null && image.thumbnail.ImGuiHandle != IntPtr.Zero)
+                    {
+                        // Calculate scaled size while keeping aspect ratio
+                        float aspect = (float)image.thumbnail.Width / Math.Max(1, image.thumbnail.Height);
+                        float maxWidth = cellSize.X * 0.9f;
+                        float maxHeight = cellSize.Y * 0.9f;
+                        float width = maxWidth;
+                        float height = width / aspect;
+                        if (height > maxHeight)
+                        {
+                            height = maxHeight;
+                            width = height * aspect;
+                        }
+                        Vector2 scaledSize = new Vector2(width, height);
+                        if(image.image.ImGuiHandle != null && image.image.ImGuiHandle != IntPtr.Zero)
+                        {
+                            ImGui.Image(image.thumbnail.ImGuiHandle, scaledSize);
+                            if (ImGui.IsItemHovered()) {
+                                ImGui.BeginTooltip();
+                                Misc.RenderHtmlColoredTextInline(image.tooltip);
+                                ImGui.Separator();
+                                ImGui.Text("Click to enlarge"); 
+                                ImGui.EndTooltip();
+                            }
+                            if (ImGui.IsItemClicked())
+                            {
+                                if (image.image != null && image.image.ImGuiHandle != IntPtr.Zero)
+                                {
+                                    ImagePreview.width = image.image.Width;
+                                    ImagePreview.height = image.image.Height;
+                                    ImagePreview.PreviewImage = image.image;
+                                    loadPreview = true;
+                                }
+                            }
+                        }
+                        
+                    }
+                }
+            }
+            if (loadPreview)
+            {
+                Plugin.plugin.OpenImagePreview();
+                loadPreview = false;
+            }
+        }
+        public static void RenderGalleryLayout(int index, string uniqueID, GalleryLayout layout)
+        {
+            if (ImGui.Button("Add Image"))
+            {
+                byte[] baseImageBytes = new byte[0];
+                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } imagePath })
+                {
+                    baseImageBytes = Misc.ImageToByteArray(Path.Combine(imagePath, "UI/common/profiles/galleries/picturetab.png"));
+                }
+                layout.images.Add(new ProfileGalleryImage()
+                {
+                    index = layout.images.Count,
+                    imageBytes = baseImageBytes,
+                    image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
+                    thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
+                    nsfw = false,
+                    trigger = false,
+                    tooltip = string.Empty,
+                    url = string.Empty
+                });
+            }
+
+
+            ImGui.NewLine();
+            galleryImageCount = layout.images?.Count ?? 0;
+            AddImagesToGallery(Plugin.plugin, layout);
+        }
+
+        //adds an image to the gallery with the specified index with a table 4 columns wide
+        public static void AddImagesToGallery(Plugin plugin, GalleryLayout layout)
+        {            
+            using var table = ImRaii.Table("table_name", 4);
+            if (table)
+            {
+                for (var i = 0; i < layout.images?.Count; i++)
+                {
+                    if (layout.images[i] == null)
+                        continue;
+
+                    ImGui.TableNextColumn();
+                    DrawGalleryImage(plugin, layout.images[i], layout, i);
+                }
+            }
+        }
+        //gets the next image index that does not exist
+        public static int NextAvailableImageIndex(GalleryLayout layout)
+        {
+            var load = true;
+            var index = 0;
+            for (var i = 0; i < layout.images.Count; i++)
+            {
+                if (layout.images[i] != null && load == true)
+                {
+                    load = false;
+                    index = i;
+                    return index;
+                }
+            }
+            return index;
+        }
+        public static void DrawGalleryImage(Plugin plugin, ProfileGalleryImage image, GalleryLayout layout, int i)
+        {
+
+            ImGui.Text("Will this image be 18+ ?");
+            ImGui.Checkbox("Yes 18+##" + i, ref image.nsfw);
+            ImGui.Text("Is this a possible trigger ?");
+            ImGui.Checkbox("Yes Triggering##" + i, ref image.trigger);
+            ImGui.InputTextWithHint("##ImageURL" + i, "Image URL", ref image.url, 300);
+            ImGui.InputTextWithHint("##ImageInfo" + i, "Info", ref image.tooltip, 400);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Tooltip of the image on hover");
+            }
+
+            //maximize the gallery image to preview it.
+            if (image.thumbnail != null && image.thumbnail.ImGuiHandle != null && image.thumbnail.ImGuiHandle != IntPtr.Zero)
+            {
+                ImGui.Image(image.thumbnail.ImGuiHandle, new Vector2(image.thumbnail.Width, image.thumbnail.Height));
+            }
+            else
+            {
+                ImGui.Text("Thumbnail not available.");
+            }
+            if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Click to enlarge"); }
+            if (ImGui.IsItemClicked())
+            {
+                ImagePreview.width = image.image.Width;
+                ImagePreview.height = image.image.Height;
+                ImagePreview.PreviewImage = image.image;
+                loadPreview = true;
+            }
+            if(ImGui.Button("Upload##" + i))
+            {
+                Misc.EditImage(plugin, ProfileWindow._fileDialogManager, layout, false, false, i);
+            }
+            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+            {
+                //button to remove the gallery image
+                if (ImGui.Button("Remove##" + "gallery_remove" + i))
+                {
+                    layout.images.RemoveAt(i); 
+                    for (int j = 0; j < layout.images.Count; j++)
+                    {
+                        layout.images[j].index = j;
+                    }
+
+                    //remove the image immediately once pressed
+                    DataSender.RemoveGalleryImage(ProfileWindow.profileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
+                }
+            }
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.SetTooltip("Ctrl Click to Enable");
+            }       
+        }
+   
+     
+    }
+}

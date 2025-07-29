@@ -30,23 +30,30 @@ namespace AbsoluteRoleplay.Windows.Account
         }
         public override void Draw()
         {
-            Misc.SetTitle(pg, false, "Verification", ImGuiColors.TankBlue);
-            //okay that's done.
-            ImGui.Text("We sent a verification key to the email provided. \nPlease provide it below...");
-            ImGui.Spacing();
-            //now for some simple toggles
-            ImGui.InputText("Key", ref verificationKey, 10);
-            if (ImGui.Button("Submit"))
+            try
             {
-                //if player is online in game
-                if (pg.IsOnline())
+                Misc.SetTitle(pg, false, "Verification", ImGuiColors.TankBlue);
+                //okay that's done.
+                ImGui.Text("We sent a verification key to the email provided. \nPlease provide it below...");
+                ImGui.Spacing();
+                //now for some simple toggles
+                ImGui.InputText("Key", ref verificationKey, 10);
+                if (ImGui.Button("Submit"))
                 {
-                    //submit our verification key for verification
-                    DataSender.SendVerification(pg.username.ToString(), verificationKey);
-                }
+                    //if player is online in game
+                    if (pg.IsOnline())
+                    {
+                        //submit our verification key for verification
+                        DataSender.SendVerification(pg.username.ToString(), verificationKey);
+                    }
 
+                }
+                ImGui.TextColored(verificationCol, verificationStatus);
             }
-            ImGui.TextColored(verificationCol, verificationStatus);
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("VerificationWindow Draw Error: " + ex.Message);
+            }
         }
         public void Dispose()
         {

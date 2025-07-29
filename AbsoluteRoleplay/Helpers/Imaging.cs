@@ -1,46 +1,96 @@
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface.Internal;
-using OtterGui.Log;
-using System;
-using System.Drawing;
-using System.IO;
-using System.Net;
-using Dalamud.Plugin;
-using Networking;
-using ImGuiNET;
-using JetBrains.Annotations;
-using System.Drawing.Imaging;
-using Dalamud.Interface.Utility;
-using AbsoluteRoleplay.Windows.Profiles;
 using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Utility;
+using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+using ImGuiNET;
+using JetBrains.Annotations;
+using Networking;
+using OtterGui.Log;
+using System;
 using System.Collections.Generic;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTabs;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.Net;
 using System.Net.Http;
-
 namespace AbsoluteRoleplay.Helpers
 {
     internal static class Imaging
     {
         public static Plugin plugin;
         private static Dictionary<uint, IconInfo?> IconInfoCache = [];
+        public static void LoadIconSelection(Plugin plugin, IconElement currentIcon)
+        {
+            if (ImGui.Begin("ICONS", ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                if (!WindowOperations.iconsLoaded)
+                {
+                    WindowOperations.LoadIconsLazy(plugin); // Load a small batch of icons
+                }
+                IDalamudTextureWrap? icon = currentIcon.icon;
 
+                WindowOperations.RenderIcons(plugin, false, false, currentIcon, null, ref icon);
+            }
+            ImGui.End();
+        }
+        public static async Task<IDalamudTextureWrap> MaskIconWithCircleAsync(
+       byte[] iconBytes,
+       byte[] maskBytes,
+       int width,
+       int height,
+       ITextureProvider textureProvider)
+        {
+            // Blend the icon and mask alpha channels
+            var result = new byte[width * height * 4];
+            for (int i = 0; i < width * height; i++)
+            {
+                byte ir = iconBytes[i * 4 + 0];
+                byte ig = iconBytes[i * 4 + 1];
+                byte ib = iconBytes[i * 4 + 2];
+                byte ia = iconBytes[i * 4 + 3];
+                byte ma = maskBytes[i * 4 + 3];
+                result[i * 4 + 0] = ir;
+                result[i * 4 + 1] = ig;
+                result[i * 4 + 2] = ib;
+                result[i * 4 + 3] = (byte)(ia * ma / 255);
+            }
 
-        public static async Task DownloadProfileImage(bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
+            // Use CreateFromImageAsync to create the texture
+            return await textureProvider.CreateFromImageAsync(result);
+        }
+        public static async Task<ProfileGalleryImage> DownloadProfileImage(
+        bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
+        {
+            Plugin.plugin.logger.Error(url);
+            ProfileGalleryImage galleryImage = new ProfileGalleryImage();
+            int maxRetries = 5;
+            int delayMs = 1500;
+
+            if (Plugin.TextureProvider == null)
+            {
+                plugin?.logger?.Error("TextureProvider is not initialized.");
+                return galleryImage;
+            }
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
-                using (HttpClientHandler handler = new HttpClientHandler
+            using (HttpClientHandler handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+            })
+            using (HttpClient client = new HttpClient(handler))
+            {
+                // Download the image as a byte array
+                HttpResponseMessage response = await client.GetAsync(url);
+                if (response.IsSuccessStatusCode)
                 {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-                })
-                using (HttpClient client = new HttpClient(handler))
-                {
-                    client.Timeout = TimeSpan.FromSeconds(10); // Set a timeout of 10 seconds
-
-
-                    // Download the image as a byte array
-                    byte[] imageBytes = await client.GetByteArrayAsync(url);
+                    byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
 
                     using (MemoryStream ms = new MemoryStream(imageBytes))
                     {
@@ -51,77 +101,168 @@ namespace AbsoluteRoleplay.Helpers
 
                         // If self is true, process for ProfileWindow, else for TargetWindow
                         var image = await Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes);
+                        Image thumbImage = ScaleImage(baseImage, 200, 200);
+                        byte[] thumbImageBytes = ImageToByteArray(thumbImage);
+
+                        var thumbTexture = await Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes);
+
                         if (image != null)
                         {
-                            if (self)
+                            if (url.Contains("absolute-roleplay"))
                             {
-                                GalleryTab.galleryImages[index] = image;
-                                if (url.Contains("absolute-roleplay"))
-                                {
-                                    url = string.Empty;
-                                }
-                                GalleryTab.imageURLs[index] = url;
-                                GalleryTab.NSFW[index] = nsfw;
-                                GalleryTab.TRIGGER[index] = trigger;
-                                GalleryTab.imageTooltips[index] = tooltip;
-                                GalleryTab.imageBytes[index] = scaledImageBytes;
-                            }
-                            else
-                            {
-                                TargetWindow.galleryImages[index] = image;
-                                TargetWindow.imageTooltips[index] = tooltip;
+                                url = string.Empty;
                             }
                         }
 
                         // Handle NSFW/trigger thumbnail logic
                         if (trigger && !nsfw)
                         {
-                            var triggerImage = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
-                            if (self) GalleryTab.galleryThumbs[index] = triggerImage;
-                            else TargetWindow.galleryThumbs[index] = triggerImage;
+                            thumbTexture = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
                         }
                         else if (nsfw && !trigger)
                         {
-                            var nsfwImage = UI.UICommonImage(UI.CommonImageTypes.NSFW);
-                            if (self) GalleryTab.galleryThumbs[index] = nsfwImage;
-                            else TargetWindow.galleryThumbs[index] = nsfwImage;
+                            thumbTexture = UI.UICommonImage(UI.CommonImageTypes.NSFW);
                         }
                         else if (nsfw && trigger)
                         {
-                            var nsfwTriggerImage = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
-                            if (self) GalleryTab.galleryThumbs[index] = nsfwTriggerImage;
-                            else TargetWindow.galleryThumbs[index] = nsfwTriggerImage;
+                            thumbTexture = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
                         }
-                        else if (!nsfw && !trigger)
-                        {
-                            // Scale and create the thumbnail
-                            Image thumbImage = ScaleImage(baseImage, 200, 200);
-                            byte[] thumbImageBytes = ImageToByteArray(thumbImage);
+                        galleryImage.url = url;
+                        galleryImage.image = image;
+                        galleryImage.tooltip = tooltip;
+                        galleryImage.nsfw = nsfw;
+                        galleryImage.trigger = trigger;
+                        galleryImage.thumbnail = thumbTexture;
+                        galleryImage.imageBytes = scaledImageBytes;
+                        return galleryImage;
+                    }
+                }
 
-                            var thumbTexture = await Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes);
-                            if (self) GalleryTab.galleryThumbs[index] = thumbTexture;
-                            else TargetWindow.galleryThumbs[index] = thumbTexture;
+                        else if (
+                                 response.StatusCode == (HttpStatusCode)429 ||
+                                 response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                                 response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                                 response.StatusCode == HttpStatusCode.BadGateway ||         // 502
+                                 response.StatusCode == HttpStatusCode.InternalServerError   // 500
+                             )
+                        {
+                    plugin?.logger?.Warning($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
+                    await Task.Delay(delayMs * attempt); // Exponential backoff
+                    continue;
+                }
+                else
+                {
+                    plugin?.logger?.Error($"Image download failed with status code: {response.StatusCode}");
+                    break;
+                }
+                if (!response.IsSuccessStatusCode)
+                {
+                    plugin?.logger?.Warning($"Non-success status code: {(int)response.StatusCode} ({response.StatusCode})");
+                }
+            }
+        }
+        catch (HttpRequestException httpEx)
+        {
+            plugin?.logger?.Error($"HTTP Request Error: {httpEx.Message}");
+            if (attempt < maxRetries)
+                await Task.Delay(delayMs * attempt);
+        }
+        catch (TaskCanceledException)
+        {
+            plugin?.logger?.Error("Download request timed out.");
+            if (attempt < maxRetries)
+                await Task.Delay(delayMs * attempt);
+        }
+        catch (Exception ex)
+        {
+            plugin?.logger?.Error($"Unexpected error: {ex.Message}");
+            break;
+        }
+    }
+    return galleryImage;
+}
+        public static async Task<byte[]> FetchUrlImageBytes(string url)
+        {
+            
+            try
+            {
+                using (HttpClientHandler handler = new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                })
+                using (HttpClient client = new HttpClient(handler))
+                {
+                    client.Timeout = TimeSpan.FromSeconds(10); // Set a timeout of 10 seconds
+                    // Download the image as a byte array
+                    byte[] imageBytes = await client.GetByteArrayAsync(url);
+                    return imageBytes;
+                }
+            }
+            catch (Exception ex)
+            {
+                plugin?.logger?.Error($"Error fetching image bytes: {ex.Message}");
+                return Array.Empty<byte>();
+            }
+        }
+        public static async Task<IDalamudTextureWrap> DownloadElementImage(bool self, string url, ImageElement element)
+        {
+            
+            IDalamudTextureWrap image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+            try
+            {
+                if (Plugin.TextureProvider == null)
+                {
+                    plugin?.logger?.Error("TextureProvider is not initialized.");
+                }
+                else
+                {
+                    using (HttpClientHandler handler = new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                    })
+                    using (HttpClient client = new HttpClient(handler))
+                    {
+                        client.Timeout = TimeSpan.FromSeconds(10); // Set a timeout of 10 seconds
+
+
+                        // Download the image as a byte array
+                        byte[] imageBytes = await client.GetByteArrayAsync(url);
+
+                        using (MemoryStream ms = new MemoryStream(imageBytes))
+                        {
+                            Image baseImage = Image.FromStream(ms);
+
+                            // Convert scaled image to byte array
+                            byte[] scaledImageBytes = ImageToByteArray(baseImage);
+                            element.bytes = scaledImageBytes; // Store the byte array in the element
+
+                            // If self is true, process for ProfileWindow, else for TargetWindow
+                            var img = await Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes);
+                            element.textureWrap = img;
+                            image = img;
+                            return image;
                         }
                     }
+
                 }
             }
             catch (HttpRequestException httpEx)
             {
-                plugin.logger.Error($"HTTP Request Error: {httpEx.Message}");
+                plugin?.logger?.Error($"HTTP Request Error: {httpEx.Message}");
             }
             catch (TaskCanceledException)
             {
-                plugin.logger.Error("Download request timed out.");
+                plugin?.logger?.Error("Download request timed out.");
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Unexpected error: {ex.Message}");
+                plugin?.logger?.Error($"Unexpected error: {ex.Message}");
             }
+            return image;
         }
 
 
 
-       
 
         static string GetFileExtensionFromContentType(string contentType)
         {
@@ -140,6 +281,7 @@ namespace AbsoluteRoleplay.Helpers
 
         public static async Task<bool> IsImageUrlAsync(string url)
         {
+            
             if (string.IsNullOrWhiteSpace(url))
                 return false;
 

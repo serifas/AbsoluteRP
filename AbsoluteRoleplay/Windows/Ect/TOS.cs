@@ -44,37 +44,42 @@ namespace AbsoluteRoleplay.Windows.Ect
         }
         public override async void Draw()
         {
-            //draw TOS
-            Misc.SetTitle(pg, true, "Terms of Service", ImGuiColors.TankBlue);
-            ImGuiHelpers.SafeTextWrapped(ToS1);
-            ImGuiHelpers.SafeTextWrapped(ToS2);
-            //draw rules
-            Misc.SetTitle(pg, true, "Rules", ImGuiColors.TankBlue);
-            ImGuiHelpers.SafeTextWrapped(Rules1);
-            ImGuiHelpers.SafeTextWrapped(Rules2);
-
-            var windowSize = ImGui.GetWindowSize();
-
-
-            var buttonSize = ImGui.CalcTextSize("I Agree") + new Vector2(30, 30);
-            float xPos = (windowSize.X - buttonSize.X) / 2;
-            ImGui.SetCursorPosX(xPos);
-            ImGui.Checkbox("I Agree##Agree", ref Agreed);
-
-            using (OtterGui.Raii.ImRaii.Disabled(!Agreed))
+            try
             {
+                //draw TOS
+                Misc.SetTitle(pg, true, "Terms of Service", ImGuiColors.TankBlue);
+                ImGuiHelpers.SafeTextWrapped(ToS1);
+                ImGuiHelpers.SafeTextWrapped(ToS2);
+                //draw rules
+                Misc.SetTitle(pg, true, "Rules", ImGuiColors.TankBlue);
+                ImGuiHelpers.SafeTextWrapped(Rules1);
+                ImGuiHelpers.SafeTextWrapped(Rules2);
+
+                var windowSize = ImGui.GetWindowSize();
+
+
+                var buttonSize = ImGui.CalcTextSize("I Agree") + new Vector2(30, 30);
+                float xPos = (windowSize.X - buttonSize.X) / 2;
                 ImGui.SetCursorPosX(xPos);
-                if (ImGui.Button("Submit"))
+                ImGui.Checkbox("I Agree##Agree", ref Agreed);
+
+                using (OtterGui.Raii.ImRaii.Disabled(!Agreed))
                 {
-                    pg.Configuration.TOSVersion = version;
-                    pg.Configuration.Save();
-                    pg.LoadConnection();
-                    this.IsOpen = false;
+                    ImGui.SetCursorPosX(xPos);
+                    if (ImGui.Button("Submit"))
+                    {
+                        pg.Configuration.TOSVersion = version;
+                        pg.Configuration.Save();
+                        pg.LoadConnection();
+                        this.IsOpen = false;
+                    }
                 }
             }
-            
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("TOS Draw Error: " + ex.Message);
+            }
         }
-
         public void Dispose()
         {
 

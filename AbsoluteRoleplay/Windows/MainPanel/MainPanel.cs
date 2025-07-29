@@ -5,10 +5,10 @@ using ImGuiNET;
 using Networking;
 using Dalamud.Utility;
 using Dalamud.Interface.Textures.TextureWraps;
-using AbsoluteRoleplay.Windows.MainPanel.MainPanelTabs.LoggedInTabs;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.MainPanel.Views;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Listings;
+using Dalamud.Interface.Utility.Raii;
+using AbsoluteRoleplay.Helpers;
 namespace AbsoluteRoleplay.Windows.MainPanel;
 
 public class MainPanel : Window, IDisposable
@@ -104,99 +104,125 @@ public class MainPanel : Window, IDisposable
 
     public void Dispose()
     {
-
+        WindowOperations.SafeDispose(kofiBtnImg);
+        WindowOperations.SafeDispose(discoBtn);
+        WindowOperations.SafeDispose(patreonBtn);
+        WindowOperations.SafeDispose(profileSectionImage);
+        WindowOperations.SafeDispose(eventsSectionImage);
+        WindowOperations.SafeDispose(systemsSectionImage);
+        WindowOperations.SafeDispose(connectionsSectionImage);
+        WindowOperations.SafeDispose(profileImage);
+        WindowOperations.SafeDispose(npcImage);
+        WindowOperations.SafeDispose(profileBookmarkImage);
+        WindowOperations.SafeDispose(npcBookmarkImage);
+        WindowOperations.SafeDispose(reconnectImage);
+        WindowOperations.SafeDispose(listingsEvent);
+        WindowOperations.SafeDispose(listingsCampaign);
+        WindowOperations.SafeDispose(listingsFC);
+        WindowOperations.SafeDispose(listingsGroup);
+        WindowOperations.SafeDispose(listingsVenue);
+        WindowOperations.SafeDispose(listingsPersonal);
+        WindowOperations.SafeDispose(combatImage);  
+        WindowOperations.SafeDispose(statSystemImage);
     }
     public override void Draw()
     {
-        paddingX = ImGui.GetWindowSize().X / 12;
-        ButtonSize = new Vector2(ImGui.GetIO().FontGlobalScale / 0.005f);
-        buttonWidth = ButtonSize.X / 2 - paddingX;
-        buttonHeight =ButtonSize.Y / 5f;
+        try
+        {
+            paddingX = ImGui.GetWindowSize().X / 12;
+            ButtonSize = new Vector2(ImGui.GetIO().FontGlobalScale / 0.005f);
+            buttonWidth = ButtonSize.X / 2 - paddingX;
+            buttonHeight = ButtonSize.Y / 5f;
 
-        centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
-        // can't ref a property, so use a local copy
-        if (login == true)
-        {
-            Login.LoadLogin(pluginInstance);
-        }
-        if (forgot == true)
-        {
-            Forgot.LoadForgot(pluginInstance);
-        }
-        if (register == true)
-        {
-            Register.LoadRegistration(pluginInstance);          
-        }
-        if (loggedIn == true)
-        {
-            LoggedIn.LoadLoggedIn(pluginInstance);
-        }
-        if (viewProfile == true)
-        {
-           ProfilesView.LoadProfilesView(pluginInstance);
-        }
-        if(viewListings == true)
-        {
-            ListingsView.LoadListingsView(pluginInstance);
-        }
-
-        if (pluginInstance.Configuration.showKofi)
-        {
-            var currentCursorY = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, currentCursorY));
-            if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+            centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
+            // can't ref a property, so use a local copy
+            if (login == true)
             {
-                Util.OpenLink("https://ko-fi.com/absoluteroleplay");
+                Login.LoadLogin(pluginInstance);
             }
-        }
-        if (pluginInstance.Configuration.showPatreon == true)
-        {
-            var patreonPos = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
-            if (ImGui.ImageButton(patreonBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+            if (forgot == true)
             {
-                Util.OpenLink("https://patreon.com/AbsoluteRoleplay");
+                Forgot.LoadForgot(pluginInstance);
             }
-        }
-        if (pluginInstance.Configuration.showDisc == true)
-        {
-            var discPos = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, discPos));
-            if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+            if (register == true)
             {
-                Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                Register.LoadRegistration(pluginInstance);
             }
-        }
-
-        if (viewProfile == true || viewSystems == true || viewEvents == true || viewConnections == true || viewListings == true)
-        {
-            if (ImGui.Button("Back"))
+            if (loggedIn == true)
             {
-                loggedIn = CurrentElement();
+                LoggedIn.LoadLoggedIn(pluginInstance);
             }
-        }
 
-        if (loggedIn == false && viewProfile == false && viewListings == false)
-        {
-            var serverStatusPosY = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
-        }
-        ImGui.TextColored(serverStatusColor, serverStatus);
-        ImGui.SameLine();
-        if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
-        {
-            ClientTCP.AttemptConnect();
-            pluginInstance.UpdateStatus();
-        }
-        if (loggedIn == false && viewProfile == false && viewListings == false)
-        {
-            var statusPosY = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(centeredX, statusPosY));
-        }
-        ImGui.PushStyleColor(ImGuiCol.Text, statusColor);
-        ImGui.TextWrapped(status);
-        ImGui.PopStyleColor();
+            if (pluginInstance.Configuration.showKofi)
+            {
+                var currentCursorY = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 14, currentCursorY));
+                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                {
+                    Util.OpenLink("https://ko-fi.com/absoluteroleplay");
+                }
+            }
+            if (pluginInstance.Configuration.showPatreon == true)
+            {
+                var patreonPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
+                if (ImGui.ImageButton(patreonBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                {
+                    Util.OpenLink("https://patreon.com/AbsoluteRoleplay");
+                }
+            }
+            if (pluginInstance.Configuration.showDisc == true)
+            {
+                var discPos = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(buttonWidth / 14, discPos));
+                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                {
+                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                }
+            }
 
+
+            if (loggedIn == false && viewProfile == false && viewListings == false)
+            {
+                var serverStatusPosY = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
+            }
+            ImGui.TextColored(serverStatusColor, serverStatus);
+            ImGui.SameLine();
+            if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+            {
+                ClientTCP.AttemptConnect();
+                pluginInstance.UpdateStatus();
+            }
+            if (loggedIn == false && viewProfile == false && viewListings == false)
+            {
+                var statusPosY = ImGui.GetCursorPosY();
+                ImGui.SetCursorPos(new Vector2(centeredX, statusPosY));
+            }
+            using (ImRaii.PushColor(ImGuiCol.Text, statusColor))
+            {
+                ImGui.TextWrapped(status);
+            }
+            ImGui.SameLine();
+            if (loggedIn == true)
+            {
+                if (ImGui.Button("Logout", new Vector2(buttonWidth, buttonHeight / 2f)))
+                {
+                    pluginInstance.newConnection = false;
+                    pluginInstance.CloseAllWindows();
+                    pluginInstance.OpenMainPanel();
+                    login = CurrentElement();
+                    status = "Logged Out";
+                    statusColor = new Vector4(255, 0, 0, 255);
+                }
+            }
+
+        } catch (Exception e)
+        {
+            Plugin.plugin.logger.Error("MainPanel Draw Error: " + e.Message);
+            Plugin.plugin.logger.Error(e.StackTrace);
+
+        }
 
     }
     public static bool CurrentElement()

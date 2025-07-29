@@ -6,6 +6,7 @@ using Networking;
 using Dalamud.Interface.Colors;
 using OtterGui;
 using AbsoluteRoleplay.Defines;
+using OtterGui.Extensions;
 
 namespace AbsoluteRoleplay.Windows.Moderator
 {
@@ -38,40 +39,48 @@ namespace AbsoluteRoleplay.Windows.Moderator
         }
         public override void Draw()
         {
-            if (pg.IsOnline())
+            try
             {
-                Misc.SetTitle(pg, true, "Moderator Panel", ImGuiColors.TankBlue);
-                DrawActionSelection();
-                ImGui.Text("Message to user:");
-                ImGui.InputTextMultiline("##message", ref moderatorMessage, 4000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 4));
+                if (pg.IsOnline())
+                {
+                    Misc.SetTitle(pg, true, "Moderator Panel", ImGuiColors.TankBlue);
+                    DrawActionSelection();
+                    ImGui.Text("Message to user:");
+                    ImGui.InputTextMultiline("##message", ref moderatorMessage, 4000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 4));
 
-                if (ImGui.Button("Add Notes"))
-                {
-                    addNotes = true;
-                }
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip("This is only visible to moderators");
-                }
-                if (addNotes)
-                {
-                    ImGui.Text("Moderator notes:");
-                    ImGui.InputTextMultiline("##modnotes", ref moderatorNotes, 2000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 4));
-                }
-                Vector2 Size = ImGui.CalcTextSize("Submit");
-                float centeredX = (ImGui.GetWindowSize().X - Size.X) / 2.0f;
-                if (Misc.DrawCenteredButton(centeredX, new Vector2(Size.X + 2, Size.Y), "Submit"))
-                {
-                    submitted = true;
-                }
-                if(submitted == true)
-                {
-                    DrawConfirmation();
-                }
-                ImGui.TextColored(statusColor, status);
+                    if (ImGui.Button("Add Notes"))
+                    {
+                        addNotes = true;
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("This is only visible to moderators");
+                    }
+                    if (addNotes)
+                    {
+                        ImGui.Text("Moderator notes:");
+                        ImGui.InputTextMultiline("##modnotes", ref moderatorNotes, 2000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 4));
+                    }
+                    Vector2 Size = ImGui.CalcTextSize("Submit");
+                    float centeredX = (ImGui.GetWindowSize().X - Size.X) / 2.0f;
+                    if (Misc.DrawCenteredButton(centeredX, new Vector2(Size.X + 2, Size.Y), "Submit"))
+                    {
+                        submitted = true;
+                    }
+                    if (submitted == true)
+                    {
+                        DrawConfirmation();
+                    }
+                    ImGui.TextColored(statusColor, status);
 
+                }
             }
-
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("ModPanel Draw Error: " + ex.Message);
+                status = "An error occurred while processing your request.";
+                statusColor = new Vector4(1, 0, 0, 1); // Red color for error
+            }
         }
         public static void DrawConfirmation()
         {

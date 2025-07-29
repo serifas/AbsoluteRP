@@ -1,3 +1,5 @@
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using ImGuiNET;
 using Networking;
 using System;
@@ -17,16 +19,20 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             MainPanel.loggedIn = MainPanel.CurrentElement();
             var buttonWidth = MainPanel.buttonWidth;
             var buttonHeight = MainPanel.buttonHeight;
-            #region PROFILES
+           
             if (ImGui.ImageButton(MainPanel.profileSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
-                MainPanel.viewProfile = MainPanel.CurrentElement();
+                if (pluginInstance.IsOnline())
+                {
+                    Story.storyTitle = string.Empty;
+                    ProfileWindow.oocInfo = string.Empty;
+                    pluginInstance.OpenAndLoadProfileWindow();
+                }
             }
             if (ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Profiles");
+                ImGui.SetTooltip("Manage your profiles");
             }
-            #endregion
             ImGui.SameLine();
             if (ImGui.ImageButton(MainPanel.connectionsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
             {
@@ -37,16 +43,16 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
                 ImGui.SetTooltip("Connections");
             }
 
-            using (OtterGui.Raii.ImRaii.Disabled(true))
+            using (OtterGui.Raii.ImRaii.Disabled(false))
             {
                 if (ImGui.ImageButton(MainPanel.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
-                    MainPanel.viewListings = MainPanel.CurrentElement();
+                    Plugin.plugin.OpenListingsWindow();
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
-                ImGui.SetTooltip("Listings - WIP");
+                ImGui.SetTooltip("Public Profiles");
             }
             ImGui.SameLine();
 
@@ -54,15 +60,25 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             {
                 if (ImGui.ImageButton(MainPanel.systemsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
                 {
-                    // viewConnections = true;
-                    // viewMainWindow = false;
+
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip("Systems - WIP");
             }
-            
+
+            var bookmarksPos = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, bookmarksPos));
+            if (ImGui.Button("Bookmarks", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+            {
+                if (pluginInstance.IsOnline())
+                {
+                    DataSender.RequestBookmarks();
+                    pluginInstance.OpenBookmarksWindow();
+                }
+
+            }
             var chatPos = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(buttonWidth / 14, chatPos));
             if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
@@ -77,17 +93,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             {
                 pluginInstance.OpenOptionsWindow();
             }
-            var logoutPos = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(buttonWidth / 14, logoutPos));
-            if (ImGui.Button("Logout", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
-            {
-                pluginInstance.newConnection = false;
-                pluginInstance.CloseAllWindows();
-                pluginInstance.OpenMainPanel();
-                MainPanel.login = MainPanel.CurrentElement();
-                MainPanel.status = "Logged Out";
-                MainPanel.statusColor = new Vector4(255, 0, 0, 255);
-            }
+          
         }
     }
 }

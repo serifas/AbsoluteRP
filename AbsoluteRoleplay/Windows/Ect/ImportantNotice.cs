@@ -30,11 +30,17 @@ namespace AbsoluteRoleplay.Windows.Ect
         }
         public override async void Draw()
         {
-            //draw TOS
-            Misc.SetTitle(pg, true, messageTitle, ImGuiColors.DPSRed);
-            ImGuiHelpers.SafeTextWrapped(moderatorMessage);            
+            try
+            {
+                //draw TOS
+                Misc.SetTitle(pg, true, messageTitle, ImGuiColors.DPSRed);
+                ImGuiHelpers.SafeTextWrapped(moderatorMessage);
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("ImportantNotice Draw Error: " + ex.Message);
+            }
         }
-
         public void Dispose()
         {
 

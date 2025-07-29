@@ -1,7 +1,23 @@
+using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Game.ClientState;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.Gui;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Interface;
+using Dalamud.Interface.Colors;
+using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.Internal;
+using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
 using ImGuiNET;
+using ImGuiNET;
+using Networking;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,20 +27,7 @@ using System.Numerics;
 using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using static Dalamud.Interface.Windowing.Window;
-using Dalamud.Interface;
-using Dalamud.Interface.Colors;
-using Dalamud.Interface.GameFonts;
-using Dalamud.Interface.ImGuiFileDialog;
-using ImGuiNET;
 using static Lumina.Data.Files.ScdFile;
-using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.Gui;
-using Dalamud.Game.ClientState;
-using Networking;
-using Dalamud.Plugin.Services;
-using Dalamud.Interface.Internal;
-using Dalamud.Interface.Textures.TextureWraps;
 
 namespace AbsoluteRoleplay.Windows.Ect
 {
@@ -51,10 +54,20 @@ namespace AbsoluteRoleplay.Windows.Ect
 
         public override void Draw()
         {
-            (var scaledWidth, var scaledHeight) = CalculateScaledDimensions();
+            try
+            {
 
-            // Here you would render the texture at the calculated width and height
-            ImGui.Image(PreviewImage.ImGuiHandle, new Vector2(scaledWidth, scaledHeight));
+                (var scaledWidth, var scaledHeight) = CalculateScaledDimensions();
+                if(PreviewImage.ImGuiHandle != null && PreviewImage.ImGuiHandle != IntPtr.Zero)
+                {
+                    // Here you would render the texture at the calculated width and height
+                    ImGui.Image(PreviewImage.ImGuiHandle, new Vector2(scaledWidth, scaledHeight));
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("ImagePreview Draw Error: " + ex.Message);
+            }
         }
         private void GetImGuiWindowDimensions(out int width, out int height)
         {
@@ -94,7 +107,10 @@ namespace AbsoluteRoleplay.Windows.Ect
         public void Dispose()
         {
             WindowOpen = false;
-            PreviewImage?.Dispose();
+            if(PreviewImage != null && PreviewImage.ImGuiHandle != IntPtr.Zero)
+            {
+               WindowOperations.SafeDispose(PreviewImage);
+            }
         }
 
 
