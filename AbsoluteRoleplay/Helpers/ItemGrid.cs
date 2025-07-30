@@ -17,8 +17,22 @@ namespace AbsoluteRoleplay.Helpers
 
         // Global drag-and-drop state
         private static int? DraggedItemSlot = null;
-        private static Dictionary<int, ItemDefinition> DraggedSlotContents = null;
+        private static Dictionary<int, ItemDefinition> DraggedSlotContents = null; 
+        
+        private static readonly Dictionary<int, IDalamudTextureWrap> IconCache = new();
+        private static readonly HashSet<int> LoadingIcons = new();
 
+        private static async Task PreloadIconAsync(Plugin plugin, int iconID)
+        {
+            if (IconCache.ContainsKey(iconID) || LoadingIcons.Contains(iconID))
+                return;
+
+            LoadingIcons.Add(iconID);
+            var texture = await WindowOperations.RenderIconAsync(plugin, iconID);
+            if (texture != null)
+                IconCache[iconID] = texture;
+            LoadingIcons.Remove(iconID);
+        }
         public static void DrawGrid(Plugin plugin, InventoryLayout layout, string targetPlayerName, string targetPlayerWorld, bool isTrade)
         {
             int hoveredSlotIndex = -1;
@@ -75,7 +89,18 @@ namespace AbsoluteRoleplay.Helpers
                     bool hasTradeItem = layout.tradeSlotContents.ContainsKey(slotIndex) && layout.tradeSlotContents[slotIndex].name != string.Empty;
                     if (hasTradeItem)
                     {
-                        ImGui.Image(WindowOperations.RenderIconAsync(plugin, layout.tradeSlotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
+                        int iconID = layout.tradeSlotContents[slotIndex].iconID;
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                        {
+                            ImGui.Image(texture.ImGuiHandle, cellSize);
+                        }
+                        else
+                        {
+                            // Optionally show a placeholder image
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
+                            // Start async load if not already loading
+                            _ = PreloadIconAsync(plugin, iconID);
+                        }
                     }
 
                     ImGui.SetCursorScreenPos(cellPos);
@@ -218,7 +243,18 @@ namespace AbsoluteRoleplay.Helpers
                                        layout.traderSlotContents[slotIndex].name != string.Empty;
                     if (hasRecvItem)
                     {
-                        ImGui.Image(WindowOperations.RenderIconAsync(plugin, layout.traderSlotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
+                        int iconID = layout.traderSlotContents[slotIndex].iconID;
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                        {
+                            ImGui.Image(texture.ImGuiHandle, cellSize);
+                        }
+                        else
+                        {
+                            // Optionally show a placeholder image
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
+                            // Start async load if not already loading
+                            _ = PreloadIconAsync(plugin, iconID);
+                        }
                     }
 
                     ImGui.SetCursorScreenPos(cellPos);
@@ -274,7 +310,18 @@ namespace AbsoluteRoleplay.Helpers
                     {
                         if (hasInvItem)
                         {
-                            ImGui.Image(WindowOperations.RenderIconAsync(plugin, layout.inventorySlotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
+                            int iconID = layout.inventorySlotContents[slotIndex].iconID;
+                            if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                            {
+                                ImGui.Image(texture.ImGuiHandle, cellSize);
+                            }
+                            else
+                            {
+                                // Optionally show a placeholder image
+                                ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
+                                // Start async load if not already loading
+                                _ = PreloadIconAsync(plugin, iconID);
+                            }
                         }
                     }
                     catch (Exception ex)
@@ -293,7 +340,20 @@ namespace AbsoluteRoleplay.Helpers
                     if (ImGui.IsItemHovered() && hasInvItem)
                     {
                         ImGui.BeginTooltip();
-                        ImGui.Image(WindowOperations.RenderIconAsync(plugin, layout.inventorySlotContents[slotIndex].iconID).Result.ImGuiHandle, cellSize);
+
+
+                        int iconID = layout.inventorySlotContents[slotIndex].iconID;
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                        {
+                            ImGui.Image(texture.ImGuiHandle, cellSize);
+                        }
+                        else
+                        {
+                            // Optionally show a placeholder image
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
+                            // Start async load if not already loading
+                            _ = PreloadIconAsync(plugin, iconID);
+                        }
 
                         Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name);
                         ImGui.Separator();

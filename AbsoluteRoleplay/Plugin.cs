@@ -333,6 +333,7 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
                     OpenTargetWindow();
+                    TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(false, -1, name, worldname, -1);
                 },
             });
@@ -364,6 +365,7 @@ namespace AbsoluteRoleplay
                 OnClicked = _ => {
 
                     OpenTargetWindow();
+                    TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });

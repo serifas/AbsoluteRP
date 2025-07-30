@@ -109,7 +109,8 @@ namespace AbsoluteRoleplay.Windows.Ect
             WindowOpen = false;
             if(PreviewImage != null && PreviewImage.ImGuiHandle != IntPtr.Zero)
             {
-               WindowOperations.SafeDispose(PreviewImage);
+                WindowOperations.SafeDispose(PreviewImage);
+                PreviewImage = null;
             }
         }
 

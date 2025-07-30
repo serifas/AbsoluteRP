@@ -184,16 +184,19 @@ namespace AbsoluteRoleplay.Windows.Profiles
             foreach(var inventory in inventoryLayout.tradeSlotContents)
             {
                 WindowOperations.SafeDispose(inventory.Value?.iconTexture);
+                inventory.Value.iconTexture = null;
             }
             inventoryLayout.tradeSlotContents.Clear();
             foreach(var inventory in inventoryLayout.inventorySlotContents)
             {
                 WindowOperations.SafeDispose(inventory.Value?.iconTexture);            
+                inventory.Value.iconTexture = null;
             }
             inventoryLayout.inventorySlotContents.Clear();
             foreach(var inventory in inventoryLayout.traderSlotContents)
             {
                 WindowOperations.SafeDispose(inventory.Value?.iconTexture);
+                inventory.Value.iconTexture = null;
             }
         }
     }

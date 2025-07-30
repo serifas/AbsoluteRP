@@ -285,6 +285,7 @@ namespace Networking
             try
             {
                 WindowOperations.SafeDispose(sslStream);
+                sslStream = null;
             }
             catch { }
             sslStream = null;
@@ -297,6 +298,7 @@ namespace Networking
             try
             {
                 WindowOperations.SafeDispose(clientSocket);
+                clientSocket = null;
             }
             catch { }
             clientSocket = null;

@@ -80,18 +80,20 @@ namespace AbsoluteRoleplay.Windows.Ect
             {
                 if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(plugin, false, profile.title, profile.titleColor);
                 if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
-                if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text($"NAME: {profile.Name}");
-                if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: {profile.Race}");
-                if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: {profile.Gender}");
-                if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: {profile.Age}");
-                if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT: {profile.Height}");
-                if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: {profile.Weight}");
+                if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text("NAME: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Name);
+                if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Race);
+                if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Gender);
+                if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Age);
+                if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT:  "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Height);
+                if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Weight);
                 if (config.tooltip_ShowCustomDescriptors)
                 {
                     foreach (descriptor descriptor in descriptors)
                     {
                         ImGui.Spacing();
-                        ImGui.Text(descriptor.name.ToUpper() + ": " + descriptor.description);
+                        ImGui.Text(descriptor.name.ToUpper() + ": ");
+                        ImGui.SameLine();
+                        Misc.RenderHtmlColoredTextInline(descriptor.description);
                     }
                 }             
                 if (config.tooltip_showAlignment)
@@ -101,7 +103,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                         ImGui.Text("ALIGNMENT:");
                         ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
                         ImGui.SameLine();
-                        ImGui.Text(UI.AlignmentName(profile.Alignment));
+                        Misc.RenderHtmlColoredTextInline(UI.AlignmentName(profile.Alignment));
                     }
                 }
                 if (config.tooltip_showPersonalityTraits)
@@ -113,19 +115,19 @@ namespace AbsoluteRoleplay.Windows.Ect
                         {
                             ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            ImGui.Text(UI.PersonalityNames(profile.Personality_1));
+                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_1));
                         }
                         if (showPersonality2 == true)
                         {
                             ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            ImGui.Text(UI.PersonalityNames(profile.Personality_2));
+                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_2));
                         }
                         if (showPersonality3 == true)
                         {
                             ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            ImGui.Text(UI.PersonalityNames(profile.Personality_3));
+                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_3));
                         }
 
 
@@ -136,7 +138,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                         {
                             ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            ImGui.Text(personality.name);
+                            Misc.RenderHtmlColoredTextInline(personality.name);
                         }
                     }
                 }
@@ -168,12 +170,17 @@ namespace AbsoluteRoleplay.Windows.Ect
             try
             {
                 WindowOperations.SafeDispose(alignmentImg);
+                alignmentImg = null;
                 WindowOperations.SafeDispose(personality_1Img);
+                personality_1Img = null;
                 WindowOperations.SafeDispose(personality_2Img);
+                personality_2Img = null;
                 WindowOperations.SafeDispose(personality_3Img);
-                foreach(trait personality in personalities)
+                personality_3Img = null;
+                foreach (trait personality in personalities)
                 {
                     WindowOperations.SafeDispose(personality.icon.icon);
+                    personality.icon.icon = null;
                 }
                 // If you have other IDisposable fields, dispose them here with null checks
                 // If you have lists of IDisposable, iterate and dispose each with null checks

@@ -33,6 +33,7 @@ namespace AbsoluteRoleplay
     {
         public int index {  get; set; }
         public IDalamudTextureWrap avatar;
+        public IDalamudTextureWrap background;
         public string title { get; set; }
         public Vector4 titleColor { get; set; }
         public bool isPrivate { get; set; }
@@ -55,10 +56,12 @@ namespace AbsoluteRoleplay
         public List<descriptor> descriptors { get; set; } = new List<descriptor>();
         public List<trait> traits { get; set; } = new List<trait>();
         public List<CustomTab> customTabs { get; set; } = new List<CustomTab>();
+       
         public string OOC { get; set; }
     
     }
 
+    
     public class RosterLayout : CustomLayout
     {
         public int tabIndex { get; set; } = 0;

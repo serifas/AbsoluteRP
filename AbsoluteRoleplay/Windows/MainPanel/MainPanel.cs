@@ -105,25 +105,45 @@ public class MainPanel : Window, IDisposable
     public void Dispose()
     {
         WindowOperations.SafeDispose(kofiBtnImg);
+        kofiBtnImg = null;
         WindowOperations.SafeDispose(discoBtn);
+        discoBtn = null;
         WindowOperations.SafeDispose(patreonBtn);
+        patreonBtn = null;
         WindowOperations.SafeDispose(profileSectionImage);
+        profileSectionImage = null;
         WindowOperations.SafeDispose(eventsSectionImage);
+        eventsSectionImage = null;
         WindowOperations.SafeDispose(systemsSectionImage);
+        systemsSectionImage = null;
         WindowOperations.SafeDispose(connectionsSectionImage);
+        connectionsSectionImage = null;
         WindowOperations.SafeDispose(profileImage);
+        profileImage = null;
         WindowOperations.SafeDispose(npcImage);
+        npcImage = null;
         WindowOperations.SafeDispose(profileBookmarkImage);
+        profileBookmarkImage = null;
         WindowOperations.SafeDispose(npcBookmarkImage);
+        npcBookmarkImage = null;
         WindowOperations.SafeDispose(reconnectImage);
+        reconnectImage = null;
         WindowOperations.SafeDispose(listingsEvent);
+        listingsEvent = null;
         WindowOperations.SafeDispose(listingsCampaign);
+        listingsCampaign = null;
         WindowOperations.SafeDispose(listingsFC);
+        listingsFC = null;
         WindowOperations.SafeDispose(listingsGroup);
+        listingsGroup = null;
         WindowOperations.SafeDispose(listingsVenue);
+        listingsVenue = null;
         WindowOperations.SafeDispose(listingsPersonal);
+        listingsPersonal = null;
         WindowOperations.SafeDispose(combatImage);  
+        combatImage = null;
         WindowOperations.SafeDispose(statSystemImage);
+        statSystemImage = null;
     }
     public override void Draw()
     {

@@ -69,12 +69,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                  
                                 if (ImGui.Button(profileList[i].ProfileName))
                                 {
-                                        ReportWindow.reportCharacterName = profileList[i].PlayerName;
-                                        ReportWindow.reportCharacterWorld = profileList[i].PlayerWorld;
-                                        TargetProfileWindow.characterName = profileList[i].PlayerName;
-                                        TargetProfileWindow.characterWorld = profileList[i].PlayerWorld;
-                                        Plugin.plugin.OpenTargetWindow();
-                                        DataSender.FetchProfile(false, -1, profileList[i].PlayerName, profileList[i].PlayerWorld, -1);
+                                    Plugin.plugin.OpenTargetWindow();
+                                    ReportWindow.reportCharacterName = profileList[i].PlayerName;
+                                    ReportWindow.reportCharacterWorld = profileList[i].PlayerWorld;
+                                    TargetProfileWindow.characterName = profileList[i].PlayerName;
+                                    TargetProfileWindow.characterWorld = profileList[i].PlayerWorld;
+                                    TargetProfileWindow.ResetAllData();
+                                    DataSender.FetchProfile(false, -1, profileList[i].PlayerName, profileList[i].PlayerWorld, -1);
                                 }
 
                                 ImGui.SameLine();

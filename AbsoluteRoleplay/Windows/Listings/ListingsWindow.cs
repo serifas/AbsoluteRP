@@ -1,4 +1,4 @@
-﻿using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -106,6 +106,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                     if (ImGui.Button($"View##{listing.id}"))
                     {
                         Plugin.plugin.OpenTargetWindow();
+                        TargetProfileWindow.ResetAllData();
                         DataSender.FetchProfile(false, -1, string.Empty, string.Empty, listing.id);
                     }
                 }
@@ -149,6 +150,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             foreach(Listing listing in listings)
             {
                 WindowOperations.SafeDispose(listing.avatar);
+                listing.avatar = null;
             }
         }
     }

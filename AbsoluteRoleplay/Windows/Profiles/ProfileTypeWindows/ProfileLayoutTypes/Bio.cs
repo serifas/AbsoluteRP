@@ -48,149 +48,242 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         private static bool firstLoad = true;
         public static void RenderBioPreview(BioLayout layout, Vector4 titleColor)
         {
-            if (!string.IsNullOrEmpty(layout.name) && layout.name != "New Profile")
+            try
             {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("NAME:   ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(layout.name);
-            }
-            if (!string.IsNullOrEmpty(layout.race))
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("RACE:   ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(layout.race);
-            }
-            if (!string.IsNullOrEmpty(layout.gender))
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("GENDER:   ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(layout.gender);
-            }
-            if (!string.IsNullOrEmpty(layout.age))
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("AGE:   ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(layout.age);
-            }
-            if (!string.IsNullOrEmpty(layout.height))
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("HEIGHT:   ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(layout.height);
-            }
-            if (!string.IsNullOrEmpty(layout.weight))
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("WEIGHT:   ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(layout.weight);
-            }
-            foreach (var descriptor in layout.descriptors)
-            {
-                ImGui.Spacing();
-                Misc.RenderHtmlColoredTextInline(descriptor.name.ToUpper());
-                ImGui.SameLine();
-                ImGuiHelpers.SafeTextWrapped(": ");
-                ImGui.SameLine();
-                Misc.RenderHtmlColoredTextInline(descriptor.description);
-            }
-            if (!string.IsNullOrEmpty(layout.afg))
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: ");
-                Misc.RenderHtmlColoredTextInline(layout.afg);
-            }
-            if (layout.alignment != 9)
-            {
-                ImGui.Text("ALIGNMENT:");
-                var icon = UI.AlignementIcon(layout.alignment);
-                if (icon != null && icon.ImGuiHandle != IntPtr.Zero)
-                {
-                    ImGui.Image(icon.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 38));
-                    var alignmentVal = UI.AlignmentVals[layout.alignment];
-                    if (ImGui.IsItemHovered())
-                    {
-                        ImGui.SetTooltip($"{alignmentVal.Item1}\n{alignmentVal.Item2}");
-                    }
-                }
-                else
-                {
-                    ImGui.TextColored(new Vector4(1, 0, 0, 1), "Alignment icon not loaded.");
-                }
-            }
-            foreach (field field in layout.fields)
-            {
-                ImGui.Spacing();
-                ImGuiHelpers.SafeTextWrapped(field.name.ToUpper() + ": ");
-                Misc.RenderHtmlColoredTextInline(field.description);
+                // Defensive: Ensure lists are not null
+                var descriptors = layout.descriptors ?? new List<descriptor>();
+                var fields = layout.fields ?? new List<field>();
+                var traits = layout.traits ?? new List<trait>();
 
-            }
-            Vector2 alignmentSize = new Vector2(ImGui.GetIO().FontGlobalScale * 25, ImGui.GetIO().FontGlobalScale * 32);
-            if (layout.personality_1 != 26 || layout.personality_2 != 26 || layout.personality_3 != 26)
-            {
-                ImGui.Spacing();
-                ImGui.TextColored(new Vector4(1, 1, 1, 1), "TRAITS:");
-
-                int[] personalities = { layout.personality_1, layout.personality_2, layout.personality_3 };
-                for (int i = 0; i < personalities.Length; i++)
+                // NAME
+                if (!string.IsNullOrEmpty(layout.name) && layout.name != "New Profile")
                 {
-                    int personalityIdx = personalities[i];
-                    if (personalityIdx == 26)
-                        continue;
-
-                    var icon = UI.PersonalityIcon(personalityIdx);
-                    if (icon == null || icon.ImGuiHandle == IntPtr.Zero)
-                    {
-                        ImGui.TextColored(new Vector4(1, 0, 0, 1), $"Personality icon {i + 1} not loaded.");
-                        continue;
-                    }
-                    if (icon.ImGuiHandle != null && icon.ImGuiHandle != IntPtr.Zero)
-                    {
-                        ImGui.Image(icon.ImGuiHandle, alignmentSize);
-                        if (ImGui.IsItemHovered())
-                        {
-                            ImGui.BeginTooltip();
-                            ImGui.SetTooltip(UI.PersonalityNames(personalityIdx));
-                            Misc.RenderHtmlColoredTextInline(UI.PersonalityValues[personalityIdx].Item2);
-                            ImGui.EndTooltip();
-                        }
-                    }
-                    if (i < personalities.Length - 1)
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("NAME:   ");
                     ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(layout.name);
                 }
-            }
-            ImGui.Spacing();
-            using var table = ImRaii.Table("table_name", 3);
-            if (table)
-            {
-                ImGui.TableSetupColumn("Column 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-                ImGui.TableSetupColumn("Column 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-                ImGui.TableSetupColumn("Column 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
-                foreach (trait personality in layout.traits)
+                // RACE
+                if (!string.IsNullOrEmpty(layout.race))
                 {
-                    ImGui.TableNextColumn();
-                    if (personality.icon == null || personality.icon.icon == null || personality.icon.icon.ImGuiHandle == IntPtr.Zero)
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("RACE:   ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(layout.race);
+                }
+                // GENDER
+                if (!string.IsNullOrEmpty(layout.gender))
+                {
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("GENDER:   ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(layout.gender);
+                }
+                // AGE
+                if (!string.IsNullOrEmpty(layout.age))
+                {
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("AGE:   ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(layout.age);
+                }
+                // HEIGHT
+                if (!string.IsNullOrEmpty(layout.height))
+                {
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("HEIGHT:   ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(layout.height);
+                }
+                // WEIGHT
+                if (!string.IsNullOrEmpty(layout.weight))
+                {
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("WEIGHT:   ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(layout.weight);
+                }
+
+                // DESCRIPTORS
+                foreach (var descriptor in descriptors)
+                {
+                    if (descriptor == null) continue;
+                    ImGui.Spacing();
+                    Misc.RenderHtmlColoredTextInline((descriptor.name ?? string.Empty).ToUpper());
+                    ImGui.SameLine();
+                    ImGuiHelpers.SafeTextWrapped(": ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(descriptor.description ?? string.Empty);
+                }
+
+                // AT FIRST GLANCE
+                if (!string.IsNullOrEmpty(layout.afg))
+                {
+                    ImGui.Spacing();
+                    ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: ");
+                    Misc.RenderHtmlColoredTextInline(layout.afg);
+                }
+
+                // ALIGNMENT
+                if (layout.alignment != 9 && layout.alignment >= 0 && layout.alignment <= UI.AlignmentVals.Count())
+                {
+                    ImGui.Text("ALIGNMENT:");
+                    var icon = UI.AlignementIcon(layout.alignment);
+                    if (icon != null)
                     {
-                        ImGui.TextColored(new Vector4(1, 0, 0, 1), "Personality icon not loaded.");
-                        continue;
+                        Plugin.plugin.logger.Debug($"[RenderBioPreview] Alignment icon: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.ImGuiHandle}");
                     }
-                    if (personality.icon.icon.ImGuiHandle != null && personality.icon.icon.ImGuiHandle != IntPtr.Zero)
+                    if (icon != null && icon.ImGuiHandle != IntPtr.Zero)
                     {
-                        ImGui.Image(personality.icon.icon.ImGuiHandle, alignmentSize);
+                        try
+                        {
+                            ImGui.Image(icon.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 38));
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
+                        }
+                        var alignmentVal = UI.AlignmentVals[layout.alignment];
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip($"{alignmentVal.Item1}\n{alignmentVal.Item2}");
+                        }
+                    }
+                    else
+                    {
+                        ImGui.TextColored(new Vector4(1, 0, 0, 1), "Alignment icon not loaded.");
+                    }
+                }
+
+                // FIELDS
+                foreach (var field in fields)
+                {
+                    if (field == null) continue;
+                    ImGui.Spacing();
+                    Misc.RenderHtmlColoredTextInline((field.name ?? string.Empty).ToUpper() + ": ");
+                    Misc.RenderHtmlColoredTextInline(field.description ?? string.Empty);
+                }
+
+                Vector2 alignmentSize = new Vector2(ImGui.GetIO().FontGlobalScale * 25, ImGui.GetIO().FontGlobalScale * 32);
+                // PERSONALITY TRAITS (icons)
+                if ((layout.personality_1 != 26 || layout.personality_2 != 26 || layout.personality_3 != 26)
+                    && UI.PersonalityValues != null && UI.PersonalityValues.Count() > 0)
+                {
+                    ImGui.Spacing();
+                    ImGui.TextColored(new Vector4(1, 1, 1, 1), "TRAITS:");
+
+                    int[] personalities = { layout.personality_1, layout.personality_2, layout.personality_3 };
+                    using (var personalityTable = ImRaii.Table("personality_traits_table", 3))
+                    {
+                        if (personalityTable)
+                        {
+                            ImGui.TableSetupColumn("Personality 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                            ImGui.TableSetupColumn("Personality 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                            ImGui.TableSetupColumn("Personality 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+
+                            ImGui.TableNextRow();
+                            for (int i = 0; i < personalities.Length; i++)
+                            {
+                                ImGui.TableNextColumn();
+                                int personalityIdx = personalities[i];
+                                if (personalityIdx == 26 || personalityIdx < 0 || personalityIdx >= UI.PersonalityValues.Count())
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), $"No trait");
+                                    continue;
+                                }
+
+                                var icon = UI.PersonalityIcon(personalityIdx);
+                                if (icon != null)
+                                {
+                                    Plugin.plugin.logger.Debug($"[RenderBioPreview] Personality icon {i + 1}: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.ImGuiHandle}");
+                                }
+                                if (icon == null || icon.ImGuiHandle == IntPtr.Zero)
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), $"Personality icon {i + 1} not loaded.");
+                                    continue;
+                                }
+                                try
+                                {
+                                    ImGui.Image(icon.ImGuiHandle, alignmentSize);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Plugin.plugin.logger.Error($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
+                                }
+                                if (ImGui.IsItemHovered())
+                                {
+                                    ImGui.BeginTooltip();
+                                    try
+                                    {
+                                        ImGui.Text(UI.PersonalityNames(personalityIdx));
+                                        Misc.RenderHtmlColoredTextInline(UI.PersonalityValues[personalityIdx].Item2);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Plugin.plugin.logger.Error($"RenderBioPreview: Tooltip error: {ex.Message}");
+                                    }
+                                    ImGui.EndTooltip();
+                                }
+                            }
+                        }
+                    }
+                }
+
+                ImGui.Spacing();
+
+                // CUSTOM TRAITS TABLE
+                using var table = ImRaii.Table("table_name", 3);
+                if (table)
+                {
+                    ImGui.TableSetupColumn("Column 1", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                    ImGui.TableSetupColumn("Column 2", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                    ImGui.TableSetupColumn("Column 3", ImGuiTableColumnFlags.WidthFixed, ImGui.GetIO().FontGlobalScale * 25);
+                    foreach (var personality in traits)
+                    {
+                        if (personality == null)
+                        {
+                            ImGui.TableNextColumn();
+                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Trait missing.");
+                            continue;
+                        }
+                        ImGui.TableNextColumn();
+                        var traitIcon = personality.icon?.icon;
+                        if (traitIcon != null)
+                        {
+                            Plugin.plugin.logger.Debug($"[RenderBioPreview] Custom trait icon: {(traitIcon == null ? "null" : traitIcon.ToString())}, Handle: {traitIcon.ImGuiHandle}");
+                        }
+                        if (traitIcon == null || traitIcon.ImGuiHandle == IntPtr.Zero)
+                        {
+                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Personality icon not loaded.");
+                            continue;
+                        }
+                        try
+                        {
+                            ImGui.Image(traitIcon.ImGuiHandle, alignmentSize);
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
+                        }
                         if (ImGui.IsItemHovered())
                         {
                             ImGui.BeginTooltip();
-                            Misc.RenderHtmlColoredTextInline(personality.description);
-                            Misc.RenderHtmlColoredTextInline(personality.description);
+                            try
+                            {
+                                Misc.RenderHtmlColoredTextInline(personality.description ?? string.Empty);
+                            }
+                            catch (Exception ex)
+                            {
+                                Plugin.plugin.logger.Error($"RenderBioPreview: Trait tooltip error: {ex.Message}");
+                            }
                             ImGui.EndTooltip();
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error($"RenderBioPreview: Exception: {ex.Message}");
             }
         }
         public static void RenderBioLayout(int index, string id, BioLayout layout)

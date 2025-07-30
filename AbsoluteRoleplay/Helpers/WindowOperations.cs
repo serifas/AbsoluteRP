@@ -467,6 +467,12 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     if (personality != null)
                     {
+                        if(personality.icon != null)
+                        {
+                            SafeDispose(personality.icon.icon);
+                            personality.icon.icon = null;
+                            personality.icon = null;
+                        }
                         personality.icon.icon = selectedStatusIcon;
                         personality.modifying = false;
                         personality.iconID = selectedStatusIconID;
@@ -531,13 +537,13 @@ namespace AbsoluteRoleplay.Helpers
             {
                 try
                 {
-                    disposable.Dispose();
+                    disposable?.Dispose();
                     disposable = null; // Clear reference to help GC
                 }
                 catch (Exception ex)
                 {
                     // Optionally log the exception, or ignore
-                    // Example: Plugin.plugin?.logger?.Error($"Dispose failed: {ex}");
+                    Example: Plugin.plugin?.logger?.Error($"Dispose failed: {ex}");
                 }
             }
             // If obj is null or not IDisposable, do nothing (safe)

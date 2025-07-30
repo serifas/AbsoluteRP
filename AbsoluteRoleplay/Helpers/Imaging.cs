@@ -8,6 +8,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using ImGuiNET;
 using JetBrains.Annotations;
+using Lumina.Data.Files;
 using Networking;
 using OtterGui.Log;
 using System;
@@ -62,11 +63,55 @@ namespace AbsoluteRoleplay.Helpers
             // Use CreateFromImageAsync to create the texture
             return await textureProvider.CreateFromImageAsync(result);
         }
+        public static async Task<IDalamudTextureWrap?> LoadTextureAsync(string gameTexturePath)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(gameTexturePath))
+                {
+                    plugin.logger.Debug("Game texture path is null or empty.");
+                    return null;
+                }
+
+                // Attempt to load the texture file
+                var texFile = Plugin.DataManager.GetFile<TexFile>(gameTexturePath);
+                if (texFile == null)
+                {
+                    plugin.logger.Debug($"TexFile not found for path: {gameTexturePath}");
+                    return null;
+                }
+
+                plugin.logger.Debug($"Successfully loaded TexFile for path: {gameTexturePath}");
+
+                // Create and return the texture
+                var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
+                if (texture == null || texture.ImGuiHandle == IntPtr.Zero)
+                {
+                    texture = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
+                }
+                return texture;
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
+                return null;
+            }
+        }
         public static async Task<ProfileGalleryImage> DownloadProfileImage(
-        bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
+    bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
         {
             Plugin.plugin.logger.Error(url);
-            ProfileGalleryImage galleryImage = new ProfileGalleryImage();
+            var galleryImage = new ProfileGalleryImage
+            {
+                url = url,
+                tooltip = tooltip,
+                nsfw = nsfw,
+                trigger = trigger,
+                image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
+                thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
+                imageBytes = Array.Empty<byte>()
+            };
+
             int maxRetries = 5;
             int delayMs = 1500;
 
@@ -76,111 +121,129 @@ namespace AbsoluteRoleplay.Helpers
                 return galleryImage;
             }
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
+            for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
-            using (HttpClientHandler handler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-            })
-            using (HttpClient client = new HttpClient(handler))
-            {
-                // Download the image as a byte array
-                HttpResponseMessage response = await client.GetAsync(url);
-                if (response.IsSuccessStatusCode)
+                try
                 {
-                    byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
-
-                    using (MemoryStream ms = new MemoryStream(imageBytes))
+                    using (var handler = new HttpClientHandler
                     {
-                        Image baseImage = Image.FromStream(ms);
-
-                        // Convert scaled image to byte array
-                        byte[] scaledImageBytes = ImageToByteArray(baseImage);
-
-                        // If self is true, process for ProfileWindow, else for TargetWindow
-                        var image = await Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes);
-                        Image thumbImage = ScaleImage(baseImage, 200, 200);
-                        byte[] thumbImageBytes = ImageToByteArray(thumbImage);
-
-                        var thumbTexture = await Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes);
-
-                        if (image != null)
+                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                    })
+                    using (var client = new HttpClient(handler))
+                    {
+                        HttpResponseMessage response = await client.GetAsync(url);
+                        if (response.IsSuccessStatusCode)
                         {
-                            if (url.Contains("absolute-roleplay"))
+                            byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
+
+                            using (var ms = new MemoryStream(imageBytes))
+                            using (var baseImage = Image.FromStream(ms))
                             {
-                                url = string.Empty;
+                                // Convert scaled image to byte array
+                                byte[] scaledImageBytes = ImageToByteArray(baseImage);
+
+                                // Create main image texture
+                                var image = await Plugin.TextureProvider.CreateFromImageAsync(scaledImageBytes);
+                                galleryImage.image = image ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                                galleryImage.imageBytes = scaledImageBytes;
+
+                                // Create thumbnail
+                                using (var thumbImage = ScaleImage(baseImage, 200, 200))
+                                {
+                                    byte[] thumbImageBytes = ImageToByteArray(thumbImage);
+                                    var thumbTexture = await Plugin.TextureProvider.CreateFromImageAsync(thumbImageBytes);
+
+                                    // Handle NSFW/trigger thumbnail logic
+                                    if (trigger && !nsfw)
+                                        thumbTexture = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
+                                    else if (nsfw && !trigger)
+                                        thumbTexture = UI.UICommonImage(UI.CommonImageTypes.NSFW);
+                                    else if (nsfw && trigger)
+                                        thumbTexture = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
+
+                                    galleryImage.thumbnail = thumbTexture ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                                }
+                                return galleryImage;
                             }
                         }
-
-                        // Handle NSFW/trigger thumbnail logic
-                        if (trigger && !nsfw)
+                        else if (
+                            response.StatusCode == (HttpStatusCode)429 ||
+                            response.StatusCode == HttpStatusCode.ServiceUnavailable ||
+                            response.StatusCode == HttpStatusCode.GatewayTimeout ||
+                            response.StatusCode == HttpStatusCode.BadGateway ||
+                            response.StatusCode == HttpStatusCode.InternalServerError)
                         {
-                            thumbTexture = UI.UICommonImage(UI.CommonImageTypes.TRIGGER);
+                            plugin?.logger?.Warning($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
+                            await Task.Delay(delayMs * attempt);
+                            continue;
                         }
-                        else if (nsfw && !trigger)
+                        else
                         {
-                            thumbTexture = UI.UICommonImage(UI.CommonImageTypes.NSFW);
+                            plugin?.logger?.Error($"Image download failed with status code: {response.StatusCode}");
+                            break;
                         }
-                        else if (nsfw && trigger)
-                        {
-                            thumbTexture = UI.UICommonImage(UI.CommonImageTypes.NSFWTRIGGER);
-                        }
-                        galleryImage.url = url;
-                        galleryImage.image = image;
-                        galleryImage.tooltip = tooltip;
-                        galleryImage.nsfw = nsfw;
-                        galleryImage.trigger = trigger;
-                        galleryImage.thumbnail = thumbTexture;
-                        galleryImage.imageBytes = scaledImageBytes;
-                        return galleryImage;
                     }
                 }
-
-                        else if (
-                                 response.StatusCode == (HttpStatusCode)429 ||
-                                 response.StatusCode == HttpStatusCode.ServiceUnavailable ||
-                                 response.StatusCode == HttpStatusCode.GatewayTimeout ||
-                                 response.StatusCode == HttpStatusCode.BadGateway ||         // 502
-                                 response.StatusCode == HttpStatusCode.InternalServerError   // 500
-                             )
-                        {
-                    plugin?.logger?.Warning($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
-                    await Task.Delay(delayMs * attempt); // Exponential backoff
-                    continue;
-                }
-                else
+                catch (HttpRequestException httpEx)
                 {
-                    plugin?.logger?.Error($"Image download failed with status code: {response.StatusCode}");
+                    plugin?.logger?.Error($"HTTP Request Error: {httpEx.Message}");
+                    if (attempt < maxRetries)
+                        await Task.Delay(delayMs * attempt);
+                }
+                catch (TaskCanceledException)
+                {
+                    plugin?.logger?.Error("Download request timed out.");
+                    if (attempt < maxRetries)
+                        await Task.Delay(delayMs * attempt);
+                }
+                catch (Exception ex)
+                {
+                    plugin?.logger?.Error($"Unexpected error: {ex.Message}");
                     break;
                 }
-                if (!response.IsSuccessStatusCode)
-                {
-                    plugin?.logger?.Warning($"Non-success status code: {(int)response.StatusCode} ({response.StatusCode})");
-                }
             }
+
+            // If we reach here, loading failed. Ensure safe fallbacks.
+            galleryImage.image = galleryImage.image ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+            galleryImage.thumbnail = galleryImage.thumbnail ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+            galleryImage.imageBytes = galleryImage.imageBytes ?? Array.Empty<byte>();
+            return galleryImage;
         }
-        catch (HttpRequestException httpEx)
+        public static async Task<IDalamudTextureWrap?> SafeLoadImGuiImageAsync(byte[]? imageBytes)
         {
-            plugin?.logger?.Error($"HTTP Request Error: {httpEx.Message}");
-            if (attempt < maxRetries)
-                await Task.Delay(delayMs * attempt);
+            if (imageBytes == null || imageBytes.Length == 0)
+                return null;
+
+            try
+            {
+                var texture = await Plugin.TextureProvider.CreateFromImageAsync(imageBytes);
+                if (texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                    return texture;
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
+            }
+            return null;
         }
-        catch (TaskCanceledException)
+
+        public static async Task<IDalamudTextureWrap?> SafeLoadImGuiImageAsync(string? filePath)
         {
-            plugin?.logger?.Error("Download request timed out.");
-            if (attempt < maxRetries)
-                await Task.Delay(delayMs * attempt);
+            if (string.IsNullOrEmpty(filePath))
+                return null;
+
+            try
+            {
+                var texture = await LoadTextureAsync(filePath);
+                if (texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                    return texture;
+            }
+            catch (Exception ex)
+            {
+                plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
+            }
+            return null;
         }
-        catch (Exception ex)
-        {
-            plugin?.logger?.Error($"Unexpected error: {ex.Message}");
-            break;
-        }
-    }
-    return galleryImage;
-}
         public static async Task<byte[]> FetchUrlImageBytes(string url)
         {
             

@@ -308,6 +308,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             for (int i = 0; i < messages.Count; i++)
             {
                 WindowOperations.SafeDispose(messages[i].avatar);
+                messages[i].avatar = null;
             }
         }
 

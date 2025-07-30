@@ -322,26 +322,25 @@ namespace Networking
             {
                 try
                 {
-                    if (self)
+                    if (!self)
                     {
-                        ProfileWindow.Clear();
-                    }
-                    else
-                    {
-                        TargetProfileWindow.Clear();
-                    }
-                        using (var buffer = new ByteBuffer())
+                        if (!TargetProfileWindow.IsDefault())
                         {
-                            buffer.WriteInt((int)ClientPackets.CFetchProfile);
-                            buffer.WriteString(plugin.username);
-                            buffer.WriteString(plugin.password);
-                            buffer.WriteString(targetName);
-                            buffer.WriteString(targetWorld);
-                            buffer.WriteInt(profileIndex);
-                            buffer.WriteInt(profileID);
-                            buffer.WriteBool(self); // Indicate if this is a self profile fetc
-                            await ClientTCP.SendDataAsync(buffer.ToArray());
+                            return;
                         }
+                    }
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchProfile);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(targetName);
+                        buffer.WriteString(targetWorld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(profileID);
+                        buffer.WriteBool(self); // Indicate if this is a self profile fetc
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
 
                 }
                 catch (Exception ex)

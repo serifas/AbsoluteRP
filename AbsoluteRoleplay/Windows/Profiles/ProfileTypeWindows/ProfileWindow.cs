@@ -386,19 +386,20 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             {
                 if (ImGui.Button("Delete Profile"))
                 {
-                        DataSender.DeleteProfile(profileIndex);
-                        profileIndex -= 1;
-                        if (profileIndex < 0)
-                        {
-                            profileIndex = 0;
-                        }
-                        DataSender.FetchProfiles();
-                        DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
-                        if (profiles.Count == 0)
-                        {
-                            ExistingProfile = false;
-                        }
-                        ResetProfile();
+                    DataSender.DeleteProfile(profileIndex);
+                    profileIndex -= 1;
+                    if (profileIndex < 0)
+                    {
+                        profileIndex = 0;
+                }
+                TargetProfileWindow.ResetAllData();
+                DataSender.FetchProfiles();
+                DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
+                    if (profiles.Count == 0)
+                    {
+                        ExistingProfile = false;
+                    }
+                    ResetProfile();
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -428,7 +429,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             Vector2 imageStartPos = ImGui.GetCursorScreenPos();
             Vector2 windowPos = ImGui.GetWindowPos();
             Vector2 windowSize = ImGui.GetWindowSize();
-            if (backgroundImage != null)
+            if (backgroundImage != null && backgroundImage.ImGuiHandle != IntPtr.Zero)
             {
                 var drawList = ImGui.GetWindowDrawList();
                 float alpha = 0.5f; // 50% opacity
@@ -460,7 +461,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
             float avatarXPos = (windowSize.X - avatarBtnSize.X) / 2;
             ImGui.SetCursorPosX(centeredX);
-            if(currentAvatarImg != null && currentAvatarImg.ImGuiHandle != null && currentAvatarImg.ImGuiHandle != IntPtr.Zero)
+            if(currentAvatarImg != null && currentAvatarImg.ImGuiHandle != IntPtr.Zero)
             {
                 ImGui.Image(currentAvatarImg.ImGuiHandle, avatarSize);
             }
@@ -832,54 +833,17 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 Plugin.plugin.logger.Error("ProfileWindow ResetOnChangeOrRemoval Error: " + ex.Message);
             }
         }
-        public static void Clear()
-        {
-            CurrentProfile.customTabs.Clear();
-            customLayouts.Clear();
-            currentInventory = null;
-            currentAvatarImg = null;
-            pictureTab = null;
-            backgroundImage = null;
-            avatarHolder = null;
-            profileIndex = 0;
-            NewProfileTitle = string.Empty;
-            isPrivate = true;
-            NSFW = false;
-            Triggering = false;
-            SpoilerARR = false;
-            SpoilerHW = false;
-            SpoilerSB = false;
-            SpoilerSHB = false;
-            SpoilerEW = false;
-            SpoilerDT = false;
-            ProfileTitle = string.Empty;
-            color = new Vector4(1, 1, 1, 1);
-            editAvatar = false;
-            editBackground = false;
-            hasDrawException = false;
-            customTabSelected = false;
-            showTypeCreation = false;
-            oocInfo = string.Empty;
-            Story.storyTitle = string.Empty;
-            Story.currentChapter = 0;
-            Story.storyChapterCount = -1;
-            Story.drawChapter = false;
-            Story.AddStoryChapter = false;
-            Story.ReorderChapters = false;
-            NewProfileTitle = string.Empty;
-            currentProfileType = 0;
-            currentLayoutType = 0;
-            profiles?.Clear();
-            profileIndex = 0;
-            NewProfileTitle = string.Empty;
-            
-        }
+     
         public void Dispose()
         {
             WindowOperations.SafeDispose(currentAvatarImg);
+            currentAvatarImg = null;
             WindowOperations.SafeDispose(pictureTab);
+            pictureTab = null;
             WindowOperations.SafeDispose(backgroundImage);
+            backgroundImage = null;
             WindowOperations.SafeDispose(avatarHolder);
+            avatarHolder = null;
 
             // Dispose and dereference custom layouts
             if (customLayouts != null)
@@ -894,7 +858,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 foreach (var img in gallery.images)
                                 {
                                     WindowOperations.SafeDispose(img.image);
+                                    img.image = null;
                                     WindowOperations.SafeDispose(img.thumbnail);
+                                    img.thumbnail = null;
                                 }
                                 gallery.images.Clear();
                             }
@@ -905,7 +871,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                             {
                                 foreach (var item in inventory.inventorySlotContents.Values)
                                 {
-                                   WindowOperations.SafeDispose(item.iconTexture);  
+                                    WindowOperations.SafeDispose(item.iconTexture);  
+                                    item.iconTexture = null;
                                 }
                                 inventory.inventorySlotContents.Clear();
                             }
@@ -917,6 +884,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 foreach (var trait in bio.traits)
                                 {
                                     WindowOperations.SafeDispose(trait.icon?.icon);
+                                    trait.icon.icon = null;
+                                    trait.icon = null;
                                 }
                                 bio.traits.Clear();
                             }
@@ -1040,6 +1009,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                                 Bio.currentAlignment = 9;
                                 profileIndex = idx;
+                                TargetProfileWindow.ResetAllData();
                                 DataSender.FetchProfiles();
                                 DataSender.FetchProfile(true, idx, plugin.playername, plugin.playerworld, -1);
                             }

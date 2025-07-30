@@ -32,7 +32,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 foreach (ProfileGalleryImage image in galleryLayout.images)
                 {
                     ImGui.TableNextColumn();
-                    if (image.thumbnail != null && image.thumbnail.ImGuiHandle != IntPtr.Zero)
+                    if (image.image == null && image.image.ImGuiHandle == IntPtr.Zero)
+                    {
+                        image.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        image.thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                    }
+                    else if (image.thumbnail != null && image.thumbnail.ImGuiHandle != IntPtr.Zero)
                     {
                         // Calculate scaled size while keeping aspect ratio
                         float aspect = (float)image.thumbnail.Width / Math.Max(1, image.thumbnail.Height);
@@ -46,14 +51,15 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             width = height * aspect;
                         }
                         Vector2 scaledSize = new Vector2(width, height);
-                        if(image.image.ImGuiHandle != null && image.image.ImGuiHandle != IntPtr.Zero)
+                        if (image.image != null && image.image.ImGuiHandle != IntPtr.Zero)
                         {
                             ImGui.Image(image.thumbnail.ImGuiHandle, scaledSize);
-                            if (ImGui.IsItemHovered()) {
+                            if (ImGui.IsItemHovered())
+                            {
                                 ImGui.BeginTooltip();
                                 Misc.RenderHtmlColoredTextInline(image.tooltip);
                                 ImGui.Separator();
-                                ImGui.Text("Click to enlarge"); 
+                                ImGui.Text("Click to enlarge");
                                 ImGui.EndTooltip();
                             }
                             if (ImGui.IsItemClicked())
@@ -67,7 +73,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 }
                             }
                         }
-                        
+
                     }
                 }
             }

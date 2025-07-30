@@ -943,7 +943,7 @@ namespace Networking
             }
         }
 
-        internal static void ReceiveProfileSettings(byte[] data)
+        public static async void ReceiveProfileSettings(byte[] data)
         {
             try
             {
@@ -981,12 +981,12 @@ namespace Networking
                         if (BACKGROUNDBYTES != null || BACKGROUNDBYTES.Length != 0)
                         {
                             ProfileWindow.backgroundBytes = BACKGROUNDBYTES;
-                            ProfileWindow.backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES).Result;
                         }
+                        ProfileWindow.backgroundImage = await Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES);
                         ProfileWindow.isPrivate = isPrivate;
                         ProfileWindow.activeProfile = isTooltip;
                         ProfileWindow.avatarBytes = AVATARBYTES;
-                        ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES).Result;
+                        ProfileWindow.currentAvatarImg = await Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES);
                         ProfileWindow.ProfileTitle = NAME;
                         ProfileWindow.color = new Vector4(colX, colY, colZ, colW);
                         ProfileWindow.SpoilerARR = ARR;
@@ -1037,17 +1037,23 @@ namespace Networking
                             AVATARBYTES = UI.baseAvatarBytes();
                         }
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.avatar = Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES).Result;
+
+                        IDalamudTextureWrap avatar = await Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES);
+                        if (avatar == null || avatar.ImGuiHandle == IntPtr.Zero)
+                        {
+                            avatar = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
+                        TargetProfileWindow.profileData.avatar = avatar;
                         TargetProfileWindow.profileData.title = NAME.Replace("''", "'");
                         TargetProfileWindow.profileData.titleColor = new Vector4(colX, colY, colZ, colW);
-                        if (BACKGROUNDBYTES == null || BACKGROUNDBYTES.Length == 0)
+                        IDalamudTextureWrap backgroundImage = await Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES);
+                        if (backgroundImage == null || backgroundImage.ImGuiHandle == IntPtr.Zero)
                         {
-                            TargetProfileWindow.backgroundBytes = UI.baseImageBytes();
+                            TargetProfileWindow.profileData.background = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
                         }
-                        IDalamudTextureWrap backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES).Result;
-                        if (backgroundImage != null && backgroundImage.ImGuiHandle != IntPtr.Zero && backgroundImage.Size.X > 32)
+                        else
                         {
-                            TargetProfileWindow.backgroundImage = backgroundImage;
+                            TargetProfileWindow.profileData.background = backgroundImage;
                         }
                         TargetProfileWindow.profileData.isPrivate = isPrivate;
                         TargetProfileWindow.profileData.isActive = isTooltip;
@@ -2004,6 +2010,14 @@ namespace Networking
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
                         ProfileGalleryImage galleryImage = Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, Plugin.plugin, i).GetAwaiter().GetResult();
+                        if (galleryImage.thumbnail == null || galleryImage.thumbnail.ImGuiHandle == IntPtr.Zero)
+                        {
+                            galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
+                        if (galleryImage.image == null || galleryImage.image.ImGuiHandle == IntPtr.Zero)
+                        {
+                            galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                        }
                         gallery.Add(galleryImage);
 
                         if (self)
@@ -2046,6 +2060,8 @@ namespace Networking
                     }
                     else
                     {
+                        if (TargetProfileWindow.profileData.customTabs == null)
+                            TargetProfileWindow.profileData.customTabs = new List<CustomTab>();
                         EnsureTargetProfileData();
                         TargetProfileWindow.profileData.customTabs.Add(tab);
                         loadedTargetTabsCount += 1;
@@ -2281,7 +2297,33 @@ namespace Networking
                         traits = traits,
                         fields = fields,
                     };
-
+                    BioLayout targetBioLayout = new BioLayout
+                    {
+                        tabIndex = tabIndex,
+                        name = name.Replace("''", "'"),
+                        race = race.Replace("''", "'"),
+                        gender = gender.Replace("''", "'"),
+                        age = age.Replace("''", "'"),
+                        height = height.Replace("''", "'"),
+                        weight = weight.Replace("''", "'"),
+                        afg = atFirstGlance.Replace("''", "'"),
+                        alignment = alignment,
+                        personality_1 = personality_1,
+                        personality_2 = personality_2,
+                        personality_3 = personality_3,
+                        isTooltip = isTooltip,
+                        descriptors = descriptors.Select(d => new descriptor { index = d.index, name = d.name, description = d.description }).ToList(),
+                        traits = traits.Select(t => new trait
+                        {
+                            index = t.index,
+                            name = t.name,
+                            description = t.description,
+                            iconID = t.iconID,
+                            modifying = t.modifying,
+                            icon = new IconElement { icon = t.icon.icon }
+                        }).ToList(),
+                        fields = fields.Select(f => new field { index = f.index, name = f.name, description = f.description }).ToList(),
+                    };
                     BioLoadStatus = 1;
                     CustomTab tab = new CustomTab
                     {
@@ -2291,8 +2333,18 @@ namespace Networking
                         type = (int)UI.TabType.Bio
                     };
 
+                    CustomTab targetTab = new CustomTab
+                    {
+                        Name = tabName,
+                        Layout = targetBioLayout,
+                        IsOpen = true,
+                        type = (int)UI.TabType.Bio
+                    };
+
+
                     if (self)
                     {
+
                         if (ProfileWindow.CurrentProfile.customTabs == null)
                             ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
                         ProfileWindow.CurrentProfile.customTabs.Add(tab);
@@ -2301,8 +2353,10 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        TargetProfileWindow.profileData.customTabs.Add(targetTab);
                         loadedTargetTabsCount += 1;
+                        if (TargetProfileWindow.profileData.customTabs.Count == 1)
+                            TargetProfileWindow.currentLayout = targetTab.Layout as CustomLayout;
                     }
                 }
             }

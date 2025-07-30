@@ -145,6 +145,7 @@ namespace Networking
             buffer.WriteBytes(data);
             var packetID = buffer.ReadInt();
             WindowOperations.SafeDispose(buffer);
+            buffer = null;
             if (packets.TryGetValue(packetID, out var packet))
             {
                 packet.Invoke(data);

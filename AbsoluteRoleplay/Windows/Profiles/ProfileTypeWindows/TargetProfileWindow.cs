@@ -28,10 +28,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         internal static bool warning;
         internal static string warningMessage;
         public static List<CustomLayout> profileLayouts = new List<CustomLayout>();
-        public static CustomLayout currentLayout = new CustomLayout();
+        public static CustomLayout currentLayout;
         public static bool ExistingProfile = false;
-        public static byte[] backgroundBytes;
-        public static IDalamudTextureWrap backgroundImage;
 
         public TargetProfileWindow(Plugin plugin) : base("TARGET")
         {
@@ -56,8 +54,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         {
             try
             {
-                profileLayouts.Clear();
-                currentLayout = null;
                 EnsureProfileData();
             }
             catch (Exception ex)
@@ -68,13 +64,39 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 
         public override void Draw()
         {
+
             try
             {
+                Plugin.plugin.logger.Debug("[TargetProfileWindow] Draw started.");
+
+                if (profileData.background == null)
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] profileData.background is null.");
+                else
+                    Plugin.plugin.logger.Debug($"[TargetProfileWindow] profileData.background handle: {profileData.background.ImGuiHandle}");
+
+                if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
+                {
+                    profileData.background = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Set background to default backgroundHolder.");
+                }
+
+                if (profileData.avatar == null)
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] profileData.avatar is null.");
+                else
+                    Plugin.plugin.logger.Debug($"[TargetProfileWindow] profileData.avatar handle: {profileData.avatar.ImGuiHandle}");
+
+                if (profileData.avatar == null || profileData.avatar.ImGuiHandle == IntPtr.Zero)
+                {
+                    profileData.avatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Set avatar to default avatarHolder.");
+                }
+
                 EnsureProfileData();
 
                 // Loader: Wait for all tabs and gallery images to load before drawing profile
                 if (DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount || DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad)
                 {
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Waiting for tabs/gallery images to load.");
                     if (DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount)
                     {
                         Misc.StartLoader(DataReceiver.loadedTargetTabsCount, DataReceiver.tabsTargetCount, $"Loading Profile Tabs {DataReceiver.loadedTargetTabsCount + 1}", ImGui.GetWindowSize());
@@ -110,6 +132,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                             }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Warning popup error: {ex.Message}");
+                    }
                     finally
                     {
                         ImGui.EndPopup();
@@ -119,6 +145,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 // No profile available
                 if (!ExistingProfile)
                 {
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] No profile data available.");
                     ImGuiHelpers.SafeTextWrapped("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
                     if (ImGui.Button("Request access"))
                     {
@@ -135,31 +162,62 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
 
                 // Draw background image if valid
-                if (backgroundImage != null && backgroundImage.ImGuiHandle != IntPtr.Zero)
+                if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
                 {
-                    var drawList = ImGui.GetWindowDrawList();
-                    float alpha = 0.5f;
-                    uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
-                    Vector2 maxWindowSize = new Vector2(950, 1200);
-                    float scale = ImGui.GetIO().FontGlobalScale;
-                    Vector2 scaledSize = maxWindowSize * scale;
-                    Vector2 imageStartPos = ImGui.GetCursorScreenPos();
-                    Vector2 imageEndPos = imageStartPos + scaledSize;
-                    drawList.AddImage(backgroundImage.ImGuiHandle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Background image is null or handle is zero.");
+                }
+                else
+                {
+                    try
+                    {
+                        var drawList = ImGui.GetWindowDrawList();
+                        float alpha = 0.5f;
+                        uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
+                        Vector2 maxWindowSize = new Vector2(950, 1200);
+                        float scale = ImGui.GetIO().FontGlobalScale;
+                        Vector2 scaledSize = maxWindowSize * scale;
+                        Vector2 imageStartPos = ImGui.GetCursorScreenPos();
+                        Vector2 imageEndPos = imageStartPos + scaledSize;
+                        drawList.AddImage(profileData.background.ImGuiHandle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew background image.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw background image: {ex.Message}");
+                    }
                 }
 
                 // Draw avatar if valid
                 if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
                 {
-                    float centeredX = (ImGui.GetWindowSize().X - profileData.avatar.Size.X) / 2;
-                    ImGui.SetCursorPosX(centeredX);
-                    ImGui.Image(profileData.avatar.ImGuiHandle, profileData.avatar.Size * ImGui.GetIO().FontGlobalScale);
+                    try
+                    {
+                        float centeredX = (ImGui.GetWindowSize().X - profileData.avatar.Size.X) / 2;
+                        ImGui.SetCursorPosX(centeredX);
+                        ImGui.Image(profileData.avatar.ImGuiHandle, profileData.avatar.Size * ImGui.GetIO().FontGlobalScale);
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew avatar image.");
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw avatar image: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Avatar image is null or handle is zero.");
                 }
 
                 // Draw title if valid
                 if (!string.IsNullOrEmpty(profileData.title))
                 {
-                    Misc.SetTitle(plugin, true, profileData.title, profileData.titleColor);
+                    try
+                    {
+                        Misc.SetTitle(plugin, true, profileData.title, profileData.titleColor);
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to set title: {ex.Message}");
+                    }
                 }
 
                 // Controls
@@ -186,43 +244,53 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 {
                     if (ImGui.BeginTabBar("TargetNavigation"))
                     {
-                        foreach (CustomTab tab in profileData.customTabs)
+                        foreach(CustomTab tab in profileData.customTabs.ToList())
                         {
                             if (tab != null && !string.IsNullOrEmpty(tab.Name) && tab.Layout != null)
                             {
                                 if (ImGui.BeginTabItem(tab.Name))
                                 {
+                                    currentLayout = tab.Layout as CustomLayout;
                                     try
                                     {
+                                        Plugin.plugin.logger.Debug($"[TargetProfileWindow] Rendering tab: {tab.Name} ({tab.Layout.GetType().Name})");
                                         switch (tab.Layout)
                                         {
-                                            case BioLayout bioLayout:
-                                                Bio.RenderBioPreview(bioLayout, profileData.titleColor);
+                                            case BioLayout bioLayout:                                               
+                                                try { Bio.RenderBioPreview(bioLayout, profileData.titleColor); } catch(Exception ex){ Plugin.plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
                                                 break;
                                             case DetailsLayout detailsLayout:
-                                                Details.RenderDetailPreview(detailsLayout, profileData.titleColor);
+                                                try { Details.RenderDetailPreview(detailsLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Details.RenderDetailPreview error: {ex.Message}"); }
                                                 break;
                                             case GalleryLayout galleryLayout:
-                                                Gallery.RenderGalleryPreview(galleryLayout, profileData.titleColor);
+                                                try { Gallery.RenderGalleryPreview(galleryLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Gallery.RenderGalleryPreview error: {ex.Message}"); }
                                                 break;
                                             case InfoLayout infoLayout:
-                                                Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
-                                                ImGuiHelpers.SafeTextWrapped(infoLayout.text);
+                                                try
+                                                {
+                                                    Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
+                                                    ImGuiHelpers.SafeTextWrapped(infoLayout.text);
+                                                }
+                                                catch (Exception ex)
+                                                {
+                                                    Plugin.plugin.logger.Error($"[TargetProfileWindow] InfoLayout render error: {ex.Message}");
+                                                }
                                                 break;
                                             case StoryLayout storyLayout:
-                                                Story.RenderStoryPreview(storyLayout, profileData.titleColor);
+                                                try { Story.RenderStoryPreview(storyLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Story.RenderStoryPreview error: {ex.Message}"); }
                                                 break;
                                             case TreeLayout treeLayout:
                                                 string uniqueId = $"{tab.Name}##{treeLayout.tabIndex}";
-                                                Tree.RenderTreeLayout(treeLayout.tabIndex, false, uniqueId, treeLayout, tab.Name, profileData.titleColor);
+                                                try { Tree.RenderTreeLayout(treeLayout.tabIndex, false, uniqueId, treeLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Tree.RenderTreeLayout error: {ex.Message}"); }
                                                 break;
                                             default:
+                                                Plugin.plugin.logger.Debug($"[TargetProfileWindow] Unknown tab layout type: {tab.Layout.GetType().Name}");
                                                 break;
                                         }
                                     }
                                     catch (Exception ex)
                                     {
-                                        Plugin.plugin.logger.Error($"TargetProfileWindow Tab Render Error: {ex.Message}");
+                                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Tab Render Error: {ex.Message}");
                                     }
                                     ImGui.EndTabItem();
                                 }
@@ -233,32 +301,53 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
                 else
                 {
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] No custom tabs to render.");
                     ImGui.TextColored(new Vector4(1, 0, 0, 1), "No profile data available for this profile.");
                 }
 
                 // Layout selection warning
                 if (currentLayout == null)
                 {
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] currentLayout is null, returning.");
                     return;
                 }
 
                 // Profile child region
                 using var profileTable = ImRaii.Child("PROFILE");
                 if (!profileTable)
+                {
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] profileTable child region not created.");
                     return;
+                }
 
                 // Notes and preview
                 if (addNotes)
                 {
-                    plugin.OpenProfileNotes();
+                    try
+                    {
+                        plugin.OpenProfileNotes();
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenProfileNotes error: {ex.Message}");
+                    }
                     addNotes = false;
                 }
 
                 if (loadPreview)
                 {
-                    plugin.OpenImagePreview();
+                    try
+                    {
+                        plugin.OpenImagePreview();
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenImagePreview error: {ex.Message}");
+                    }
                     loadPreview = false;
                 }
+
+                Plugin.plugin.logger.Debug("[TargetProfileWindow] Draw finished.");
             }
             catch (Exception ex)
             {
@@ -268,43 +357,15 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 max = 1;
             }
         }
-
-        public static void Clear()
+        public static void ResetAllData()
         {
             try
             {
-                backgroundImage = null;
-                backgroundBytes = null;
+                // Dispose of any textures to avoid memory leaks
                 if (profileData != null)
                 {
+                    profileData.background = null;
                     profileData.avatar = null;
-                    profileData.title = string.Empty;
-                    profileData.titleColor = new Vector4(1,1,1,1);
-                    profileData.customTabs?.Clear();
-                }
-                characterName = string.Empty;
-                characterWorld = string.Empty;
-                ExistingProfile = false;
-                firstDraw = true;
-                warning = false;
-                warningMessage = string.Empty;
-                profileLayouts?.Clear();                
-                currentLayout = null;
-            }
-            catch (Exception ex)
-            {
-                Plugin.plugin.logger.Error("TargetProfileWindow Clear Error: " + ex.Message);
-            }
-        }
-        public void Dispose()
-        {
-            try
-            {
-                WindowOperations.SafeDispose(backgroundImage);
-
-                if (profileData != null)
-                {
-                    WindowOperations.SafeDispose(profileData.avatar);
 
                     if (profileData.customTabs != null)
                     {
@@ -317,19 +378,18 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                     {
                                         foreach (var img in gallery.images)
                                         {
-                                            WindowOperations.SafeDispose(img.image);
-                                            WindowOperations.SafeDispose(img.thumbnail);
+                                            img.image = null; // Thumbnail is disposed in the loop
+                                            img.thumbnail = null; // Clear reference to avoid dangling pointers
                                         }
                                         gallery.images.Clear();
                                     }
                                     break;
-
                                 case InventoryLayout inventory:
                                     if (inventory.inventorySlotContents != null)
                                     {
                                         foreach (var item in inventory.inventorySlotContents.Values)
                                         {
-                                            WindowOperations.SafeDispose(item.iconTexture);
+                                            item.iconTexture = null; // Clear reference to avoid dangling pointers
                                         }
                                         inventory.inventorySlotContents.Clear();
                                     }
@@ -341,7 +401,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         {
                                             if (trait.icon != null && trait.icon.icon != null)
                                             {
-                                                WindowOperations.SafeDispose(trait.icon.icon);
+                                                trait.icon.icon = null; // Clear reference to avoid dangling pointers
                                             }
                                         }
                                         bio.traits.Clear();
@@ -349,21 +409,17 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                     bio.fields?.Clear();
                                     bio.descriptors?.Clear();
                                     break;
-
                                 case DetailsLayout details:
                                     details.details?.Clear();
                                     break;
-
                                 case StoryLayout story:
                                     story.chapters?.Clear();
                                     break;
-
                                 case TreeLayout tree:
                                     tree.relationships?.Clear();
                                     tree.Paths?.Clear();
                                     tree.PathConnections?.Clear();
                                     break;
-
                                 case InfoLayout info:
                                     info.text = string.Empty;
                                     break;
@@ -371,6 +427,183 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         }
                         profileData.customTabs.Clear();
                     }
+                }
+
+                // Reset all static and instance fields to their initial state
+                profileData = new ProfileData
+                {
+                    avatar = null,
+                    background = null,
+                    title = string.Empty,
+                    titleColor = new Vector4(1, 1, 1, 1),
+                    isPrivate = false,
+                    isActive = false,
+                    Name = string.Empty,
+                    Race = string.Empty,
+                    Gender = string.Empty,
+                    Age = string.Empty,
+                    Height = string.Empty,
+                    Weight = string.Empty,
+                    AFG = string.Empty,
+                    Alignment = 0,
+                    Personality_1 = 0,
+                    Personality_2 = 0,
+                    Personality_3 = 0,
+                    StoryLayouts = null,
+                    fields = new List<field>(),
+                    descriptors = new List<descriptor>(),
+                    traits = new List<trait>(),
+                    OOC = string.Empty,
+                    customTabs = new List<CustomTab>()
+                };
+
+                profileLayouts?.Clear();
+                profileLayouts = new List<CustomLayout>();
+                currentLayout = new CustomLayout();
+
+                loading = string.Empty;
+                currentInd = 0;
+                max = 0;
+                addNotes = false;
+                loadPreview = false;
+                firstDraw = true;
+                warning = false;
+                warningMessage = string.Empty;
+                ExistingProfile = false;
+                characterName = string.Empty;
+                characterWorld = string.Empty;
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+            }
+        }
+
+        public static bool IsDefault()
+        {
+            var pd = profileData;
+            bool profileDataDefault =
+                pd != null &&
+                pd.avatar == null &&
+                pd.background == null &&
+                pd.title == string.Empty &&
+                pd.titleColor == new Vector4(1, 1, 1, 1) &&
+                pd.isPrivate == false &&
+                pd.isActive == false &&
+                pd.Name == string.Empty &&
+                pd.Race == string.Empty &&
+                pd.Gender == string.Empty &&
+                pd.Age == string.Empty &&
+                pd.Height == string.Empty &&
+                pd.Weight == string.Empty &&
+                pd.AFG == string.Empty &&
+                pd.Alignment == 0 &&
+                pd.Personality_1 == 0 &&
+                pd.Personality_2 == 0 &&
+                pd.Personality_3 == 0 &&
+                pd.StoryLayouts == null &&
+                pd.fields != null && pd.fields.Count == 0 &&
+                pd.descriptors != null && pd.descriptors.Count == 0 &&
+                pd.traits != null && pd.traits.Count == 0 &&
+                pd.OOC == string.Empty &&
+                pd.customTabs != null && pd.customTabs.Count == 0;
+
+            bool otherDefaults =
+                string.IsNullOrEmpty(loading) &&
+                currentInd == 0 &&
+                max == 0 &&
+                addNotes == false &&
+                loadPreview == false &&
+                firstDraw == true &&
+                warning == false &&
+                string.IsNullOrEmpty(warningMessage) &&
+                ExistingProfile == false &&
+                (profileLayouts == null || profileLayouts.Count == 0) &&
+                currentLayout != null && // currentLayout is set to new CustomLayout()
+                characterName == string.Empty &&
+                characterWorld == string.Empty;
+
+            return profileDataDefault && otherDefaults;
+        }
+        public void Dispose()
+        {
+            /*
+            if (profileData != null)
+            {
+                WindowOperations.SafeDispose(profileData.background);
+                profileData.background = null;
+                WindowOperations.SafeDispose(profileData.avatar);
+                profileData.avatar = null;
+
+                if (profileData.customTabs != null)
+                {
+                    foreach (var tab in profileData.customTabs)
+                    {
+                        switch (tab.Layout)
+                        {
+                            case GalleryLayout gallery:
+                                if (gallery.images != null)
+                                {
+                                    foreach (var img in gallery.images)
+                                    {
+                                        WindowOperations.SafeDispose(img.image);
+                                        img.image = null; // Thumbnail is disposed in the loop
+                                        WindowOperations.SafeDispose(img.thumbnail);
+                                        img.thumbnail = null; // Clear reference to avoid dangling pointers
+                                    }
+                                    gallery.images.Clear();
+                                }
+                                break;
+
+                            case InventoryLayout inventory:
+                                if (inventory.inventorySlotContents != null)
+                                {
+                                    foreach (var item in inventory.inventorySlotContents.Values)
+                                    {
+                                        WindowOperations.SafeDispose(item.iconTexture);
+                                        item.iconTexture = null; // Clear reference to avoid dangling pointers
+                                    }
+                                    inventory.inventorySlotContents.Clear();
+                                }
+                                break;
+                            case BioLayout bio:
+                                if (bio.traits != null)
+                                {
+                                    foreach (var trait in bio.traits)
+                                    {
+                                        if (trait.icon != null && trait.icon.icon != null)
+                                        {
+                                            WindowOperations.SafeDispose(trait.icon.icon);
+                                            trait.icon.icon = null; // Clear reference to avoid dangling pointers
+                                            trait.icon = null; // Clear reference to avoid dangling pointers
+                                        }
+                                    }
+                                    bio.traits.Clear();
+                                }
+                                bio.fields?.Clear();
+                                bio.descriptors?.Clear();
+                                break;
+
+                            case DetailsLayout details:
+                                details.details?.Clear();
+                                break;
+
+                            case StoryLayout story:
+                                story.chapters?.Clear();
+                                break;
+
+                            case TreeLayout tree:
+                                tree.relationships?.Clear();
+                                tree.Paths?.Clear();
+                                tree.PathConnections?.Clear();
+                                break;
+
+                            case InfoLayout info:
+                                info.text = string.Empty;
+                                break;
+                        }
+                    }
+                    profileData.customTabs.Clear();
                 }
 
                 // Dispose and clear static layouts
@@ -382,10 +615,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 if (profileData.customTabs == null)
                     profileData.customTabs = new List<CustomTab>();
             }
-            catch (Exception ex)
-            {
-                Plugin.plugin.logger.Error("TargetProfileWindow DisposeContent Error: " + ex.Message);
-            }
+           */
         }
     }
 }
