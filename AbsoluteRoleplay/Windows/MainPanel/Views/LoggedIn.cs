@@ -24,9 +24,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             {
                 if (pluginInstance.IsOnline())
                 {
-                    Story.storyTitle = string.Empty;
-                    ProfileWindow.oocInfo = string.Empty;
-                    pluginInstance.OpenAndLoadProfileWindow();
+                    pluginInstance.OpenAndLoadProfileWindow(true, 0);
                 }
             }
             if (ImGui.IsItemHovered())

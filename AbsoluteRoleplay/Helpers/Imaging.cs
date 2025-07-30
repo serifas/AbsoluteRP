@@ -100,10 +100,14 @@ namespace AbsoluteRoleplay.Helpers
         public static async Task<ProfileGalleryImage> DownloadProfileImage(
     bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
         {
-            Plugin.plugin.logger.Error(url);
+            string urlVal = url;
+            if (urlVal.Contains("absolute-roleplay.net"))
+            {
+                urlVal = string.Empty;
+            }
             var galleryImage = new ProfileGalleryImage
             {
-                url = url,
+                url = urlVal,
                 tooltip = tooltip,
                 nsfw = nsfw,
                 trigger = trigger,
@@ -111,7 +115,7 @@ namespace AbsoluteRoleplay.Helpers
                 thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
                 imageBytes = Array.Empty<byte>()
             };
-
+             
             int maxRetries = 5;
             int delayMs = 1500;
 

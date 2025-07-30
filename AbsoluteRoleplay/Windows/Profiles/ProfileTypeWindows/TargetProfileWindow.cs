@@ -36,7 +36,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(300, 300),
-                MaximumSize = new Vector2(950, 950)
+                MaximumSize = new Vector2(600, 950)
             };
             this.plugin = plugin;
             pg = Plugin.PluginInterface;
@@ -67,23 +67,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 
             try
             {
-                Plugin.plugin.logger.Debug("[TargetProfileWindow] Draw started.");
 
-                if (profileData.background == null)
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] profileData.background is null.");
-                else
-                    Plugin.plugin.logger.Debug($"[TargetProfileWindow] profileData.background handle: {profileData.background.ImGuiHandle}");
 
                 if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
                 {
                     profileData.background = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
                     Plugin.plugin.logger.Debug("[TargetProfileWindow] Set background to default backgroundHolder.");
                 }
-
-                if (profileData.avatar == null)
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] profileData.avatar is null.");
-                else
-                    Plugin.plugin.logger.Debug($"[TargetProfileWindow] profileData.avatar handle: {profileData.avatar.ImGuiHandle}");
 
                 if (profileData.avatar == null || profileData.avatar.ImGuiHandle == IntPtr.Zero)
                 {
@@ -173,13 +163,14 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         var drawList = ImGui.GetWindowDrawList();
                         float alpha = 0.5f;
                         uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
-                        Vector2 maxWindowSize = new Vector2(950, 1200);
                         float scale = ImGui.GetIO().FontGlobalScale;
-                        Vector2 scaledSize = maxWindowSize * scale;
+                        Vector2 scaledSize = profileData.background.Size * scale;
                         Vector2 imageStartPos = ImGui.GetCursorScreenPos();
                         Vector2 imageEndPos = imageStartPos + scaledSize;
                         drawList.AddImage(profileData.background.ImGuiHandle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew background image.");
+                        // Draw dark overlay over the background image
+                        uint overlayColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 0.5f)); // 0.5f = 50% opacity
+                        drawList.AddRectFilled(imageStartPos, imageEndPos, overlayColor);
                     }
                     catch (Exception ex)
                     {
@@ -257,7 +248,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         switch (tab.Layout)
                                         {
                                             case BioLayout bioLayout:                                               
-                                                try { Bio.RenderBioPreview(bioLayout, profileData.titleColor); } catch(Exception ex){ Plugin.plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
+                                                try { Bio.RenderBioPreview(bioLayout, tab.Name, profileData.titleColor); } catch(Exception ex){ Plugin.plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
                                                 break;
                                             case DetailsLayout detailsLayout:
                                                 try { Details.RenderDetailPreview(detailsLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Details.RenderDetailPreview error: {ex.Message}"); }
@@ -527,7 +518,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         }
         public void Dispose()
         {
-            /*
+            
             if (profileData != null)
             {
                 WindowOperations.SafeDispose(profileData.background);
@@ -615,7 +606,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 if (profileData.customTabs == null)
                     profileData.customTabs = new List<CustomTab>();
             }
-           */
+           
         }
     }
 }

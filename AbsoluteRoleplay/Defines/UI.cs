@@ -10,6 +10,7 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using ImGuiNET;
 using Lumina.Data;
+using Lumina.Data.Files;
 using Microsoft.VisualBasic;
 using OtterGuiInternal.Structs;
 using System;
@@ -20,6 +21,7 @@ using System.Linq;
 using System.Net;
 using System.Numerics;
 using System.Reflection.Metadata.Ecma335;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Linq;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
@@ -421,9 +423,10 @@ namespace AbsoluteRoleplay
                 
             }
             return null;
-            
+
         }
-    
+        
+
         public static byte[] baseAvatarBytes()
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
@@ -451,71 +454,73 @@ namespace AbsoluteRoleplay
             Plugin.plugin.logger.Error("[baseImageBytes] PluginInterface or path is null.");
             return null;
         }
+
+        public static readonly Dictionary<CommonImageTypes, IDalamudTextureWrap> commonImageWraps = new();
+
         public static IDalamudTextureWrap UICommonImage(CommonImageTypes imageType)
         {
-            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+            if (!commonImageWraps.TryGetValue(imageType, out var wrap))
             {
-                if (imageType == CommonImageTypes.discordBtn) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/disc_btn.png"))).Result; }
-                if (imageType == CommonImageTypes.kofiBtn) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/kofi_btn.png"))).Result; }
-                if (imageType == CommonImageTypes.patreonBtn) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/patreon_btn.png"))).Result; }
-                if (imageType == CommonImageTypes.blankPictureTab) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result; }
-                if (imageType == CommonImageTypes.NSFW) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result;}
-                if (imageType == CommonImageTypes.NSFWTRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result;}
-                if (imageType == CommonImageTypes.TRIGGER) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result; }
-                if (imageType == CommonImageTypes.avatarHolder) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result; }
-                if (imageType == CommonImageTypes.backgroundHolder) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/background_holder.png"))).Result; }
-                if (imageType == CommonImageTypes.profileSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_profiles.png"))).Result;}
-                if (imageType == CommonImageTypes.systemsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_systems.png"))).Result;}
-                if (imageType == CommonImageTypes.eventsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_events.png"))).Result;}
-                if (imageType == CommonImageTypes.connectionsSection) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_connections.png"))).Result;}
-                //profiles
-                if (imageType == CommonImageTypes.profileCreateProfile) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_create.png"))).Result;}
-                if (imageType == CommonImageTypes.profileCreateNPC) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_create.png"))).Result;}
-                if (imageType == CommonImageTypes.profileBookmarkProfile) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_bookmarks.png"))).Result;}
-                if (imageType == CommonImageTypes.profileBookmarkNPC) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_bookmarks.png"))).Result;}
-                //target images
-                if (imageType == CommonImageTypes.targetConnections) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/assign_connection.png"))).Result;}
-                if (imageType == CommonImageTypes.targetBookmark) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/bookmark.png"))).Result;}
-                if (imageType == CommonImageTypes.targetGroupInvite) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result;}
-                if (imageType == CommonImageTypes.targetViewProfile) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result;}
-                if (imageType == CommonImageTypes.reconnect) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result;}
-                //listings
-                if (imageType == CommonImageTypes.listingsCampaign) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsEvent) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsFC) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsGroup) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsPersonal) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsVenue) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsCampaignBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsEventBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsFCBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsGroupBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsPersonalBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result; }
-                if (imageType == CommonImageTypes.listingsVenueBig) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result; }
-                //misc
-                if (imageType == CommonImageTypes.blank) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result; }
-                if (imageType == CommonImageTypes.inventoryTab) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result; }
-                //masks
-
-                if (imageType == CommonImageTypes.circleMask) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/circle.png"))).Result; }
-                if (imageType == CommonImageTypes.starMask) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/star.png"))).Result; }
-                if (imageType == CommonImageTypes.heartMask) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/heart.png"))).Result; }
-
-                if (imageType == CommonImageTypes.pin) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/pin.png"))).Result; }
-                if (imageType == CommonImageTypes.unpin) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/unpin.png"))).Result; }
-                if (imageType == CommonImageTypes.display) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/display.png"))).Result; }
-                if (imageType == CommonImageTypes.hide) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/hide.png"))).Result; }
-                if (imageType == CommonImageTypes.dock) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/dock.png"))).Result; }
-                if (imageType == CommonImageTypes.undock) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/undock.png"))).Result; }
-                if (imageType == CommonImageTypes.edit) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/edit.png"))).Result; }
-                if (imageType == CommonImageTypes.move) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move.png"))).Result; }
-                if (imageType == CommonImageTypes.move_cancel) { return Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move_cancel.png"))).Result; }
+                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+                {
+                    wrap = imageType switch
+                    {
+                        CommonImageTypes.discordBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/disc_btn.png"))).Result,
+                        CommonImageTypes.kofiBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/kofi_btn.png"))).Result,
+                        CommonImageTypes.patreonBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/patreon_btn.png"))).Result,
+                        CommonImageTypes.blankPictureTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result,
+                        CommonImageTypes.NSFW => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result,
+                        CommonImageTypes.NSFWTRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result,
+                        CommonImageTypes.TRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result,
+                        CommonImageTypes.avatarHolder => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result,
+                        CommonImageTypes.backgroundHolder => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/background_holder.png"))).Result,
+                        CommonImageTypes.profileSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_profiles.png"))).Result,
+                        CommonImageTypes.systemsSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_systems.png"))).Result,
+                        CommonImageTypes.eventsSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_events.png"))).Result,
+                        CommonImageTypes.connectionsSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_connections.png"))).Result,
+                        CommonImageTypes.profileCreateProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_create.png"))).Result,
+                        CommonImageTypes.profileCreateNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_create.png"))).Result,
+                        CommonImageTypes.profileBookmarkProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_bookmarks.png"))).Result,
+                        CommonImageTypes.profileBookmarkNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_bookmarks.png"))).Result,
+                        CommonImageTypes.targetConnections => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/assign_connection.png"))).Result,
+                        CommonImageTypes.targetBookmark => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/bookmark.png"))).Result,
+                        CommonImageTypes.targetGroupInvite => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result,
+                        CommonImageTypes.targetViewProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result,
+                        CommonImageTypes.reconnect => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result,
+                        CommonImageTypes.listingsCampaign => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign.png"))).Result,
+                        CommonImageTypes.listingsEvent => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event.png"))).Result,
+                        CommonImageTypes.listingsFC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc.png"))).Result,
+                        CommonImageTypes.listingsGroup => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group.png"))).Result,
+                        CommonImageTypes.listingsPersonal => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal.png"))).Result,
+                        CommonImageTypes.listingsVenue => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue.png"))).Result,
+                        CommonImageTypes.listingsCampaignBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign_big.png"))).Result,
+                        CommonImageTypes.listingsEventBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event_big.png"))).Result,
+                        CommonImageTypes.listingsFCBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc_big.png"))).Result,
+                        CommonImageTypes.listingsGroupBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result,
+                        CommonImageTypes.listingsPersonalBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result,
+                        CommonImageTypes.listingsVenueBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result,
+                        CommonImageTypes.blank => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result,
+                        CommonImageTypes.inventoryTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result,
+                        CommonImageTypes.circleMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/circle.png"))).Result,
+                        CommonImageTypes.starMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/star.png"))).Result,
+                        CommonImageTypes.heartMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/heart.png"))).Result,
+                        CommonImageTypes.pin => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/pin.png"))).Result,
+                        CommonImageTypes.unpin => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/unpin.png"))).Result,
+                        CommonImageTypes.display => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/display.png"))).Result,
+                        CommonImageTypes.hide => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/hide.png"))).Result,
+                        CommonImageTypes.dock => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/dock.png"))).Result,
+                        CommonImageTypes.undock => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/undock.png"))).Result,
+                        CommonImageTypes.edit => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/edit.png"))).Result,
+                        CommonImageTypes.move => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move.png"))).Result,
+                        CommonImageTypes.move_cancel => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move_cancel.png"))).Result,
+                        _ => null
+                    };
+                    if (wrap != null)
+                        commonImageWraps[imageType] = wrap;
+                }
             }
-
-            return null;
-            
+            return wrap;
         }
-     
         public static string AlignmentName(int alignment)
         {
             string alignmentName = string.Empty;
@@ -594,60 +599,78 @@ namespace AbsoluteRoleplay
             return bodyFormValues;
         }
 
-        public static IDalamudTextureWrap AlignementIcon(int id)
-        {
-            IDalamudTextureWrap alignmentIcon = null;
-            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
-            {
-                if (id == (int)Alignments.LawfulGood) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_good.png"))).Result;}
-                if (id == (int)Alignments.NeutralGood) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/neutral_good.png"))).Result;}
-                if (id == (int)Alignments.ChaoticGood) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_good.png"))).Result; }
-                if (id == (int)Alignments.LawfulNeutral) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_neutral.png"))).Result; }
-                if (id == (int)Alignments.TrueNeutral) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/true_neutral.png"))).Result; }
-                if (id == (int)Alignments.ChaoticNeutral) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_neutral.png"))).Result; }
-                if (id == (int)Alignments.LawfulEvil) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_evil.png"))).Result; }
-                if (id == (int)Alignments.NeutralEvil) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/neutral_evil.png"))).Result; }
-                if (id == (int)Alignments.ChaoticEvil) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_evil.png"))).Result;}
-                if (id == (int)Alignments.None) { alignmentIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/none.png"))).Result;}
-            }
+        public static readonly Dictionary<int, IDalamudTextureWrap> alignmentImageWraps = new();
+        public static readonly Dictionary<int, IDalamudTextureWrap> personalityImageWraps = new();
 
-            return alignmentIcon;
+        public static IDalamudTextureWrap AlignmentIcon(int id)
+        {
+            if (!alignmentImageWraps.TryGetValue(id, out var wrap))
+            {
+                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+                {
+                    wrap = (UI.Alignments)id switch
+                    {
+                        UI.Alignments.LawfulGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_good.png"))).Result,
+                        UI.Alignments.NeutralGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/neutral_good.png"))).Result,
+                        UI.Alignments.ChaoticGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_good.png"))).Result,
+                        UI.Alignments.LawfulNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_neutral.png"))).Result,
+                        UI.Alignments.TrueNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/true_neutral.png"))).Result,
+                        UI.Alignments.ChaoticNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_neutral.png"))).Result,
+                        UI.Alignments.LawfulEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_evil.png"))).Result,
+                        UI.Alignments.NeutralEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/neutral_evil.png"))).Result,
+                        UI.Alignments.ChaoticEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_evil.png"))).Result,
+                        UI.Alignments.None => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/none.png"))).Result,
+                        _ => null
+                    };
+                    if (wrap != null)
+                        alignmentImageWraps[id] = wrap;
+                }
+            }
+            return wrap;
         }
+
         public static IDalamudTextureWrap PersonalityIcon(int id)
         {
-            IDalamudTextureWrap personalityIcon = null;
-            if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+            if (!personalityImageWraps.TryGetValue(id, out var wrap))
             {
-
-                if (id == (int)Personalities.Abrasive) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/abrasive.png"))).Result;}
-                if (id == (int)Personalities.AbsentMinded) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/absentminded.png"))).Result; }
-                if (id == (int)Personalities.Aggressive) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/aggressive.png"))).Result; }
-                if (id == (int)Personalities.Artistic) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/artistic.png"))).Result;}
-                if (id == (int)Personalities.Cautious) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/cautious.png"))).Result;}
-                if (id == (int)Personalities.Charming) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/charming.png"))).Result;}
-                if (id == (int)Personalities.Compassionate) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/compassionate.png"))).Result;}
-                if (id == (int)Personalities.Daredevil) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/daredevil.png"))).Result;}
-                if (id == (int)Personalities.Dishonest) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/dishonest.png"))).Result;}
-                if (id == (int)Personalities.Dutiful) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/dutiful.png"))).Result;}
-                if (id == (int)Personalities.Easygoing) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/easygoing.png"))).Result;}
-                if (id == (int)Personalities.Eccentric) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/eccentric.png"))).Result;}
-                if (id == (int)Personalities.Honest) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/honest.png"))).Result;}
-                if (id == (int)Personalities.Knowledgable) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/knowledgable.png"))).Result;}
-                if (id == (int)Personalities.Optimistic) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/optimistic.png"))).Result;}
-                if (id == (int)Personalities.Polite) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/polite.png"))).Result;}
-                if (id == (int)Personalities.Relentless) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/relentless.png"))).Result;}
-                if (id == (int)Personalities.Resentful) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/resentful.png"))).Result;}
-                if (id == (int)Personalities.Reserved) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/reserved.png"))).Result;}
-                if (id == (int)Personalities.Romantic) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/romantic.png"))).Result;}
-                if (id == (int)Personalities.Spiritual) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/spiritual.png"))).Result;}
-                if (id == (int)Personalities.Superior) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/superior.png"))).Result;}
-                if (id == (int)Personalities.Tormented) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tormented.png"))).Result;}
-                if (id == (int)Personalities.Tough) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tough.png"))).Result;}
-                if (id == (int)Personalities.Wild) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/wild.png"))).Result;}
-                if (id == (int)Personalities.Worldly) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result;}
-                if (id == (int)Personalities.None) { personalityIcon = Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result;}
+                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
+                {
+                    wrap = (UI.Personalities)id switch
+                    {
+                        UI.Personalities.Abrasive => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/abrasive.png"))).Result,
+                        UI.Personalities.AbsentMinded => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/absentminded.png"))).Result,
+                        UI.Personalities.Aggressive => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/aggressive.png"))).Result,
+                        UI.Personalities.Artistic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/artistic.png"))).Result,
+                        UI.Personalities.Cautious => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/cautious.png"))).Result,
+                        UI.Personalities.Charming => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/charming.png"))).Result,
+                        UI.Personalities.Compassionate => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/compassionate.png"))).Result,
+                        UI.Personalities.Daredevil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/daredevil.png"))).Result,
+                        UI.Personalities.Dishonest => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/dishonest.png"))).Result,
+                        UI.Personalities.Dutiful => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/dutiful.png"))).Result,
+                        UI.Personalities.Easygoing => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/easygoing.png"))).Result,
+                        UI.Personalities.Eccentric => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/eccentric.png"))).Result,
+                        UI.Personalities.Honest => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/honest.png"))).Result,
+                        UI.Personalities.Knowledgable => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/knowledgable.png"))).Result,
+                        UI.Personalities.Optimistic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/optimistic.png"))).Result,
+                        UI.Personalities.Polite => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/polite.png"))).Result,
+                        UI.Personalities.Relentless => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/relentless.png"))).Result,
+                        UI.Personalities.Resentful => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/resentful.png"))).Result,
+                        UI.Personalities.Reserved => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/reserved.png"))).Result,
+                        UI.Personalities.Romantic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/romantic.png"))).Result,
+                        UI.Personalities.Spiritual => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/spiritual.png"))).Result,
+                        UI.Personalities.Superior => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/superior.png"))).Result,
+                        UI.Personalities.Tormented => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tormented.png"))).Result,
+                        UI.Personalities.Tough => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tough.png"))).Result,
+                        UI.Personalities.Wild => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/wild.png"))).Result,
+                        UI.Personalities.Worldly => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result,
+                        UI.Personalities.None => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result,
+                        _ => null
+                    };
+                    if (wrap != null)
+                        personalityImageWraps[id] = wrap;
+                }
             }
-            return personalityIcon;
+            return wrap;
         }
 
         public static readonly (string, string, string, InputTypes)[] BioFieldVals =

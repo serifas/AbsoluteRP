@@ -7,6 +7,7 @@ using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
 using OtterGui;
 using OtterGui.Extensions;
+using OtterGui.Widgets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,10 +47,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         public static int currentAlignment = (int)Alignments.None;
 
         private static bool firstLoad = true;
-        public static void RenderBioPreview(BioLayout layout, Vector4 titleColor)
+        public static void RenderBioPreview(BioLayout layout, string tabName, Vector4 titleColor)
         {
             try
             {
+
+                Misc.SetTitle(Plugin.plugin, true, tabName, titleColor);
                 // Defensive: Ensure lists are not null
                 var descriptors = layout.descriptors ?? new List<descriptor>();
                 var fields = layout.fields ?? new List<field>();
@@ -128,7 +131,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 if (layout.alignment != 9 && layout.alignment >= 0 && layout.alignment <= UI.AlignmentVals.Count())
                 {
                     ImGui.Text("ALIGNMENT:");
-                    var icon = UI.AlignementIcon(layout.alignment);
+                    var icon = UI.AlignmentIcon(layout.alignment);
                     if (icon != null)
                     {
                         Plugin.plugin.logger.Debug($"[RenderBioPreview] Alignment icon: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.ImGuiHandle}");

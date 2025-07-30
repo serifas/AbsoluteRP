@@ -973,7 +973,6 @@ namespace Networking
                     bool self = buffer.ReadBool();
                     if (self)
                     {
-                        ProfileWindow.ResetProfile();
                         if (AVATARBYTES == null || AVATARBYTES.Length == 0)
                         {
                             AVATARBYTES = UI.baseAvatarBytes();
@@ -1164,7 +1163,7 @@ namespace Networking
                     profile.Personality_3 = Personality_3;
                     ARPTooltipWindow.profile = profile;
 
-                    ARPTooltipWindow.AlignmentImg = UI.AlignementIcon(Alignment);
+                    ARPTooltipWindow.AlignmentImg = UI.AlignmentIcon(Alignment);
                     ARPTooltipWindow.personality_1Img = UI.PersonalityIcon(Personality_1);
                     ARPTooltipWindow.personality_2Img = UI.PersonalityIcon(Personality_2);
                     ARPTooltipWindow.personality_3Img = UI.PersonalityIcon(Personality_3);

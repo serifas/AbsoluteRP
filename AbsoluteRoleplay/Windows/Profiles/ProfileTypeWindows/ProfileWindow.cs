@@ -90,7 +90,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             {
 
                 MinimumSize = new Vector2(300, 300),
-                MaximumSize = new Vector2(950, 1200)
+                MaximumSize = new Vector2(600, 1000)
             };
 
             this.plugin = plugin;
@@ -245,12 +245,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         {
                             AddProfileSelection();
                             ImGui.SameLine();
-                            if (ImGui.Button("Preview Profile"))
+                            if (ImGui.Button("Reload Profile"))
                             {
-                                Plugin.plugin.OpenTargetWindow();
                                 TargetProfileWindow.characterName = plugin.playername;
                                 TargetProfileWindow.characterWorld = plugin.playerworld;
-                                DataSender.FetchProfile(false, profileIndex, plugin.playername, plugin.playerworld, -1);
+                                
+                                Plugin.plugin.OpenAndLoadProfileWindow(false, profileIndex);
                             }
                             DrawProfile();
                         }
@@ -281,7 +281,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         }
         public static void CreateProfile()
         {
-            ResetProfile();
             DataSender.CreateProfile(NewProfileTitle, currentProfileType, profiles.Count);
             profileIndex = profiles.Count;
             Plugin.plugin.logger.Error(profileIndex.ToString());
@@ -399,7 +398,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     {
                         ExistingProfile = false;
                     }
-                    ResetProfile();
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -436,9 +434,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
 
                 // Use the maximum window size and apply scaling
-                Vector2 maxWindowSize = new Vector2(950, 1200); // Your defined max size
                 float scale = ImGui.GetIO().FontGlobalScale;
-                Vector2 scaledSize = maxWindowSize * scale;
+                Vector2 scaledSize = backgroundImage.Size * scale;
 
                 Vector2 imageEndPos = imageStartPos + scaledSize;
 
@@ -791,49 +788,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 
         //reset our tabs and go back to base ui with no tab selected
 
-        public static void ResetProfile()
-        {
-            try
-            {
-                isPrivate = true;
-                currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
-                backgroundImage = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
-                if (UI.baseAvatarBytes == null)
-                {
-                    return;
-                }
-                backgroundBytes = UI.baseImageBytes();
-                avatarBytes = UI.baseAvatarBytes();
-
-                Bio.currentAlignment = 9;
-                for (int i = 0; i < customLayouts.Count; i++)
-                {
-                    if (customLayouts[i] is BioLayout layout)
-                    {
-                        layout.name = string.Empty;
-                        layout.race = string.Empty;
-                        layout.age = string.Empty;
-                        layout.gender = string.Empty;
-                        layout.height = string.Empty;
-                        layout.weight = string.Empty;
-                        layout.afg = string.Empty;
-                        layout.alignment = 9;
-                        layout.personality_1 = 26;
-                        layout.personality_2 = 26;
-                        layout.personality_3 = 26;
-                        layout.traits.Clear();
-                        layout.descriptors.Clear();
-                        layout.fields.Clear();
-                    }
-                }
-
-                CurrentProfile.customTabs.Clear();
-            }catch(Exception ex)
-            {
-                Plugin.plugin.logger.Error("ProfileWindow ResetOnChangeOrRemoval Error: " + ex.Message);
-            }
-        }
-     
+      
         public void Dispose()
         {
             WindowOperations.SafeDispose(currentAvatarImg);

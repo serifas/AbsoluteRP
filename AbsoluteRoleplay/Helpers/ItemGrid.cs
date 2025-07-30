@@ -17,8 +17,8 @@ namespace AbsoluteRoleplay.Helpers
 
         // Global drag-and-drop state
         private static int? DraggedItemSlot = null;
-        private static Dictionary<int, ItemDefinition> DraggedSlotContents = null; 
-        
+        private static Dictionary<int, ItemDefinition> DraggedSlotContents = null;
+
         private static readonly Dictionary<int, IDalamudTextureWrap> IconCache = new();
         private static readonly HashSet<int> LoadingIcons = new();
 
@@ -50,6 +50,25 @@ namespace AbsoluteRoleplay.Helpers
                 }
             }
 
+            // --- Calculate dynamic cell size for grid ---
+            float windowWidth = ImGui.GetWindowWidth();
+            float windowHeight = ImGui.GetWindowHeight();
+
+            // Reserve some space for labels/buttons above the grid
+            float reservedHeight = 0;
+            if (isTrade)
+                reservedHeight = 180; // Adjust as needed for trade UI
+            else
+                reservedHeight = 40; // Adjust as needed for inventory-only UI
+
+            // Calculate the available area for the grid
+            float availableWidth = windowWidth - 20; // Padding
+            float availableHeight = windowHeight - reservedHeight;
+
+            // Calculate the cell size so the grid fits and remains square
+            float cellSize = MathF.Min(availableWidth / GridSize, availableHeight / GridSize);
+            Vector2 iconCellSize = new Vector2(cellSize, cellSize);
+
             // --- SPLIT TRADE GRID (TOP) ---
             const int TradeGridWidth = 10;
             if (isTrade)
@@ -60,12 +79,7 @@ namespace AbsoluteRoleplay.Helpers
                     layout.traderSlotContents = new Dictionary<int, ItemDefinition>();
 
                 ImGui.Dummy(new Vector2(0, 10));
-                float windowWidth = ImGui.GetWindowWidth();
-
-                // --- "Sending" label ---
                 ImGui.Text("Sending");
-
-
                 ImGui.Dummy(new Vector2(0, 10));
 
                 // --- "Sending" grid (left) ---
@@ -78,11 +92,10 @@ namespace AbsoluteRoleplay.Helpers
                     ImGui.BeginGroup();
 
                     Vector2 cellPos = ImGui.GetCursorScreenPos();
-                    Vector2 cellSize = new Vector2(50, 50);
 
                     ImGui.GetWindowDrawList().AddRectFilled(
                         cellPos,
-                        cellPos + cellSize,
+                        cellPos + iconCellSize,
                         ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.5f, 1.0f))
                     );
 
@@ -92,19 +105,17 @@ namespace AbsoluteRoleplay.Helpers
                         int iconID = layout.tradeSlotContents[slotIndex].iconID;
                         if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
                         {
-                            ImGui.Image(texture.ImGuiHandle, cellSize);
+                            ImGui.Image(texture.ImGuiHandle, iconCellSize);
                         }
                         else
                         {
-                            // Optionally show a placeholder image
-                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
-                            // Start async load if not already loading
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
                     }
 
                     ImGui.SetCursorScreenPos(cellPos);
-                    ImGui.InvisibleButton($"##send_slot{slotIndex}", cellSize);
+                    ImGui.InvisibleButton($"##send_slot{slotIndex}", iconCellSize);
 
                     // Tooltip hover for trade grid
                     if (ImGui.IsItemHovered() && hasTradeItem)
@@ -229,12 +240,10 @@ namespace AbsoluteRoleplay.Helpers
                     ImGui.BeginGroup();
 
                     Vector2 cellPos = ImGui.GetCursorScreenPos();
-                    Vector2 cellSize = new Vector2(50, 50);
 
-                    // Draw only a border (not a filled rect)
                     ImGui.GetWindowDrawList().AddRect(
                         cellPos,
-                        cellPos + cellSize,
+                        cellPos + iconCellSize,
                         ImGui.GetColorU32(new Vector4(0.0f, 0.5f, 0.2f, 1.0f)), 2.0f // Border thickness
                     );
 
@@ -246,19 +255,17 @@ namespace AbsoluteRoleplay.Helpers
                         int iconID = layout.traderSlotContents[slotIndex].iconID;
                         if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
                         {
-                            ImGui.Image(texture.ImGuiHandle, cellSize);
+                            ImGui.Image(texture.ImGuiHandle, iconCellSize);
                         }
                         else
                         {
-                            // Optionally show a placeholder image
-                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
-                            // Start async load if not already loading
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
                     }
 
                     ImGui.SetCursorScreenPos(cellPos);
-                    ImGui.InvisibleButton($"##recv_slot{slotIndex}", cellSize);
+                    ImGui.InvisibleButton($"##recv_slot{slotIndex}", iconCellSize);
 
                     // Tooltip hover for receiving grid
                     if (ImGui.IsItemHovered() && hasRecvItem)
@@ -269,8 +276,6 @@ namespace AbsoluteRoleplay.Helpers
                         Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description);
                         ImGui.EndTooltip();
                     }
-
-                    // --- NO drag source, NO drag target, NO context menu for receiving grid ---
 
                     ImGui.EndGroup();
                     ImGui.PopID();
@@ -297,11 +302,10 @@ namespace AbsoluteRoleplay.Helpers
                     ImGui.BeginGroup();
 
                     Vector2 cellPos = ImGui.GetCursorScreenPos();
-                    Vector2 cellSize = new Vector2(50, 50);
 
                     ImGui.GetWindowDrawList().AddRectFilled(
                         cellPos,
-                        cellPos + cellSize,
+                        cellPos + iconCellSize,
                         ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f))
                     );
 
@@ -313,13 +317,11 @@ namespace AbsoluteRoleplay.Helpers
                             int iconID = layout.inventorySlotContents[slotIndex].iconID;
                             if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
                             {
-                                ImGui.Image(texture.ImGuiHandle, cellSize);
+                                ImGui.Image(texture.ImGuiHandle, iconCellSize);
                             }
                             else
                             {
-                                // Optionally show a placeholder image
-                                ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
-                                // Start async load if not already loading
+                                ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
                                 _ = PreloadIconAsync(plugin, iconID);
                             }
                         }
@@ -331,7 +333,7 @@ namespace AbsoluteRoleplay.Helpers
 
                     ImGui.SetCursorScreenPos(cellPos);
 
-                    if (ImGui.InvisibleButton($"##slot{slotIndex}", cellSize))
+                    if (ImGui.InvisibleButton($"##slot{slotIndex}", iconCellSize))
                     {
                         // Handle slot click
                     }
@@ -341,17 +343,14 @@ namespace AbsoluteRoleplay.Helpers
                     {
                         ImGui.BeginTooltip();
 
-
                         int iconID = layout.inventorySlotContents[slotIndex].iconID;
                         if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
                         {
-                            ImGui.Image(texture.ImGuiHandle, cellSize);
+                            ImGui.Image(texture.ImGuiHandle, iconCellSize);
                         }
                         else
                         {
-                            // Optionally show a placeholder image
-                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, cellSize);
-                            // Start async load if not already loading
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
 
@@ -365,7 +364,6 @@ namespace AbsoluteRoleplay.Helpers
                     // Context menu for inventory grid
                     if (!isTrade)
                     {
-                        // Standard context menu (Delete, Duplicate, Edit)
                         if (ImGui.IsItemClicked(ImGuiMouseButton.Right) && hasInvItem)
                         {
                             ImGui.OpenPopup($"##contextMenu{slotIndex}");
@@ -378,7 +376,6 @@ namespace AbsoluteRoleplay.Helpers
                             }
                             if (ImGui.MenuItem("Duplicate"))
                             {
-                                // Find the first empty slot (not present or has empty name)
                                 int firstEmptySlotIndex = -1;
                                 for (int i = 0; i < TotalSlots; i++)
                                 {
@@ -389,7 +386,7 @@ namespace AbsoluteRoleplay.Helpers
                                     }
                                 }
                                 if (firstEmptySlotIndex == -1)
-                                    return; // No empty slot found
+                                    return;
 
                                 ItemDefinition itemToDuplicate = layout.inventorySlotContents[slotIndex];
                                 layout.inventorySlotContents[firstEmptySlotIndex] = new ItemDefinition
@@ -415,7 +412,6 @@ namespace AbsoluteRoleplay.Helpers
                     {
                         if (ImGui.MenuItem("Trade"))
                         {
-                            // Find first available trade slot
                             int firstEmpty = -1;
                             for (int t = 0; t < TradeGridWidth; t++)
                             {
@@ -461,7 +457,6 @@ namespace AbsoluteRoleplay.Helpers
                                 int sourceSlotIndex = *(int*)payload.Data.ToPointer();
                                 var draggedItem = DraggedSlotContents[sourceSlotIndex];
 
-                                // Drag from inventory to inventory (already handled)
                                 if (DraggedSlotContents == layout.inventorySlotContents && layout.inventorySlotContents.ContainsKey(sourceSlotIndex))
                                 {
                                     if (layout.inventorySlotContents.ContainsKey(slotIndex))
@@ -491,7 +486,6 @@ namespace AbsoluteRoleplay.Helpers
                                         DataSender.SendItemOrder(ProfileWindow.profileIndex, layout, newItemList);
                                     }
                                 }
-                                // Drag from trade to inventory
                                 else if (DraggedSlotContents == layout.tradeSlotContents && layout.tradeSlotContents.ContainsKey(sourceSlotIndex))
                                 {
                                     bool tradeChanged = false;
@@ -504,7 +498,7 @@ namespace AbsoluteRoleplay.Helpers
                                         layout.tradeSlotContents[sourceSlotIndex].slot = sourceSlotIndex;
                                         tradeChanged = true;
                                     }
-                                    else // Move to empty inventory slot
+                                    else
                                     {
                                         layout.inventorySlotContents[slotIndex] = draggedItem;
                                         layout.inventorySlotContents[slotIndex].slot = slotIndex;

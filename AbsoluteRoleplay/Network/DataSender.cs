@@ -330,17 +330,17 @@ namespace Networking
                         }
                     }
                     using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.CFetchProfile);
-                        buffer.WriteString(plugin.username);
-                        buffer.WriteString(plugin.password);
-                        buffer.WriteString(targetName);
-                        buffer.WriteString(targetWorld);
-                        buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(profileID);
-                        buffer.WriteBool(self); // Indicate if this is a self profile fetc
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
+                        {
+                            buffer.WriteInt((int)ClientPackets.CFetchProfile);
+                            buffer.WriteString(plugin.username);
+                            buffer.WriteString(plugin.password);
+                            buffer.WriteString(targetName);
+                            buffer.WriteString(targetWorld);
+                            buffer.WriteInt(profileIndex);
+                            buffer.WriteInt(profileID);
+                            buffer.WriteBool(self); // Indicate if this is a self profile fetc
+                            await ClientTCP.SendDataAsync(buffer.ToArray());
+                        }
 
                 }
                 catch (Exception ex)

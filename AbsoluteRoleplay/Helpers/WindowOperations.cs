@@ -467,12 +467,6 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     if (personality != null)
                     {
-                        if(personality.icon != null)
-                        {
-                            SafeDispose(personality.icon.icon);
-                            personality.icon.icon = null;
-                            personality.icon = null;
-                        }
                         personality.icon.icon = selectedStatusIcon;
                         personality.modifying = false;
                         personality.iconID = selectedStatusIconID;

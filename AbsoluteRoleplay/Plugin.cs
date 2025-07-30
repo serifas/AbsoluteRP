@@ -19,6 +19,7 @@ using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface;
+using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
@@ -40,6 +41,7 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Timers;
 using System.Xml.Linq;
+using static AbsoluteRoleplay.UI;
 using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
 using static Lumina.Data.Parsing.Layer.LayerCommon;
 using static System.Net.WebRequestMethods;
@@ -127,7 +129,7 @@ namespace AbsoluteRoleplay
         public static bool tooltipShown;
 
         // private bool chatLoaded = false;
-
+        public static Dictionary<int, IDalamudTextureWrap> staticTextures = new Dictionary<int, IDalamudTextureWrap>();
 
         //initialize our plugin
         public Plugin(
@@ -235,10 +237,10 @@ namespace AbsoluteRoleplay
             ClientState.Login += LoadConnection;
             Framework.Update += Update;
             MainPanel.pluginInstance = this;
-          
+            
             plugin = this;
         }
-
+     
         public async Task<Version> GetOnlineVersionAsync()
         {
             try
@@ -277,12 +279,18 @@ namespace AbsoluteRoleplay
 
 
 
-        public void OpenAndLoadProfileWindow()
+        public void OpenAndLoadProfileWindow(bool self, int index)
         {
-            OpenProfileWindow();
-            ProfileWindow.ResetProfile();
-            DataSender.FetchProfiles();
-            DataSender.FetchProfile(true, 0, plugin.playername, plugin.playerworld, -1);
+            if (self)
+            {
+                OpenProfileWindow();
+                DataSender.FetchProfiles();
+            }
+            else
+            {
+                OpenTargetWindow();
+            }
+            DataSender.FetchProfile(self, index, plugin.playername, plugin.playerworld, -1);
         }
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
@@ -542,6 +550,18 @@ namespace AbsoluteRoleplay
             ListingWindow?.Dispose();
             ModeratorPanel?.Dispose();
             Misc.Jupiter?.Dispose(); 
+            foreach(IDalamudTextureWrap texture in UI.commonImageWraps.Values)
+            {
+                texture.Dispose();
+            }
+            foreach(IDalamudTextureWrap texture in UI.alignmentImageWraps.Values)
+            {
+                texture.Dispose();
+            }
+            foreach (IDalamudTextureWrap texture in UI.personalityImageWraps.Values)
+            {
+                texture.Dispose();
+            }
         }
         public void CheckConnectionsRequestStatus()
         {
