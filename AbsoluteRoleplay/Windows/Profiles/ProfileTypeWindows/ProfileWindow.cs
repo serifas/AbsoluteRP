@@ -182,21 +182,24 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         {
             try
             {
-                if(Sending)
+                bool tabsLoading = DataReceiver.loadedTabsCount < DataReceiver.tabsCount;
+                bool galleryLoading = DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad;
+
+                if (tabsLoading)
+                    Misc.StartLoader(DataReceiver.loadedTabsCount, DataReceiver.tabsCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize(), "tabs");
+                if (galleryLoading)
+                    Misc.StartLoader(DataReceiver.loadedGalleryImages, DataReceiver.GalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize(), "gallery");
+
+                // Block further UI until all tweens are finished
+                if ((tabsLoading && Misc.IsLoaderTweening("tabs")) ||
+                    (galleryLoading && Misc.IsLoaderTweening("gallery")))
+                {
+                    return;
+                }
+                if (Sending)
                 {
                     Misc.SetTitle(Plugin.plugin, true, "Sending Data", new Vector4(1, 1, 0, 1));   
                     return; // Skip drawing the rest of the window while sending data
-                }
-                if (DataReceiver.loadedTabsCount < DataReceiver.tabsCount || DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad)
-                {
-                    if (DataReceiver.loadedTabsCount < DataReceiver.tabsCount)
-                    {
-                        Misc.StartLoader(DataReceiver.loadedTabsCount, DataReceiver.tabsCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize());
-                    }
-                    if (DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad)
-                    {
-                        Misc.StartLoader(DataReceiver.loadedGalleryImages, DataReceiver.GalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize());
-                    }
                 }
                 else
                 {

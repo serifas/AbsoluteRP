@@ -42,7 +42,14 @@ namespace AbsoluteRoleplay
         public static List<ImFontPtr> availableFonts = new();
         public static ImFontPtr selectedFont;
         private static int selectedFontIndex = 0;
-
+        public class LoaderTweenState
+        {
+            public float TweenedValue;
+            public float TweenStartValue;
+            public float TweenTargetValue;
+            public float TweenStartTime;
+            public float TweenDuration = 0.4f;
+        }
         public static float ConvertToPercentage(float value)
         {
             // Clamp the value between 0 and 100
@@ -52,10 +59,11 @@ namespace AbsoluteRoleplay
             return value / 100f * 100f;
         }
         //sets position of content to center
-        public static void RenderHtmlColoredTextInline(string text)
+        public static void RenderHtmlColoredTextInline(string text, float? overrideWrapWidth = null)
         {
             // Get the available width for wrapping (subtract a little for padding if needed)
-            float wrapWidth = ImGui.GetWindowSize().X - 10;
+            float wrapWidth = overrideWrapWidth ?? (ImGui.GetWindowSize().X - 10);
+
             string wrappedText = WrapTextToFit(text, wrapWidth);
 
             var htmlDoc = new HtmlAgilityPack.HtmlDocument();
@@ -355,11 +363,65 @@ namespace AbsoluteRoleplay
             return cachedWrappedText;
         }
         //loader for ProfileWindow and TargetWindow
-        public static void StartLoader(float value, float max, string loading, Vector2 scale)
+        public static void ResetLoaderTween(string key = "default")
         {
-            value = Math.Max(0f, Math.Min(100f, value));
-           
-            ImGui.ProgressBar(value / max, new Vector2(scale.X - 20, ImGui.GetIO().FontGlobalScale * 20), "Loading " + loading);
+            loaderTweens.Remove(key);
+        }
+        public static void ResetAllData()
+        {
+            try
+            {
+                // ... existing code ...
+
+                // Reset loader tweens for target profile loading
+                Misc.ResetLoaderTween("tabs");
+                Misc.ResetLoaderTween("gallery");
+
+                // ... rest of your code ...
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+            }
+        }
+        private static readonly Dictionary<string, LoaderTweenState> loaderTweens = new();
+        public static bool IsLoaderTweening(string key = "default")
+        {
+            if (!loaderTweens.TryGetValue(key, out var tween))
+                return false;
+            return Math.Abs(tween.TweenedValue - tween.TweenTargetValue) > 0.001f;
+        }
+        public static void StartLoader(float value, float max, string loading, Vector2 scale, string key = "default")
+        {
+            value = Math.Max(0f, Math.Min(max, value));
+            float now = (float)ImGui.GetTime();
+
+            if (!loaderTweens.TryGetValue(key, out var tween))
+            {
+                tween = new LoaderTweenState
+                {
+                    TweenedValue = value,
+                    TweenStartValue = value,
+                    TweenTargetValue = value,
+                    TweenStartTime = now
+                };
+                loaderTweens[key] = tween;
+            }
+
+            // If the target value changed, start a new tween
+            if (Math.Abs(value - tween.TweenTargetValue) > 0.001f)
+            {
+                tween.TweenStartValue = tween.TweenedValue;
+                tween.TweenTargetValue = value;
+                tween.TweenStartTime = now;
+            }
+
+            // Calculate tween progress
+            float t = Math.Min(1f, (now - tween.TweenStartTime) / tween.TweenDuration);
+            t = t * t * (3f - 2f * t); // smoothstep
+            tween.TweenedValue = tween.TweenStartValue + (tween.TweenTargetValue - tween.TweenStartValue) * t;
+
+            ImGui.ProgressBar(tween.TweenedValue / max, new Vector2(scale.X - 20, ImGui.GetIO().FontGlobalScale * 20), "Loading " + loading);
         }
         public static byte[] ImageToByteArray(string imagePath)
         {

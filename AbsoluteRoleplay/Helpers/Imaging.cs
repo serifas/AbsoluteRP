@@ -63,6 +63,7 @@ namespace AbsoluteRoleplay.Helpers
             // Use CreateFromImageAsync to create the texture
             return await textureProvider.CreateFromImageAsync(result);
         }
+
         public static async Task<IDalamudTextureWrap?> LoadTextureAsync(string gameTexturePath)
         {
             try

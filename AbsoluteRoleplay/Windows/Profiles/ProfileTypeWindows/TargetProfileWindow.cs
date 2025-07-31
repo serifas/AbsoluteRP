@@ -84,20 +84,26 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 EnsureProfileData();
 
                 // Loader: Wait for all tabs and gallery images to load before drawing profile
-                if (DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount || DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad)
+           
+                bool tabsLoading = DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount;
+                bool galleryLoading = DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad;
+
+                if (tabsLoading)
                 {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Waiting for tabs/gallery images to load.");
-                    if (DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount)
+                    Misc.StartLoader(DataReceiver.loadedTargetTabsCount, DataReceiver.tabsTargetCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize(), "tabs");
+
+                    if (galleryLoading)
                     {
-                        Misc.StartLoader(DataReceiver.loadedTargetTabsCount, DataReceiver.tabsTargetCount, $"Loading Profile Tabs {DataReceiver.loadedTargetTabsCount + 1}", ImGui.GetWindowSize());
-                    }
-                    if (DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad)
-                    {
-                        Misc.StartLoader(DataReceiver.loadedTargetGalleryImages, DataReceiver.TargetGalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedTargetGalleryImages + 1}", ImGui.GetWindowSize());
+                        Misc.StartLoader(DataReceiver.loadedTargetGalleryImages, DataReceiver.TargetGalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize(), "gallery");     
                     }
                     return;
                 }
-
+                // Block further UI until all tweens are finished
+                if ((tabsLoading && Misc.IsLoaderTweening("tabs")) ||
+                    (galleryLoading && Misc.IsLoaderTweening("gallery")))
+                {
+                    return;
+                }
                 // Warning popup
                 if (warning)
                 {
@@ -260,7 +266,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                                 try
                                                 {
                                                     Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
-                                                    Misc.RenderHtmlColoredTextInline(infoLayout.text);
+                                                    Misc.RenderHtmlColoredTextInline(infoLayout.text, 400);
                                                 }
                                                 catch (Exception ex)
                                                 {

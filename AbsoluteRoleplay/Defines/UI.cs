@@ -1217,6 +1217,7 @@ public class Relationship
 
     public Vector4 LineColor { get; set; } = new Vector4(1, 1, 0.3f, 1);
     public float LineThickness { get; set; } = 6f;
+    public bool active { get; set; } = false; // Whether the item is learned or not
 }
 
 public class RelationshipLink

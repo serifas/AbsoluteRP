@@ -61,7 +61,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             ImGui.PopStyleColor();
             using (ImRaii.Child("StoryContent", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y /2 ), true))
             {
-                Misc.RenderHtmlColoredTextInline(storyLayout.chapters[currentChapter].content);
+                Misc.RenderHtmlColoredTextInline(storyLayout.chapters[currentChapter].content, 400);
             }
 
 

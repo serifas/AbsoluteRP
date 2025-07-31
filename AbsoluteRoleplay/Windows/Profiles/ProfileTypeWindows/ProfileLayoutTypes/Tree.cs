@@ -37,6 +37,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         private static (int x, int y)? lastTooltipSlot = null;
         private static bool firstLoad = true;
 
+        private static bool learnedToggle = true; // Default: not learned
         public static bool IconSelection { get; private set; }
 
         public static void RenderTreeLayout(int index, bool self, string id, TreeLayout layout, string name, Vector4 titleColor)
@@ -147,7 +148,16 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     }
                     else
                     {
-                        drawList.AddLine(fromCenter, toCenter, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 0.3f, 1f)), 6f);
+                        var relFrom = layout.relationships.FirstOrDefault(r => r.Slot.HasValue && r.Slot.Value == conn.from);
+                        var relTo = layout.relationships.FirstOrDefault(r => r.Slot.HasValue && r.Slot.Value == conn.to);
+                        bool fromLearned = relFrom?.active ?? false;
+                        bool toLearned = relTo?.active ?? false;
+
+                        Vector4 lineColor = (fromLearned && toLearned)
+                            ? new Vector4(1f, 1f, 0.3f, 1f)
+                            : new Vector4(0.5f, 0.5f, 0.5f, 1f);
+
+                        drawList.AddLine(fromCenter, toCenter, ImGui.ColorConvertFloat4ToU32(lineColor), 6f);
                     }
                 }
 
@@ -210,6 +220,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             {
                                 editingName = rel?.Name ?? string.Empty;
                                 editingDescription = rel?.Description ?? string.Empty;
+                                learnedToggle = rel?.active ?? false; // <-- Set toggle from relationship
                                 editingSlot = SlotEdit;
                             }
 
@@ -219,6 +230,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             {
                                 if (rel != null) rel.Name = editingName;
                             }
+                            ImGui.SameLine();
+                            ImGui.Checkbox("Active", ref learnedToggle);
                             ImGui.Text("DESCRIPTION:");
                             if (ImGui.InputTextMultiline("##RelationshipDescription", ref editingDescription, 400, new Vector2(350, 60)))
                             {
@@ -267,6 +280,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 editingSlot = null;
                                 editingName = string.Empty;
                                 editingDescription = string.Empty;
+                                rel.active = learnedToggle;
                             }
                             ImGui.SameLine();
                             if (ImGui.Button("Cancel"))
@@ -278,10 +292,25 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             ImGui.Text("Preview:");
                             if (rel.IconTexture != null && rel.IconTexture.ImGuiHandle != IntPtr.Zero)
                             {
-                                ImGui.Image(rel.IconTexture.ImGuiHandle, new Vector2(32, 32));
+                                ImGui.SameLine();
+                                if (learnedToggle)
+                                {
+                                    // Normal color
+                                    ImGui.Image(rel.IconTexture.ImGuiHandle, new Vector2(32, 32));
+                                }
+                                else
+                                {
+                                    // Desaturate: use grayscale tint
+                                    var pos = ImGui.GetCursorScreenPos();
+                                    var size = new Vector2(32, 32);
+                                    // Grayscale tint (luminance weights)
+                                    Vector4 gray = new Vector4(0.299f, 0.587f, 0.114f, 1f);
+                                    drawList.AddImage(rel.IconTexture.ImGuiHandle, pos, pos + size, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
+                                    ImGui.Dummy(size); // Reserve space
+                                }
                             }
-                            Misc.RenderHtmlColoredTextInline(editingName);
-                            Misc.RenderHtmlColoredTextInline(editingDescription);
+                            Misc.RenderHtmlColoredTextInline(editingName, 400);
+                            Misc.RenderHtmlColoredTextInline(editingDescription, 400);
 
                             ImGui.End();
                         }
@@ -337,9 +366,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
                         if (isEditing)
                         {
-                            Misc.RenderHtmlColoredTextInline(editingName);
+                            Misc.RenderHtmlColoredTextInline(editingName, 400);
                             ImGui.Separator();
-                            Misc.RenderHtmlColoredTextInline(editingDescription);
+                            Misc.RenderHtmlColoredTextInline(editingDescription, 400);
                         }
                         else if (relAtSlot != null)
                         {
@@ -348,9 +377,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             {
                                 ImGui.Image(relAtSlot.IconTexture.ImGuiHandle, new Vector2(32, 32));
                             }
-                            Misc.RenderHtmlColoredTextInline(relAtSlot.Name);
+                            Misc.RenderHtmlColoredTextInline(relAtSlot.Name,400);
                             ImGui.Separator();
-                            Misc.RenderHtmlColoredTextInline(relAtSlot.Description);
+                            Misc.RenderHtmlColoredTextInline(relAtSlot.Description, 400);
                         }
                         else
                         {
@@ -366,13 +395,19 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (relAtSlot != null)
                     {
                         var tex = relAtSlot.ImageTexture ?? relAtSlot.IconTexture;
-                        // Defensive: Only draw if texture is valid
                         if (tex != null && tex.ImGuiHandle != IntPtr.Zero)
                         {
                             Vector2 iconMin = nodeCenter - new Vector2(iconSize / 2, iconSize / 2);
                             Vector2 iconMax = nodeCenter + new Vector2(iconSize / 2, iconSize / 2);
-                            drawList.AddImage(tex.ImGuiHandle, iconMin, iconMax);
-
+                            if (relAtSlot.active)
+                            {
+                                drawList.AddImage(tex.ImGuiHandle, iconMin, iconMax);
+                            }
+                            else
+                            {
+                                Vector4 gray = new Vector4(1f, 0.2f, 0.2f, 1f); // or 0.3f for a darker gray
+                                drawList.AddImage(tex.ImGuiHandle, iconMin, iconMax, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
+                            }
                             // Draw a fixed-size white ring around the icon
                             drawList.AddCircle(nodeCenter, ringRadius, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 1f)), 64, ringThickness);
                         }

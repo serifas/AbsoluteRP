@@ -121,9 +121,9 @@ namespace AbsoluteRoleplay.Helpers
                     if (ImGui.IsItemHovered() && hasTradeItem)
                     {
                         ImGui.BeginTooltip();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name);
+                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name, 400);
                         ImGui.Spacing();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description);
+                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description, 400);
                         ImGui.EndTooltip();
                     }
 
@@ -271,9 +271,9 @@ namespace AbsoluteRoleplay.Helpers
                     if (ImGui.IsItemHovered() && hasRecvItem)
                     {
                         ImGui.BeginTooltip();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name);
+                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name,  400);
                         ImGui.Spacing();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description);
+                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description,  400);
                         ImGui.EndTooltip();
                     }
 
@@ -354,10 +354,10 @@ namespace AbsoluteRoleplay.Helpers
                             _ = PreloadIconAsync(plugin, iconID);
                         }
 
-                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name);
+                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name, 500);
                         ImGui.Separator();
                         ImGui.Spacing();
-                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].description);
+                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].description, 500);
                         ImGui.EndTooltip();
                     }
 

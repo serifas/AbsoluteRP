@@ -2135,6 +2135,7 @@ namespace Networking
                         rel.Name = buffer.ReadString();
                         rel.Description = buffer.ReadString();
                         rel.IconID = buffer.ReadInt();
+                        rel.active = buffer.ReadBool();
                         rel.IconTexture = WindowOperations.RenderIconAsync(plugin, rel.IconID).GetAwaiter().GetResult();
                         bool hasSlot = buffer.ReadBool();
                         if (hasSlot)

@@ -314,34 +314,63 @@ namespace Networking
                 }
             }
         }
-   
+        public static void ResetAllData()
+        {
+            try
+            {
+                // Reset loader tweens for target profile loading
+                Misc.ResetLoaderTween("tabs");
+                Misc.ResetLoaderTween("gallery");
+
+                // ... rest of your existing code ...
+            }
+            catch (Exception ex)
+            {
+                Plugin.plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+            }
+        }
         public static async void FetchProfile(bool self, int profileIndex, string targetName, string targetWorld, int profileID)
         {
-            
             if (ClientTCP.IsConnected())
             {
                 try
                 {
+                    // Always reset loader tweens and counters before loading
+                    ResetAllData();
+
                     if (!self)
                     {
-                        if (!TargetProfileWindow.IsDefault())
-                        {
-                            return;
-                        }
-                    }
-                    using (var buffer = new ByteBuffer())
-                        {
-                            buffer.WriteInt((int)ClientPackets.CFetchProfile);
-                            buffer.WriteString(plugin.username);
-                            buffer.WriteString(plugin.password);
-                            buffer.WriteString(targetName);
-                            buffer.WriteString(targetWorld);
-                            buffer.WriteInt(profileIndex);
-                            buffer.WriteInt(profileID);
-                            buffer.WriteBool(self); // Indicate if this is a self profile fetc
-                            await ClientTCP.SendDataAsync(buffer.ToArray());
-                        }
+                        // Reset target profile loading counters
+                        DataReceiver.loadedTargetTabsCount = 0;
+                        DataReceiver.tabsTargetCount = 0;
+                        DataReceiver.loadedTargetGalleryImages = 0;
+                        DataReceiver.TargetGalleryImagesToLoad = 0;
 
+                        // Only proceed if the target window is in a default state
+                        if (!TargetProfileWindow.IsDefault())
+                            return;
+                    }
+                    else
+                    {
+                        // Reset self profile loading counters
+                        DataReceiver.loadedTabsCount = 0;
+                        DataReceiver.tabsCount = 0;
+                        DataReceiver.loadedGalleryImages = 0;
+                        DataReceiver.GalleryImagesToLoad = 0;
+                    }
+
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchProfile);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(targetName);
+                        buffer.WriteString(targetWorld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(profileID);
+                        buffer.WriteBool(self); // Indicate if this is a self profile fetch
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -1251,6 +1280,7 @@ namespace Networking
                         buffer.WriteInt(selectedCategory);
                         buffer.WriteInt(index);
                         buffer.WriteInt(pageSize);
+                        Plugin.plugin.logger.Error("Selected Category = " + selectedCategory);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1680,6 +1710,7 @@ namespace Networking
 
                             buffer.WriteInt(rel.IconID);
 
+                            buffer.WriteBool(rel.active);
                             buffer.WriteBool(rel.Slot.HasValue);
                             if (rel.Slot.HasValue)
                             {

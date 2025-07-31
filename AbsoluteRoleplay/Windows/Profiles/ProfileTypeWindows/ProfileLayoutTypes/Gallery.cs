@@ -57,7 +57,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             if (ImGui.IsItemHovered())
                             {
                                 ImGui.BeginTooltip();
-                                Misc.RenderHtmlColoredTextInline(image.tooltip);
+                                Misc.RenderHtmlColoredTextInline(image.tooltip, 400);
                                 ImGui.Separator();
                                 ImGui.Text("Click to enlarge");
                                 ImGui.EndTooltip();
