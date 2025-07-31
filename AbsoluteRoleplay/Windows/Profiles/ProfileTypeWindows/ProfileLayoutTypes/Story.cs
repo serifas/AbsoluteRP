@@ -1,4 +1,4 @@
-﻿using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
+using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using Dalamud.Interface.Utility;
 using ImGuiNET;
 using OtterGui;
@@ -29,14 +29,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             
             Misc.SetTitle(Plugin.plugin, true, storyLayout.name, TitleColor);
 
-            using (ImRaii.Child("StoryContent", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y /2 ), true))
-            {
-                Misc.RenderHtmlColoredTextInline(storyLayout.chapters[currentChapter].title.ToUpper());
-                ImGui.Spacing();
-                Misc.RenderHtmlColoredTextInline(storyLayout.chapters[currentChapter].content);
-            }
-
-            ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - 50);
             ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0f, 0f, 0f, 0.8f));
             using (ImRaii.Child($"StoryNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
             {
@@ -47,6 +39,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         currentChapter--;
                     }
                 }
+
+                ImGui.SameLine();
+                ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize(storyLayout.chapters[currentChapter].title.ToUpper()).X / 2);
+                ImGui.TextUnformatted(storyLayout.chapters[currentChapter].title.ToUpper());
+                ImGui.SameLine();
                 if (currentChapter > 0 && currentChapter < storyLayout.chapters.Count - 1)
                 {
                     ImGui.SameLine();
@@ -62,6 +59,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
 
             ImGui.PopStyleColor();
+            using (ImRaii.Child("StoryContent", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y /2 ), true))
+            {
+                Misc.RenderHtmlColoredTextInline(storyLayout.chapters[currentChapter].content);
+            }
+
 
         }
 
@@ -71,7 +73,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             ImGui.Text("Story Title");
             ImGui.SameLine();
             string title = layout.name;
-            if(currentChapter > layout.chapters.Count)
+            if(currentChapter >= layout.chapters.Count)
             {
                 currentChapter = 0; // Reset to first chapter if current exceeds available chapters
             }
@@ -82,19 +84,28 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
             ImGui.Text("Chapter");
             ImGui.SameLine();
-            //add our chapter combo select input
+
             if (layout.chapters.Count > 0)
             {
                 AddChapterSelection(layout);
                 ImGui.SameLine();
+                if (ImGui.Button("Add Chapter"))
+                {
+                    CreateChapter(layout);
+                }
+                if (currentChapter < layout.chapters.Count && layout.chapters[currentChapter] != null)
+                {
+                    DrawChapter(currentChapter, layout.chapters[currentChapter], layout, Plugin.plugin);
+                }
             }
-            if (ImGui.Button("Add Chapter"))
+            else
             {
-                CreateChapter(layout);
-            }
-            if(layout.chapters.Count > 0 && layout.chapters[currentChapter] != null)
-            {
-                DrawChapter(currentChapter, layout.chapters[currentChapter], layout, Plugin.plugin);
+                if (ImGui.Button("Add Chapter"))
+                {
+                    CreateChapter(layout);
+                }
+                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1, 0.5f, 0.5f, 1), "No chapters yet.");
             }
             ImGui.NewLine();
         }

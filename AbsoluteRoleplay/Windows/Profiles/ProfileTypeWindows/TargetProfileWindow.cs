@@ -260,7 +260,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                                 try
                                                 {
                                                     Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
-                                                    ImGuiHelpers.SafeTextWrapped(infoLayout.text);
+                                                    Misc.RenderHtmlColoredTextInline(infoLayout.text);
                                                 }
                                                 catch (Exception ex)
                                                 {

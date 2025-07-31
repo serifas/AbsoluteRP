@@ -68,6 +68,9 @@ namespace AbsoluteRoleplay.Windows.Listings
                     }
                 }
                 ImGui.SameLine();
+                ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize($"{currentIndex}").X / 2);
+                ImGui.TextUnformatted($"{currentIndex}");
+                ImGui.SameLine();
                 Misc.RenderAlignmentToRight(" 》");
                 if (ImGui.Button(" 》"))
                 {

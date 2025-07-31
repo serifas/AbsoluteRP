@@ -54,8 +54,12 @@ namespace AbsoluteRoleplay
         //sets position of content to center
         public static void RenderHtmlColoredTextInline(string text)
         {
+            // Get the available width for wrapping (subtract a little for padding if needed)
+            float wrapWidth = ImGui.GetWindowSize().X - 10;
+            string wrappedText = WrapTextToFit(text, wrapWidth);
+
             var htmlDoc = new HtmlAgilityPack.HtmlDocument();
-            htmlDoc.LoadHtml(text);
+            htmlDoc.LoadHtml(wrappedText);
 
             bool first = true;
             foreach (var node in htmlDoc.DocumentNode.ChildNodes)
@@ -286,59 +290,70 @@ namespace AbsoluteRoleplay
 
         // Helper method to wrap text to fit within a specified width
 
-         // WrapTextToFit now only returns the wrapped text without modifying the original input
-    public static string WrapTextToFit(string inputText, float boxWidth)
-    {
-        // Only re-wrap if input text or box width has changed
-        if (inputText == previousInputText && boxWidth == previousBoxWidth)
+        // WrapTextToFit now only returns the wrapped text without modifying the original input
+        public static string WrapTextToFit(string inputText, float boxWidth)
         {
-            return cachedWrappedText;
-        }
+            if (inputText == previousInputText && boxWidth == previousBoxWidth)
+                return cachedWrappedText;
 
-        // Update cached values
-        previousInputText = inputText;
-        previousBoxWidth = boxWidth;
+            previousInputText = inputText;
+            previousBoxWidth = boxWidth;
 
-        // Remove existing newlines to prevent accumulation of line breaks
-        string unwrappedText = inputText.Replace("\n", " ").Trim();
+            var lines = inputText.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            StringBuilder wrappedText = new StringBuilder();
 
-        StringBuilder wrappedText = new StringBuilder();
-        StringBuilder lineBuilder = new StringBuilder();
-        float lineWidth = 0f;
-
-        // Split by whitespace to preserve spaces in the calculation
-        string[] words = unwrappedText.Split(' ');
-
-        foreach (var word in words)
-        {
-            if (string.IsNullOrWhiteSpace(word)) continue; // Skip extra spaces
-            
-            var wordSize = ImGui.CalcTextSize(word + " ").X;
-
-            // Check if adding this word exceeds the box width
-            if (lineWidth + wordSize > boxWidth)
+            for (int lineIdx = 0; lineIdx < lines.Length; lineIdx++)
             {
-                wrappedText.AppendLine(lineBuilder.ToString().TrimEnd()); // Add the line to wrapped text
-                lineBuilder.Clear();  // Clear the line builder for the next line
-                lineWidth = 0f; // Reset line width
+                var line = lines[lineIdx];
+
+                // Preserve blank lines
+                if (string.IsNullOrEmpty(line))
+                {
+                    wrappedText.AppendLine();
+                    continue;
+                }
+
+                StringBuilder lineBuilder = new StringBuilder();
+                float lineWidth = 0f;
+
+                var words = line.Split(' ');
+                bool isFirstWord = true;
+                for (int w = 0; w < words.Length; w++)
+                {
+                    var word = words[w];
+                    string wordWithSpace = isFirstWord ? word : " " + word;
+                    float wordSize = ImGui.CalcTextSize(wordWithSpace).X;
+
+                    if (lineWidth + wordSize > boxWidth && lineBuilder.Length > 0)
+                    {
+                        wrappedText.AppendLine(lineBuilder.ToString());
+                        lineBuilder.Clear();
+                        lineBuilder.Append(word);
+                        lineWidth = ImGui.CalcTextSize(word).X;
+                        isFirstWord = false; // After a wrap, next word is not first
+                    }
+                    else
+                    {
+                        lineBuilder.Append(wordWithSpace);
+                        lineWidth += wordSize;
+                        isFirstWord = false;
+                    }
+                }
+
+                // Append the last part of the line (do not add extra newline if this is the last input line)
+                if (lineBuilder.Length > 0)
+                {
+                    wrappedText.Append(lineBuilder.ToString());
+                }
+
+                // Only add a newline if this is not the last input line
+                if (lineIdx < lines.Length - 1)
+                    wrappedText.AppendLine();
             }
 
-            // Add the word to the current line and update line width
-            lineBuilder.Append(word + " ");
-            lineWidth += wordSize;
+            cachedWrappedText = wrappedText.ToString();
+            return cachedWrappedText;
         }
-
-        // Append any remaining text in the line builder
-        if (lineBuilder.Length > 0)
-        {
-            wrappedText.Append(lineBuilder.ToString().TrimEnd());
-        }
-
-        // Cache the result for future calls
-        cachedWrappedText = wrappedText.ToString();
-        return cachedWrappedText;
-    }
-
         //loader for ProfileWindow and TargetWindow
         public static void StartLoader(float value, float max, string loading, Vector2 scale)
         {
