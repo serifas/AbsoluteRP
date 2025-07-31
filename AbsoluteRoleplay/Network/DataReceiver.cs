@@ -995,6 +995,7 @@ namespace Networking
                         ProfileWindow.SpoilerEW = EW;
                         ProfileWindow.SpoilerDT = DT;
                         ProfileWindow.NSFW = NSFW;
+                        ProfileWindow.Sending = false;
                     }
                     else
                     {
@@ -1057,6 +1058,7 @@ namespace Networking
                         TargetProfileWindow.profileData.isPrivate = isPrivate;
                         TargetProfileWindow.profileData.isActive = isTooltip;
                     }
+                    
                 }
             }
             catch (Exception ex)

@@ -78,6 +78,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         public static bool AddInputTextMultilineElement { get; private set; }
         public static bool AddInputImageElement { get; private set; }
         public static bool editBackground { get; private set; }
+        public static bool Sending { get; set; } = false;
 
         public static bool editAvatar = false;
         private static int currentProfileType;
@@ -181,6 +182,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         {
             try
             {
+                if(Sending)
+                {
+                    Misc.SetTitle(Plugin.plugin, true, "Sending Data", new Vector4(1, 1, 0, 1));   
+                    return; // Skip drawing the rest of the window while sending data
+                }
                 if (DataReceiver.loadedTabsCount < DataReceiver.tabsCount || DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad)
                 {
                     if (DataReceiver.loadedTabsCount < DataReceiver.tabsCount)
@@ -589,14 +595,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 
 
                                         DataSender.CreateTab(newTabNames[i], currentLayoutType, CurrentProfile.index, customTabsCount + 1);
-                                        CurrentProfile.customTabs.Add(new CustomTab
-                                        {
-                                            Name = newTabNames[i],
-                                            Layout = layout,
-                                            IsOpen = true,
-                                            type = currentLayoutType
-                                        });
+                                        CurrentProfile.customTabs.Clear();
+                                        customLayouts.Clear();
+                                        DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
 
+                                        Sending = true;
 
                                     }
 
@@ -1138,10 +1141,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             try
             {
 
-                DataSender.SetProfileStatus(isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);             
+                DataSender.SetProfileStatus(isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
 
 
-                foreach(CustomTab tab in CurrentProfile.customTabs)
+                Sending = true;
+                foreach (CustomTab tab in CurrentProfile.customTabs)
                 {
                     if(tab.Layout is DynamicLayout dynamicLayout)
                     {
@@ -1181,6 +1185,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             catch(Exception ex)
             {
                 plugin.logger.Error("Received exception in SubmitProfileBio " + ex.Message);
+            }
+            finally
+            {
+                CurrentProfile.customTabs.Clear();
+                customLayouts.Clear();
+                DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
             }
 
         }
