@@ -44,9 +44,8 @@ public class Configuration : IPluginConfiguration
     public bool tooltip_HideInCombat { get; set; }
     public float hPos {  get; set; }
     public float vPos { get; set; }
-
-    public List<uint> iconBookmarks { get; set; } = new List<uint>();
-    public List<uint> statusIconBookmarks { get; set; } = new List<uint>();
+    public List<string> customIconCategory { get; set; } = new List<string>();
+    public List<IconData> iconBookmarks { get; set; } = new List<IconData>();
     public List<ChatChannelTabs> chatChannelTabs { get; set; } = new List<ChatChannelTabs>();
     public static string defaultDataPath = string.Empty;
     // the below exist just to make saving less cumbersome

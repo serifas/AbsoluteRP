@@ -463,7 +463,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 return;
             }
             Vector2 avatarSize = currentAvatarImg.Size * ImGui.GetIO().FontGlobalScale;
-            float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2.0f;
+            float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2;
             var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
             float avatarXPos = (windowSize.X - avatarBtnSize.X) / 2;
             ImGui.SetCursorPosX(centeredX);

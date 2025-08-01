@@ -189,9 +189,15 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 {
                     try
                     {
-                        float centeredX = (ImGui.GetWindowSize().X - profileData.avatar.Size.X) / 2;
+                        Vector2 avatarSize = profileData.avatar.Size * ImGui.GetIO().FontGlobalScale;
+                        float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2;
+                        var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
+                        float avatarXPos = (ImGui.GetWindowSize().X - avatarBtnSize.X) / 2;
                         ImGui.SetCursorPosX(centeredX);
-                        ImGui.Image(profileData.avatar.ImGuiHandle, profileData.avatar.Size * ImGui.GetIO().FontGlobalScale);
+                        if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
+                        {
+                            ImGui.Image(profileData.avatar.ImGuiHandle, avatarSize);
+                        }
                         Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew avatar image.");
                     }
                     catch (Exception ex)

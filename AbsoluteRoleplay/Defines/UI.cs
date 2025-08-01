@@ -28,18 +28,31 @@ using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
 namespace AbsoluteRoleplay
 {
-    
 
-    
+
+    public class IconData 
+    { 
+        public string type { get; set; } = string.Empty;
+        public uint iconID { get; set; } = 0;
+        public string category { get; set; } = string.Empty;
+    }
+
     public class ProfileData
     {
         public int index {  get; set; }
         public IDalamudTextureWrap avatar;
         public IDalamudTextureWrap background;
+        internal bool showPersonalities { get; set; }
+        internal bool showPersonality1 { get; set; }
+        internal bool showPersonality2 { get; set; }
+        internal bool showPersonality3 { get; set; }
+        internal bool showPersonality { get; set; }
+
         public string title { get; set; }
         public Vector4 titleColor { get; set; }
         public bool isPrivate { get; set; }
         public bool isActive { get; set; }
+        public bool hasAlignment { get; set; }  
         public string Name { get; set; }
         public string Race { get; set; }
         public string Gender { get; set; }

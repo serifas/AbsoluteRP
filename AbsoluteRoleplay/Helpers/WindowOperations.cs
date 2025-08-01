@@ -10,6 +10,7 @@ using InventoryTab;
 using Lumina.Data.Files;
 using Lumina.Excel.Sheets;
 using Lumina.Extensions;
+using Lumina.Text.ReadOnly;
 using Networking;
 using System;
 using System.Collections.Generic;
@@ -33,12 +34,20 @@ namespace AbsoluteRoleplay.Helpers
         public static int currentPage = 0;
         public static int iconsLoadedPerFrame = 10;
         private const int iconsPerPage = 100;
-
+        public static string iconSearchFilter = string.Empty;
+        public static Dictionary<uint, string> IconIdToAbilityName = new(); 
+        private static List<uint> itemIconIds = new();
+        private static List<uint> actionIconIds = new();
+        private static List<uint> emoteIconIds = new();
+        private static int itemIconLoadIndex = 0;
+        private static int actionIconLoadIndex = 0;
+        private static int emoteIconLoadIndex = 0;
+        private static int spellIconLoadIndex = 0;
+        public static string customCategoryName = string.Empty;
         public static Dictionary<string, List<(uint IconId, IDalamudTextureWrap Texture)>> categorizedIcons =
                 new Dictionary<string, List<(uint, IDalamudTextureWrap)>>
                 {
                     { "Items", new List<(uint, IDalamudTextureWrap)>() },
-                    { "Spells", new List<(uint, IDalamudTextureWrap)>() },
                     { "Actions", new List<(uint, IDalamudTextureWrap)>() },
                     { "Emotes", new List<(uint, IDalamudTextureWrap)>() },
                 };
@@ -81,70 +90,185 @@ namespace AbsoluteRoleplay.Helpers
             }
             return new Vector2(positionX, positionY);
         }
-        public static async void LoadIconsLazy(Plugin plugin)
+        public static void BuildCategoryIconIdLists()
         {
-            int loadedThisFrame = 0;
+            itemIconIds.Clear();
+            actionIconIds.Clear();
+            emoteIconIds.Clear();
+            var itemSheet = Plugin.DataManager.Excel.GetSheet<Lumina.Excel.Sheets.Item>();
+            if (itemSheet != null)
+                itemIconIds.AddRange(itemSheet.Where(i => i.Icon > 0).Select(i => (uint)i.Icon));
 
-            while (nextIconToLoad <= maxIconId && loadedThisFrame < iconsLoadedPerFrame)
+
+            var actionSheet = Plugin.DataManager.Excel.GetSheet<Lumina.Excel.Sheets.Action>();
+            if (actionSheet != null)
+                actionIconIds.AddRange(actionSheet.Where(a => a.Icon > 0).Select(a => (uint)a.Icon));
+
+            var emoteSheet = Plugin.DataManager.Excel.GetSheet<Emote>();
+            if (emoteSheet != null)
+                emoteIconIds.AddRange(emoteSheet.Where(e => e.Icon > 0).Select(e => (uint)e.Icon));
+
+        }
+        public static void BuildIconAbilityNameMap()
+        {
+            if (IconIdToAbilityName.Count > 0)
+                return; // Already built
+
+            // Actions
+            var actionSheet = Plugin.DataManager.Excel.GetSheet<Lumina.Excel.Sheets.Action>();
+            // Spells (if you have a separate sheet, e.g., Spell or Action for spells)
+            var spellSheet = Plugin.DataManager.Excel.GetSheet<Lumina.Excel.Sheets.Action>();
+            if (spellSheet != null)
             {
-                try
+                foreach (var spell in spellSheet)
                 {
-                    var icon = Plugin.DataManager.GameData.GetIcon((uint)nextIconToLoad);
-                    
-                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                    string spellName = null;
+                    var nameProp = spell.Name;
+                    var textValueProp = nameProp.GetType().GetProperty("TextValue");
+                    if (textValueProp != null)
+                        spellName = textValueProp.GetValue(nameProp) as string;
+                    if (string.IsNullOrEmpty(spellName))
                     {
-                        var texFile = Plugin.DataManager.GetFile<TexFile>(icon.FilePath);
-                        var texture = await LoadTextureAsync(icon.FilePath);
-
-                        if (texture != null && texture.Width > 0 && texture.Height > 0)
-                        {
-                            // Categorize icons correctly
-                            if (IsItemIcon(nextIconToLoad))
-                            {
-                                categorizedIcons["Items"].Add(((uint)nextIconToLoad, texture));
-                                plugin.logger.Debug($"Added icon {nextIconToLoad} to Items.");
-                            }
-                            else if (IsSpellIcon(nextIconToLoad))
-                            {
-                                categorizedIcons["Spells"].Add(((uint)nextIconToLoad, texture));
-                                plugin.logger.Debug($"Added icon {nextIconToLoad} to Spells.");
-                            }
-                            else if (IsSpellIcon(nextIconToLoad))
-                            {
-                                categorizedIcons["Actions"].Add(((uint)nextIconToLoad, texture));
-                                plugin.logger.Debug($"Added icon {nextIconToLoad} to Actions.");
-                            }
-                            else if (IsEmoteIcon(nextIconToLoad))
-                            {
-                                categorizedIcons["Emotes"].Add(((uint)nextIconToLoad, texture));
-                                plugin.logger.Debug($"Added icon {nextIconToLoad} to Emotes.");
-                            }
-                            else
-                            {
-                                plugin.logger.Debug($"Icon {nextIconToLoad} does not match any category.");
-                            }
-                        }
+                        var valueProp = nameProp.GetType().GetProperty("Value");
+                        if (valueProp != null)
+                            spellName = valueProp.GetValue(nameProp) as string;
                     }
-                    
-                }
-                catch (Exception ex)
-                {
-                    plugin.logger.Error($"Error loading icon {nextIconToLoad}");
-                }
+                    if (string.IsNullOrEmpty(spellName))
+                        spellName = nameProp.ToString();
 
-                nextIconToLoad++;
-                loadedThisFrame++;
+                    if (spell.Icon > 0 && !string.IsNullOrEmpty(spellName))
+                        IconIdToAbilityName[(uint)spell.Icon] = spellName;
+                }
             }
 
-            if (nextIconToLoad > maxIconId)
+            // Items
+            var itemSheet = Plugin.DataManager.Excel.GetSheet<Lumina.Excel.Sheets.Item>();
+            if (itemSheet != null)
+            {
+                foreach (var item in itemSheet)
+                {
+                    string itemName = null;
+                    var nameProp = item.Name;
+                    var textValueProp = nameProp.GetType().GetProperty("TextValue");
+                    if (textValueProp != null)
+                        itemName = textValueProp.GetValue(nameProp) as string;
+                    if (string.IsNullOrEmpty(itemName))
+                    {
+                        var valueProp = nameProp.GetType().GetProperty("Value");
+                        if (valueProp != null)
+                            itemName = valueProp.GetValue(nameProp) as string;
+                    }
+                    if (string.IsNullOrEmpty(itemName))
+                        itemName = nameProp.ToString();
+
+                    if (item.Icon > 0 && !string.IsNullOrEmpty(itemName))
+                        IconIdToAbilityName[(uint)item.Icon] = itemName;
+                }
+            }
+
+            // Spells (Actions again, but you may want to add other sheets if needed)
+
+            // Emotes
+            var emoteSheet = Plugin.DataManager.Excel.GetSheet<Emote>();
+            if (emoteSheet != null)
+            {
+                foreach (var emote in emoteSheet)
+                {
+                    string emoteName = null;
+                    var nameProp = emote.Name;
+                    var textValueProp = nameProp.GetType().GetProperty("TextValue");
+                    if (textValueProp != null)
+                        emoteName = textValueProp.GetValue(nameProp) as string;
+                    if (string.IsNullOrEmpty(emoteName))
+                    {
+                        var valueProp = nameProp.GetType().GetProperty("Value");
+                        if (valueProp != null)
+                            emoteName = valueProp.GetValue(nameProp) as string;
+                    }
+                    if (string.IsNullOrEmpty(emoteName))
+                        emoteName = nameProp.ToString();
+
+                    if (emote.Icon > 0 && !string.IsNullOrEmpty(emoteName))
+                        IconIdToAbilityName[(uint)emote.Icon] = emoteName;
+                }
+            }
+        }
+        public static async void LoadIconsLazy(Plugin plugin)
+        {
+            if (iconsLoaded || isLoadingIcons)
+                return;
+
+            isLoadingIcons = true;
+            BuildIconAbilityNameMap();
+            BuildCategoryIconIdLists();
+
+            int loadedThisFrame = 0;
+
+            // Try to load up to iconsLoadedPerFrame icons, round-robin across categories
+            while (loadedThisFrame < iconsLoadedPerFrame)
+            {
+                bool loadedAny = false;
+
+                if (itemIconLoadIndex < itemIconIds.Count)
+                {
+                    var iconId = itemIconIds[itemIconLoadIndex++];
+                    var icon = Plugin.DataManager.GameData.GetIcon(iconId);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                    {
+                        var texture = await LoadTextureAsync(icon.FilePath);
+                        if (texture != null && texture.Width > 0 && texture.Height > 0)
+                            categorizedIcons["Items"].Add((iconId, texture));
+                    }
+                    loadedThisFrame++;
+                    loadedAny = true;
+                }
+
+                if (loadedThisFrame < iconsLoadedPerFrame && actionIconLoadIndex < actionIconIds.Count)
+                {
+                    var iconId = actionIconIds[actionIconLoadIndex++];
+                    var icon = Plugin.DataManager.GameData.GetIcon(iconId);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                    {
+                        var texture = await LoadTextureAsync(icon.FilePath);
+                        if (texture != null && texture.Width > 0 && texture.Height > 0)
+                            categorizedIcons["Actions"].Add((iconId, texture));
+                    }
+                    loadedThisFrame++;
+                    loadedAny = true;
+                }
+
+                if (loadedThisFrame < iconsLoadedPerFrame && emoteIconLoadIndex < emoteIconIds.Count)
+                {
+                    var iconId = emoteIconIds[emoteIconLoadIndex++];
+                    var icon = Plugin.DataManager.GameData.GetIcon(iconId);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                    {
+                        var texture = await LoadTextureAsync(icon.FilePath);
+                        if (texture != null && texture.Width > 0 && texture.Height > 0)
+                            categorizedIcons["Emotes"].Add((iconId, texture));
+                    }
+                    loadedThisFrame++;
+                    loadedAny = true;
+                }
+                // If nothing loaded, break to avoid infinite loop
+                if (!loadedAny)
+                    break;
+            }
+
+            // Check if all categories are done
+            if (itemIconLoadIndex >= itemIconIds.Count &&
+                actionIconLoadIndex >= actionIconIds.Count &&
+                emoteIconLoadIndex >= emoteIconIds.Count)
             {
                 iconsLoaded = true;
                 isLoadingIcons = false;
                 plugin.logger.Debug("Finished loading all icons.");
             }
+            else
+            {
+                isLoadingIcons = false; // Allow next frame to load more
+            }
         }
-
-
         // Helper methods to determine type
         public static bool IsItemIcon(uint iconId)
         {
@@ -290,35 +414,81 @@ namespace AbsoluteRoleplay.Helpers
                 return;
             }
 
-            if (!categorizedIcons.ContainsKey(currentCategory) && categorizedIcons[currentCategory] == null && categorizedIcons[currentCategory].Count == 0)
+            // Category selector (tab bar)
+            string[] categories = { "Items", "Actions", "Emotes"};
+            if (ImGui.BeginTabBar("IconCategories"))
             {
-                ImGui.Text($"No icons available for category: {currentCategory}");
-                return;
+                foreach (var cat in categories)
+                {
+                    if (ImGui.BeginTabItem(cat))
+                    {
+                        if (currentCategory != cat)
+                        {
+                            currentCategory = cat;
+                            currentPage = 0; // Reset page when switching category
+                        }
+                        ImGui.EndTabItem();
+                    }
+                }
+                ImGui.EndTabBar();
             }
 
-            // Render icons for the current category and page
-            var icons = categorizedIcons[currentCategory];
-            int startIndex = currentPage * iconsPerPage;
-            int endIndex = Math.Min(startIndex + iconsPerPage, icons.Count);
+            ImGui.InputText("Search Ability Name", ref iconSearchFilter, 100);
+
+            // Get all loaded icons for current category
+            var loadedIcons = categorizedIcons.ContainsKey(currentCategory)
+                ? categorizedIcons[currentCategory]
+                : new List<(uint IconId, IDalamudTextureWrap Texture)>();
+
+            // Filter all loaded icons
+            var filteredIcons = loadedIcons
+                .Where(pair =>
+                    string.IsNullOrEmpty(iconSearchFilter) ||
+                    (IconIdToAbilityName.TryGetValue(pair.IconId, out var name) &&
+                     !string.IsNullOrEmpty(name) &&
+                     name.Contains(iconSearchFilter, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            // Show loading indicator if not all icons are loaded
+            if (!iconsLoaded)
+            {
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "Loading icons... (this will update as icons load)");
+            }
 
             const int iconsPerRow = 10;
+            const int iconsPerPage = 50; // 10x5 grid
             float iconSize = 40f;
+
+            // Paginate the filtered icons
+            int startIndex = currentPage * iconsPerPage;
+            int endIndex = Math.Min(startIndex + iconsPerPage, filteredIcons.Count);
+
             int count = 0;
             int selectedIconId = 0;
+
             for (int i = startIndex; i < endIndex; i++)
             {
-                if (icons[i].Texture == null)
+                if (filteredIcons[i].Texture == null)
                 {
                     ImGui.Text($"Error: icons[{i}] is null!");
                     continue;
                 }
 
-                var (iconId, texture) = icons[i];
+                var (iconId, texture) = filteredIcons[i];
 
                 if (texture != null && texture.ImGuiHandle != IntPtr.Zero)
-                { 
+                {
                     ImGui.PushID((int)iconId);
-                    if (ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize)))
+                    bool clicked = ImGui.ImageButton(texture.ImGuiHandle, new Vector2(iconSize, iconSize));
+                    // Tooltip logic
+                    if (ImGui.IsItemHovered())
+                    {
+                        if (IconIdToAbilityName.TryGetValue(iconId, out var name) && !string.IsNullOrEmpty(name))
+                        {
+                            ImGui.SetTooltip(name);
+                        }
+                    }
+                    if (clicked)
                     {
                         selectedIcon = texture;
                         InvTab.createItemIconID = iconId;
@@ -338,18 +508,22 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     ImGui.SameLine();
                 }
+                else
+                {
+                    ImGui.NewLine();
+                }
             }
 
             // Pagination controls
+            ImGui.Separator();
             if (currentPage > 0 && ImGui.Button("Back"))
             {
                 currentPage--;
             }
-            if (currentPage > 0)
-            {
-                ImGui.SameLine();
-            }
-            if (endIndex < icons.Count && ImGui.Button("Next"))
+            ImGui.SameLine();
+            ImGui.Text($"Page {currentPage + 1} / {Math.Max(1, (filteredIcons.Count + iconsPerPage - 1) / iconsPerPage)}");
+            ImGui.SameLine();
+            if (endIndex < filteredIcons.Count && ImGui.Button("Next"))
             {
                 currentPage++;
             }
@@ -368,7 +542,6 @@ namespace AbsoluteRoleplay.Helpers
                     if (tree && selectedTreeIconId.HasValue && rel != null)
                     {
                         rel.IconID = selectedTreeIconId.Value; // Always use the persistent value
-
                         rel.IconTexture = selectedIcon;
                         iconImage = selectedIcon;
                     }
@@ -399,7 +572,6 @@ namespace AbsoluteRoleplay.Helpers
                 }
             }
         }
-
         public static void RenderStatusIcons(Plugin plugin, IconElement icon, trait personality = null)
         {
             // Begin rendering the tab bar for status categories (you can adjust this as needed)
