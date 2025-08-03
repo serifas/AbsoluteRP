@@ -43,6 +43,7 @@ namespace AbsoluteRoleplay.Helpers
         private static int actionIconLoadIndex = 0;
         private static int emoteIconLoadIndex = 0;
         private static int spellIconLoadIndex = 0;
+        public static List<uint> LoadedIconIDs = new List<uint>();
         public static string customCategoryName = string.Empty;
         public static Dictionary<string, List<(uint IconId, IDalamudTextureWrap Texture)>> categorizedIcons =
                 new Dictionary<string, List<(uint, IDalamudTextureWrap)>>
@@ -213,8 +214,11 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     var iconId = itemIconIds[itemIconLoadIndex++];
                     var icon = Plugin.DataManager.GameData.GetIcon(iconId);
-                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
-                    {
+
+
+                    var existingIconID = categorizedIcons["Items"].FirstOrDefault(x => x.IconId == iconId);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath) && !categorizedIcons["Items"].Contains(existingIconID))
+                    {                       
                         var texture = await LoadTextureAsync(icon.FilePath);
                         if (texture != null && texture.Width > 0 && texture.Height > 0)
                             categorizedIcons["Items"].Add((iconId, texture));
@@ -227,7 +231,10 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     var iconId = actionIconIds[actionIconLoadIndex++];
                     var icon = Plugin.DataManager.GameData.GetIcon(iconId);
-                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+
+
+                    var existingIconID = categorizedIcons["Actions"].FirstOrDefault(x => x.IconId == iconId);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath) && !categorizedIcons["Actions"].Contains(existingIconID))
                     {
                         var texture = await LoadTextureAsync(icon.FilePath);
                         if (texture != null && texture.Width > 0 && texture.Height > 0)
@@ -241,7 +248,9 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     var iconId = emoteIconIds[emoteIconLoadIndex++];
                     var icon = Plugin.DataManager.GameData.GetIcon(iconId);
-                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+
+                    var existingIconID = categorizedIcons["Emotes"].FirstOrDefault(x => x.IconId == iconId);
+                    if (icon != null && !string.IsNullOrEmpty(icon.FilePath) && !categorizedIcons["Emotes"].Contains(existingIconID))
                     {
                         var texture = await LoadTextureAsync(icon.FilePath);
                         if (texture != null && texture.Width > 0 && texture.Height > 0)
@@ -468,13 +477,10 @@ namespace AbsoluteRoleplay.Helpers
 
             for (int i = startIndex; i < endIndex; i++)
             {
-                if (filteredIcons[i].Texture == null)
+                if (filteredIcons[i].Texture != null || !LoadedIconIDs.Contains(filteredIcons[i].IconId))
                 {
-                    ImGui.Text($"Error: icons[{i}] is null!");
-                    continue;
-                }
 
-                var (iconId, texture) = filteredIcons[i];
+                    var (iconId, texture) = filteredIcons[i];
 
                 if (texture != null && texture.ImGuiHandle != IntPtr.Zero)
                 {
@@ -503,6 +509,7 @@ namespace AbsoluteRoleplay.Helpers
                     ImGui.PopID();
                 }
 
+                }
                 count++;
                 if (count % iconsPerRow != 0)
                 {
@@ -533,37 +540,29 @@ namespace AbsoluteRoleplay.Helpers
             {
                 ImGui.Text("Selected Icon:");
                 ImGui.SameLine();
-                if (ImGui.Button("Set Icon"))
+                if (tree && selectedTreeIconId.HasValue && rel != null)
                 {
-                    SetIcon = true;
+                    rel.IconID = selectedTreeIconId.Value; // Always use the persistent value
+                    rel.IconTexture = selectedIcon;
+                    iconImage = selectedIcon;
                 }
-                if (SetIcon)
+                if (inventory)
                 {
-                    if (tree && selectedTreeIconId.HasValue && rel != null)
+                    InvTab.icon = selectedIcon;
+                    if (icon != null)
+                        icon.iconID = selectedIconId; // Only set if icon is not null
+                }
+                else if (!inventory && !tree)
+                {
+                    if (icon == null)
                     {
-                        rel.IconID = selectedTreeIconId.Value; // Always use the persistent value
-                        rel.IconTexture = selectedIcon;
-                        iconImage = selectedIcon;
+                        ImGui.Text("Error: icon parameter is null!");
                     }
-                    if (inventory)
+                    else
                     {
-                        InvTab.icon = selectedIcon;
-                        InvTab.isIconBrowserOpen = false;
-                        if (icon != null)
-                            icon.iconID = selectedIconId; // Only set if icon is not null
-                    }
-                    else if (!inventory && !tree)
-                    {
-                        if (icon == null)
-                        {
-                            ImGui.Text("Error: icon parameter is null!");
-                        }
-                        else
-                        {
-                            icon.icon = selectedIcon;
-                            icon.iconID = selectedIconId;
-                            icon.modifying = false;
-                        }
+                        icon.icon = selectedIcon;
+                        icon.iconID = selectedIconId;
+                        icon.modifying = false;
                     }
                 }
                 if (selectedIcon != null && selectedIcon.ImGuiHandle != IntPtr.Zero)

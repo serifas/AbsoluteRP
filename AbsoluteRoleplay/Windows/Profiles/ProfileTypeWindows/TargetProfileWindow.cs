@@ -29,6 +29,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         internal static string warningMessage;
         public static List<CustomLayout> profileLayouts = new List<CustomLayout>();
         public static CustomLayout currentLayout;
+        public static bool RequestingProfile = false;
         public static bool ExistingProfile = false;
 
         public TargetProfileWindow(Plugin plugin) : base("TARGET")
@@ -67,290 +68,295 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 
             try
             {
-
-
-                if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
-                {
-                    profileData.background = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Set background to default backgroundHolder.");
-                }
-
-                if (profileData.avatar == null || profileData.avatar.ImGuiHandle == IntPtr.Zero)
-                {
-                    profileData.avatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Set avatar to default avatarHolder.");
-                }
-
-                EnsureProfileData();
-
-                // Loader: Wait for all tabs and gallery images to load before drawing profile
-           
-                bool tabsLoading = DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount;
-                bool galleryLoading = DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad;
-
-                if (tabsLoading)
-                {
-                    Misc.StartLoader(DataReceiver.loadedTargetTabsCount, DataReceiver.tabsTargetCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize(), "tabs");
-
-                    if (galleryLoading)
-                    {
-                        Misc.StartLoader(DataReceiver.loadedTargetGalleryImages, DataReceiver.TargetGalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize(), "gallery");     
-                    }
-                    return;
-                }
-                // Block further UI until all tweens are finished
-                if ((tabsLoading && Misc.IsLoaderTweening("tabs")) ||
-                    (galleryLoading && Misc.IsLoaderTweening("gallery")))
-                {
-                    return;
-                }
-                // Warning popup
-                if (warning)
-                {
-                    ImGui.OpenPopup("WARNING");
-                    try
-                    {
-                        if (ImGui.BeginPopupModal("WARNING", ref warning, ImGuiWindowFlags.AlwaysAutoResize))
-                        {
-                            ImGui.Text(warningMessage ?? "Warning");
-                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Do you agree to view the profile anyway?");
-                            if (ImGui.Button("Agree"))
-                            {
-                                warning = false;
-                                ImGui.CloseCurrentPopup();
-                            }
-                            ImGui.SameLine();
-                            if (ImGui.Button("Go back"))
-                            {
-                                IsOpen = false;
-                                warning = false;
-                                ImGui.CloseCurrentPopup();
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Warning popup error: {ex.Message}");
-                    }
-                    finally
-                    {
-                        ImGui.EndPopup();
-                    }
-                }
-
-                // No profile available
                 if (!ExistingProfile)
                 {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] No profile data available.");
-                    ImGuiHelpers.SafeTextWrapped("No Profile Data Available:\nIf this character has a profile, you can request to view it below.");
-                    if (ImGui.Button("Request access"))
+                    RequestingProfile = false;
+                    ImGui.Text("This player either does not have an active profile or has not granted you permission to view it.");
+                    if (ImGui.Button("Request Access"))
                     {
                         DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
                     }
-                    return;
-                }
-
-                // First draw setup
-                if (firstDraw)
-                {
-                    addNotes = false;
-                    firstDraw = false;
-                }
-
-                // Draw background image if valid
-                if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
-                {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Background image is null or handle is zero.");
                 }
                 else
                 {
-                    try
-                    {
-                        var drawList = ImGui.GetWindowDrawList();
-                        float alpha = 0.5f;
-                        uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
-                        float scale = ImGui.GetIO().FontGlobalScale;
-                        Vector2 scaledSize = profileData.background.Size * scale;
-                        Vector2 imageStartPos = ImGui.GetCursorScreenPos();
-                        Vector2 imageEndPos = imageStartPos + scaledSize;
-                        drawList.AddImage(profileData.background.ImGuiHandle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
-                        // Draw dark overlay over the background image
-                        uint overlayColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 0.5f)); // 0.5f = 50% opacity
-                        drawList.AddRectFilled(imageStartPos, imageEndPos, overlayColor);
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw background image: {ex.Message}");
-                    }
-                }
 
-                // Draw avatar if valid
-                if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
-                {
-                    try
+                    if (RequestingProfile)
                     {
-                        Vector2 avatarSize = profileData.avatar.Size * ImGui.GetIO().FontGlobalScale;
-                        float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2;
-                        var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
-                        float avatarXPos = (ImGui.GetWindowSize().X - avatarBtnSize.X) / 2;
-                        ImGui.SetCursorPosX(centeredX);
-                        if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
+                        Misc.SetTitle(Plugin.plugin, true, "Requesting Profile Data...", new Vector4(1, 1, 0, 1));
+                        return; // Skip drawing the rest of the window while sending data
+                    }
+                    if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
+                    {
+                        profileData.background = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Set background to default backgroundHolder.");
+                    }
+
+                    if (profileData.avatar == null || profileData.avatar.ImGuiHandle == IntPtr.Zero)
+                    {
+                        profileData.avatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Set avatar to default avatarHolder.");
+                    }
+
+                    EnsureProfileData();
+
+                    // Loader: Wait for all tabs and gallery images to load before drawing profile
+
+                    bool tabsLoading = DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount;
+                    bool galleryLoading = DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad;
+
+                    if (tabsLoading)
+                    {
+                        Misc.StartLoader(DataReceiver.loadedTargetTabsCount, DataReceiver.tabsTargetCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize(), "tabs");
+
+                        if (galleryLoading)
                         {
-                            ImGui.Image(profileData.avatar.ImGuiHandle, avatarSize);
+                            Misc.StartLoader(DataReceiver.loadedTargetGalleryImages, DataReceiver.TargetGalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize(), "gallery");
                         }
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew avatar image.");
+                        return;
                     }
-                    catch (Exception ex)
+                    // Block further UI until all tweens are finished
+                    if ((tabsLoading && Misc.IsLoaderTweening("tabs")) ||
+                        (galleryLoading && Misc.IsLoaderTweening("gallery")))
                     {
-                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw avatar image: {ex.Message}");
+                        return;
                     }
-                }
-                else
-                {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Avatar image is null or handle is zero.");
-                }
-
-                // Draw title if valid
-                if (!string.IsNullOrEmpty(profileData.title))
-                {
-                    try
+                    // Warning popup
+                    if (warning)
                     {
-                        Misc.SetTitle(plugin, true, profileData.title, profileData.titleColor);
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to set title: {ex.Message}");
-                    }
-                }
-
-                // Controls
-                ImGui.Text("Controls");
-                if (ImGui.Button("Notes")) { addNotes = true; }
-                if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
-
-                ImGui.SameLine();
-                Misc.RenderAlignmentToRight("Report");
-
-                if (ImGui.Button("Report"))
-                {
-                    ReportWindow.reportCharacterName = characterName;
-                    ReportWindow.reportCharacterWorld = characterWorld;
-                    plugin.OpenReportWindow();
-                }
-                if (ImGui.IsItemHovered())
-                {
-                    ImGui.SetTooltip("Report this profile for inappropriate use.\n(Repeat false reports may result in your account being banned.)");
-                }
-
-                // Tabs
-                if (profileData.customTabs != null && profileData.customTabs.Count > 0)
-                {
-                    if (ImGui.BeginTabBar("TargetNavigation"))
-                    {
-                        foreach(CustomTab tab in profileData.customTabs.ToList())
+                        ImGui.OpenPopup("WARNING");
+                        try
                         {
-                            if (tab != null && !string.IsNullOrEmpty(tab.Name) && tab.Layout != null)
+                            if (ImGui.BeginPopupModal("WARNING", ref warning, ImGuiWindowFlags.AlwaysAutoResize))
                             {
-                                if (ImGui.BeginTabItem(tab.Name))
+                                ImGui.Text(warningMessage ?? "Warning");
+                                ImGui.TextColored(new Vector4(1, 0, 0, 1), "Do you agree to view the profile anyway?");
+                                if (ImGui.Button("Agree"))
                                 {
-                                    currentLayout = tab.Layout as CustomLayout;
-                                    try
-                                    {
-                                        Plugin.plugin.logger.Debug($"[TargetProfileWindow] Rendering tab: {tab.Name} ({tab.Layout.GetType().Name})");
-                                        switch (tab.Layout)
-                                        {
-                                            case BioLayout bioLayout:                                               
-                                                try { Bio.RenderBioPreview(bioLayout, tab.Name, profileData.titleColor); } catch(Exception ex){ Plugin.plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
-                                                break;
-                                            case DetailsLayout detailsLayout:
-                                                try { Details.RenderDetailPreview(detailsLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Details.RenderDetailPreview error: {ex.Message}"); }
-                                                break;
-                                            case GalleryLayout galleryLayout:
-                                                try { Gallery.RenderGalleryPreview(galleryLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Gallery.RenderGalleryPreview error: {ex.Message}"); }
-                                                break;
-                                            case InfoLayout infoLayout:
-                                                try
-                                                {
-                                                    Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
-                                                    Misc.RenderHtmlColoredTextInline(infoLayout.text, 400);
-                                                }
-                                                catch (Exception ex)
-                                                {
-                                                    Plugin.plugin.logger.Error($"[TargetProfileWindow] InfoLayout render error: {ex.Message}");
-                                                }
-                                                break;
-                                            case StoryLayout storyLayout:
-                                                try { Story.RenderStoryPreview(storyLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Story.RenderStoryPreview error: {ex.Message}"); }
-                                                break;
-                                            case TreeLayout treeLayout:
-                                                string uniqueId = $"{tab.Name}##{treeLayout.tabIndex}";
-                                                try { Tree.RenderTreeLayout(treeLayout.tabIndex, false, uniqueId, treeLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Tree.RenderTreeLayout error: {ex.Message}"); }
-                                                break;
-                                            default:
-                                                Plugin.plugin.logger.Debug($"[TargetProfileWindow] Unknown tab layout type: {tab.Layout.GetType().Name}");
-                                                break;
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        Plugin.plugin.logger.Error($"[TargetProfileWindow] Tab Render Error: {ex.Message}");
-                                    }
-                                    ImGui.EndTabItem();
+                                    warning = false;
+                                    ImGui.CloseCurrentPopup();
+                                }
+                                ImGui.SameLine();
+                                if (ImGui.Button("Go back"))
+                                {
+                                    IsOpen = false;
+                                    warning = false;
+                                    ImGui.CloseCurrentPopup();
                                 }
                             }
                         }
-                        ImGui.EndTabBar();
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Warning popup error: {ex.Message}");
+                        }
+                        finally
+                        {
+                            ImGui.EndPopup();
+                        }
                     }
-                }
-                else
-                {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] No custom tabs to render.");
-                    ImGui.TextColored(new Vector4(1, 0, 0, 1), "No profile data available for this profile.");
-                }
 
-                // Layout selection warning
-                if (currentLayout == null)
-                {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] currentLayout is null, returning.");
-                    return;
-                }
 
-                // Profile child region
-                using var profileTable = ImRaii.Child("PROFILE");
-                if (!profileTable)
-                {
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] profileTable child region not created.");
-                    return;
-                }
-
-                // Notes and preview
-                if (addNotes)
-                {
-                    try
+                    // First draw setup
+                    if (firstDraw)
                     {
-                        plugin.OpenProfileNotes();
+                        addNotes = false;
+                        firstDraw = false;
                     }
-                    catch (Exception ex)
-                    {
-                        Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenProfileNotes error: {ex.Message}");
-                    }
-                    addNotes = false;
-                }
 
-                if (loadPreview)
-                {
-                    try
+                    // Draw background image if valid
+                    if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
                     {
-                        plugin.OpenImagePreview();
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Background image is null or handle is zero.");
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenImagePreview error: {ex.Message}");
+                        try
+                        {
+                            var drawList = ImGui.GetWindowDrawList();
+                            float alpha = 0.5f;
+                            uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
+                            float scale = ImGui.GetIO().FontGlobalScale;
+                            Vector2 scaledSize = profileData.background.Size * scale;
+                            Vector2 imageStartPos = ImGui.GetCursorScreenPos();
+                            Vector2 imageEndPos = imageStartPos + scaledSize;
+                            drawList.AddImage(profileData.background.ImGuiHandle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
+                            // Draw dark overlay over the background image
+                            uint overlayColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 0.5f)); // 0.5f = 50% opacity
+                            drawList.AddRectFilled(imageStartPos, imageEndPos, overlayColor);
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw background image: {ex.Message}");
+                        }
                     }
-                    loadPreview = false;
-                }
 
-                Plugin.plugin.logger.Debug("[TargetProfileWindow] Draw finished.");
+                    // Draw avatar if valid
+                    if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
+                    {
+                        try
+                        {
+                            Vector2 avatarSize = profileData.avatar.Size * ImGui.GetIO().FontGlobalScale;
+                            float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2;
+                            var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
+                            float avatarXPos = (ImGui.GetWindowSize().X - avatarBtnSize.X) / 2;
+                            ImGui.SetCursorPosX(centeredX);
+                            if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
+                            {
+                                ImGui.Image(profileData.avatar.ImGuiHandle, avatarSize);
+                            }
+                            Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew avatar image.");
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw avatar image: {ex.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Avatar image is null or handle is zero.");
+                    }
+
+                    // Draw title if valid
+                    if (!string.IsNullOrEmpty(profileData.title))
+                    {
+                        try
+                        {
+                            Misc.SetTitle(plugin, true, profileData.title, profileData.titleColor);
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to set title: {ex.Message}");
+                        }
+                    }
+
+                    // Controls
+                    ImGui.Text("Controls");
+                    if (ImGui.Button("Notes")) { addNotes = true; }
+                    if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
+
+                    ImGui.SameLine();
+                    Misc.RenderAlignmentToRight("Report");
+
+                    if (ImGui.Button("Report"))
+                    {
+                        ReportWindow.reportCharacterName = characterName;
+                        ReportWindow.reportCharacterWorld = characterWorld;
+                        plugin.OpenReportWindow();
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Report this profile for inappropriate use.\n(Repeat false reports may result in your account being banned.)");
+                    }
+
+                    // Tabs
+                    if (profileData.customTabs != null && profileData.customTabs.Count > 0)
+                    {
+                        if (ImGui.BeginTabBar("TargetNavigation"))
+                        {
+                            foreach (CustomTab tab in profileData.customTabs.ToList())
+                            {
+                                if (tab != null && !string.IsNullOrEmpty(tab.Name) && tab.Layout != null)
+                                {
+                                    if (ImGui.BeginTabItem(tab.Name))
+                                    {
+                                        currentLayout = tab.Layout as CustomLayout;
+                                        try
+                                        {
+                                            Plugin.plugin.logger.Debug($"[TargetProfileWindow] Rendering tab: {tab.Name} ({tab.Layout.GetType().Name})");
+                                            switch (tab.Layout)
+                                            {
+                                                case BioLayout bioLayout:
+                                                    try { Bio.RenderBioPreview(bioLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
+                                                    break;
+                                                case DetailsLayout detailsLayout:
+                                                    try { Details.RenderDetailPreview(detailsLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Details.RenderDetailPreview error: {ex.Message}"); }
+                                                    break;
+                                                case GalleryLayout galleryLayout:
+                                                    try { Gallery.RenderGalleryPreview(galleryLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Gallery.RenderGalleryPreview error: {ex.Message}"); }
+                                                    break;
+                                                case InfoLayout infoLayout:
+                                                    try
+                                                    {
+                                                        Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
+                                                        Misc.RenderHtmlElements(infoLayout.text, true, true, true);
+                                                    }
+                                                    catch (Exception ex)
+                                                    {
+                                                        Plugin.plugin.logger.Error($"[TargetProfileWindow] InfoLayout render error: {ex.Message}");
+                                                    }
+                                                    break;
+                                                case StoryLayout storyLayout:
+                                                    try { Story.RenderStoryPreview(storyLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Story.RenderStoryPreview error: {ex.Message}"); }
+                                                    break;
+                                                case TreeLayout treeLayout:
+                                                    string uniqueId = $"{tab.Name}##{treeLayout.tabIndex}";
+                                                    try { Tree.RenderTreeLayout(treeLayout.tabIndex, false, uniqueId, treeLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Tree.RenderTreeLayout error: {ex.Message}"); }
+                                                    break;
+                                                default:
+                                                    Plugin.plugin.logger.Debug($"[TargetProfileWindow] Unknown tab layout type: {tab.Layout.GetType().Name}");
+                                                    break;
+                                            }
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Tab Render Error: {ex.Message}");
+                                        }
+                                        ImGui.EndTabItem();
+                                    }
+                                }
+                            }
+                            ImGui.EndTabBar();
+                        }
+                    }
+                    else
+                    {
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] No custom tabs to render.");
+                        ImGui.TextColored(new Vector4(1, 0, 0, 1), "No profile data available for this profile.");
+                    }
+
+                    // Layout selection warning
+                    if (currentLayout == null)
+                    {
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] currentLayout is null, returning.");
+                        return;
+                    }
+
+                    // Profile child region
+                    using var profileTable = ImRaii.Child("PROFILE");
+                    if (!profileTable)
+                    {
+                        Plugin.plugin.logger.Debug("[TargetProfileWindow] profileTable child region not created.");
+                        return;
+                    }
+
+                    // Notes and preview
+                    if (addNotes)
+                    {
+                        try
+                        {
+                            plugin.OpenProfileNotes();
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenProfileNotes error: {ex.Message}");
+                        }
+                        addNotes = false;
+                    }
+
+                    if (loadPreview)
+                    {
+                        try
+                        {
+                            plugin.OpenImagePreview();
+                        }
+                        catch (Exception ex)
+                        {
+                            Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenImagePreview error: {ex.Message}");
+                        }
+                        loadPreview = false;
+                    }
+
+                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Draw finished.");
+                }
             }
             catch (Exception ex)
             {
@@ -472,9 +478,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 firstDraw = true;
                 warning = false;
                 warningMessage = string.Empty;
-                ExistingProfile = false;
-                characterName = string.Empty;
-                characterWorld = string.Empty;
             }
             catch (Exception ex)
             {
@@ -520,11 +523,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 firstDraw == true &&
                 warning == false &&
                 string.IsNullOrEmpty(warningMessage) &&
-                ExistingProfile == false &&
                 (profileLayouts == null || profileLayouts.Count == 0) &&
-                currentLayout != null && // currentLayout is set to new CustomLayout()
-                characterName == string.Empty &&
-                characterWorld == string.Empty;
+                currentLayout != null;  // currentLayout is set to new CustomLayout();
 
             return profileDataDefault && otherDefaults;
         }

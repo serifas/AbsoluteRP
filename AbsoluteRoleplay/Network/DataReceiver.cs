@@ -275,10 +275,6 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    string characterName = buffer.ReadString();
-                    string characterWorld = buffer.ReadString();
-                    TargetProfileWindow.characterName = characterName;
-                    TargetProfileWindow.characterWorld = characterWorld;
                     loggedIn = true;
                     TargetProfileWindow.ExistingProfile = false;
                     TargetBioLoadStatus = 0;
@@ -290,6 +286,7 @@ namespace Networking
                     TargetProfileWindow.addNotes = false;
                     BookmarksWindow.DisableBookmarkSelection = false;
                     ReportWindow.reportStatus = "";
+
                     plugin.OpenTargetWindow();
                 }
             }
@@ -996,12 +993,14 @@ namespace Networking
                         ProfileWindow.SpoilerDT = DT;
                         ProfileWindow.NSFW = NSFW;
                         ProfileWindow.Sending = false;
+                        ProfileWindow.Fetching = false;
                     }
                     else
                     {
                         TargetProfileWindow.ExistingProfile = true;
                         TargetProfileWindow.addNotes = false;
 
+                        TargetProfileWindow.RequestingProfile = false;
                         List<string> spoilers = new List<string>();
 
                         if (ARR) { spoilers.Add("A Realm Reborn"); }
@@ -1779,11 +1778,12 @@ namespace Networking
                     {
                         id = inventoryID,
                         tabIndex = tabIndex,
+                        name = tabName,
                         tabName = tabName,
                         inventorySlotContents = inventory
                     };
                     CustomTab tab = new CustomTab()
-                    {
+                    {                       
                         Name = tabName,
                         Layout = inventoryLayout,
                         IsOpen = true,
@@ -2169,6 +2169,7 @@ namespace Networking
 
                     var treeLayout = new TreeLayout
                     {
+                        name = tabName,
                         tabName = tabName,
                         tabIndex = tabIndex,
                         Paths = paths,

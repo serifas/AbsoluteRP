@@ -27,7 +27,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
                 if (pluginInstance.IsOnline() && ClientTCP.IsConnected() == true)
                 {
                     MainPanel.SaveLoginPreferences(username.ToString(), password.ToString());
-                    DataSender.Login(username, password, pluginInstance.playername, pluginInstance.playerworld);
+                    DataSender.Login();
                 }
             }
             ImGui.SameLine();

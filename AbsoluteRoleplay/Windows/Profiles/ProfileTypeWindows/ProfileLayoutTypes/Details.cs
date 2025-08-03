@@ -38,7 +38,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             foreach(Detail detail in layout.details)
             {
                 Misc.RenderHtmlColoredTextInline(detail.name.ToUpper(), 400);
-                Misc.RenderHtmlColoredTextInline(detail.content, 400);
+                Misc.RenderHtmlElements(detail.content, true, true, true);
             }
         }
         public static void DrawDetail(Detail detail, DetailsLayout layout)

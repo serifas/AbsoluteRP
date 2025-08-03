@@ -23,8 +23,8 @@ namespace Networking
         public static TcpClient clientSocket;
         public static SslStream sslStream;
         private static byte[] recBuffer = new byte[8192];
-        private static readonly string server = "join.infinite-roleplay.net";
-        private static readonly int port = 53922;
+        private static readonly string server = "jointest.infinite-roleplay.net";
+        private static readonly int port = 53921;
         public static Plugin plugin;
 
         // Ensure all access to recBuffer is on the same thread and always copy before use.

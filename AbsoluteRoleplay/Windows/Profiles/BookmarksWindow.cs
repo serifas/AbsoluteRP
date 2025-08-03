@@ -74,6 +74,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     ReportWindow.reportCharacterWorld = profileList[i].PlayerWorld;
                                     TargetProfileWindow.characterName = profileList[i].PlayerName;
                                     TargetProfileWindow.characterWorld = profileList[i].PlayerWorld;
+                                    TargetProfileWindow.RequestingProfile = true;
                                     TargetProfileWindow.ResetAllData();
                                     DataSender.FetchProfile(false, -1, profileList[i].PlayerName, profileList[i].PlayerWorld, -1);
                                 }

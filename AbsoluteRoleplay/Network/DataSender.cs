@@ -8,6 +8,7 @@ using Dalamud.Hooking;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
+using JetBrains.Annotations;
 using OtterGui.Text.EndObjects;
 using System;
 using System.Collections.Generic;
@@ -96,12 +97,13 @@ namespace Networking
         SendTradeSessionTargetInventory = 72,
         SendTreeLayout = 73,
         SendInventoryLayout = 74,
+        SendTabReorder = 75,
     }
     public class DataSender
     {
         public static int userID;
         public static Plugin plugin;
-        public static async void Login(string username, string password, string playerName, string playerWorld)
+        public static async void Login()
         {
             if (ClientTCP.IsConnected())
             {
@@ -305,6 +307,7 @@ namespace Networking
                         buffer.WriteString(connectionName);
                         buffer.WriteString(connectionWorld);
                         buffer.WriteInt(status);
+                        Plugin.plugin.logger.Error($"Sending profile access update: {localName} on {localServer} to {connectionName} on {connectionWorld} with status {status}");
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -475,6 +478,8 @@ namespace Networking
 
         public static async void SubmitProfileBio(int profileIndex, BioLayout layout)
         {
+            plugin.logger.Error($"SubmitProfileBio called for profileIndex={profileIndex}, tabName={layout.name}");
+
             if (ClientTCP.IsConnected())
             {
                 try
@@ -1769,7 +1774,36 @@ namespace Networking
                             buffer.WriteInt(item.quality);
                             Plugin.plugin.logger.Error($"Inventory Slot {item.slot}: {item.name}");
                         }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
+                }
+            }
+        }
 
+        internal static async void SendTabReorder(int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendTabReorder);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                        buffer.WriteString(plugin.playername);
+                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(indexChanges.Count);
+                        foreach (var (oldIdx, newIdx) in indexChanges)
+                        {
+                            buffer.WriteInt(oldIdx);
+                            buffer.WriteInt(newIdx);
+                        }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

@@ -17,7 +17,9 @@ using System.Diagnostics;
 using System.Net;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using static AbsoluteRoleplay.ProfileData;
+using static AbsoluteRoleplay.UI;
 
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 {
@@ -71,8 +73,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         public static bool customTabSelected = false;
         public static bool Locked = false;
         public static CustomLayout currentLayout;
-        public static List<CustomLayout> customLayouts = new List<CustomLayout>();
+        public static List<CustomLayout> customLayouts = new List<CustomLayout>(); 
         public static ProfileWindow profileWindow;
+        private List<int> tabOrder = new List<int>();         // Current order (updated by user)
+        private List<int> initialTabOrder = new List<int>();  // Original order (for comparison)
+        private bool showReorderTabsPopup;
         public static InventoryLayout currentInventory = null;
         public static bool AddInputTextElement { get; private set; }
         public static bool AddInputTextMultilineElement { get; private set; }
@@ -83,6 +88,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         public static bool editAvatar = false;
         private static int currentProfileType;
         public static string NewProfileTitle = string.Empty;
+        public static bool Fetching = false;
 
         public ProfileWindow(Plugin plugin) : base(
        "PROFILE", ImGuiWindowFlags.None)
@@ -201,6 +207,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     Misc.SetTitle(Plugin.plugin, true, "Sending Data", new Vector4(1, 1, 0, 1));   
                     return; // Skip drawing the rest of the window while sending data
                 }
+                if (Fetching)
+                {
+                    Misc.SetTitle(Plugin.plugin, true, "Fetching Data", new Vector4(1, 1, 0, 1));
+                    return; // Skip drawing the rest of the window while fetching data
+                }
                 else
                 {
                     if (Locked)
@@ -254,12 +265,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         {
                             AddProfileSelection();
                             ImGui.SameLine();
-                            if (ImGui.Button("Reload Profile"))
+                            if (ImGui.Button("Preview Profile"))
                             {
-                                TargetProfileWindow.characterName = plugin.playername;
-                                TargetProfileWindow.characterWorld = plugin.playerworld;
-                                
-                                Plugin.plugin.OpenAndLoadProfileWindow(false, profileIndex);
+                                TargetProfileWindow.RequestingProfile = true;
+                                TargetProfileWindow.ResetAllData();
+                                Plugin.plugin.OpenTargetWindow();
+                                DataSender.FetchProfile(false, -1, plugin.playername, plugin.playerworld, -1);
                             }
                             DrawProfile();
                         }
@@ -293,6 +304,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             DataSender.CreateProfile(NewProfileTitle, currentProfileType, profiles.Count);
             profileIndex = profiles.Count;
             Plugin.plugin.logger.Error(profileIndex.ToString());
+            DataSender.FetchProfiles();
+            DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             ExistingProfile = true;
         }
         private void RenderProfileTypeCreation(int index)
@@ -399,10 +412,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     if (profileIndex < 0)
                     {
                         profileIndex = 0;
-                }
-                TargetProfileWindow.ResetAllData();
-                DataSender.FetchProfiles();
-                DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
+                    }
+                    TargetProfileWindow.ResetAllData();
+                    DataSender.FetchProfiles();
+                    DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
                     if (profiles.Count == 0)
                     {
                         ExistingProfile = false;
@@ -413,7 +426,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             {
                 ImGui.SetTooltip("Hold Ctrl to delete your profile (This is a destructive action!)");
             }
-            /*
+            
             if (ImGui.Button("Backup"))
             {
                   LoadBackupSaveDialog();
@@ -430,7 +443,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("Loading a backup will completely replace this profile, if you do not wish to overwrite it, please make a new profile to load on to.");
-            }*/
+            }
 
             ImGui.Spacing();
             Vector2 imageStartPos = ImGui.GetCursorScreenPos();
@@ -495,6 +508,19 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             {
                 editBackground = true;
             }
+
+            ImGui.Spacing();
+
+
+            ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Format Information");
+
+            // Make the text clickable
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(UI.inputHelperUrlInfo);
+            }
+            ImGui.Spacing();
+            ImGui.Separator();
             using (var navigation = ImRaii.TabBar("ProfileNavigation"))
             {
 
@@ -518,6 +544,81 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                             showInputPopup[customTabsCount] = true;
                             newTabNames[customTabsCount] = "";
                             ImGui.OpenPopup($"New Page##{customTabsCount}");
+                        }
+                    }
+                    /*
+                    // "Reorder Tabs" button at the end of the tab bar
+                    ImGui.SameLine();
+                    if (ImGui.Button("Reorder Tabs"))
+                    {
+                        // Initialize tabOrder with current order
+                        tabOrder = Enumerable.Range(0, CurrentProfile.customTabs.Count).ToList();
+                        showReorderTabsPopup = true;
+                        ImGui.OpenPopup("ReorderTabsPopup");
+                    }*/
+
+                    // Popup for reordering tabs with Up/Down buttons
+                    if (showReorderTabsPopup)
+                    {
+                        if (ImGui.BeginPopupModal("ReorderTabsPopup", ref showReorderTabsPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                        {
+                            ImGui.Text("Use Up/Down to reorder tabs:");
+                            ImGui.Separator();
+
+                            for (int i = 0; i < tabOrder.Count; i++)
+                            {
+                                int tabIdx = tabOrder[i];
+                                var tab = CurrentProfile.customTabs[tabIdx];
+                                ImGui.PushID(i);
+
+                                ImGui.Text(tab.Name);
+                                ImGui.SameLine();
+
+                                // Up button
+                                if (ImGui.Button("Up") && i > 0)
+                                {
+                                    (tabOrder[i - 1], tabOrder[i]) = (tabOrder[i], tabOrder[i - 1]);
+                                }
+                                ImGui.SameLine();
+
+                                // Down button
+                                if (ImGui.Button("Down") && i < tabOrder.Count - 1)
+                                {
+                                    (tabOrder[i], tabOrder[i + 1]) = (tabOrder[i + 1], tabOrder[i]);
+                                }
+
+                                ImGui.PopID();
+                            }
+
+                            ImGui.Separator();
+                            if (ImGui.Button("Confirm"))
+                            {
+                                // Build list of changes
+                                var indexChanges = new List<(int oldIndex, int newIndex)>();
+                                for (int newIdx = 0; newIdx < tabOrder.Count; newIdx++)
+                                {
+                                    int tabId = tabOrder[newIdx];
+                                    int oldIdx = initialTabOrder.IndexOf(tabId);
+                                    if (oldIdx != newIdx)
+                                        indexChanges.Add((oldIdx, newIdx));
+                                }
+                                DataSender.SendTabReorder(profileIndex, indexChanges);
+
+                                // Actually reorder the tabs in the UI
+                                var newTabs = tabOrder.Select(idx => CurrentProfile.customTabs[idx]).ToList();
+                                CurrentProfile.customTabs.Clear();
+                                CurrentProfile.customTabs.AddRange(newTabs);
+
+                                showReorderTabsPopup = false;
+                                ImGui.CloseCurrentPopup();
+                            }
+                            ImGui.SameLine();
+                            if (ImGui.Button("Cancel"))
+                            {
+                                showReorderTabsPopup = false;
+                                ImGui.CloseCurrentPopup();
+                            }
+                            ImGui.EndPopup();
                         }
                     }
                 }
@@ -547,6 +648,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     Misc.EditImage(plugin, _fileDialogManager, null, false, true, 0);
                 }
             }      
+
         }
      
         public void RenderCustomTabs()
@@ -701,7 +803,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             try
             {
                 string uniqueId = $"{tabName}##{index}";
-
                 // Render the tab with a close button
                 using (var tab = ImRaii.TabItem(uniqueId, ref isOpen))
                 {
@@ -973,6 +1074,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 TargetProfileWindow.ResetAllData();
                                 DataSender.FetchProfiles();
                                 DataSender.FetchProfile(true, idx, plugin.playername, plugin.playerworld, -1);
+                                Fetching = true;
                             }
                             ImGuiUtil.SelectableHelpMarker("Select to edit profile");
                         }
@@ -1094,20 +1196,77 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     try
                     {
                         string fileContent = File.ReadAllText(filePath);
-
                         // Clear current tabs before loading
                         CurrentProfile.customTabs.Clear();
+                        customLayouts.Clear();
 
-                        // For each known layout type, extract and load all tabs
-                        LoadTabsFromBackup(fileContent, "bioTab", BackupLoader.LoadBioLayout);
-                        LoadTabsFromBackup(fileContent, "detailsTab", BackupLoader.LoadDetailsLayout);
-                        LoadTabsFromBackup(fileContent, "galleryTab", BackupLoader.LoadGalleryLayout);
-                        LoadTabsFromBackup(fileContent, "infoTab", BackupLoader.LoadInfoLayout);
-                        LoadTabsFromBackup(fileContent, "storyTab", BackupLoader.LoadStoryLayout);
-                        LoadTabsFromBackup(fileContent, "inventoryLayout", BackupLoader.LoadInventoryLayout);
-                        LoadTabsFromBackup(fileContent, "treeLayout", BackupLoader.LoadTreeLayout);
+                        // Regex to find all tab-like tags in order
+                        var tagRegex = new Regex(@"<(?<tag>\w+Tab)>(?<content>.*?)</\k<tag>>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                        string avatarBase64 = ExtractTagContent(fileContent, "avatar");
+                        string backgroundBase64 = ExtractTagContent(fileContent, "background");
+                        string title = ExtractTagContent(fileContent, "title");
+                        string titleColorStr = ExtractTagContent(fileContent, "titleColor");
+                        if (!string.IsNullOrEmpty(avatarBase64))
+                            avatarBytes = Convert.FromBase64String(avatarBase64);
+
+                        if (!string.IsNullOrEmpty(backgroundBase64))
+                            backgroundBytes = Convert.FromBase64String(backgroundBase64);
+
+                        // Set title
+                        ProfileTitle = title;
+                        CurrentProfile.title = title;
+
+                        // Parse and set title color
+                        if (!string.IsNullOrEmpty(titleColorStr))
+                        {
+                            var colorParts = titleColorStr.Split(',');
+                            if (colorParts.Length == 4 &&
+                                float.TryParse(colorParts[0], out float r) &&
+                                float.TryParse(colorParts[1], out float g) &&
+                                float.TryParse(colorParts[2], out float b) &&
+                                float.TryParse(colorParts[3], out float a))
+                            {
+                                color = new Vector4(r, g, b, a);
+                                CurrentProfile.titleColor = color;
+                            }
+                        }
+
+                        var matches = tagRegex.Matches(fileContent);
+                        foreach (Match match in matches)
+                        {
+                            string tag = match.Groups["tag"].Value;
+                            string tabContent = match.Value;
 
 
+                            switch (tag.ToLower())
+                            {
+                                case "biotab":
+                                    LoadTabsFromBackup(tabContent, "bioTab", BackupLoader.LoadBioLayout);
+                                    break;
+                                case "detailstab":
+                                    LoadTabsFromBackup(tabContent, "detailsTab", BackupLoader.LoadDetailsLayout);
+                                    break;
+                                case "gallerytab":
+                                    LoadTabsFromBackup(tabContent, "galleryTab", BackupLoader.LoadGalleryLayout);
+                                    break;
+                                case "infotab":
+                                    LoadTabsFromBackup(tabContent,  "infoTab", BackupLoader.LoadInfoLayout);
+                                    break;
+                                case "storytab":
+                                    LoadTabsFromBackup(tabContent,  "storyTab", BackupLoader.LoadStoryLayout);
+                                    break;
+                                case "inventorytab": // <-- Corrected
+                                    LoadTabsFromBackup(tabContent,  "inventoryTab", BackupLoader.LoadInventoryLayout);
+                                    break;
+                                case "treetab": // <-- Corrected
+                                    LoadTabsFromBackup(tabContent, "treeTab", BackupLoader.LoadTreeLayout);
+                                    break;
+                                default:
+                                    plugin.logger.Error($"Unknown tab type in backup: {tag}");
+                                    break;
+                            }
+                        }
+                        SubmitProfileData(false);
                     }
                     catch (Exception ex)
                     {
@@ -1116,7 +1275,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
             );
         }
-
         // Helper to extract and load all tabs of a given type
         private void LoadTabsFromBackup(string fileContent, string tag, Func<string, CustomLayout> layoutLoader)
         {
@@ -1124,36 +1282,67 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             foreach (Match match in matches)
             {
                 string tabContent = match.Groups[1].Value;
-                // Extract the tab name from the tab content
                 var tabNameMatch = Regex.Match(tabContent, "<tabName>(.*?)</tabName>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
                 string tabName = tabNameMatch.Success ? tabNameMatch.Groups[1].Value.Trim() : tag;
 
+                var tabIndexMatch = Regex.Match(tabContent, "<tabIndex>(.*?)</tabIndex>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                int tabIndex = tabIndexMatch.Success ? int.Parse(tabIndexMatch.Groups[1].Value.Trim()) : 0;
+
+                int tabType = GetTabTypeFromTag(tag); // Implement this mapping
+
                 var layout = layoutLoader(tabContent);
-                layout.name = tabName; 
+                layout.name = tabName;
+
+                switch (layout)
+                {
+                    case BioLayout bioLayout: bioLayout.tabIndex = tabIndex; break;
+                    case DetailsLayout detailsLayout: detailsLayout.tabIndex = tabIndex; break;
+                    case GalleryLayout galleryLayout: galleryLayout.tabIndex = tabIndex; break;
+                    case InfoLayout infoLayout: infoLayout.tabIndex = tabIndex; break;
+                    case StoryLayout storyLayout: storyLayout.tabIndex = tabIndex; break;
+                    case InventoryLayout inventoryLayout: inventoryLayout.tabIndex = tabIndex; break;
+                    case TreeLayout treeLayout: treeLayout.tabIndex = tabIndex; break;
+                }
+
                 var tab = new CustomTab
                 {
                     Name = tabName,
                     Layout = layout,
-                    IsOpen = true
+                    IsOpen = true,
+                    type = tabType,   // <-- Set type
                 };
+                DataSender.CreateTab(tab.Name, tab.type, profileIndex, tabIndex);
                 CurrentProfile.customTabs.Add(tab);
             }
+        }
+        private int GetTabTypeFromTag(string tag)
+        {
+            return tag.ToLower() switch
+            {
+                "biotab" => (int)LayoutTypes.Bio,
+                "detailstab" => (int)LayoutTypes.Details,
+                "gallerytab" => (int)LayoutTypes.Gallery,
+                "infotab" => (int)LayoutTypes.Info,
+                "storytab" => (int)LayoutTypes.Story,
+                "inventorytab" => (int)LayoutTypes.Inventory,
+                "treetab" => (int)LayoutTypes.Relationship,
+                _ => 0
+            };
         }
         public void SubmitProfileData(bool silent)
         {
             try
             {
-
                 DataSender.SetProfileStatus(isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
-
+                plugin.logger.Error($"Tabs count before submit: {CurrentProfile.customTabs.Count}");
+                foreach (var tab in CurrentProfile.customTabs)
+                {
+                    plugin.logger.Error($"Tab: {tab.Name}, Type: {tab.Layout?.GetType().Name}");
+                }
 
                 Sending = true;
                 foreach (CustomTab tab in CurrentProfile.customTabs)
-                {
-                    if(tab.Layout is DynamicLayout dynamicLayout)
-                    {
-                        DataSender.SubmitDynamicLayout(profileIndex, dynamicLayout);                        
-                    }
+                {                    
                     if (tab.Layout is BioLayout bioLayout)
                     {
                         DataSender.SubmitProfileBio(profileIndex, bioLayout);
@@ -1230,6 +1419,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     writer.WriteLine("<characterProfile>");
                     //write character profile specific fields
                     writer.WriteLine($"<avatar>{Convert.ToBase64String(avatarBytes)}</avatar>");
+                    writer.WriteLine($"<background>{Convert.ToBase64String(backgroundBytes)}</background>");
                     writer.WriteLine($"<title>{CurrentProfile.title}</title>");
                     writer.WriteLine($"<titleColor>{CurrentProfile.titleColor.X},{CurrentProfile.titleColor.Y}, {CurrentProfile.titleColor.Z},{CurrentProfile.titleColor.W}</titleColor>");
                     foreach (var customTab in CurrentProfile.customTabs)

@@ -13,7 +13,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static string reportCharacterWorld;
         public static string reportInfo = string.Empty;
         public static string reportStatus = string.Empty;
-        public static string profileNotes;
+        public static string profileNotes = string.Empty;
         public static string characterNameVal;
         public static string characterWorldVal;
         public static int characterIndex;
@@ -36,7 +36,12 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 Misc.SetTitle(pg, true, "Personal Notes", ImGuiColors.TankBlue);
 
                 ImGui.Text("Here you can add personal notes about this player or profile");
-                ImGui.InputTextMultiline("##info", ref profileNotes, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - ImGui.GetWindowSize().Y / 2));
+                ImGui.InputTextMultiline(
+                    "##info",
+                    ref profileNotes,
+                    1000,
+                    new Vector2(ImGui.GetContentRegionAvail().X, 200) // 200 pixels tall, full width
+                );
                 if (ImGui.Button("Add Notes"))
                 {
                     if (pg.IsOnline())

@@ -1,3 +1,4 @@
+using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface.ImGuiFileDialog;
@@ -10,6 +11,7 @@ using OtterGui.Extensions;
 using OtterGui.Raii;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 
 namespace AbsoluteRoleplay.Windows.Listings
 {
@@ -32,8 +34,12 @@ namespace AbsoluteRoleplay.Windows.Listings
         private string profileSearchQuery = "";
         public static int currentCategory = 0;
         public static int profileViewCount = 10; //default profile view count
-        private static int currentViewCount;
+        private static int currentViewCount = 10;
         private static int currentIndex = 1; //current index for the listings
+        private FFXIVRegion selectedRegion = FFXIVRegion.NorthAmerica;
+        private FFXIVDataCenter selectedDataCenter = FFXIVDataCenter.Aether;
+        private FFXIVWorld selectedWorld = FFXIVWorld.Aether_Adamantoise;
+
 
         public bool DrawListingCreation { get; private set; }
 
@@ -49,11 +55,12 @@ namespace AbsoluteRoleplay.Windows.Listings
 
             this.plugin = plugin;
             configuration = plugin.Configuration;
+            worldSearchQuery = "Adamantoise";
             _fileDialogManager = new FileDialogManager();
         }
         public override void Draw()
         {
-            ImGui.InputText("World Name", ref worldSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+            DrawFFXIVLocationSelectors();
             ImGui.InputText("Profile Name", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
             DrawListingCategorySelection();
             DrawPageCountSelection();
@@ -80,10 +87,6 @@ namespace AbsoluteRoleplay.Windows.Listings
             }
             if (ImGui.Button("Search"))
             {
-                if (worldSearchQuery == string.Empty)
-                {
-                    worldSearchQuery = "ALL WORLDS";
-                }
                 if (profileSearchQuery == string.Empty)
                 {
                     profileSearchQuery = "ALL PROFILES";
@@ -109,6 +112,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                     if (ImGui.Button($"View##{listing.id}"))
                     {
                         Plugin.plugin.OpenTargetWindow();
+                        TargetProfileWindow.RequestingProfile = true;
                         TargetProfileWindow.ResetAllData();
                         DataSender.FetchProfile(false, -1, string.Empty, string.Empty, listing.id);
                     }
@@ -155,6 +159,100 @@ namespace AbsoluteRoleplay.Windows.Listings
                 WindowOperations.SafeDispose(listing.avatar);
                 listing.avatar = null;
             }
+        }
+        public static void RenderColoredTextWithTooltip(string text, Vector4 color)
+        {
+            // Parse for <tooltip>...</tooltip>
+            var tooltipRegex = new Regex(@"^(.*?)(<tooltip>(.*?)</tooltip>)?$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var match = tooltipRegex.Match(text);
+
+            string mainText = match.Groups[1].Value;
+            string tooltipText = match.Groups[3].Success ? match.Groups[3].Value : null;
+
+            ImGui.TextColored(color, mainText);
+
+            if (!string.IsNullOrEmpty(tooltipText) && ImGui.IsItemHovered())
+            {
+                ImGui.BeginTooltip();
+                ImGui.TextUnformatted(tooltipText);
+                ImGui.EndTooltip();
+            }
+        }
+        private void DrawFFXIVLocationSelectors()
+        {
+            // Region Combo
+            var regions = GameData.GetAllRegions();
+            var regionNames = regions.ConvertAll(GameData.GetRegionName);
+            int regionIdx = regions.IndexOf(selectedRegion);
+            ImGui.PushItemWidth(ImGui.GetWindowSize().X / 5);
+            using (var regionCombo = OtterGui.Raii.ImRaii.Combo("Region", regionNames[regionIdx]))
+            {
+                if (regionCombo)
+                {
+                    for (int i = 0; i < regionNames.Count; i++)
+                    {
+                        if (ImGui.Selectable(regionNames[i], i == regionIdx))
+                        {
+                            selectedRegion = regions[i];
+                            // Reset datacenter/world when region changes
+                            var dcs = GameData.GetDataCentersByRegion(selectedRegion);
+                            selectedDataCenter = dcs.Count > 0 ? dcs[0] : default;
+                            var newWorldsList = GameData.GetWorldsByDataCenter(selectedDataCenter);
+                            selectedWorld = newWorldsList.Count > 0 ? newWorldsList[0] : default;
+                        }
+                    }
+                }
+            } 
+            ImGui.SameLine();
+
+            // Data Center Combo
+            var dataCenters = GameData.GetDataCentersByRegion(selectedRegion);
+            var dcNames = dataCenters.ConvertAll(GameData.GetDataCenterName);
+            int dcIdx = dataCenters.IndexOf(selectedDataCenter);
+
+            using (var dcCombo = OtterGui.Raii.ImRaii.Combo("Data Center", dcNames.Count > 0 && dcIdx >= 0 ? dcNames[dcIdx] : ""))
+            {
+                if (dcCombo)
+                {
+                    for (int i = 0; i < dcNames.Count; i++)
+                    {
+                        if (ImGui.Selectable(dcNames[i], i == dcIdx))
+                        {
+                            selectedDataCenter = dataCenters[i];
+                            // Reset world when datacenter changes
+                            var updatedWorldsList = GameData.GetWorldsByDataCenter(selectedDataCenter);
+                            selectedWorld = updatedWorldsList.Count > 0 ? updatedWorldsList[0] : default;
+                        }
+                    }
+                }
+            }
+            ImGui.SameLine();
+
+            // World Combo
+            var worldsList = GameData.GetWorldsByDataCenter(selectedDataCenter);
+            var worldNames = worldsList.ConvertAll(w =>
+            {
+                var name = w.ToString();
+                var idx = name.IndexOf('_');
+                return idx >= 0 ? name.Substring(idx + 1) : name;
+            });
+            int worldIdx = worldsList.IndexOf(selectedWorld);
+
+            using (var worldCombo = OtterGui.Raii.ImRaii.Combo("World", worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : ""))
+            {
+                if (worldCombo)
+                {
+                    for (int i = 0; i < worldNames.Count; i++)
+                    {
+                        if (ImGui.Selectable(worldNames[i], i == worldIdx))
+                        {
+                            worldSearchQuery = worldNames[i];
+                            selectedWorld = worldsList[i];
+                        }
+                    }
+                }
+            }
+            ImGui.PopItemWidth();
         }
     }
 }

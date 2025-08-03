@@ -123,7 +123,7 @@ namespace AbsoluteRoleplay.Helpers
                         ImGui.BeginTooltip();
                         Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name, 400);
                         ImGui.Spacing();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description, 400);
+                        Misc.RenderHtmlElements(layout.traderSlotContents[slotIndex].description, true, true, true);
                         ImGui.EndTooltip();
                     }
 
@@ -273,7 +273,7 @@ namespace AbsoluteRoleplay.Helpers
                         ImGui.BeginTooltip();
                         Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name,  400);
                         ImGui.Spacing();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].description,  400);
+                        Misc.RenderHtmlElements(layout.traderSlotContents[slotIndex].description, true, true, true);
                         ImGui.EndTooltip();
                     }
 
@@ -357,7 +357,7 @@ namespace AbsoluteRoleplay.Helpers
                         Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name, 500);
                         ImGui.Separator();
                         ImGui.Spacing();
-                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].description, 500);
+                        Misc.RenderHtmlElements(layout.inventorySlotContents[slotIndex].description, true, true, true);
                         ImGui.EndTooltip();
                     }
 

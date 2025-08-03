@@ -35,6 +35,7 @@ namespace AbsoluteRoleplay
         public string type { get; set; } = string.Empty;
         public uint iconID { get; set; } = 0;
         public string category { get; set; } = string.Empty;
+        public IDalamudTextureWrap icon { get; set; } = null;
     }
 
     public class ProfileData
@@ -129,7 +130,16 @@ namespace AbsoluteRoleplay
         public string Description;
     }
 
-
+    public class RenderElement
+    {
+        public enum ElementType { Text, Image, Color, Url }
+        public ElementType Type;
+        public string Content;
+        public float Scale;
+        public string ColorHex;
+        public string Url;
+        public string Tooltip;
+    }
     public class ProfileGalleryImage
     {
         public int index;
@@ -234,6 +244,34 @@ namespace AbsoluteRoleplay
         public static string[] inclusions = { "Public", "World Only", "Datacenter Only", "FC Only", "Connections Only", "Invite Only" };
         public static string[] months = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         public static string[] timezones = { "Eastern Standard Time (EST)", "Eastern Daylight Time (EDT)", "Central Standard Time (CST)", "Central Daylight Time (CDT)", "Mountain Standard Time (MST)", "Mountain Daylight Time (MDT)", "Pacific Standard Time (PST)", "Pacific Daylight Time (PDT)" };
+         internal static string inputHelperUrlInfo =
+            "URL: \n <url>https://example.com</url>\n" +
+            "You can use this to link to your Discord, Ko-Fi, Patreon, or any other site you wish to link to solong as they to not contain jumpscares or illigal / triggering content.\n\n" +
+
+            "IMAGE: \n <image>https://imageurl.ext</image>\n" +
+            "You can use this to link to an image url you wish to display in your profile solong as it abides by the Rules and ToS.\n\n" +
+
+            "SCALE: \n <scale=''0.5''><image>https://imageurl.ext</image></scale>\n" +
+            "This currently only works with images and will scale the image to the point value specified.\n\n" +    
+
+            "COLOR: \n <color hex=FF0000>Red Text</color>\n" +
+            "You can use this to color text in your profile. The hex value can be any valid hex color code.\n\n" +
+
+            "TABLE: \n <table>content or columns here</table> \n" +
+            "COLUMNS: \n <column>some content here</column> \n" +
+            "You can use this to create a table in your profile. The table can contain columns to align content side by side and so on.\n" +
+            "The columns tag is used to define the number of columns in the table.\n There is currently no row support.\n\n"+
+            
+            "<<Although most these features are not very suited for some fields they are still enabled. Get creative! ♥>>"
+            ;
+             
+
+
+
+
+
+
+
 
         public enum InputTypes
         {

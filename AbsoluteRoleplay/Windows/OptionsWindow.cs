@@ -14,6 +14,7 @@ namespace AbsoluteRoleplay.Windows
     {
         public static Plugin plugin;
         public static bool showTargetOptions;
+        public static bool autoLogin;
         public static bool showKofi;
         public static bool showPatreon;
         public static bool showDisc;
@@ -34,6 +35,7 @@ namespace AbsoluteRoleplay.Windows
             showKofi = plugin.Configuration.showKofi;
             showPatreon = plugin.Configuration.showPatreon;
             showDisc = plugin.Configuration.showDisc;
+            autoLogin = plugin.Configuration.autoLogin;
             _fileDialogManager = new FileDialogManager();
         }
         public override void Draw()
@@ -70,7 +72,6 @@ namespace AbsoluteRoleplay.Windows
 
                 if (ImGui.BeginTabItem("General"))
                 {
-
                     if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
                     {
                         plugin.Configuration.showKofi = showKofi;

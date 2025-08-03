@@ -309,8 +309,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                     ImGui.Dummy(size); // Reserve space
                                 }
                             }
-                            Misc.RenderHtmlColoredTextInline(editingName, 400);
-                            Misc.RenderHtmlColoredTextInline(editingDescription, 400);
+                            Misc.RenderHtmlElements(editingName, true, true, true);
+                            Misc.RenderHtmlElements(editingDescription, true, true, true);
 
                             ImGui.End();
                         }
@@ -366,9 +366,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
                         if (isEditing)
                         {
-                            Misc.RenderHtmlColoredTextInline(editingName, 400);
+                            Misc.RenderHtmlElements(editingName, true, true, true);
                             ImGui.Separator();
-                            Misc.RenderHtmlColoredTextInline(editingDescription, 400);
+                            Misc.RenderHtmlElements(editingDescription, true, true, true);
                         }
                         else if (relAtSlot != null)
                         {
@@ -377,9 +377,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             {
                                 ImGui.Image(relAtSlot.IconTexture.ImGuiHandle, new Vector2(32, 32));
                             }
-                            Misc.RenderHtmlColoredTextInline(relAtSlot.Name,400);
+                            Misc.RenderHtmlElements(relAtSlot.Name, true, true, true);
                             ImGui.Separator();
-                            Misc.RenderHtmlColoredTextInline(relAtSlot.Description, 400);
+                            Misc.RenderHtmlElements(relAtSlot.Description, true, true, true);
                         }
                         else
                         {

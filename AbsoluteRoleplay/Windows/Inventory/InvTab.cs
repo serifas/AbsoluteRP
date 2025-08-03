@@ -175,12 +175,19 @@ namespace InventoryTab
             }
             else
             {
+                // Render icon browser
                 if (!WindowOperations.iconsLoaded)
                 {
-                    WindowOperations.LoadIconsLazy(plugin); // Load a small batch of icons
+                    WindowOperations.LoadIconsLazy(plugin);
                 }
                 IDalamudTextureWrap Icon = icon;
                 WindowOperations.RenderIcons(plugin, true, false, null, null, ref Icon);
+
+                // Add a close button for the browser
+                if (ImGui.Button("Close Icon Browser"))
+                {
+                    isIconBrowserOpen = false;
+                }
             }
         }
 

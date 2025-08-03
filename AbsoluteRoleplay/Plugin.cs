@@ -66,6 +66,7 @@ namespace AbsoluteRoleplay
         private bool openItemTooltip;
         public bool loggedIn;
         public static bool justRegistered;
+        public static bool firstopen = true;
 
         public float screenWidth = viewport.WorkSize.X;
         public float screenHeight = viewport.WorkSize.Y;
@@ -236,6 +237,7 @@ namespace AbsoluteRoleplay
             ClientState.Logout += OnLogout;
             ClientState.Login += LoadConnection;
             Framework.Update += Update;
+            
             MainPanel.pluginInstance = this;
             
             plugin = this;
@@ -288,11 +290,11 @@ namespace AbsoluteRoleplay
             }
             else
             {
+                TargetProfileWindow.RequestingProfile = true;
                 OpenTargetWindow();
             }
             DataSender.FetchProfile(self, index, plugin.playername, plugin.playerworld, -1);
         }
-
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
         {
             var ctx = AgentContext.Instance();
@@ -341,6 +343,9 @@ namespace AbsoluteRoleplay
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
                     OpenTargetWindow();
+                    TargetProfileWindow.characterName = name;
+                    TargetProfileWindow.characterWorld = worldname;
+                    TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(false, -1, name, worldname, -1);
                 },
@@ -371,8 +376,11 @@ namespace AbsoluteRoleplay
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedQuestionMark,
                 OnClicked = _ => {
-
+                    
                     OpenTargetWindow();
+                    TargetProfileWindow.characterName = chara.Name.ToString();
+                    TargetProfileWindow.characterWorld = chara.HomeWorld.Value.Name.ToString();
+                    TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
@@ -386,7 +394,8 @@ namespace AbsoluteRoleplay
                 OnClicked = _ => {
                     DataSender.RequestTargetTrade(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
-            });*/
+            });
+            */
         }
         private Version? cachedVersion = null;
         private bool isCheckingVersion = false;
@@ -403,7 +412,7 @@ namespace AbsoluteRoleplay
             return cachedVersion != null && cachedVersion == Configuration.TOSVersion;
         }
         public void LoadConnection()
-        {
+        {            
             ClientHandleData.InitializePackets();
             Connect();
             //update the statusBarEntry with out connection status
@@ -711,7 +720,7 @@ namespace AbsoluteRoleplay
 
         public void Update(IFramework framework)
         {
-            if (!loginAttempted && MainPanel.serverStatus == "Connected")
+            if (!loginAttempted)
             {
                 if (IsOnline())
                 {
@@ -719,13 +728,20 @@ namespace AbsoluteRoleplay
                     password = Configuration.password;
                     playername = ClientState.LocalPlayer.Name.ToString();
                     playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
-                    if(Configuration.rememberInformation == true && username != string.Empty && password != string.Empty)
+                    if(username != string.Empty && password != string.Empty)
                     {
-                        DataSender.Login(username, password, playername, playerworld);
+                        ToggleMainUI();
+                        DataSender.Login();
                         loginAttempted = true;
                     }
                 }
             }
+            if(firstopen == true && MainPanel.IsOpen == true)
+            {
+                firstopen = false;
+                MainPanel.IsOpen = false; // Close if on first open
+            }
+            
             // Get the current target, prioritizing MouseOverTarget if available
             var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
             if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)

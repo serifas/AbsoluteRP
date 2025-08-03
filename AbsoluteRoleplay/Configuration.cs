@@ -17,7 +17,6 @@ public class Configuration : IPluginConfiguration
     public string username { get; set; } = "";
     public string password { get; set; } = "";
     public bool rememberInformation { get; set; }
-    internal bool autologin { get; set; } = false;
 
     //Config options
     public bool showKofi { get; set; } = true;
@@ -45,6 +44,7 @@ public class Configuration : IPluginConfiguration
     public float hPos {  get; set; }
     public float vPos { get; set; }
     public List<string> customIconCategory { get; set; } = new List<string>();
+    public bool autoLogin { get; set; }
     public List<IconData> iconBookmarks { get; set; } = new List<IconData>();
     public List<ChatChannelTabs> chatChannelTabs { get; set; } = new List<ChatChannelTabs>();
     public static string defaultDataPath = string.Empty;

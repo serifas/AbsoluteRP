@@ -1,4 +1,4 @@
-﻿using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using System;
 using System.Collections.Generic;
@@ -18,7 +18,7 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     writer.WriteLine("<bioTab>");
                     writer.WriteLine($"<tabIndex>{bioLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{bioLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{bioLayout.name}</tabName>");
                     WriteBioContent(bioLayout, writer);
                     writer.WriteLine("</bioTab>");
                 }
@@ -26,7 +26,7 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     writer.WriteLine("<detailsTab>");
                     writer.WriteLine($"<tabIndex>{detailsLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{detailsLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{detailsLayout.name}</tabName>");
                     WriteDetailsContent(detailsLayout, writer);
                     writer.WriteLine("</detailsTab>");
                 }
@@ -34,7 +34,7 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     writer.WriteLine("<galleryTab>");
                     writer.WriteLine($"<tabIndex>{galleryLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{galleryLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{galleryLayout.name}</tabName>");
                     WriteGalleryContent(galleryLayout, writer);
                     writer.WriteLine("</galleryTab>");
                 }
@@ -42,7 +42,7 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     writer.WriteLine("<infoTab>");
                     writer.WriteLine($"<tabIndex>{infoLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{infoLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{infoLayout.name}</tabName>");
                     WriteInfoContent(infoLayout, writer);
                     writer.WriteLine("</infoTab>");
                 }
@@ -50,25 +50,25 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     writer.WriteLine("<storyTab>");
                     writer.WriteLine($"<tabIndex>{storyLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{storyLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{storyLayout.name}</tabName>");
                     WriteStoryContent(storyLayout, writer);
                     writer.WriteLine("</storyTab>");
                 }
                 else if (tab.Layout is InventoryLayout inventoryLayout)
                 {
-                    writer.WriteLine("<inventoryLayout>");
+                    writer.WriteLine("<inventoryTab>");
                     writer.WriteLine($"<tabIndex>{inventoryLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{inventoryLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{inventoryLayout.name}</tabName>");
                     WriteInventoryContent(inventoryLayout, writer);
-                    writer.WriteLine("</inventoryLayout>");
+                    writer.WriteLine("</inventoryTab>");
                 }
                 else if (tab.Layout is TreeLayout treeLayout)
                 {
-                    writer.WriteLine("<treeLayout>");
+                    writer.WriteLine("<treeTab>");
                     writer.WriteLine($"<tabIndex>{treeLayout.tabIndex}</tabIndex>");
-                    writer.WriteLine($"<tabName>{treeLayout.tabName}</tabName>");
+                    writer.WriteLine($"<tabName>{treeLayout.name}</tabName>");
                     WriteTreeContent(treeLayout, writer);
-                    writer.WriteLine("</treeLayout>");
+                    writer.WriteLine("</treeTab>");
                 }
                 else
                 {
@@ -140,7 +140,8 @@ namespace AbsoluteRoleplay.Helpers
                 writer.WriteLine("<detail>");
                 writer.WriteLine($"<id>{EscapeTagContent(detail.id.ToString())}</id>");
                 writer.WriteLine($"<name>{EscapeTagContent(detail.name)}</name>");
-                writer.WriteLine($"<content>{EscapeTagContent(detail.content)}</content>");
+                // Write markup content directly, do not escape
+                writer.WriteLine($"<content>{detail.content}</content>");
                 writer.WriteLine("</detail>");
             }
         }
@@ -162,7 +163,8 @@ namespace AbsoluteRoleplay.Helpers
 
         private static void WriteInfoContent(InfoLayout infoLayout, StreamWriter writer)
         {
-            writer.WriteLine($"<text>{EscapeTagContent(infoLayout.text)}</text>");
+            // Write markup content directly, do not escape
+            writer.WriteLine($"<text>{infoLayout.text}</text>");
         }
 
         private static void WriteStoryContent(StoryLayout storyLayout, StreamWriter writer)
@@ -172,7 +174,8 @@ namespace AbsoluteRoleplay.Helpers
                 writer.WriteLine("<chapter>");
                 writer.WriteLine($"<id>{EscapeTagContent(chapter.id.ToString())}</id>");
                 writer.WriteLine($"<title>{EscapeTagContent(chapter.title)}</title>");
-                writer.WriteLine($"<content>{EscapeTagContent(chapter.content)}</content>");
+                // Write markup content directly, do not escape
+                writer.WriteLine($"<content>{chapter.content}</content>");
                 writer.WriteLine("</chapter>");
             }
         }
@@ -258,6 +261,7 @@ namespace AbsoluteRoleplay.Helpers
             writer.WriteLine("</pathConnections>");
         }
 
+        // Only escape for plain text fields, not markup
         private static string EscapeTagContent(string content)
         {
             return content.Replace("\\", "\\\\")
