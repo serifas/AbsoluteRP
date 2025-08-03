@@ -248,7 +248,7 @@ namespace AbsoluteRoleplay
             "URL: \n <url>https://example.com</url>\n" +
             "You can use this to link to your Discord, Ko-Fi, Patreon, or any other site you wish to link to solong as they to not contain jumpscares or illigal / triggering content.\n\n" +
 
-            "IMAGE: \n <image>https://imageurl.ext</image>\n" +
+            "IMAGE: \n <img>https://imageurl.ext</img>\n" +
             "You can use this to link to an image url you wish to display in your profile solong as it abides by the Rules and ToS.\n\n" +
 
             "SCALE: \n <scale=''0.5''><image>https://imageurl.ext</image></scale>\n" +
