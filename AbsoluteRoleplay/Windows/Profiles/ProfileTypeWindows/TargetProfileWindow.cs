@@ -365,6 +365,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 currentInd = 0;
                 max = 1;
             }
+
+            Misc.RenderUrlModalPopup();
         }
         public static void ResetAllData()
         {

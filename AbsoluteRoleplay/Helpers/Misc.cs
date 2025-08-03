@@ -12,6 +12,7 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Plugin;
 using Dalamud.Storage.Assets;
+using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Common.Lua;
 using ImGuiNET;
 using Lumina.Excel.Sheets;
@@ -45,6 +46,9 @@ namespace AbsoluteRoleplay
         public static List<ImFontPtr> availableFonts = new();
         public static ImFontPtr selectedFont;
         private static int selectedFontIndex = 0;
+        private static bool allow;
+        public static bool LoadUrl { get; set; }
+        public static string UrlToLoad { get; set; }
         public class LoaderTweenState
         {
             public float TweenedValue;
@@ -469,15 +473,8 @@ namespace AbsoluteRoleplay
 
                         if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                         {
-                            try
-                            {
-                                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-                                {
-                                    FileName = seg.url,
-                                    UseShellExecute = true
-                                });
-                            }
-                            catch { }
+                            Misc.LoadUrl = true;
+                            Misc.UrlToLoad = seg.url;
                         }
                     }
                     itemRendered = true;
@@ -497,7 +494,63 @@ namespace AbsoluteRoleplay
                     continue; // Don't render anything for tooltip segment
                 }
 
-                // Tooltip logic unchanged
+
+            } 
+            // When you want
+        }
+        public static void RenderUrlModalPopup()
+        {
+            if (LoadUrl && !showUrlPopup && !string.IsNullOrEmpty(UrlToLoad))
+            {
+                ImGui.OpenPopup("Opening URL");
+                showUrlPopup = true;
+            }
+
+            bool wasOpen = showUrlPopup;
+            if (ImGui.BeginPopupModal("Opening URL", ref showUrlPopup, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text("Do you want to open this link?");
+                ImGui.Checkbox("Allow Link", ref allow);
+
+                if (allow)
+                {
+                    if (ImGui.Button("I Trust URL"))
+                    {
+                        try
+                        {
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                            {
+                                FileName = UrlToLoad,
+                                UseShellExecute = true
+                            });
+                        }
+                        catch { }
+                        UrlToLoad = string.Empty;
+                        LoadUrl = false;
+                        allow = false;
+                        showUrlPopup = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+                }
+
+                if (ImGui.Button("Cancel"))
+                {
+                    UrlToLoad = string.Empty;
+                    LoadUrl = false;
+                    allow = false;
+                    showUrlPopup = false;
+                    ImGui.CloseCurrentPopup();
+                }
+
+                ImGui.EndPopup();
+            }
+
+            // Handle closing via the "X" button
+            if (wasOpen && !showUrlPopup)
+            {
+                UrlToLoad = string.Empty;
+                LoadUrl = false;
+                allow = false;
             }
         }
         private static void RenderHtmlTextSegment(string text, bool url, bool color, float wrapWidth)
@@ -888,6 +941,9 @@ namespace AbsoluteRoleplay
             }
         }
         private static readonly Dictionary<string, LoaderTweenState> loaderTweens = new();
+        public static  bool showUrlPopup;
+
+
         public static bool IsLoaderTweening(string key = "default")
         {
             if (!loaderTweens.TryGetValue(key, out var tween))
