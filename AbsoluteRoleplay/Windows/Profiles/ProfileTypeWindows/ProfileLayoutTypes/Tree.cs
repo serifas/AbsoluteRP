@@ -309,8 +309,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                     ImGui.Dummy(size); // Reserve space
                                 }
                             }
-                            Misc.RenderHtmlElements(editingName, true, true, true);
-                            Misc.RenderHtmlElements(editingDescription, true, true, true);
+                            Misc.RenderHtmlElements(editingName, false, false, true, true, ImGui.CalcTextSize(editingName));
+                            Misc.RenderHtmlElements(editingDescription, false, false, true, true, ImGui.CalcTextSize(editingDescription));
 
                             ImGui.End();
                         }
@@ -366,20 +366,15 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
                         if (isEditing)
                         {
-                            Misc.RenderHtmlElements(editingName, true, true, true);
+                            Misc.RenderHtmlElements(editingName, false, true, true, true, null,true);
                             ImGui.Separator();
-                            Misc.RenderHtmlElements(editingDescription, true, true, true);
+                            Misc.RenderHtmlElements(editingDescription, false, true, true, true, null, true);
                         }
                         else if (relAtSlot != null)
                         {
-                            // Defensive: Only draw if texture is valid
-                            if (relAtSlot.IconTexture != null && relAtSlot.IconTexture.ImGuiHandle != IntPtr.Zero)
-                            {
-                                ImGui.Image(relAtSlot.IconTexture.ImGuiHandle, new Vector2(32, 32));
-                            }
-                            Misc.RenderHtmlElements(relAtSlot.Name, true, true, true);
+                            Misc.RenderHtmlElements(relAtSlot.Name, false, true, true, true, null, true);
                             ImGui.Separator();
-                            Misc.RenderHtmlElements(relAtSlot.Description, true, true, true);
+                            Misc.RenderHtmlElements(relAtSlot.Description, false, true, true, true, null, true);
                         }
                         else
                         {

@@ -11,6 +11,7 @@ using OtterGui.Widgets;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using static FFXIVClientStructs.FFXIV.Client.System.Memory.IMemorySpace.Delegates;
 
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 {
@@ -31,6 +32,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         public static CustomLayout currentLayout;
         public static bool RequestingProfile = false;
         public static bool ExistingProfile = false;
+        public static bool showUrlPopup;
+        private static bool allow;
+        public static bool LoadUrl { get; set; }
+        public static string UrlToLoad { get; set; }
 
         public TargetProfileWindow(Plugin plugin) : base("TARGET")
         {
@@ -62,6 +67,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 Plugin.plugin.logger.Error("TargetProfileWindow OnOpen Error: " + ex.Message);
             }
         }
+
 
         public override void Draw()
         {
@@ -277,7 +283,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                                     try
                                                     {
                                                         Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
-                                                        Misc.RenderHtmlElements(infoLayout.text, true, true, true);
+                                                        Misc.RenderHtmlElements(infoLayout.text, true, true, true, false);
                                                     }
                                                     catch (Exception ex)
                                                     {

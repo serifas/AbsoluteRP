@@ -64,42 +64,42 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     ImGui.Spacing();
                     ImGuiHelpers.SafeTextWrapped("NAME: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.name, true, true, true);
+                    Misc.RenderHtmlElements(layout.name, true, true, true, false);
                 }
                 // RACE
                 if (!string.IsNullOrEmpty(layout.race))
                 {
                     ImGuiHelpers.SafeTextWrapped("RACE: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.race, true, true, true);
+                    Misc.RenderHtmlElements(layout.race, true, true, true, false);
                 }
                 // GENDER
                 if (!string.IsNullOrEmpty(layout.gender))
                 {
                     ImGuiHelpers.SafeTextWrapped("GENDER: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.gender, true, true, true);
+                    Misc.RenderHtmlElements(layout.gender, true, true, true, false);
                 }
                 // AGE
                 if (!string.IsNullOrEmpty(layout.age))
                 {
                     ImGuiHelpers.SafeTextWrapped("AGE: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.age, true, true, true);
+                    Misc.RenderHtmlElements(layout.age, true, true, true, false);
                 }
                 // HEIGHT
                 if (!string.IsNullOrEmpty(layout.height))
                 {
                     ImGuiHelpers.SafeTextWrapped("HEIGHT: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.height, true, true, true);
+                    Misc.RenderHtmlElements(layout.height, true, true, true, false);
                 }
                 // WEIGHT
                 if (!string.IsNullOrEmpty(layout.weight))
                 {
                     ImGuiHelpers.SafeTextWrapped("WEIGHT: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.weight, true, true, true);
+                    Misc.RenderHtmlElements(layout.weight, true, true, true, false);
                 }
 
                 // DESCRIPTORS
@@ -107,18 +107,18 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 {
                     if (descriptor == null) continue;
                     ImGui.Spacing();
-                    Misc.RenderHtmlElements(descriptor.name ?? string.Empty, true, true, true);
+                    Misc.RenderHtmlElements(descriptor.name ?? string.Empty, true, true, true, false);
                     ImGui.SameLine();
                     ImGuiHelpers.SafeTextWrapped(":");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(descriptor.description ?? string.Empty, true, true, true);
+                    Misc.RenderHtmlElements(descriptor.description ?? string.Empty, true, true, true, false);
                 }
 
                 // AT FIRST GLANCE
                 if (!string.IsNullOrEmpty(layout.afg))
                 {
                     ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: ");
-                    Misc.RenderHtmlElements(layout.afg ?? string.Empty, true, true, true);
+                    Misc.RenderHtmlElements(layout.afg ?? string.Empty, true, true, true, false);
                 }
 
                 // ALIGNMENT
@@ -158,7 +158,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (field == null) continue;
                     ImGui.Spacing();
                     Misc.RenderHtmlColoredTextInline((field.name ?? string.Empty).ToUpper() + ": ", 400);
-                    Misc.RenderHtmlElements(field.description ?? string.Empty, true, true, true);
+                    Misc.RenderHtmlElements(field.description ?? string.Empty, true, true, true, false);
                 }
 
                 Vector2 alignmentSize = new Vector2(ImGui.GetIO().FontGlobalScale * 25, ImGui.GetIO().FontGlobalScale * 32);
@@ -268,7 +268,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             try
                             {
                                 Misc.RenderHtmlColoredTextInline(personality.name ?? string.Empty, 400);
-                                Misc.RenderHtmlElements(personality.description ?? string.Empty, true, true, true);
+                                Misc.RenderHtmlElements(personality.description ?? string.Empty, false, true, true, true, null, true);
                             }
                             catch (Exception ex)
                             {

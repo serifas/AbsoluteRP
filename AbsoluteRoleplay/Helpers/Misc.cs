@@ -47,7 +47,7 @@ namespace AbsoluteRoleplay
         public static ImFontPtr selectedFont;
         private static int selectedFontIndex = 0;
         private static bool allow;
-        public static bool LoadUrl { get; set; }
+        public static bool LoadUrl { get; set; } = false;
         public static string UrlToLoad { get; set; }
         public class LoaderTweenState
         {
@@ -82,11 +82,12 @@ namespace AbsoluteRoleplay
             if (float.TryParse(sizeAttr, out float sz)) return sz;
             return ImGui.GetFontSize();
         }
-        public static void RenderHtmlElements(string text, bool url, bool image, bool color, float? overrideWrapWidth = null)
+        public static void RenderHtmlElements(string text, bool url, bool image, bool color, bool isLimited, Vector2? overrideWrapSize = null, bool disableWordWrap = false)
         {
-            float wrapWidth = overrideWrapWidth ?? (ImGui.GetWindowSize().X - 50);
+            Vector2 wrapSize = overrideWrapSize ?? (ImGui.GetWindowSize() - new Vector2(50, 0));
+            float wrapWidth = wrapSize.X;
+            float wrapHeight = wrapSize.Y;
 
-            // Regex to match <sameline><img>...</img></sameline> blocks
             var samelineImgRegex = new Regex(@"<sameline>\s*<(img|image)>(.*?)</\1>\s*</sameline>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
             int lastIndex = 0;
@@ -94,16 +95,15 @@ namespace AbsoluteRoleplay
 
             if (matches.Count == 0)
             {
-                RenderHtmlElementsNoSameline(text, url, image, color, wrapWidth, true);
+                RenderHtmlElementsNoSameline(text, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
                 return;
             }
 
-            // Render the text before the first <sameline> block directly, so it respects ImGui.SameLine()
             if (matches.Count > 0 && matches[0].Index > 0)
             {
                 string beforeFirst = text.Substring(0, matches[0].Index);
                 if (!string.IsNullOrEmpty(beforeFirst))
-                    RenderHtmlElementsNoSameline(beforeFirst, url, image, color, wrapWidth, true);
+                    RenderHtmlElementsNoSameline(beforeFirst, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
                 lastIndex = matches[0].Index;
             }
 
@@ -113,35 +113,32 @@ namespace AbsoluteRoleplay
                 int imgStart = match.Index;
                 string imgUrl = match.Groups[2].Value.Trim();
 
-                // Render the <sameline> image block in a table
                 if (ImGui.BeginTable("TextImageTable" + imgStart, 2, ImGuiTableFlags.None))
                 {
                     ImGui.TableNextColumn();
-                    // If there is text between lastIndex and imgStart, render it
                     if (imgStart > lastIndex)
                     {
                         string between = text.Substring(lastIndex, imgStart - lastIndex);
-                        RenderHtmlElementsNoSameline(between, url, image, color, wrapWidth, firstTable);
+                        RenderHtmlElementsNoSameline(between, url, image, color, wrapWidth, wrapHeight, isLimited, firstTable, disableWordWrap);
                         firstTable = false;
                     }
 
                     ImGui.TableNextColumn();
-                    RenderHtmlElementsNoTable($"<img>{imgUrl}</img>", url, image, color, wrapWidth, false);
+                    RenderHtmlElementsNoTable($"<img>{imgUrl}</img>", url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
                     ImGui.EndTable();
                 }
 
                 lastIndex = match.Index + match.Length;
             }
 
-            // Render any text after the last <sameline> block
             if (lastIndex < text.Length)
             {
                 string afterImg = text.Substring(lastIndex);
-                RenderHtmlElementsNoSameline(afterImg, url, image, color, wrapWidth, false);
+                RenderHtmlElementsNoSameline(afterImg, url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
             }
         }
 
-        private static void RenderHtmlElementsNoSameline(string text, bool url, bool image, bool color, float wrapWidth, bool isFirstSegment)
+        private static void RenderHtmlElementsNoSameline(string text, bool url, bool image, bool color, float wrapWidth, float wrapHeight, bool isFirstSegment, bool isLimited, bool disableWordWrap)
         {
             var tableRegex = new Regex(@"<table>(.*?)</table>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
@@ -150,7 +147,7 @@ namespace AbsoluteRoleplay
 
             if (tableMatches.Count == 0)
             {
-                RenderHtmlElementsNoTable(text, url, image, color, wrapWidth, isFirstSegment);
+                RenderHtmlElementsNoTable(text, url, image, color, wrapWidth, wrapHeight, isLimited, isFirstSegment, disableWordWrap);
                 return;
             }
 
@@ -161,7 +158,7 @@ namespace AbsoluteRoleplay
                 if (tableStart > lastIndex)
                 {
                     string beforeTable = text.Substring(lastIndex, tableStart - lastIndex);
-                    RenderHtmlElementsNoTable(beforeTable, url, image, color, wrapWidth, firstTable);
+                    RenderHtmlElementsNoTable(beforeTable, url, image, color, wrapWidth, wrapHeight, isLimited, firstTable, disableWordWrap);
                     firstTable = false;
                 }
 
@@ -175,7 +172,7 @@ namespace AbsoluteRoleplay
                     if (colStart == -1) break;
                     int colEnd = tableContent.IndexOf("</column>", colStart, StringComparison.OrdinalIgnoreCase);
                     if (colEnd == -1) break;
-                    int contentStart = colStart + "<column>".Length; 
+                    int contentStart = colStart + "<column>".Length;
                     string colContent = tableContent.Substring(contentStart, colEnd - contentStart).TrimStart('\r', '\n', ' ', '\t');
                     idx = colEnd + "</column>".Length;
 
@@ -201,35 +198,11 @@ namespace AbsoluteRoleplay
                         ImGui.TableSetColumnIndex(col);
 
                         var colText = columns[col].content;
-                        var tooltip = columns[col].tooltip;
-
-                        // Only push down if the first segment is text
-                        var scaleBlockRegex = new Regex(@"<scale\s*=\s*""([\d\.]+)""\s*>(.*?)</scale>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-                        var imgRegex = new Regex(@"<(img|image)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-                        var colorRegex = new Regex(@"<color\s+hex\s*=\s*([A-Fa-f0-9]{6})\s*>(.*?)</color>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-                        var urlRegex = new Regex(@"<url>(.*?)</url>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-                        var tooltipRegex = new Regex(@"<tooltip>(.*?)</tooltip>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-
-                        int firstTagIdx = colText.Length;
-                        string firstType = "text"; // Default to text if no tag found
-
-                        var scaleMatch = scaleBlockRegex.Match(colText, 0);
-                        var imgMatch = imgRegex.Match(colText, 0);
-                        var colorMatch = colorRegex.Match(colText, 0);
-                        var urlMatch = urlRegex.Match(colText, 0);
-                        var tooltipMatch = tooltipRegex.Match(colText, 0);
-
-                        if (scaleMatch.Success && scaleMatch.Index < firstTagIdx) { firstTagIdx = scaleMatch.Index; firstType = "scale"; }
-                        if (imgMatch.Success && imgMatch.Index < firstTagIdx) { firstTagIdx = imgMatch.Index; firstType = "img"; }
-                        if (colorMatch.Success && colorMatch.Index < firstTagIdx) { firstTagIdx = colorMatch.Index; firstType = "color"; }
-                        if (urlMatch.Success && urlMatch.Index < firstTagIdx) { firstTagIdx = urlMatch.Index; firstType = "url"; }
-                        if (tooltipMatch.Success && tooltipMatch.Index < firstTagIdx) { firstTagIdx = tooltipMatch.Index; firstType = "tooltip"; }
-
-
+                        var tooltip = columns[col].tooltip; 
                         ImGui.BeginGroup();
-                        RenderHtmlElementsNoTable(colText, url, image, color, wrapWidth / columnCount, true);
+                        float columnWidth = wrapWidth / columnCount;
+                        RenderHtmlElementsNoTable(colText, url, image, color, columnWidth, wrapHeight, isLimited, true, disableWordWrap);
                         ImGui.EndGroup();
-
                         if (!string.IsNullOrEmpty(tooltip) && ImGui.IsItemHovered())
                         {
                             ImGui.BeginTooltip();
@@ -246,11 +219,20 @@ namespace AbsoluteRoleplay
             if (lastIndex < text.Length)
             {
                 string afterTable = text.Substring(lastIndex);
-                RenderHtmlElementsNoTable(afterTable, url, image, color, wrapWidth, false);
+                RenderHtmlElementsNoTable(afterTable, url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
             }
         }
 
-        private static void RenderHtmlElementsNoTable(string text, bool url, bool image, bool color, float wrapWidth, bool isFirstSegment)
+        private static void RenderHtmlElementsNoTable(
+      string text,
+      bool url,
+      bool image,
+      bool color,
+      float wrapWidth,
+      float wrapHeight,
+      bool isFirstSegment,
+      bool isLimited,
+      bool disableWordWrap)
         {
             var scaleBlockRegex = new Regex(@"<scale\s*=\s*""([\d\.]+)""\s*>(.*?)</scale>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var imgRegex = new Regex(@"<(img|image)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
@@ -375,28 +357,46 @@ namespace AbsoluteRoleplay
             for (int i = 0; i < segments.Count; i++)
             {
                 var seg = segments[i];
-                bool itemRendered = false;
 
+                // Image rendering (only once per segment)
                 if (seg.type == "img" && image)
                 {
                     string imgUrl = seg.content;
                     float scale = seg.scale;
-
                     if (_imageCache.TryGetValue(imgUrl, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
                     {
                         Vector2 imgSize = new Vector2(texture.Width, texture.Height) * scale;
 
-                        // Limit image size to 40% of window width/height
-                        Vector2 windowSize = ImGui.GetWindowSize();
-                        float maxWidth = windowSize.X * 0.4f;
-                        float maxHeight = windowSize.Y * 0.4f;
-
-                        float widthScale = imgSize.X > maxWidth ? maxWidth / imgSize.X : 1f;
-                        float heightScale = imgSize.Y > maxHeight ? maxHeight / imgSize.Y : 1f;
-                        float finalScale = Math.Min(widthScale, heightScale);
-
-                        imgSize *= finalScale;
-
+                        if (disableWordWrap)
+                        {
+                            // Always scale image to max 400px width, preserving aspect ratio
+                            float maxWidth = 400f;
+                            if (imgSize.X > maxWidth)
+                            {
+                                float scaleDown = maxWidth / imgSize.X;
+                                imgSize *= scaleDown;
+                            }
+                        }
+                        else if (isLimited)
+                        {
+                            // Always fit image to column width (up or down), preserving aspect ratio
+                            float maxWidth = wrapWidth;
+                            float maxHeight = wrapHeight;
+                            float widthScale = maxWidth / imgSize.X;
+                            float heightScale = maxHeight / imgSize.Y;
+                            float finalScale = Math.Min(widthScale, heightScale);
+                            imgSize *= finalScale;
+                        }
+                        else
+                        {
+                            // If not limited, only scale down if image is wider than column
+                            float maxWidth = wrapWidth;
+                            if (imgSize.X > maxWidth)
+                            {
+                                float scaleDown = maxWidth / imgSize.X;
+                                imgSize *= scaleDown;
+                            }
+                        }
                         ImGui.Image(texture.ImGuiHandle, imgSize);
                     }
                     else
@@ -432,36 +432,35 @@ namespace AbsoluteRoleplay
                                 }
                             });
                         }
-                        Vector2 windowSize = ImGui.GetWindowSize();
-                        Vector2 placeholderSize = new Vector2(
-                            Math.Min(200 * scale, windowSize.X * 0.4f),
-                            Math.Min(200 * scale, windowSize.Y * 0.4f)
-                        );
                         ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image...]");
                     }
-                    itemRendered = true;
+                    continue; // Only render once per segment
                 }
-                else if (seg.type == "color" && color && seg.colorHex != null)
+
+                // Colored text
+                if (seg.type == "color" && color && seg.colorHex != null)
                 {
                     if (TryParseHexColor(seg.colorHex, out Vector4 colorVal))
                     {
-                        // Wrap colored text
-                        string wrapped = WrapTextToFit(seg.content, wrapWidth);
-                        foreach (var line in wrapped.Split('\n'))
+                        if (disableWordWrap)
+                            ImGui.TextColored(colorVal, seg.content);
+                        else
                         {
-                            ImGui.TextColored(colorVal, line);
+                            string wrapped = WrapTextToFit(seg.content, wrapWidth);
+                            foreach (var line in wrapped.Split('\n'))
+                                ImGui.TextColored(colorVal, line);
                         }
                     }
                     else
                     {
-                        string wrapped = WrapTextToFit(seg.content, wrapWidth);
-                        foreach (var line in wrapped.Split('\n'))
-                        {
-                            ImGui.TextUnformatted(line);
-                        }
+                        if (disableWordWrap)
+                            ImGui.TextUnformatted(seg.content);
+                        else
+                            ImGui.TextWrapped(seg.content);
                     }
-                    itemRendered = true;
+                    continue;
                 }
+
                 else if (seg.type == "url" && url && seg.url != null)
                 {
                     string wrapped = WrapTextToFit(seg.content, wrapWidth);
@@ -477,26 +476,24 @@ namespace AbsoluteRoleplay
                             Misc.UrlToLoad = seg.url;
                         }
                     }
-                    itemRendered = true;
                 }
-                else if (seg.type == "text")
+                // Plain text
+                if (seg.type == "text")
                 {
-                    string wrapped = WrapTextToFit(seg.content, wrapWidth);
-                    foreach (var line in wrapped.Split('\n'))
-                    {
-                        ImGui.TextUnformatted(line);
-                    }
-                    itemRendered = true;
+                    if (disableWordWrap)
+                        ImGui.TextUnformatted(seg.content);
+                    else
+                        ImGui.TextWrapped(seg.content);
+                    continue;
                 }
-                else if (seg.type == "tooltip")
+
+                // Tooltip
+                if (seg.type == "tooltip")
                 {
                     pendingTooltip = seg.content;
-                    continue; // Don't render anything for tooltip segment
+                    continue;
                 }
-
-
-            } 
-            // When you want
+            }
         }
         public static void RenderUrlModalPopup()
         {
@@ -1017,6 +1014,135 @@ namespace AbsoluteRoleplay
             ImGui.SetCursorPosX(buttonXPosition);
 
         }
+        internal static Vector2 CalculateTooltipScale(string tooltip, float wrapWidth = 400f)
+        {
+            // Helper to recursively parse and calculate size, now using WrapTextToFit for text segments
+            Vector2 Parse(string text, float parentScale)
+            {
+                // Table support
+                var tableRegex = new Regex(@"<table>(.*?)</table>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                var tableMatch = tableRegex.Match(text);
+                if (tableMatch.Success)
+                {
+                    string tableContent = tableMatch.Groups[1].Value;
+                    var columnRegex = new Regex(@"<column>(.*?)</column>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                    var columnMatches = columnRegex.Matches(tableContent);
 
+                    float totalWidth = 0f;
+                    float maxHeight = 0f;
+                    foreach (Match colMatch in columnMatches)
+                    {
+                        string colContent = colMatch.Groups[1].Value.Trim();
+                        Vector2 colSize = Parse(colContent, parentScale);
+                        totalWidth += colSize.X;
+                        maxHeight = Math.Max(maxHeight, colSize.Y);
+                    }
+                    return new Vector2(totalWidth, maxHeight);
+                }
+
+                // Split by line breaks
+                var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+                float maxWidth = 0f;
+                float totalHeight = 0f;
+                foreach (var line in lines)
+                {
+                    Vector2 lineSize = Vector2.Zero;
+                    int idx = 0;
+                    while (idx < line.Length)
+                    {
+                        // Scale block
+                        var scaleBlockRegex = new Regex(@"<scale\s*=\s*""([\d\.]+)""\s*>(.*?)</scale>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                        var scaleMatch = scaleBlockRegex.Match(line, idx);
+                        if (scaleMatch.Success && scaleMatch.Index == idx)
+                        {
+                            float scale = float.TryParse(scaleMatch.Groups[1].Value, out var s) ? s : 1.0f;
+                            string scaleContent = scaleMatch.Groups[2].Value;
+                            Vector2 scaledSize = Parse(scaleContent, parentScale * scale);
+                            lineSize.X += scaledSize.X;
+                            lineSize.Y = Math.Max(lineSize.Y, scaledSize.Y);
+                            idx += scaleMatch.Length;
+                            continue;
+                        }
+
+                        // Image
+                        var imgRegex = new Regex(@"<(img|image)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                        var imgMatch = imgRegex.Match(line, idx);
+                        if (imgMatch.Success && imgMatch.Index == idx)
+                        {
+                            string imgUrl = imgMatch.Groups[2].Value.Trim();
+                            Vector2 imgSize = new Vector2(100, 100); // Default
+                            if (_imageCache.TryGetValue(imgUrl, out var texture) && texture != null)
+                                imgSize = new Vector2(texture.Width, texture.Height);
+                            imgSize *= parentScale;
+                            lineSize.X += imgSize.X;
+                            lineSize.Y = Math.Max(lineSize.Y, imgSize.Y);
+                            idx += imgMatch.Length;
+                            continue;
+                        }
+
+                        // Color
+                        var colorRegex = new Regex(@"<color\s+hex\s*=\s*([A-Fa-f0-9]{6})\s*>(.*?)</color>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                        var colorMatch = colorRegex.Match(line, idx);
+                        if (colorMatch.Success && colorMatch.Index == idx)
+                        {
+                            string colorContent = colorMatch.Groups[2].Value;
+                            string wrapped = WrapTextToFit(colorContent, wrapWidth);
+                            foreach (var wrappedLine in wrapped.Split('\n'))
+                            {
+                                Vector2 colorTextSize = ImGui.CalcTextSize(wrappedLine) * parentScale;
+                                lineSize.X = Math.Max(lineSize.X, colorTextSize.X);
+                                lineSize.Y += colorTextSize.Y;
+                            }
+                            idx += colorMatch.Length;
+                            continue;
+                        }
+
+                        // URL
+                        var urlRegex = new Regex(@"<url>(.*?)</url>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                        var urlMatch = urlRegex.Match(line, idx);
+                        if (urlMatch.Success && urlMatch.Index == idx)
+                        {
+                            string urlContent = urlMatch.Groups[1].Value;
+                            string wrapped = WrapTextToFit(urlContent, wrapWidth);
+                            foreach (var wrappedLine in wrapped.Split('\n'))
+                            {
+                                Vector2 urlTextSize = ImGui.CalcTextSize(wrappedLine) * parentScale;
+                                lineSize.X = Math.Max(lineSize.X, urlTextSize.X);
+                                lineSize.Y += urlTextSize.Y;
+                            }
+                            idx += urlMatch.Length;
+                            continue;
+                        }
+
+                        // Plain text
+                        int nextTagIdx = line.IndexOf('<', idx);
+                        if (nextTagIdx == -1)
+                            nextTagIdx = line.Length;
+                        string plainText = line.Substring(idx, nextTagIdx - idx);
+                        if (!string.IsNullOrWhiteSpace(plainText))
+                        {
+                            string wrapped = WrapTextToFit(plainText, wrapWidth);
+                            foreach (var wrappedLine in wrapped.Split('\n'))
+                            {
+                                Vector2 textSize = ImGui.CalcTextSize(wrappedLine) * parentScale;
+                                lineSize.X = Math.Max(lineSize.X, textSize.X);
+                                lineSize.Y += textSize.Y;
+                            }
+                        }
+                        idx = nextTagIdx;
+                    }
+                    maxWidth = Math.Max(maxWidth, lineSize.X);
+                    totalHeight += lineSize.Y;
+                }
+
+                return new Vector2(maxWidth, totalHeight);
+            }
+
+            // Add some padding
+            Vector2 size = Parse(tooltip, 1.0f);
+            size.X += 16;
+            size.Y += 16;
+            return size;
+        }
     }
 }
