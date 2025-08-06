@@ -1,9 +1,8 @@
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using System;
 using Networking;
 using Dalamud.Interface.Colors;
+using Dalamud.Bindings.ImGui;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -17,8 +16,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static string characterNameVal;
         public static string characterWorldVal;
         public static int characterIndex;
-        public static Plugin pg;
-        public NotesWindow(Plugin plugin) : base(
+        public NotesWindow() : base(
        "NOTES", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -26,14 +24,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(1200, 950)
             };
-            pg = plugin;
 
         }
         public override void Draw()
         {
-            if (pg.IsOnline())
+            if (Plugin.plugin.IsOnline())
             {
-                Misc.SetTitle(pg, true, "Personal Notes", ImGuiColors.TankBlue);
+                Misc.SetTitle(Plugin.plugin, true, "Personal Notes", ImGuiColors.TankBlue);
 
                 ImGui.Text("Here you can add personal notes about this player or profile");
                 ImGui.InputTextMultiline(
@@ -44,7 +41,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 );
                 if (ImGui.Button("Add Notes"))
                 {
-                    if (pg.IsOnline())
+                    if (Plugin.plugin.IsOnline())
                     {
                         DataSender.AddProfileNotes(characterIndex, profileNotes);
                     }

@@ -1,17 +1,8 @@
 using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
-using ImGuiNET;
 using Networking;
-using OtterGui.Text.EndObjects;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
@@ -32,12 +23,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 foreach (ProfileGalleryImage image in galleryLayout.images)
                 {
                     ImGui.TableNextColumn();
-                    if (image.image == null && image.image.ImGuiHandle == IntPtr.Zero)
+                    if (image.image == null && image.image.Handle == IntPtr.Zero)
                     {
                         image.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
                         image.thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
                     }
-                    else if (image.thumbnail != null && image.thumbnail.ImGuiHandle != IntPtr.Zero)
+                    else if (image.thumbnail != null && image.thumbnail.Handle != IntPtr.Zero)
                     {
                         // Calculate scaled size while keeping aspect ratio
                         float aspect = (float)image.thumbnail.Width / Math.Max(1, image.thumbnail.Height);
@@ -51,9 +42,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             width = height * aspect;
                         }
                         Vector2 scaledSize = new Vector2(width, height);
-                        if (image.image != null && image.image.ImGuiHandle != IntPtr.Zero)
+                        if (image.image != null && image.image.Handle != IntPtr.Zero)
                         {
-                            ImGui.Image(image.thumbnail.ImGuiHandle, scaledSize);
+                            ImGui.Image(image.thumbnail.Handle, scaledSize);
                             if (ImGui.IsItemHovered())
                             {
                                 ImGui.BeginTooltip();
@@ -64,7 +55,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             }
                             if (ImGui.IsItemClicked())
                             {
-                                if (image.image != null && image.image.ImGuiHandle != IntPtr.Zero)
+                                if (image.image != null && image.image.Handle != IntPtr.Zero)
                                 {
                                     ImagePreview.width = image.image.Width;
                                     ImagePreview.height = image.image.Height;
@@ -158,9 +149,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
 
             //maximize the gallery image to preview it.
-            if (image.thumbnail != null && image.thumbnail.ImGuiHandle != null && image.thumbnail.ImGuiHandle != IntPtr.Zero)
+            if (image.thumbnail != null && image.thumbnail.Handle != null && image.thumbnail.Handle != IntPtr.Zero)
             {
-                ImGui.Image(image.thumbnail.ImGuiHandle, new Vector2(image.thumbnail.Width, image.thumbnail.Height));
+                ImGui.Image(image.thumbnail.Handle, new Vector2(image.thumbnail.Width, image.thumbnail.Height));
             }
             else
             {
@@ -178,7 +169,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             {
                 Misc.EditImage(plugin, ProfileWindow._fileDialogManager, layout, false, false, i);
             }
-            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
             {
                 //button to remove the gallery image
                 if (ImGui.Button("Remove##" + "gallery_remove" + i))

@@ -1,12 +1,11 @@
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using ImGuiNET;
-using System;
+using AbsoluteRoleplay.Helpers;
 using Networking;
 using Dalamud.Interface.Colors;
-using OtterGui;
 using AbsoluteRoleplay.Defines;
-using OtterGui.Extensions;
+using Dalamud.Interface.Utility.Raii;
 
 namespace AbsoluteRoleplay.Windows.Moderator
 {
@@ -25,7 +24,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
         public static string status = "Report Status";
         public static Vector4 statusColor = new Vector4(0, 0, 0, 0);
 
-        public ModPanel(Plugin plugin) : base(
+        public ModPanel() : base(
        "MOD PANEL")
         {
             SizeConstraints = new WindowSizeConstraints
@@ -33,8 +32,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(1200, 950)
             };
-            pg = plugin;
-            pg.logger.Error(capturedAuthor.ToString());
+            Plugin.logger.Error(capturedAuthor.ToString());
           
         }
         public override void Draw()
@@ -77,7 +75,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("ModPanel Draw Error: " + ex.Message);
+                Plugin.logger.Error("ModPanel Draw Error: " + ex.Message);
                 status = "An error occurred while processing your request.";
                 statusColor = new Vector4(1, 0, 0, 1); // Red color for error
             }
@@ -98,8 +96,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
         public static void DrawActionSelection()
         {
             var (text, desc) = ModDefines.ModAccountActionVals[(int)currentAction];
-            using var combo = OtterGui.Raii.ImRaii.Combo("Action Taken##Action", text);
-            ImGuiUtil.HoverTooltip("Select an Action to take, (Actions are account wide).");
+            using var combo = ImRaii.Combo("Action Taken##Action", text);
             if (!combo)
                 return;
             foreach (var ((newText, newDesc), idx) in ModDefines.ModAccountActionVals.WithIndex())
@@ -109,7 +106,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
                     if (ImGui.Selectable(newText, idx == (int)currentAction))
                         currentAction = (ModeratorAction)idx;
                         
-                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiHelpers.SelectableHelpMarker(newDesc);
                 }
 
             }

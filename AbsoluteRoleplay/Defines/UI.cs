@@ -12,7 +12,6 @@ using ImGuiNET;
 using Lumina.Data;
 using Lumina.Data.Files;
 using Microsoft.VisualBasic;
-using OtterGuiInternal.Structs;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -496,13 +495,13 @@ namespace AbsoluteRoleplay
                 var fullPath = Path.Combine(path, "UI/common/profiles/background_holder.png");
                 if (!File.Exists(fullPath))
                 {
-                    Plugin.plugin.logger.Error($"[baseImageBytes] File does not exist: {fullPath}");
+                    Plugin.logger.Error($"[baseImageBytes] File does not exist: {fullPath}");
                     return null;
                 }
                 // This should just read the file as bytes
                 return File.ReadAllBytes(fullPath);
             }
-            Plugin.plugin.logger.Error("[baseImageBytes] PluginInterface or path is null.");
+            Plugin.logger.Error("[baseImageBytes] PluginInterface or path is null.");
             return null;
         }
 
@@ -1502,7 +1501,7 @@ public class LayoutTreeNode
         set
         {
             if (value == null)
-                Plugin.plugin.logger.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
+                Plugin.logger.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
             _name = value ?? string.Empty;
         }
     }

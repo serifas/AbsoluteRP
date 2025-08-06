@@ -33,7 +33,7 @@ public class HitboxWindow : Window
             }
         }catch(Exception ex)
         {
-            plugin.logger.Error("HitboxWindow Draw Error: " + ex.Message);
+            Plugin.logger.Error("HitboxWindow Draw Error: " + ex.Message);
         }
     }
     public static void DrawTooltipHitbox(IPlayerCharacter player, IGameGui gui, float radius)

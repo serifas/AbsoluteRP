@@ -60,7 +60,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         using var detailControlsTable = ImRaii.Child("##DetailControls" + detail.id);
                         if (detailControlsTable)
                         {
-                            using (OtterGui.Raii.ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
                                 if (ImGui.Button("Remove##" + "detail" + detail.id))
                                 {

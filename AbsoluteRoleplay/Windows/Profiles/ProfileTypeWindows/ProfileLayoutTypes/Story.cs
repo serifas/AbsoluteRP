@@ -1,16 +1,8 @@
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using ImGuiNET;
-using OtterGui;
-using OtterGui.Extensions;
-using OtterGui.Raii;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-
+using System.Collections.Generic;
+using AbsoluteRoleplay.Helpers;
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     public class Story
@@ -129,7 +121,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         currentChapter = idx;
                         layout.loadChapters = true; // Set to true to load the chapter content
                     }
-                    ImGuiUtil.SelectableHelpMarker("Select to edit chapter");
+                    ImGuiHelpers.SelectableHelpMarker("Select to edit chapter");
                 }
             }
         }

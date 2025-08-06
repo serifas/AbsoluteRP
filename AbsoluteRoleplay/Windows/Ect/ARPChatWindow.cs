@@ -1,9 +1,7 @@
 using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Moderator;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -11,17 +9,8 @@ using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
-using Dalamud.Storage.Assets;
-using Dalamud.Utility;
-using ImGuiNET;
-using Microsoft.Extensions.Configuration;
 using Networking;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 
 namespace AbsoluteRoleplay.Windows.Ect
@@ -30,7 +19,6 @@ namespace AbsoluteRoleplay.Windows.Ect
     {
         public string messageInput = string.Empty;
         public static List<ChatMessage> messages = new List<ChatMessage>();
-        public static Plugin pg;
         public static IChatGui chatgui; 
         public IDalamudTextureWrap viewProfileImg = UI.UICommonImage(UI.CommonImageTypes.profileCreateProfile);
         public IDalamudTextureWrap bookmarkProfileImg = UI.UICommonImage(UI.CommonImageTypes.profileBookmarkProfile);
@@ -61,7 +49,7 @@ namespace AbsoluteRoleplay.Windows.Ect
         }; 
         private int selectedTab = 0;
 
-        public ARPChatWindow(Plugin plugin, IChatGui chatGui) : base(
+        public ARPChatWindow(IChatGui chatGui) : base(
        "CHAT", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -69,7 +57,6 @@ namespace AbsoluteRoleplay.Windows.Ect
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(2000, 2000)
             };
-            pg = plugin;
             chatgui = chatGui;
         }
         private bool canSend = false;
@@ -133,9 +120,9 @@ namespace AbsoluteRoleplay.Windows.Ect
                                             ImGui.TableNextColumn();
                                             if (messages[i].authorName != messages[i - 1].authorName) //if the last author does not have the same name as the current author
                                             {
-                                                if( messages[i].avatar != null && messages[i].avatar.ImGuiHandle != IntPtr.Zero)
+                                                if( messages[i].avatar != null && messages[i].avatar.Handle != IntPtr.Zero)
                                                 {                                                    // Display avatar and author name
-                                                    ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
+                                                    ImGui.Image(messages[i].avatar.Handle, aviSize);
                                                 }
                                                 ImGui.TextUnformatted(messages[i].authorName);
                                                 if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
@@ -146,7 +133,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                                                         ModPanel.capturedAuthor = messages[i].authorUserID;
                                                         ModPanel.capturedMessage = messages[i].message;
 
-                                                        pg.OpenModeratorPanel();
+                                                        Plugin.plugin.OpenModeratorPanel();
                                                     }
                                                 }
 
@@ -156,17 +143,17 @@ namespace AbsoluteRoleplay.Windows.Ect
                                                 {
                                                     ImGui.PushID("##Message" + i);
 
-                                                    if (viewProfileImg != null && viewProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                    if (viewProfileImg != null && viewProfileImg.Handle != IntPtr.Zero)
                                                     {
-                                                        if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
+                                                        if (ImGui.ImageButton(viewProfileImg.Handle, btnSize))
                                                         {
                                                             DataSender.RequestTargetProfile(messages[i].authorProfileID);
                                                         }
                                                     }
-                                                    if(bookmarkProfileImg != null && viewProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                    if(bookmarkProfileImg != null && viewProfileImg.Handle != IntPtr.Zero)
                                                     {
 
-                                                    if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
+                                                    if (ImGui.ImageButton(bookmarkProfileImg.Handle, btnSize))
                                                     {
                                                         DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
                                                         }
@@ -183,10 +170,10 @@ namespace AbsoluteRoleplay.Windows.Ect
                                         else
                                         {
                                             ImGui.TableNextColumn();
-                                            if (messages[i].avatar != null && messages[i].avatar.ImGuiHandle != IntPtr.Zero)
+                                            if (messages[i].avatar != null && messages[i].avatar.Handle != IntPtr.Zero)
                                             {
-                                                ImGui.Image(messages[i].avatar.ImGuiHandle, aviSize);
-                                            }
+                                                ImGui.Image(messages[i].avatar.Handle, aviSize);
+                                            }   
                                             ImGui.TextUnformatted(messages[i].authorName);
                                             if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
                                             {
@@ -196,7 +183,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                                                     ModPanel.capturedAuthor = messages[i].authorUserID;
                                                     ModPanel.capturedMessage = messages[i].message;
 
-                                                    pg.OpenModeratorPanel();
+                                                    Plugin.plugin.OpenModeratorPanel();
                                                 }
 
                                             }
@@ -206,17 +193,17 @@ namespace AbsoluteRoleplay.Windows.Ect
                                             if (messages[i].authorProfileID != 0)
                                             {
                                                 ImGui.PushID("##Message" + i);
-                                                if(viewProfileImg != null && viewProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                if(viewProfileImg != null && viewProfileImg.Handle != IntPtr.Zero)
                                                 {
-                                                    if (ImGui.ImageButton(viewProfileImg.ImGuiHandle, btnSize))
+                                                    if (ImGui.ImageButton(viewProfileImg.Handle, btnSize))
                                                     {
                                                         DataSender.RequestTargetProfile(messages[i].authorProfileID);
                                                     }
 
                                                 }
-                                                if(bookmarkProfileImg != null && bookmarkProfileImg.ImGuiHandle != IntPtr.Zero)
+                                                if(bookmarkProfileImg != null && bookmarkProfileImg.Handle != IntPtr.Zero)
                                                 {
-                                                    if (ImGui.ImageButton(bookmarkProfileImg.ImGuiHandle, btnSize))
+                                                    if (ImGui.ImageButton(bookmarkProfileImg.Handle, btnSize))
                                                     {
                                                         DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
                                                     }
@@ -231,12 +218,12 @@ namespace AbsoluteRoleplay.Windows.Ect
                                         {
                                             using (ImRaii.PushColor(ImGuiCol.Text, new Vector4(1, 0.5f, 0, 1)))
                                             {
-                                                ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                                                ImGui.TextWrapped(messages[i].message);
                                             }
                                         }
                                         else
                                         {
-                                            ImGuiHelpers.SafeTextWrapped(messages[i].message);
+                                            ImGui.TextWrapped(messages[i].message);
                                         }
                                     }
                                 }
@@ -281,7 +268,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("ARPChatWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("ARPChatWindow Draw Error: " + ex.Message);
                 // Optionally, you can display an error message in the chat window
                 chatgui.PrintError($"Error in ARPChatWindow: {ex.Message}");
             }

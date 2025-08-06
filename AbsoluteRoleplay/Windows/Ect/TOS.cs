@@ -1,20 +1,16 @@
-using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
-using ImGuiNET;
 using AbsoluteRoleplay.Helpers;
-using System;
-using System.Net.Http;
 using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Colors;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
+using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 namespace AbsoluteRoleplay.Windows.Ect
 {
     public class TOS : Window, IDisposable
     {
         private float _modVersionWidth;
-        public static Plugin pg;
         public static string verificationKey = string.Empty;
         public static string verificationStatus = string.Empty;
         public static Vector4 verificationCol = new Vector4(1, 1, 1, 1);
@@ -23,7 +19,7 @@ namespace AbsoluteRoleplay.Windows.Ect
         public bool Agreed = false;
         internal Version version;
 
-        public TOS(Plugin plugin) : base(
+        public TOS() : base(
         "TERMS OF SERVICE")
         {
             SizeConstraints = new WindowSizeConstraints
@@ -31,7 +27,6 @@ namespace AbsoluteRoleplay.Windows.Ect
                 MinimumSize = new Vector2(200, 200),
                 MaximumSize = new Vector2(1200, 1200)
             };
-            pg = plugin;
             Task.Run(() =>
             {
 
@@ -47,13 +42,13 @@ namespace AbsoluteRoleplay.Windows.Ect
             try
             {
                 //draw TOS
-                Misc.SetTitle(pg, true, "Terms of Service", ImGuiColors.TankBlue);
-                ImGuiHelpers.SafeTextWrapped(ToS1);
-                ImGuiHelpers.SafeTextWrapped(ToS2);
+                Misc.SetTitle(Plugin.plugin, true, "Terms of Service", ImGuiColors.TankBlue);
+                ImGui.TextWrapped(ToS1);
+                ImGui.TextWrapped(ToS2);
                 //draw rules
-                Misc.SetTitle(pg, true, "Rules", ImGuiColors.TankBlue);
-                ImGuiHelpers.SafeTextWrapped(Rules1);
-                ImGuiHelpers.SafeTextWrapped(Rules2);
+                Misc.SetTitle(Plugin.plugin, true, "Rules", ImGuiColors.TankBlue);
+                ImGui.TextWrapped(Rules1);
+                ImGui.TextWrapped(Rules2);
 
                 var windowSize = ImGui.GetWindowSize();
 
@@ -63,21 +58,21 @@ namespace AbsoluteRoleplay.Windows.Ect
                 ImGui.SetCursorPosX(xPos);
                 ImGui.Checkbox("I Agree##Agree", ref Agreed);
 
-                using (OtterGui.Raii.ImRaii.Disabled(!Agreed))
+                using (ImRaii.Disabled(!Agreed))
                 {
                     ImGui.SetCursorPosX(xPos);
                     if (ImGui.Button("Submit"))
                     {
-                        pg.Configuration.TOSVersion = version;
-                        pg.Configuration.Save();
-                        pg.LoadConnection();
+                        Plugin.plugin.Configuration.TOSVersion = version;
+                        Plugin.plugin.Configuration.Save();
+                        Plugin.plugin.LoadConnection();
                         this.IsOpen = false;
                     }
                 }
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("TOS Draw Error: " + ex.Message);
+                Plugin.logger.Error("TOS Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

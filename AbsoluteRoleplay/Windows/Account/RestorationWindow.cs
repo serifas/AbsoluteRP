@@ -3,28 +3,20 @@ using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using OtterGui.Raii;
-using OtterGui;
-using System;
-using Dalamud.Interface.GameFonts;
 using Networking;
-using Dalamud.Interface.Utility;
-using Dalamud.IoC;
-using Dalamud.Interface.Style;
+using Dalamud.Bindings.ImGui;
 
 namespace AbsoluteRoleplay.Windows.Account
 {
     public class RestorationWindow : Window, IDisposable
     {
-        public static Plugin pg;
         public static string restorationKey = string.Empty;
         public static string restorationPass = string.Empty;
         public static string restorationPassConfirm = string.Empty;
         public static string restorationEmail = string.Empty;
         public static string restorationStatus = string.Empty;
         public static Vector4 restorationCol = new Vector4(1, 1, 1, 1);
-        public RestorationWindow(Plugin plugin) : base(
+        public RestorationWindow() : base(
        "RESTORATION", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -32,14 +24,13 @@ namespace AbsoluteRoleplay.Windows.Account
                 MinimumSize = new Vector2(600, 300),
                 MaximumSize = new Vector2(420, 350)
             };
-            pg = plugin;
 
 
         }
         public override void Draw()
         {
             try { 
-            Misc.SetTitle(pg, true, "Account Restoration", ImGuiColors.TankBlue);
+            Misc.SetTitle(Plugin.plugin, true, "Account Restoration", ImGuiColors.TankBlue);
             //set everything back
             //okay that's done.
             ImGui.Text("We sent a restoration key to the email address provided. \nPlease enter the key with a new password below.");
@@ -56,7 +47,7 @@ namespace AbsoluteRoleplay.Windows.Account
                 {
                     if (restorationPass == restorationPassConfirm)
                     {
-                        if (pg.IsOnline())
+                        if (Plugin.plugin.IsOnline())
                         {
                             //send the key with the new password to restore the account to settings the user knows
                             DataSender.SendRestoration(restorationEmail, restorationPass, restorationKey);
@@ -76,7 +67,7 @@ namespace AbsoluteRoleplay.Windows.Account
             }catch(Exception e)
             {
                 restorationStatus = "An error occurred";
-                Plugin.plugin.logger.Error(e.Message);
+                Plugin.logger.Error(e.Message);
                 restorationCol = new Vector4(255, 0, 0, 255);
             }
         }

@@ -1,23 +1,17 @@
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using System;
-using Dalamud.Interface.GameFonts;
 using Networking;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Helpers;
 using Dalamud.Interface.Colors;
+using Dalamud.Bindings.ImGui;
 
 namespace AbsoluteRoleplay.Windows.Account
 {
     public class VerificationWindow : Window, IDisposable
     {
-        public static Plugin pg;
         public static string verificationKey = string.Empty;
         public static string verificationStatus = string.Empty;
         public static Vector4 verificationCol = new Vector4(1, 1, 1, 1);
-        public VerificationWindow(Plugin plugin) : base(
+        public VerificationWindow() : base(
        "VERIFICATION", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -25,14 +19,13 @@ namespace AbsoluteRoleplay.Windows.Account
                 MinimumSize = new Vector2(350, 200),
                 MaximumSize = new Vector2(350, 200)
             };
-            pg = plugin;
 
         }
         public override void Draw()
         {
             try
             {
-                Misc.SetTitle(pg, false, "Verification", ImGuiColors.TankBlue);
+                Misc.SetTitle(Plugin.plugin, false, "Verification", ImGuiColors.TankBlue);
                 //okay that's done.
                 ImGui.Text("We sent a verification key to the email provided. \nPlease provide it below...");
                 ImGui.Spacing();
@@ -41,10 +34,10 @@ namespace AbsoluteRoleplay.Windows.Account
                 if (ImGui.Button("Submit"))
                 {
                     //if player is online in game
-                    if (pg.IsOnline())
+                    if (Plugin.plugin.IsOnline())
                     {
                         //submit our verification key for verification
-                        DataSender.SendVerification(pg.username.ToString(), verificationKey);
+                        DataSender.SendVerification(Plugin.plugin.username.ToString(), verificationKey);
                     }
 
                 }
@@ -52,7 +45,7 @@ namespace AbsoluteRoleplay.Windows.Account
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("VerificationWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("VerificationWindow Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

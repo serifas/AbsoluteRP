@@ -3,33 +3,16 @@ using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using OtterGui.Raii;
-using OtterGui;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using Dalamud.Interface.GameFonts;
-using Dalamud.Game.Gui.Dtr;
-using Microsoft.VisualBasic;
 using Networking;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using FFXIVClientStructs.Havok;
-using System.Text.RegularExpressions;
-using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects;
 using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Helpers;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using OtterGui.Extensions;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class ConnectionsWindow : Window, IDisposable
     {
-        public Plugin plugin;
         public static List<Tuple<string, string>> receivedProfileRequests = new List<Tuple<string, string>>();
         public static List<Tuple<string, string>> sentProfileRequests = new List<Tuple<string, string>>();
         public static List<Tuple<string, string>> blockedProfileRequests = new List<Tuple<string, string>>();
@@ -39,7 +22,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static string localPlayerWorld = "";
         public static int currentListing = 0;
         private IDalamudPluginInterface pg;
-        public ConnectionsWindow(Plugin plugin) : base(
+        public ConnectionsWindow() : base(
        "CONNECTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -47,7 +30,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 MinimumSize = new Vector2(300, 300),
                 MaximumSize = new Vector2(950, 950)
             };
-            this.plugin = plugin;
         }
         public override void Draw()
         {
@@ -56,8 +38,8 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 AddConnectionListingOptions();
                 Vector2 windowSize = ImGui.GetWindowSize();
                 var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
-                localPlayerName = plugin.playername;
-                localPlayerWorld = plugin.playerworld;
+                localPlayerName = Plugin.plugin.playername;
+                localPlayerWorld = Plugin.plugin.playerworld;
                 if (currentListing == 2)
                 {
                     using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
@@ -205,14 +187,14 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("ConnectionsWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("ConnectionsWindow Draw Error: " + ex.Message);
             }
         }
         public void AddConnectionListingOptions()
         {
             var (text, desc) = UI.ConnectionListingVals[currentListing];
             using var combo = ImRaii.Combo("##Connetions", text);
-            ImGuiUtil.HoverTooltip(desc);
+            
             if (!combo)
                 return;
 
@@ -221,7 +203,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.Selectable(newText, idx == currentListing))
                     currentListing = idx;
 
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                Helpers.ImGuiHelpers.SelectableHelpMarker(newDesc);
             }
         }
         public void Dispose()

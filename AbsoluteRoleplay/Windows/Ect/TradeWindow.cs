@@ -1,6 +1,7 @@
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.Gui.Dtr;
@@ -9,30 +10,17 @@ using Dalamud.Interface.Colors;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal.Windows;
 using Dalamud.Interface.Utility;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using FFXIVClientStructs.Havok;
-using ImGuiNET;
-using Microsoft.VisualBasic;
 using Networking;
-using OtterGui;
-using OtterGui.Extensions;
-using OtterGui.Raii;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
+using AbsoluteRoleplay.Helpers;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class TradeWindow : Window, IDisposable
     {
-        private Plugin plugin;
-        private IDalamudPluginInterface pg;
         public static InventoryLayout inventoryLayout = new InventoryLayout();
         public static string tradeTargetName = string.Empty;
         public static string tradeTargetWorld = string.Empty;
@@ -45,7 +33,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         //tabIndex / tabID / tabName
         public static List<Tuple<int, int, string>> inventoryTabs = new List<Tuple<int,int, string>>();
         public static List<InventoryLayout> inventories = new List<InventoryLayout>();
-        public TradeWindow(Plugin plugin) : base(
+        public TradeWindow() : base(
        "TRADE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -53,11 +41,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 MinimumSize = new Vector2(300, 300),
                 MaximumSize = new Vector2(1200, 800)
             };
-            this.plugin = plugin;
         }
         public override void Draw()
         {
-            if (!plugin.IsOnline())
+            if (!Plugin.plugin.IsOnline())
                 return;
 
             Vector2 windowSize = ImGui.GetWindowSize();
@@ -71,7 +58,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             {
                 if (tradeTable)
                 {
-                    ItemGrid.DrawGrid(plugin, inventoryLayout, tradeTargetName, tradeTargetWorld, true);
+                    ItemGrid.DrawGrid(Plugin.plugin, inventoryLayout, tradeTargetName, tradeTargetWorld, true);
                 }
             }
             AddTabSelection(false);
@@ -143,7 +130,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 InventoryNames = inventoryNames.ToArray();
                 var inventoryName = InventoryNames[selectedTab];
 
-                using var combo = OtterGui.Raii.ImRaii.Combo("##Inventory", inventoryName);
+                using var combo = ImRaii.Combo("##Inventory", inventoryName);
                 if (!combo)
                     return;
                 foreach (var (newText, idx) in InventoryNames.WithIndex())
@@ -165,7 +152,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     DataSender.SendInventorySelection(inventoryTabs[idx].Item1, inventoryTabs[idx].Item2);
                                 }
                             }
-                            ImGuiUtil.SelectableHelpMarker("Select an inventory to send and receive items.");
+                            Helpers.ImGuiHelpers.SelectableHelpMarker("Select an inventory to send and receive items.");
                         }
 
                        
@@ -175,7 +162,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
+                Plugin.logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
             }
         }
 

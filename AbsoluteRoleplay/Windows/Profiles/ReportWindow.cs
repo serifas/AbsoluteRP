@@ -1,22 +1,7 @@
-using Dalamud.Interface.Colors;
-using Dalamud.Interface;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using OtterGui.Raii;
-using OtterGui;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using Dalamud.Interface.GameFonts;
-using Dalamud.Game.Gui.Dtr;
-using Microsoft.VisualBasic;
 using Networking;
-using Dalamud.Interface.Utility;
-using Dalamud.Interface.Internal;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -26,8 +11,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         public static string reportCharacterWorld;
         public static string reportInfo = string.Empty;
         public static string reportStatus = string.Empty;
-        public static Plugin pg;
-        public ReportWindow(Plugin plugin) : base(
+        public ReportWindow() : base(
        "REPORT USER PROFILE", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -36,12 +20,11 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 MaximumSize = new Vector2(1200, 950)
             };
 
-            pg = plugin;
 
         }
         public override void Draw()
         {
-            if (pg.IsOnline())
+            if (Plugin.plugin.IsOnline())
             {
                 ImGui.TextColored(new Vector4(100, 0, 0, 100), reportStatus);
                 ImGui.Text("Reason for report");
@@ -52,7 +35,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                     if (reportInfo.Length > 15)
                     {
                         //report the currently viewed profile to the moderators
-                        DataSender.ReportProfile(pg.username, reportCharacterName, reportCharacterWorld, reportInfo);
+                        DataSender.ReportProfile(Plugin.plugin.username, reportCharacterName, reportCharacterWorld, reportInfo);
                     }
                     else
                     {

@@ -1,12 +1,10 @@
 using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using OtterGui;
 using System;
 namespace AbsoluteRoleplay.Windows
 {
@@ -23,15 +21,15 @@ namespace AbsoluteRoleplay.Windows
         public static bool autoLogIn;
         public static string[] alertPositions = { "Bottom Left", "Bottom Right", "Top Left", "Top Right", "Center" };
         public static bool ChangeDataPath = false;
-        public OptionsWindow(Plugin plugin) : base(
-       "OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        private bool showCompass;
+
+        public OptionsWindow() : base("OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(300, 180),
                 MaximumSize = new Vector2(800, 800)
             };
-            OptionsWindow.plugin = plugin;
             showKofi = plugin.Configuration.showKofi;
             showPatreon = plugin.Configuration.showPatreon;
             showDisc = plugin.Configuration.showDisc;
@@ -45,18 +43,18 @@ namespace AbsoluteRoleplay.Windows
                 _fileDialogManager.Draw();
                 if (ChangeDataPath)
                 {
-                    Plugin.plugin.logger.Error("Dialog Opening");
+                    Plugin.logger.Error("Dialog Opening");
                     _fileDialogManager.OpenFolderDialog("Select Data Save Path", (b, path) =>
                     {
                         if(path != null && b)
                         {
                             plugin.Configuration.dataSavePath = path;
                             plugin.Configuration.Save();
-                            plugin.logger.Error($"Data save path changed to: {path}");
+                            Plugin.logger.Error($"Data save path changed to: {path}");
                         }
                         else
                         {
-                            plugin.logger.Error("Data save path change cancelled.");
+                            Plugin.logger.Error("Data save path change cancelled.");
                         }
                     });
                     ChangeDataPath = false; // Prevent repeated dialog opening
@@ -72,6 +70,11 @@ namespace AbsoluteRoleplay.Windows
 
                 if (ImGui.BeginTabItem("General"))
                 {
+                    if(ImGui.Checkbox("Show ARP Compass", ref showCompass))
+                    {
+                        plugin.Configuration.showCompass = showCompass;
+                        plugin.Configuration.Save();
+                    }
                     if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
                     {
                         plugin.Configuration.showKofi = showKofi;
@@ -229,7 +232,7 @@ namespace AbsoluteRoleplay.Windows
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("OptionsWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("OptionsWindow Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

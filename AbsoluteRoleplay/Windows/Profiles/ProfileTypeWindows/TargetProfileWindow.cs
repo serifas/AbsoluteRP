@@ -1,25 +1,17 @@
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
-using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
-using ImGuiNET;
 using Networking;
-using OtterGui.Raii;
-using OtterGui.Widgets;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
-using static FFXIVClientStructs.FFXIV.Client.System.Memory.IMemorySpace.Delegates;
 
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 {
     public class TargetProfileWindow : Window, IDisposable
     {
-        private Plugin plugin;
         public static string loading;
-        private IDalamudPluginInterface pg;
         public static float currentInd, max;
         public static bool addNotes, loadPreview = false;
         public static ProfileData profileData = new ProfileData();
@@ -37,15 +29,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         public static bool LoadUrl { get; set; }
         public static string UrlToLoad { get; set; }
 
-        public TargetProfileWindow(Plugin plugin) : base("TARGET")
+        public TargetProfileWindow() : base("TARGET")
         {
             SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(300, 300),
                 MaximumSize = new Vector2(600, 950)
             };
-            this.plugin = plugin;
-            pg = Plugin.PluginInterface;
         }
 
         private static void EnsureProfileData()
@@ -64,7 +54,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("TargetProfileWindow OnOpen Error: " + ex.Message);
+                Plugin.logger.Error("TargetProfileWindow OnOpen Error: " + ex.Message);
             }
         }
 
@@ -80,7 +70,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     ImGui.Text("This player either does not have an active profile or has not granted you permission to view it.");
                     if (ImGui.Button("Request Access"))
                     {
-                        DataSender.SendProfileAccessUpdate(plugin.username, plugin.playername, plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
+                        DataSender.SendProfileAccessUpdate(Plugin.plugin.username, Plugin.plugin.playername, Plugin.plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
                     }
                 }
                 else
@@ -91,16 +81,16 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         Misc.SetTitle(Plugin.plugin, true, "Requesting Profile Data...", new Vector4(1, 1, 0, 1));
                         return; // Skip drawing the rest of the window while sending data
                     }
-                    if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
+                    if (profileData.background == null || profileData.background.Handle == IntPtr.Zero)
                     {
                         profileData.background = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Set background to default backgroundHolder.");
+                        Plugin.logger.Error("[TargetProfileWindow] Set background to default backgroundHolder.");
                     }
 
-                    if (profileData.avatar == null || profileData.avatar.ImGuiHandle == IntPtr.Zero)
+                    if (profileData.avatar == null || profileData.avatar.Handle == IntPtr.Zero)
                     {
                         profileData.avatar = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Set avatar to default avatarHolder.");
+                        Plugin.logger.Error("[TargetProfileWindow] Set avatar to default avatarHolder.");
                     }
 
                     EnsureProfileData();
@@ -152,7 +142,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Warning popup error: {ex.Message}");
+                            Plugin.logger.Error($"[TargetProfileWindow] Warning popup error: {ex.Message}");
                         }
                         finally
                         {
@@ -169,9 +159,9 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     }
 
                     // Draw background image if valid
-                    if (profileData.background == null || profileData.background.ImGuiHandle == IntPtr.Zero)
+                    if (profileData.background == null || profileData.background.Handle == IntPtr.Zero)
                     {
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Background image is null or handle is zero.");
+                        Plugin.logger.Error("[TargetProfileWindow] Background image is null or handle is zero.");
                     }
                     else
                     {
@@ -184,19 +174,19 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                             Vector2 scaledSize = profileData.background.Size * scale;
                             Vector2 imageStartPos = ImGui.GetCursorScreenPos();
                             Vector2 imageEndPos = imageStartPos + scaledSize;
-                            drawList.AddImage(profileData.background.ImGuiHandle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
+                            drawList.AddImage(profileData.background.Handle, imageStartPos, imageEndPos, new Vector2(0, 0), new Vector2(1, 1), tintColor);
                             // Draw dark overlay over the background image
                             uint overlayColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 0.5f)); // 0.5f = 50% opacity
                             drawList.AddRectFilled(imageStartPos, imageEndPos, overlayColor);
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw background image: {ex.Message}");
+                            Plugin.logger.Error($"[TargetProfileWindow] Failed to draw background image: {ex.Message}");
                         }
                     }
 
                     // Draw avatar if valid
-                    if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
+                    if (profileData.avatar != null && profileData.avatar.Handle != IntPtr.Zero)
                     {
                         try
                         {
@@ -205,20 +195,20 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                             var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
                             float avatarXPos = (ImGui.GetWindowSize().X - avatarBtnSize.X) / 2;
                             ImGui.SetCursorPosX(centeredX);
-                            if (profileData.avatar != null && profileData.avatar.ImGuiHandle != IntPtr.Zero)
+                            if (profileData.avatar != null && profileData.avatar.Handle != IntPtr.Zero)
                             {
-                                ImGui.Image(profileData.avatar.ImGuiHandle, avatarSize);
+                                ImGui.Image(profileData.avatar.Handle, avatarSize);
                             }
-                            Plugin.plugin.logger.Debug("[TargetProfileWindow] Drew avatar image.");
+                            Plugin.logger.Error("[TargetProfileWindow] Drew avatar image.");
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to draw avatar image: {ex.Message}");
+                            Plugin.logger.Error($"[TargetProfileWindow] Failed to draw avatar image: {ex.Message}");
                         }
                     }
                     else
                     {
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] Avatar image is null or handle is zero.");
+                        Plugin.logger.Error("[TargetProfileWindow] Avatar image is null or handle is zero.");
                     }
 
                     // Draw title if valid
@@ -226,11 +216,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     {
                         try
                         {
-                            Misc.SetTitle(plugin, true, profileData.title, profileData.titleColor);
+                            Misc.SetTitle(Plugin.plugin, true, profileData.title, profileData.titleColor);
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Failed to set title: {ex.Message}");
+                            Plugin.logger.Error($"[TargetProfileWindow] Failed to set title: {ex.Message}");
                         }
                     }
 
@@ -246,7 +236,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     {
                         ReportWindow.reportCharacterName = characterName;
                         ReportWindow.reportCharacterWorld = characterWorld;
-                        plugin.OpenReportWindow();
+                        Plugin.plugin.OpenReportWindow();
                     }
                     if (ImGui.IsItemHovered())
                     {
@@ -267,44 +257,44 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         currentLayout = tab.Layout as CustomLayout;
                                         try
                                         {
-                                            Plugin.plugin.logger.Debug($"[TargetProfileWindow] Rendering tab: {tab.Name} ({tab.Layout.GetType().Name})");
+                                            Plugin.logger.Error($"[TargetProfileWindow] Rendering tab: {tab.Name} ({tab.Layout.GetType().Name})");
                                             switch (tab.Layout)
                                             {
                                                 case BioLayout bioLayout:
-                                                    try { Bio.RenderBioPreview(bioLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
+                                                    try { Bio.RenderBioPreview(bioLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.logger.Error($"[TargetProfileWindow] Bio.RenderBioPreview failed, trying to set default avatar and background.{ex.ToString()}"); }
                                                     break;
                                                 case DetailsLayout detailsLayout:
-                                                    try { Details.RenderDetailPreview(detailsLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Details.RenderDetailPreview error: {ex.Message}"); }
+                                                    try { Details.RenderDetailPreview(detailsLayout, profileData.titleColor); } catch (Exception ex) { Plugin.logger.Error($"[TargetProfileWindow] Details.RenderDetailPreview error: {ex.Message}"); }
                                                     break;
                                                 case GalleryLayout galleryLayout:
-                                                    try { Gallery.RenderGalleryPreview(galleryLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Gallery.RenderGalleryPreview error: {ex.Message}"); }
+                                                    try { Gallery.RenderGalleryPreview(galleryLayout, profileData.titleColor); } catch (Exception ex) { Plugin.logger.Error($"[TargetProfileWindow] Gallery.RenderGalleryPreview error: {ex.Message}"); }
                                                     break;
                                                 case InfoLayout infoLayout:
                                                     try
                                                     {
-                                                        Misc.SetTitle(plugin, true, tab.Name, profileData.titleColor);
+                                                        Misc.SetTitle(Plugin.plugin, true, tab.Name, profileData.titleColor);
                                                         Misc.RenderHtmlElements(infoLayout.text, true, true, true, false);
                                                     }
                                                     catch (Exception ex)
                                                     {
-                                                        Plugin.plugin.logger.Error($"[TargetProfileWindow] InfoLayout render error: {ex.Message}");
+                                                        Plugin.logger.Error($"[TargetProfileWindow] InfoLayout render error: {ex.Message}");
                                                     }
                                                     break;
                                                 case StoryLayout storyLayout:
-                                                    try { Story.RenderStoryPreview(storyLayout, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Story.RenderStoryPreview error: {ex.Message}"); }
+                                                    try { Story.RenderStoryPreview(storyLayout, profileData.titleColor); } catch (Exception ex) { Plugin.logger.Error($"[TargetProfileWindow] Story.RenderStoryPreview error: {ex.Message}"); }
                                                     break;
                                                 case TreeLayout treeLayout:
                                                     string uniqueId = $"{tab.Name}##{treeLayout.tabIndex}";
-                                                    try { Tree.RenderTreeLayout(treeLayout.tabIndex, false, uniqueId, treeLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.plugin.logger.Error($"[TargetProfileWindow] Tree.RenderTreeLayout error: {ex.Message}"); }
+                                                    try { Tree.RenderTreeLayout(treeLayout.tabIndex, false, uniqueId, treeLayout, tab.Name, profileData.titleColor); } catch (Exception ex) { Plugin.logger.Error($"[TargetProfileWindow] Tree.RenderTreeLayout error: {ex.Message}"); }
                                                     break;
                                                 default:
-                                                    Plugin.plugin.logger.Debug($"[TargetProfileWindow] Unknown tab layout type: {tab.Layout.GetType().Name}");
+                                                    Plugin.logger.Error($"[TargetProfileWindow] Unknown tab layout type: {tab.Layout.GetType().Name}");
                                                     break;
                                             }
                                         }
                                         catch (Exception ex)
                                         {
-                                            Plugin.plugin.logger.Error($"[TargetProfileWindow] Tab Render Error: {ex.Message}");
+                                            Plugin.logger.Error($"[TargetProfileWindow] Tab Render Error: {ex.Message}");
                                         }
                                         ImGui.EndTabItem();
                                     }
@@ -315,14 +305,14 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     }
                     else
                     {
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] No custom tabs to render.");
+                        Plugin.logger.Error("[TargetProfileWindow] No custom tabs to render.");
                         ImGui.TextColored(new Vector4(1, 0, 0, 1), "No profile data available for this profile.");
                     }
 
                     // Layout selection warning
                     if (currentLayout == null)
                     {
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] currentLayout is null, returning.");
+                        Plugin.logger.Error("[TargetProfileWindow] currentLayout is null, returning.");
                         return;
                     }
 
@@ -330,7 +320,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     using var profileTable = ImRaii.Child("PROFILE");
                     if (!profileTable)
                     {
-                        Plugin.plugin.logger.Debug("[TargetProfileWindow] profileTable child region not created.");
+                        Plugin.logger.Error("[TargetProfileWindow] profileTable child region not created.");
                         return;
                     }
 
@@ -339,11 +329,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     {
                         try
                         {
-                            plugin.OpenProfileNotes();
+                            Plugin.plugin.OpenProfileNotes();
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenProfileNotes error: {ex.Message}");
+                            Plugin.logger.Error($"[TargetProfileWindow] OpenProfileNotes error: {ex.Message}");
                         }
                         addNotes = false;
                     }
@@ -352,21 +342,21 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     {
                         try
                         {
-                            plugin.OpenImagePreview();
+                            Plugin.plugin.OpenImagePreview();
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"[TargetProfileWindow] OpenImagePreview error: {ex.Message}");
+                            Plugin.logger.Error($"[TargetProfileWindow] OpenImagePreview error: {ex.Message}");
                         }
                         loadPreview = false;
                     }
 
-                    Plugin.plugin.logger.Debug("[TargetProfileWindow] Draw finished.");
+                    Plugin.logger.Error("[TargetProfileWindow] Draw finished.");
                 }
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("TargetWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("TargetWindow Draw Error: " + ex.Message);
                 loading = "An error occurred while loading the profile data.";
                 currentInd = 0;
                 max = 1;
@@ -489,7 +479,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+                Plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
             }
         }
 

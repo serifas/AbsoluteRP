@@ -1,13 +1,7 @@
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
-using ImGuiNET;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using Networking;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AbsoluteRoleplay.Windows.MainPanel.Views
 {
@@ -20,7 +14,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             var buttonWidth = MainPanel.buttonWidth;
             var buttonHeight = MainPanel.buttonHeight;
            
-            if (ImGui.ImageButton(MainPanel.profileSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+            if (ImGui.ImageButton(MainPanel.profileSectionImage.Handle, new Vector2(buttonWidth, buttonHeight)))
             {
                 if (pluginInstance.IsOnline())
                 {
@@ -32,7 +26,7 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
                 ImGui.SetTooltip("Manage your profiles");
             }
             ImGui.SameLine();
-            if (ImGui.ImageButton(MainPanel.connectionsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+            if (ImGui.ImageButton(MainPanel.connectionsSectionImage.Handle, new Vector2(buttonWidth, buttonHeight)))
             {
                 DataSender.RequestConnections(pluginInstance.username.ToString(), pluginInstance.password.ToString(), true);
             }
@@ -41,9 +35,9 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
                 ImGui.SetTooltip("Connections");
             }
 
-            using (OtterGui.Raii.ImRaii.Disabled(false))
+            using (ImRaii.Disabled(false))
             {
-                if (ImGui.ImageButton(MainPanel.eventsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+                if (ImGui.ImageButton(MainPanel.eventsSectionImage.Handle, new Vector2(buttonWidth, buttonHeight)))
                 {
                     Plugin.plugin.OpenListingsWindow();
                 }
@@ -54,9 +48,9 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views
             }
             ImGui.SameLine();
 
-            using (OtterGui.Raii.ImRaii.Disabled(true))
+            using (ImRaii.Disabled(true))
             {
-                if (ImGui.ImageButton(MainPanel.systemsSectionImage.ImGuiHandle, new Vector2(buttonWidth, buttonHeight)))
+                if (ImGui.ImageButton(MainPanel.systemsSectionImage.Handle, new Vector2(buttonWidth, buttonHeight)))
                 {
 
                 }

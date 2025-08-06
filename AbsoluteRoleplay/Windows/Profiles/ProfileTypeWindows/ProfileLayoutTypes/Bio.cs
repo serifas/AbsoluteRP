@@ -1,21 +1,9 @@
 using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
-using ImGuiNET;
-using OtterGui;
-using OtterGui.Extensions;
-using OtterGui.Widgets;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using static AbsoluteRoleplay.UI;
+using AbsoluteRoleplay.Helpers;
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     public class descriptor
@@ -62,42 +50,42 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 if (!string.IsNullOrEmpty(layout.name) && layout.name != "New Profile")
                 {
                     ImGui.Spacing();
-                    ImGuiHelpers.SafeTextWrapped("NAME: ");
+                    ImGui.TextWrapped("NAME: ");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(layout.name, true, true, true, false);
                 }
                 // RACE
                 if (!string.IsNullOrEmpty(layout.race))
                 {
-                    ImGuiHelpers.SafeTextWrapped("RACE: ");
+                    ImGui.TextWrapped("RACE: ");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(layout.race, true, true, true, false);
                 }
                 // GENDER
                 if (!string.IsNullOrEmpty(layout.gender))
                 {
-                    ImGuiHelpers.SafeTextWrapped("GENDER: ");
+                    ImGui.TextWrapped("GENDER: ");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(layout.gender, true, true, true, false);
                 }
                 // AGE
                 if (!string.IsNullOrEmpty(layout.age))
                 {
-                    ImGuiHelpers.SafeTextWrapped("AGE: ");
+                    ImGui.TextWrapped("AGE: ");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(layout.age, true, true, true, false);
                 }
                 // HEIGHT
                 if (!string.IsNullOrEmpty(layout.height))
                 {
-                    ImGuiHelpers.SafeTextWrapped("HEIGHT: ");
+                    ImGui.TextWrapped("HEIGHT: ");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(layout.height, true, true, true, false);
                 }
                 // WEIGHT
                 if (!string.IsNullOrEmpty(layout.weight))
                 {
-                    ImGuiHelpers.SafeTextWrapped("WEIGHT: ");
+                    ImGui.TextWrapped("WEIGHT: ");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(layout.weight, true, true, true, false);
                 }
@@ -109,7 +97,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     ImGui.Spacing();
                     Misc.RenderHtmlElements(descriptor.name ?? string.Empty, true, true, true, false);
                     ImGui.SameLine();
-                    ImGuiHelpers.SafeTextWrapped(":");
+                    ImGui.TextWrapped(":");
                     ImGui.SameLine();
                     Misc.RenderHtmlElements(descriptor.description ?? string.Empty, true, true, true, false);
                 }
@@ -117,7 +105,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 // AT FIRST GLANCE
                 if (!string.IsNullOrEmpty(layout.afg))
                 {
-                    ImGuiHelpers.SafeTextWrapped("AT FIRST GLANCE: ");
+                    ImGui.TextWrapped("AT FIRST GLANCE: ");
                     Misc.RenderHtmlElements(layout.afg ?? string.Empty, true, true, true, false);
                 }
 
@@ -128,17 +116,17 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     var icon = UI.AlignmentIcon(layout.alignment);
                     if (icon != null)
                     {
-                        Plugin.plugin.logger.Debug($"[RenderBioPreview] Alignment icon: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.ImGuiHandle}");
+                        Plugin.logger.Error($"[RenderBioPreview] Alignment icon: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.Handle}");
                     }
-                    if (icon != null && icon.ImGuiHandle != IntPtr.Zero)
+                    if (icon != null && icon.Handle != IntPtr.Zero)
                     {
                         try
                         {
-                            ImGui.Image(icon.ImGuiHandle, new Vector2(ImGui.GetIO().FontGlobalScale * 38));
+                            ImGui.Image(icon.Handle, new Vector2(ImGui.GetIO().FontGlobalScale * 38));
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
+                            Plugin.logger.Error($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
                         }
                         var alignmentVal = UI.AlignmentVals[layout.alignment];
                         if (ImGui.IsItemHovered())
@@ -192,20 +180,20 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 var icon = UI.PersonalityIcon(personalityIdx);
                                 if (icon != null)
                                 {
-                                    Plugin.plugin.logger.Debug($"[RenderBioPreview] Personality icon {i + 1}: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.ImGuiHandle}");
+                                    Plugin.logger.Error($"[RenderBioPreview] Personality icon {i + 1}: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.Handle}");
                                 }
-                                if (icon == null || icon.ImGuiHandle == IntPtr.Zero)
+                                if (icon == null || icon.Handle == IntPtr.Zero)
                                 {
                                     ImGui.TextColored(new Vector4(1, 0, 0, 1), $"Personality icon {i + 1} not loaded.");
                                     continue;
                                 }
                                 try
                                 {
-                                    ImGui.Image(icon.ImGuiHandle, alignmentSize);
+                                    ImGui.Image(icon.Handle, alignmentSize);
                                 }
                                 catch (Exception ex)
                                 {
-                                    Plugin.plugin.logger.Error($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
+                                    Plugin.logger.Error($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
                                 }
                                 if (ImGui.IsItemHovered())
                                 {
@@ -217,7 +205,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                     }
                                     catch (Exception ex)
                                     {
-                                        Plugin.plugin.logger.Error($"RenderBioPreview: Tooltip error: {ex.Message}");
+                                        Plugin.logger.Error($"RenderBioPreview: Tooltip error: {ex.Message}");
                                     }
                                     ImGui.EndTooltip();
                                 }
@@ -247,20 +235,20 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         var traitIcon = personality.icon?.icon;
                         if (traitIcon != null)
                         {
-                            Plugin.plugin.logger.Debug($"[RenderBioPreview] Custom trait icon: {(traitIcon == null ? "null" : traitIcon.ToString())}, Handle: {traitIcon.ImGuiHandle}");
+                            Plugin.logger.Error($"[RenderBioPreview] Custom trait icon: {(traitIcon == null ? "null" : traitIcon.ToString())}, Handle: {traitIcon.Handle}");
                         }
-                        if (traitIcon == null || traitIcon.ImGuiHandle == IntPtr.Zero)
+                        if (traitIcon == null || traitIcon.Handle == IntPtr.Zero)
                         {
                             ImGui.TextColored(new Vector4(1, 0, 0, 1), "Personality icon not loaded.");
                             continue;
                         }
                         try
                         {
-                            ImGui.Image(traitIcon.ImGuiHandle, alignmentSize);
+                            ImGui.Image(traitIcon.Handle, alignmentSize);
                         }
                         catch (Exception ex)
                         {
-                            Plugin.plugin.logger.Error($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
+                            Plugin.logger.Error($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
                         }
                         if (ImGui.IsItemHovered())
                         {
@@ -272,7 +260,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             }
                             catch (Exception ex)
                             {
-                                Plugin.plugin.logger.Error($"RenderBioPreview: Trait tooltip error: {ex.Message}");
+                                Plugin.logger.Error($"RenderBioPreview: Trait tooltip error: {ex.Message}");
                             }
                             ImGui.EndTooltip();
                         }
@@ -281,7 +269,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error($"RenderBioPreview: Exception: {ex.Message}");
+                Plugin.logger.Error($"RenderBioPreview: Exception: {ex.Message}");
             }
         }
         public static void RenderBioLayout(int index, string id, BioLayout layout)
@@ -442,11 +430,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             string description = personality.description;
             float iconHeight = ImGui.GetIO().FontGlobalScale * personality.icon.icon.Height;
             float iconWidth = ImGui.GetIO().FontGlobalScale * personality.icon.icon.Width;
-            if(personality.icon.icon.ImGuiHandle == IntPtr.Zero)
+            if(personality.icon.icon.Handle == IntPtr.Zero)
             {
                 personality.icon.icon = UICommonImage(CommonImageTypes.blank);
             }
-            ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(iconWidth, iconHeight));
+            ImGui.Image(personality.icon.icon.Handle, new Vector2(iconWidth, iconHeight));
             ImGui.SameLine();
             if (ImGui.Button($"Set Icon##{personality.index}"))
             {
@@ -494,13 +482,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         public static void AddPersonalitySelection_1(BioLayout layout)
         {
             var (text, desc) = PersonalityValues[layout.personality_1];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #1", text);
-            ImGuiUtil.HoverTooltip(desc);
+            using var combo = ImRaii.Combo("##Personality Feature #1", text);
             if (!combo)
                 return;
             if (ImGui.Selectable("None", layout.personality_1 == 26))
                 layout.personality_1 = 26;
-            ImGuiUtil.SelectableHelpMarker("Undefined");
+            ImGuiHelpers.SelectableHelpMarker("Undefined");
 
             foreach (var ((newText, newDesc), idx) in PersonalityValues.WithIndex())
             {
@@ -509,21 +496,24 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.personality_1))
                         layout.personality_1 = idx;
 
-                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiHelpers.SelectableHelpMarker(newDesc);
                 }
             }
         }
         public static void AddPersonalitySelection_2(BioLayout layout)
         {
             var (text, desc) = PersonalityValues[layout.personality_2];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #2", text);
-            ImGuiUtil.HoverTooltip(desc);
+            using var combo = ImRaii.Combo("##Personality Feature #2", text);
+            if(ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(desc);
+            }
             if (!combo)
                 return;
 
             if (ImGui.Selectable("None", layout.personality_2 == 26))
                 layout.personality_2 = 26;
-            ImGuiUtil.SelectableHelpMarker("Undefined");
+            ImGuiHelpers.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in PersonalityValues.WithIndex())
             {
                 if (idx != (int)Personalities.None)
@@ -531,21 +521,24 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.personality_2))
                         layout.personality_2 = idx;
 
-                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiHelpers.SelectableHelpMarker(newDesc);
                 }
             }
         }
         public static void AddPersonalitySelection_3(BioLayout layout)
         {
             var (text, desc) = PersonalityValues[layout.personality_3];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Personality Feature #3", text);
-            ImGuiUtil.HoverTooltip(desc);
+            using var combo = ImRaii.Combo("##Personality Feature #3", text);
+            if(ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(desc);
+            }   
             if (!combo)
                 return;
 
             if (ImGui.Selectable("None", layout.personality_3 == 26))
                 layout.personality_3 = 26;
-            ImGuiUtil.SelectableHelpMarker("Undefined");
+            ImGuiHelpers.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in PersonalityValues.WithIndex())
             {
                 if (idx != (int)Personalities.None)
@@ -553,20 +546,23 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.personality_3))
                         layout.personality_3 = idx;
 
-                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiHelpers.SelectableHelpMarker(newDesc);
                 }
             }
         }
         public static void AddAlignmentSelection(BioLayout layout)
         {
             var (text, desc) = AlignmentVals[layout.alignment];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Alignment", text);
-            ImGuiUtil.HoverTooltip(desc);
+            using var combo = ImRaii.Combo("##Alignment", text);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(desc);
+            }
             if (!combo)
                 return;
             if (ImGui.Selectable("None", layout.alignment == 9))
                 layout.alignment = 9;
-            ImGuiUtil.SelectableHelpMarker("Undefined");
+            ImGuiHelpers.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in AlignmentVals.WithIndex())
             {
                 if (idx != 9)
@@ -574,7 +570,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.alignment))
                         layout.alignment = idx;
 
-                    ImGuiUtil.SelectableHelpMarker(newDesc);
+                    ImGuiHelpers.SelectableHelpMarker(newDesc);
                 }
 
             }

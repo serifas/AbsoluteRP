@@ -1,7 +1,6 @@
 using System;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
 using Networking;
 using Dalamud.Utility;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -9,6 +8,7 @@ using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.MainPanel.Views;
 using Dalamud.Interface.Utility.Raii;
 using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
 namespace AbsoluteRoleplay.Windows.MainPanel;
 
 public class MainPanel : Window, IDisposable
@@ -46,18 +46,18 @@ public class MainPanel : Window, IDisposable
     public static bool LoggedIN = false;
     public static Vector2 ButtonSize = new Vector2();
     public static float centeredX = 0f;
-    public MainPanel(Plugin plugin) : base(
+    public MainPanel() : base(
         "ABSOLUTE ROLEPLAY",
         ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
         ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeCondition = ImGuiCond.Always;
-        pluginInstance = plugin;
-        Login.username = plugin.Configuration.username;
-        Login.password = plugin.Configuration.password;
+        pluginInstance = Plugin.plugin;
+        Login.username = Plugin.plugin.Configuration.username;
+        Login.password = Plugin.plugin.Configuration.password;
 
 
-        Remember = plugin.Configuration.rememberInformation;
+        Remember = Plugin.plugin.Configuration.rememberInformation;
     }
     public override void OnOpen()
     {
@@ -177,7 +177,7 @@ public class MainPanel : Window, IDisposable
             {
                 var currentCursorY = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, currentCursorY));
-                if (ImGui.ImageButton(kofiBtnImg.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                if (ImGui.ImageButton(kofiBtnImg.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
                     Util.OpenLink("https://ko-fi.com/absoluteroleplay");
                 }
@@ -186,7 +186,7 @@ public class MainPanel : Window, IDisposable
             {
                 var patreonPos = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
-                if (ImGui.ImageButton(patreonBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                if (ImGui.ImageButton(patreonBtn.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
                     Util.OpenLink("https://patreon.com/AbsoluteRoleplay");
                 }
@@ -195,7 +195,7 @@ public class MainPanel : Window, IDisposable
             {
                 var discPos = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, discPos));
-                if (ImGui.ImageButton(discoBtn.ImGuiHandle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                if (ImGui.ImageButton(discoBtn.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
                     Util.OpenLink("https://discord.gg/hWprwTUwqj");
                 }
@@ -209,7 +209,7 @@ public class MainPanel : Window, IDisposable
             }
             ImGui.TextColored(serverStatusColor, serverStatus);
             ImGui.SameLine();
-            if (ImGui.ImageButton(reconnectImage.ImGuiHandle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+            if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
             {
                 ClientTCP.AttemptConnect();
                 pluginInstance.UpdateStatus();
@@ -239,8 +239,8 @@ public class MainPanel : Window, IDisposable
 
         } catch (Exception e)
         {
-            Plugin.plugin.logger.Error("MainPanel Draw Error: " + e.Message);
-            Plugin.plugin.logger.Error(e.StackTrace);
+            Plugin.logger.Error("MainPanel Draw Error: " + e.Message);
+            Plugin.logger.Error(e.StackTrace);
 
         }
 

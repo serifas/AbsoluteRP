@@ -10,7 +10,6 @@ using ImGuiNET;
 using JetBrains.Annotations;
 using Lumina.Data.Files;
 using Networking;
-using OtterGui.Log;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -70,7 +69,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (string.IsNullOrEmpty(gameTexturePath))
                 {
-                    plugin.logger.Debug("Game texture path is null or empty.");
+                    Plugin.logger.Error("Game texture path is null or empty.");
                     return null;
                 }
 
@@ -78,15 +77,15 @@ namespace AbsoluteRoleplay.Helpers
                 var texFile = Plugin.DataManager.GetFile<TexFile>(gameTexturePath);
                 if (texFile == null)
                 {
-                    plugin.logger.Debug($"TexFile not found for path: {gameTexturePath}");
+                    Plugin.logger.Error($"TexFile not found for path: {gameTexturePath}");
                     return null;
                 }
 
-                plugin.logger.Debug($"Successfully loaded TexFile for path: {gameTexturePath}");
+                Plugin.logger.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
 
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
-                if (texture == null || texture.ImGuiHandle == IntPtr.Zero)
+                if (texture == null || texture.Handle == IntPtr.Zero)
                 {
                     texture = UI.UICommonImage(UI.CommonImageTypes.backgroundHolder);
                 }
@@ -94,7 +93,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
+                Plugin.logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
                 return null;
             }
         }
@@ -122,7 +121,7 @@ namespace AbsoluteRoleplay.Helpers
 
             if (Plugin.TextureProvider == null)
             {
-                plugin?.logger?.Error("TextureProvider is not initialized.");
+                Plugin.logger?.Error("TextureProvider is not initialized.");
                 return galleryImage;
             }
 
@@ -178,32 +177,32 @@ namespace AbsoluteRoleplay.Helpers
                             response.StatusCode == HttpStatusCode.BadGateway ||
                             response.StatusCode == HttpStatusCode.InternalServerError)
                         {
-                            plugin?.logger?.Warning($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
+                            Plugin.logger.Error($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
                             await Task.Delay(delayMs * attempt);
                             continue;
                         }
                         else
                         {
-                            plugin?.logger?.Error($"Image download failed with status code: {response.StatusCode}");
+                            Plugin.logger.Error($"Image download failed with status code: {response.StatusCode}");
                             break;
                         }
                     }
                 }
                 catch (HttpRequestException httpEx)
                 {
-                    plugin?.logger?.Error($"HTTP Request Error: {httpEx.Message}");
+                    Plugin.logger.Error($"HTTP Request Error: {httpEx.Message}");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (TaskCanceledException)
                 {
-                    plugin?.logger?.Error("Download request timed out.");
+                    Plugin.logger.Error("Download request timed out.");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (Exception ex)
                 {
-                    plugin?.logger?.Error($"Unexpected error: {ex.Message}");
+                    Plugin.logger?.Error($"Unexpected error: {ex.Message}");
                     break;
                 }
             }
@@ -222,12 +221,12 @@ namespace AbsoluteRoleplay.Helpers
             try
             {
                 var texture = await Plugin.TextureProvider.CreateFromImageAsync(imageBytes);
-                if (texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                if (texture != null && texture.Handle != IntPtr.Zero)
                     return texture;
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
+                Plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
             }
             return null;
         }
@@ -240,12 +239,12 @@ namespace AbsoluteRoleplay.Helpers
             try
             {
                 var texture = await LoadTextureAsync(filePath);
-                if (texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                if (texture != null && texture.Handle != IntPtr.Zero)
                     return texture;
             }
             catch (Exception ex)
             {
-                plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
+                Plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
             }
             return null;
         }
@@ -268,7 +267,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                plugin?.logger?.Error($"Error fetching image bytes: {ex.Message}");
+                Plugin.logger?.Error($"Error fetching image bytes: {ex.Message}");
                 return Array.Empty<byte>();
             }
         }
@@ -280,7 +279,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (Plugin.TextureProvider == null)
                 {
-                    plugin?.logger?.Error("TextureProvider is not initialized.");
+                    Plugin.logger?.Error("TextureProvider is not initialized.");
                 }
                 else
                 {
@@ -316,15 +315,15 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (HttpRequestException httpEx)
             {
-                plugin?.logger?.Error($"HTTP Request Error: {httpEx.Message}");
+                Plugin.logger?.Error($"HTTP Request Error: {httpEx.Message}");
             }
             catch (TaskCanceledException)
             {
-                plugin?.logger?.Error("Download request timed out.");
+                Plugin.logger?.Error("Download request timed out.");
             }
             catch (Exception ex)
             {
-                plugin?.logger?.Error($"Unexpected error: {ex.Message}");
+                Plugin.logger?.Error($"Unexpected error: {ex.Message}");
             }
             return image;
         }

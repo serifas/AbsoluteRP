@@ -4,20 +4,15 @@ using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
 using Networking;
-using OtterGui;
-using OtterGui.Extensions;
-using OtterGui.Raii;
+using Dalamud.Bindings.ImGui;
 using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
+using Dalamud.Interface.Utility.Raii;
 
 namespace AbsoluteRoleplay.Windows.Listings
 {
     internal class ListingsWindow : Window, IDisposable
     {
-        public Plugin plugin;
         public static Configuration configuration;
         public static Vector2 buttonScale;
         public static List<Listing> listings = new List<Listing>();
@@ -43,7 +38,7 @@ namespace AbsoluteRoleplay.Windows.Listings
 
         public bool DrawListingCreation { get; private set; }
 
-        public ListingsWindow(Plugin plugin) : base(
+        public ListingsWindow() : base(
        "LISTINGS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -53,8 +48,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                 MaximumSize = new Vector2(1000, 1000)
             };
 
-            this.plugin = plugin;
-            configuration = plugin.Configuration;
+            configuration = Plugin.plugin.Configuration;
             worldSearchQuery = "Adamantoise";
             _fileDialogManager = new FileDialogManager();
         }
@@ -103,9 +97,9 @@ namespace AbsoluteRoleplay.Windows.Listings
                 {
                     ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
-                    if(listing.avatar.ImGuiHandle != null && listing.avatar.ImGuiHandle != IntPtr.Zero)
+                    if(listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
                     {
-                        ImGui.Image(listing.avatar.ImGuiHandle, new Vector2(100, 100));
+                        ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
                     }
                     ImGui.TextColored(listing.color, listing.name);
                     ImGui.TableSetColumnIndex(1);
@@ -121,7 +115,7 @@ namespace AbsoluteRoleplay.Windows.Listings
         }
         public static void DrawPageCountSelection()
         {
-            using var combo = OtterGui.Raii.ImRaii.Combo("##PageCount", currentViewCount.ToString());
+            using var combo = ImRaii.Combo("##PageCount", currentViewCount.ToString());
             if (!combo)
                 return;
 
@@ -140,15 +134,14 @@ namespace AbsoluteRoleplay.Windows.Listings
         public static void DrawListingCategorySelection()
         {
             var (text, desc) = UI.ListingCategorySearchVals[currentCategory];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##Category", text);
-            ImGuiUtil.HoverTooltip(desc);
+            using var combo = ImRaii.Combo("##Category", text);
             if (!combo)
                 return;
             foreach (var ((newText, newDesc), idx) in UI.ListingCategorySearchVals.WithIndex())
             {
                 if (ImGui.Selectable(newText, idx == currentCategory))
                     currentCategory = idx;
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                ImGuiHelpers.SelectableHelpMarker(newDesc);
             }
         }
 
@@ -160,24 +153,6 @@ namespace AbsoluteRoleplay.Windows.Listings
                 listing.avatar = null;
             }
         }
-        public static void RenderColoredTextWithTooltip(string text, Vector4 color)
-        {
-            // Parse for <tooltip>...</tooltip>
-            var tooltipRegex = new Regex(@"^(.*?)(<tooltip>(.*?)</tooltip>)?$", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-            var match = tooltipRegex.Match(text);
-
-            string mainText = match.Groups[1].Value;
-            string tooltipText = match.Groups[3].Success ? match.Groups[3].Value : null;
-
-            ImGui.TextColored(color, mainText);
-
-            if (!string.IsNullOrEmpty(tooltipText) && ImGui.IsItemHovered())
-            {
-                ImGui.BeginTooltip();
-                ImGui.TextUnformatted(tooltipText);
-                ImGui.EndTooltip();
-            }
-        }
         private void DrawFFXIVLocationSelectors()
         {
             // Region Combo
@@ -185,7 +160,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             var regionNames = regions.ConvertAll(GameData.GetRegionName);
             int regionIdx = regions.IndexOf(selectedRegion);
             ImGui.PushItemWidth(ImGui.GetWindowSize().X / 5);
-            using (var regionCombo = OtterGui.Raii.ImRaii.Combo("Region", regionNames[regionIdx]))
+            using (var regionCombo = ImRaii.Combo("Region", regionNames[regionIdx]))
             {
                 if (regionCombo)
                 {
@@ -210,7 +185,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             var dcNames = dataCenters.ConvertAll(GameData.GetDataCenterName);
             int dcIdx = dataCenters.IndexOf(selectedDataCenter);
 
-            using (var dcCombo = OtterGui.Raii.ImRaii.Combo("Data Center", dcNames.Count > 0 && dcIdx >= 0 ? dcNames[dcIdx] : ""))
+            using (var dcCombo = ImRaii.Combo("Data Center", dcNames.Count > 0 && dcIdx >= 0 ? dcNames[dcIdx] : ""))
             {
                 if (dcCombo)
                 {
@@ -238,7 +213,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             });
             int worldIdx = worldsList.IndexOf(selectedWorld);
 
-            using (var worldCombo = OtterGui.Raii.ImRaii.Combo("World", worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : ""))
+            using (var worldCombo = ImRaii.Combo("World", worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : ""))
             {
                 if (worldCombo)
                 {

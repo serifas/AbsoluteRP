@@ -1,34 +1,9 @@
-using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
-using Dalamud.Plugin;
-using ImGuiNET;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Net.NetworkInformation;
 using System.Numerics;
-using System.Runtime.Intrinsics.Arm;
-using System.Text;
-using static Dalamud.Interface.Windowing.Window;
-using Dalamud.Interface;
-using Dalamud.Interface.Colors;
-using Dalamud.Interface.GameFonts;
-using Dalamud.Interface.ImGuiFileDialog;
-using ImGuiNET;
-using static Lumina.Data.Files.ScdFile;
-using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.Gui;
-using Dalamud.Game.ClientState;
-using Networking;
-using Dalamud.Plugin.Services;
-using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
-using FFXIVClientStructs.FFXIV.Component.GUI;
 using AbsoluteRoleplay.Helpers;
-using Dalamud.Interface.Utility;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using Dalamud.Bindings.ImGui;
 
 namespace AbsoluteRoleplay.Windows.Ect
 {
@@ -57,7 +32,7 @@ namespace AbsoluteRoleplay.Windows.Ect
         public static List<field> fields = new List<field>();
         public static List<descriptor> descriptors = new List<descriptor>();
         public static List<trait> personalities = new List<trait>();    
-        public ARPTooltipWindow(Plugin plugin) : base(
+        public ARPTooltipWindow() : base(
        "TOOLTIP", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoNav
                                               | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse |
                                               ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoFocusOnAppearing)
@@ -79,7 +54,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             try
             {
                 if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(plugin, false, profile.title, profile.titleColor);
-                if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.ImGuiHandle, new Vector2(100, 100));
+                if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.Handle, new Vector2(100, 100));
                 if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text("NAME: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Name, 400);
                 if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Race, 400);
                 if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Gender, 400);
@@ -101,7 +76,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                     if (hasAlignment == true)
                     {
                         ImGui.Text("ALIGNMENT:");
-                        ImGui.Image(AlignmentImg.ImGuiHandle, new Vector2(32, 32));
+                        ImGui.Image(AlignmentImg.Handle, new Vector2(32, 32));
                         ImGui.SameLine();
                         Misc.RenderHtmlColoredTextInline(UI.AlignmentName(profile.Alignment), 400);
                     }
@@ -113,19 +88,19 @@ namespace AbsoluteRoleplay.Windows.Ect
                         ImGui.Text("TRAITS:");
                         if (showPersonality1 == true)
                         {
-                            ImGui.Image(personality_1Img.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.Image(personality_1Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_1), 400);
                         }
                         if (showPersonality2 == true)
                         {
-                            ImGui.Image(personality_2Img.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.Image(personality_2Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_2), 400);
                         }
                         if (showPersonality3 == true)
                         {
-                            ImGui.Image(personality_3Img.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.Image(personality_3Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_3), 400);
                         }
@@ -136,7 +111,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                     {
                         foreach (trait personality in personalities)
                         {
-                            ImGui.Image(personality.icon.icon.ImGuiHandle, new Vector2(32, 42));
+                            ImGui.Image(personality.icon.icon.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(personality.name, 400);
                         }
@@ -159,7 +134,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("ARPTooltipWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("ARPTooltipWindow Draw Error: " + ex.Message);
             }
         }
 
@@ -187,7 +162,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                plugin?.logger?.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
+                Plugin.logger?.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
             }
         }
 

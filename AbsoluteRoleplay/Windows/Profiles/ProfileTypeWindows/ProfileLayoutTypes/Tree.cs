@@ -2,12 +2,8 @@ using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Ect;
 using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
-using ImGuiNET;
-using Microsoft.AspNetCore.SignalR.Client;
-using OtterGui;
-using OtterGui.Extensions;
-using OtterGui.Text.EndObjects;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -252,10 +248,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 rel.IconTexture = relIcon;
                             }
                             // Defensive: Only draw if texture is valid
-                            if (rel.IconTexture != null && rel.IconTexture.ImGuiHandle != IntPtr.Zero)
+                            if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
                             {
                                 ImGui.SameLine();
-                                ImGui.Image(rel.IconTexture.ImGuiHandle, new Vector2(32, 32));
+                                ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
                             }
 
                             if (ImGui.Button("Accept"))
@@ -264,7 +260,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 rel.Name = editingName;
                                 rel.Description = editingDescription;
                                 rel.Slot = SlotEdit.Value;
-                                Plugin.plugin.logger.Error($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
+                                Plugin.logger.Error($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
 
                                 // Remove any existing relationship at this slot (avoid duplicates)
                                 layout.relationships.RemoveAll(r => r.Slot.HasValue && r.Slot.Value == SlotEdit.Value);
@@ -290,13 +286,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
                             ImGui.Separator();
                             ImGui.Text("Preview:");
-                            if (rel.IconTexture != null && rel.IconTexture.ImGuiHandle != IntPtr.Zero)
+                            if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
                             {
                                 ImGui.SameLine();
                                 if (learnedToggle)
                                 {
                                     // Normal color
-                                    ImGui.Image(rel.IconTexture.ImGuiHandle, new Vector2(32, 32));
+                                    ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
                                 }
                                 else
                                 {
@@ -305,7 +301,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                     var size = new Vector2(32, 32);
                                     // Grayscale tint (luminance weights)
                                     Vector4 gray = new Vector4(0.299f, 0.587f, 0.114f, 1f);
-                                    drawList.AddImage(rel.IconTexture.ImGuiHandle, pos, pos + size, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
+                                    drawList.AddImage(rel.IconTexture.Handle, pos, pos + size, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
                                     ImGui.Dummy(size); // Reserve space
                                 }
                             }
@@ -390,18 +386,18 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (relAtSlot != null)
                     {
                         var tex = relAtSlot.ImageTexture ?? relAtSlot.IconTexture;
-                        if (tex != null && tex.ImGuiHandle != IntPtr.Zero)
+                        if (tex != null && tex.Handle != IntPtr.Zero)
                         {
                             Vector2 iconMin = nodeCenter - new Vector2(iconSize / 2, iconSize / 2);
                             Vector2 iconMax = nodeCenter + new Vector2(iconSize / 2, iconSize / 2);
                             if (relAtSlot.active)
                             {
-                                drawList.AddImage(tex.ImGuiHandle, iconMin, iconMax);
+                                drawList.AddImage(tex.Handle, iconMin, iconMax);
                             }
                             else
                             {
                                 Vector4 gray = new Vector4(1f, 0.2f, 0.2f, 1f); // or 0.3f for a darker gray
-                                drawList.AddImage(tex.ImGuiHandle, iconMin, iconMax, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
+                                drawList.AddImage(tex.Handle, iconMin, iconMax, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
                             }
                             // Draw a fixed-size white ring around the icon
                             drawList.AddCircle(nodeCenter, ringRadius, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 1f)), 64, ringThickness);

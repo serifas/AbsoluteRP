@@ -10,7 +10,6 @@ using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
-using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
@@ -20,36 +19,31 @@ using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
 using Dalamud.Interface;
 using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game.Object;
-using FFXIVClientStructs.FFXIV.Client.System.Framework;
-using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using ImGuiNET;
-using Lumina.Excel.Sheets;
 using Networking;
-using OtterGui.Filesystem;
-using OtterGui.Log;
-using System;
-using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using System.Timers;
-using System.Xml.Linq;
-using static AbsoluteRoleplay.UI;
-using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
-using static Lumina.Data.Parsing.Layer.LayerCommon;
-using static System.Net.WebRequestMethods;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
+    public class Logger
+    {
+        private readonly Serilog.ILogger _pluginLogger;
+        public Serilog.ILogger MainLogger;
+        public void Error(string text)
+        {
+            MainLogger.Error(text); 
+        }
+    }
     public partial class Plugin : IDalamudPlugin
     {
+        private float fetchQuestsInRangeTimer = 0f; // Add this field to your Plugin class
+        private int lastObjectTableCount = -1; // Add this as a field in your Plugin class
         public static IGameObject? LastMouseOverTarget;
         public float tooltipAlpha;
         public static Plugin plugin;
@@ -59,17 +53,15 @@ namespace AbsoluteRoleplay
         public bool connected = false;
         public string playerworld = string.Empty;
         private const string CommandName = "/arp";
-        public static ImGuiViewportPtr viewport = ImGui.GetMainViewport();
-
         private IntPtr lastTargetAddress = IntPtr.Zero;
         public static bool lockedtarget = false;
         private bool openItemTooltip;
         public bool loggedIn;
         public static bool justRegistered;
-        public static bool firstopen = true;
-
-        public float screenWidth = viewport.WorkSize.X;
-        public float screenHeight = viewport.WorkSize.Y;
+        public static bool firstopen = true; 
+        private bool pendingFetchConnections = false;
+        private ushort pendingTerritory = 0;
+        public static Logger logger = new Logger();
         //WIP
         private const string ChatToggleCommand = "/arpchat";
         public bool loginAttempted = false;
@@ -80,7 +72,7 @@ namespace AbsoluteRoleplay
         public static bool BarAdded = false;
         internal static float timer = 0f;
         public static UiBuilder builder;
-        public static IGameGui GameGUI;
+        public static IGameGui GameGUI; 
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
@@ -122,7 +114,6 @@ namespace AbsoluteRoleplay
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
         //logger for printing errors and such
-        public Logger logger = new Logger();
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -162,43 +153,40 @@ namespace AbsoluteRoleplay
             Condition = condition;
             ContextMenu = contextMenu;
             Framework = framework;
+            Plugin.logger = logger;
             GameGUI = gameGui;
             chatgui = ChatGui;
-            ClientTCP.plugin = this;
-            WindowOperations.plugin = this;
-            //unhandeled exception handeling - probably not really needed anymore.
+
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
 
             //assing our Configuration var
             Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
-            //need this to interact with the plugin from the datareceiver.
-            DataReceiver.plugin = this;
             DataSender.plugin = this;
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "opens the plugin window."
             });
             //init our windows
-            OptionsWindow = new OptionsWindow(this);
-            MainPanel = new MainPanel(this);
-            TermsWindow = new TOS(this);
-            ProfileWindow = new ProfileWindow(this);
-            ImagePreview = new ImagePreview(this);
-            BookmarksWindow = new BookmarksWindow(this);
-            ImportantNoticeWindow = new ImportantNotice(this);
-            TargetWindow = new TargetProfileWindow(this);
-            VerificationWindow = new VerificationWindow(this);
-            ModeratorPanel = new ModPanel(this);
-            ArpChatWindow = new ARPChatWindow(this, chatgui);
-            RestorationWindow = new RestorationWindow(this);
-            ReportWindow = new ReportWindow(this);
-            ConnectionsWindow = new ConnectionsWindow(this);
-            TooltipWindow = new ARPTooltipWindow(this);
-            NotesWindow = new NotesWindow(this);
-            ListingWindow = new ListingsWindow(this);
-            TradeWindow = new TradeWindow(this);
+            OptionsWindow = new OptionsWindow();
+            MainPanel = new MainPanel();
+            TermsWindow = new TOS();
+            ProfileWindow = new ProfileWindow();
+            ImagePreview = new ImagePreview();
+            BookmarksWindow = new BookmarksWindow();
+            ImportantNoticeWindow = new ImportantNotice();
+            TargetWindow = new TargetProfileWindow();
+            VerificationWindow = new VerificationWindow();
+            ModeratorPanel = new ModPanel();
+            ArpChatWindow = new ARPChatWindow(chatgui);
+            RestorationWindow = new RestorationWindow();
+            ReportWindow = new ReportWindow();
+            ConnectionsWindow = new ConnectionsWindow();
+            TooltipWindow = new ARPTooltipWindow();
+            NotesWindow = new NotesWindow();
+            ListingWindow = new ListingsWindow();
+            TradeWindow = new TradeWindow();
             Configuration.Initialize(PluginInterface);
 
             if (string.IsNullOrEmpty(Configuration.dataSavePath))
@@ -226,7 +214,6 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ImportantNoticeWindow);
             WindowSystem.AddWindow(TradeWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
-            ConnectionsWindow.plugin = this;
             // Subscribe to condition change events
             PluginInterface.UiBuilder.Draw += DrawUI;
             //PluginInterface.UiBuilder.Draw += DrawHitboxes;
@@ -236,13 +223,21 @@ namespace AbsoluteRoleplay
             chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
             ClientState.Logout += OnLogout;
             ClientState.Login += LoadConnection;
+            ClientState.TerritoryChanged += FetchConnectionsInMap;
             Framework.Update += Update;
             
             MainPanel.pluginInstance = this;
             
             plugin = this;
+
         }
-     
+
+        private void FetchConnectionsInMap(ushort obj)
+        {
+            pendingFetchConnections = true;
+            pendingTerritory = obj;
+        }
+
         public async Task<Version> GetOnlineVersionAsync()
         {
             try
@@ -485,7 +480,7 @@ namespace AbsoluteRoleplay
                 DataSender.BookmarkPlayer(targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
             }
         }
-
+        
         //server connection status dtrBarEntry
         public void LoadStatusBarEntry()
         {
@@ -496,8 +491,9 @@ namespace AbsoluteRoleplay
             //set base tooltip value
             statusBarEntry.Tooltip = "Absolute Roleplay";
             //assign on click to toggle the main ui
-            entry.OnClick = () => ToggleMainUI();
+            entry.OnClick = _ => ToggleMainUI();
         }
+
         //used to alert people of incoming connection requests
         public void LoadConnectionsBarEntry(float deltaTime)
         {
@@ -508,7 +504,7 @@ namespace AbsoluteRoleplay
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
             ConnectionsWindow.currentListing = 2;
-            entry.OnClick = () => DataSender.RequestConnections(username, password, true);
+            entry.OnClick = _ => DataSender.RequestConnections(username, password, true);
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse); // Apply pulsing glow
             statusString.AddText("\uE070"); //Boxed question mark (Mario brick)
@@ -618,12 +614,61 @@ namespace AbsoluteRoleplay
             }
             return loggedIn; //return our logged in status
         }
-
+        private bool avatarTextureSpawned = false;
         private void DrawUI()
         {
             try
             {
                 WindowSystem.Draw();
+
+                // Draw compass overlay if enabled and player is present
+                if (Configuration != null
+                    && Configuration.showCompass
+                    && ClientState?.LocalPlayer != null)
+                {
+                    var viewport = ImGui.GetMainViewport(); // Only get this here, never store as static/field
+
+                    ImGui.SetNextWindowBgAlpha(0.0f);
+                    ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
+
+                    ImGui.Begin("##CompassOverlay",
+                        ImGuiWindowFlags.NoTitleBar
+                        | ImGuiWindowFlags.NoResize
+                        | ImGuiWindowFlags.NoMove
+                        | ImGuiWindowFlags.NoScrollbar
+                        | ImGuiWindowFlags.NoScrollWithMouse
+                        | ImGuiWindowFlags.NoInputs
+                        | ImGuiWindowFlags.NoSavedSettings
+                        | ImGuiWindowFlags.NoFocusOnAppearing);
+
+                    PlayerInteractions.DrawDynamicCompass(
+                        viewport.WorkSize.X / 2,
+                        300,
+                        400,
+                        40,
+                        ClientState.LocalPlayer.Rotation
+                    );
+
+                    // If you want to draw a spinning avatar texture, do it here
+                    // (If you need to spawn it only once, use a non-static field)
+                    if (!avatarTextureSpawned)
+                    {
+                        avatarTextureSpawned = true;
+                        float spinSpeed = 1.0f; // radians per second
+                        float rotation = (float)(Environment.TickCount / 1000.0 * spinSpeed);
+                        WorldInteractions.DrawTextureFlatOnFloorSpinning(
+                            UI.UICommonImage(UI.CommonImageTypes.avatarHolder),
+                            ClientState.LocalPlayer.Position,
+                            2.0f,
+                            rotation
+                        );
+                    }
+
+                    // Draw all floor textures every frame
+                    WorldInteractions.DrawAllFloorTextures();
+
+                    ImGui.End();
+                }
             }
             catch (Exception ex)
             {
@@ -644,7 +689,7 @@ namespace AbsoluteRoleplay
 
             if (await IsToSVersionUpdated()) // Now runs asynchronously
             {
-                logger.Debug($"Version matched, loading window: {window}");
+                logger.Error($"Version matched, loading window: {window}");
                 if (Toggle)
                 {
                     window.Toggle();
@@ -656,7 +701,7 @@ namespace AbsoluteRoleplay
             }
             else
             {
-                logger.Debug("Version mismatch, opening Terms of Service window.");
+                logger.Error("Version mismatch, opening Terms of Service window.");
 
                 if (Configuration.TOSVersion == null)
                 {
@@ -736,7 +781,23 @@ namespace AbsoluteRoleplay
                     }
                 }
             }
-            if(firstopen == true && MainPanel.IsOpen == true)
+
+            // Increment timer by delta time
+            fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+
+            // Every 60 seconds, call FetchConnectedPlayers
+            if (fetchQuestsInRangeTimer >= 25f)
+            {
+                fetchQuestsInRangeTimer = 0f;
+                var localPlayer = ClientState.LocalPlayer;
+                if (localPlayer != null)
+                {
+                    logger.Error("Printing avatar on floor");
+                    WorldInteractions.SpawnTextureOnNpc(UI.UICommonImage(UI.CommonImageTypes.avatarHolder));
+                }
+            }
+
+            if (firstopen == true && MainPanel.IsOpen == true)
             {
                 firstopen = false;
                 MainPanel.IsOpen = false; // Close if on first open

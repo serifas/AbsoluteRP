@@ -1,33 +1,10 @@
 using AbsoluteRoleplay;
 using AbsoluteRoleplay.Defines;
 using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using Dalamud.Interface;
-using Dalamud.Interface.Internal.Windows.Data.Widgets;
-using Dalamud.Interface.Textures;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility;
-using Dalamud.Plugin.Services;
-using FFXIVClientStructs.FFXIV.Client.Game;
-using ImGuiNET;
-using Lumina.Data.Files;
-using Lumina.Excel.Sheets;
-using Lumina.Extensions;
-using Networking;
-using OtterGui;
-using OtterGui.Extensions;
-using OtterGui.Text.EndObjects;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+using Dalamud.Interface.Utility.Raii;
 using System.Numerics;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace InventoryTab
 {
@@ -118,9 +95,9 @@ namespace InventoryTab
 
         private static void LoadItemCreation(Plugin plugin, InventoryLayout layout)
         {
-            if (icon != null && icon.ImGuiHandle != null)
+            if (icon != null && icon.Handle != null)
             {
-                ImGui.Image(icon.ImGuiHandle, new Vector2(50, 50));
+                ImGui.Image(icon.Handle, new Vector2(50, 50));
             }
             else
             {
@@ -194,8 +171,7 @@ namespace InventoryTab
         public static void AddItemCategorySelection(Plugin plugin)
         {
             var (text, desc, subType) = Items.InventoryTypes[selectedItemType];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##ItemCategory", text);
-            ImGuiUtil.HoverTooltip(desc);
+            using var combo = ImRaii.Combo("##ItemCategory", text);
             if (!combo)
                 return;
 
@@ -206,7 +182,7 @@ namespace InventoryTab
                     selectedItemType = idx;
                     itemSubType = Items.InventoryTypes[idx].Item3;
                 }
-                ImGuiUtil.SelectableHelpMarker(newDesc);
+                ImGuiHelpers.SelectableHelpMarker(newDesc);
             }
         }
 
@@ -217,7 +193,7 @@ namespace InventoryTab
                 selectedSubType = 0;
             }
             var text = subtype[selectedSubType];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##ItemSubtype", text);
+            using var combo = ImRaii.Combo("##ItemSubtype", text);
             if (!combo)
                 return;
 
@@ -236,7 +212,7 @@ namespace InventoryTab
                 selectedItemQuality = 0;
             }
             var text = Items.ItemQualityTypes[selectedItemQuality];
-            using var combo = OtterGui.Raii.ImRaii.Combo("##ItemQualityType", text);
+            using var combo = ImRaii.Combo("##ItemQualityType", text);
             if (!combo)
                 return;
 

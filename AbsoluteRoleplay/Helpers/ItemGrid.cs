@@ -1,13 +1,9 @@
-using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
-using ImGuiNET;
 using Networking;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
-
+using ImGuiNET;
 namespace AbsoluteRoleplay.Helpers
 {
     internal class ItemGrid
@@ -51,8 +47,8 @@ namespace AbsoluteRoleplay.Helpers
             }
 
             // --- Calculate dynamic cell size for grid ---
-            float windowWidth = ImGui.GetWindowWidth();
-            float windowHeight = ImGui.GetWindowHeight();
+            float windowWidth = Dalamud.Bindings.ImGui.ImGui.GetWindowWidth();
+            float windowHeight =Dalamud.Bindings.ImGui.ImGui.GetWindowHeight();
 
             // Reserve some space for labels/buttons above the grid
             float reservedHeight = 0;
@@ -78,78 +74,78 @@ namespace AbsoluteRoleplay.Helpers
                 if (layout.traderSlotContents == null)
                     layout.traderSlotContents = new Dictionary<int, ItemDefinition>();
 
-                ImGui.Dummy(new Vector2(0, 10));
-                ImGui.Text("Sending");
-                ImGui.Dummy(new Vector2(0, 10));
+                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
+                Dalamud.Bindings.ImGui.ImGui.Text("Sending");
+                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
 
                 // --- "Sending" grid (left) ---
-                ImGui.BeginGroup();
+                Dalamud.Bindings.ImGui.ImGui.BeginGroup();
                 for (int x = 0; x < TradeGridWidth; x++)
                 {
                     int slotIndex = x;
 
-                    ImGui.PushID($"send_{slotIndex}");
-                    ImGui.BeginGroup();
+                    Dalamud.Bindings.ImGui.ImGui.PushID($"send_{slotIndex}");
+                    Dalamud.Bindings.ImGui.ImGui.BeginGroup();
 
-                    Vector2 cellPos = ImGui.GetCursorScreenPos();
+                    Vector2 cellPos = Dalamud.Bindings.ImGui.ImGui.GetCursorScreenPos();
 
-                    ImGui.GetWindowDrawList().AddRectFilled(
+                    Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRectFilled(
                         cellPos,
                         cellPos + iconCellSize,
-                        ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.5f, 1.0f))
+                        Dalamud.Bindings.ImGui.ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.5f, 1.0f))
                     );
 
                     bool hasTradeItem = layout.tradeSlotContents.ContainsKey(slotIndex) && layout.tradeSlotContents[slotIndex].name != string.Empty;
                     if (hasTradeItem)
                     {
                         int iconID = layout.tradeSlotContents[slotIndex].iconID;
-                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
                         {
-                            ImGui.Image(texture.ImGuiHandle, iconCellSize);
+                            Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
                         }
                         else
                         {
-                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
+                            Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
                     }
 
-                    ImGui.SetCursorScreenPos(cellPos);
-                    ImGui.InvisibleButton($"##send_slot{slotIndex}", iconCellSize);
+                    Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
+                    Dalamud.Bindings.ImGui.ImGui.InvisibleButton($"##send_slot{slotIndex}", iconCellSize);
 
                     // Tooltip hover for trade grid
-                    if (ImGui.IsItemHovered() && hasTradeItem)
+                    if (Dalamud.Bindings.ImGui.ImGui.IsItemHovered() && hasTradeItem)
                     {
-                        ImGui.BeginTooltip();
+                        Dalamud.Bindings.ImGui.ImGui.BeginTooltip();
                         Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name, 400);
-                        ImGui.Spacing();
+                        Dalamud.Bindings.ImGui.ImGui.Spacing();
                         Misc.RenderHtmlElements(layout.traderSlotContents[slotIndex].description, false, true, true, true, null, true);
-                        ImGui.EndTooltip();
+                        Dalamud.Bindings.ImGui.ImGui.EndTooltip();
                     }
 
                     // Begin drag source for trade slot
-                    if (hasTradeItem && ImGui.BeginDragDropSource())
+                    if (hasTradeItem && Dalamud.Bindings.ImGui.ImGui.BeginDragDropSource())
                     {
                         unsafe
                         {
                             DraggedItemSlot = slotIndex;
                             DraggedSlotContents = layout.tradeSlotContents;
                             int payloadData = slotIndex;
-                            ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
+                            ImGuiNET.ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
                         }
-                        ImGui.Text($"Dragging Trade Slot {slotIndex}");
-                        ImGui.EndDragDropSource();
+                        Dalamud.Bindings.ImGui.ImGui.Text($"Dragging Trade Slot {slotIndex}");
+                        Dalamud.Bindings.ImGui.ImGui.EndDragDropSource();
                     }
 
                     // Accept drag from inventory
-                    if (ImGui.BeginDragDropTarget())
+                    if (Dalamud.Bindings.ImGui.ImGui.BeginDragDropTarget())
                     {
-                        var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
+                        var payload = Dalamud.Bindings.ImGui.ImGui.AcceptDragDropPayload("SLOT_MOVE");
                         unsafe
                         {
-                            if (payload.NativePtr != null && DraggedItemSlot.HasValue && DraggedSlotContents != null)
+                            if (payload.IsNull && DraggedItemSlot.HasValue && DraggedSlotContents != null)
                             {
-                                int sourceSlotIndex = *(int*)payload.Data.ToPointer();
+                                int sourceSlotIndex = *(int*)payload.Data;
                                 if (DraggedSlotContents.ContainsKey(sourceSlotIndex))
                                 {
                                     var draggedItem = DraggedSlotContents[sourceSlotIndex];
@@ -187,17 +183,17 @@ namespace AbsoluteRoleplay.Helpers
                                 }
                             }
                         }
-                        ImGui.EndDragDropTarget();
+                        Dalamud.Bindings.ImGui.ImGui.EndDragDropTarget();
                     }
 
                     // --- Right-click context menu for trade slot (only in trade mode) ---
-                    if (isTrade && hasTradeItem && ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                    if(Dalamud.Bindings.ImGui.ImGui.IsItemClicked(Dalamud.Bindings.ImGui.ImGuiMouseButton.Right))
                     {
-                        ImGui.OpenPopup($"##tradeContextMenu{slotIndex}");
+                        Dalamud.Bindings.ImGui.ImGui.OpenPopup($"##tradeContextMenu{slotIndex}");
                     }
-                    if (isTrade && ImGui.BeginPopup($"##tradeContextMenu{slotIndex}"))
+                    if (isTrade && Dalamud.Bindings.ImGui.ImGui.BeginPopup($"##tradeContextMenu{slotIndex}"))
                     {
-                        if (ImGui.MenuItem("Remove from Trade"))
+                        if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Remove from Trade"))
                         {
                             // Find first available inventory slot
                             int firstEmpty = -1;
@@ -218,33 +214,33 @@ namespace AbsoluteRoleplay.Helpers
                                 DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                             }
                         }
-                        ImGui.EndPopup();
+                        Dalamud.Bindings.ImGui.ImGui.EndPopup();
                     }
 
-                    ImGui.EndGroup();
-                    ImGui.PopID();
+                    Dalamud.Bindings.ImGui.ImGui.EndGroup();
+                    Dalamud.Bindings.ImGui.ImGui.PopID();
 
                     if (x < TradeGridWidth - 1)
-                        ImGui.SameLine();
+                        Dalamud.Bindings.ImGui.ImGui.SameLine();
                 }
-                ImGui.EndGroup();
+                Dalamud.Bindings.ImGui.ImGui.EndGroup();
 
-                ImGui.Text("Receiving");
+                Dalamud.Bindings.ImGui.ImGui.Text("Receiving");
 
-                ImGui.BeginGroup();
+                Dalamud.Bindings.ImGui.ImGui.BeginGroup();
                 for (int x = 0; x < TradeGridWidth; x++)
                 {
                     int slotIndex = x;
 
-                    ImGui.PushID($"recv_{slotIndex}");
-                    ImGui.BeginGroup();
+                    Dalamud.Bindings.ImGui.ImGui.PushID($"recv_{slotIndex}");
+                    Dalamud.Bindings.ImGui.ImGui.BeginGroup();
 
-                    Vector2 cellPos = ImGui.GetCursorScreenPos();
+                    Vector2 cellPos = Dalamud.Bindings.ImGui.ImGui.GetCursorScreenPos();
 
-                    ImGui.GetWindowDrawList().AddRect(
+                    Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRect(
                         cellPos,
                         cellPos + iconCellSize,
-                        ImGui.GetColorU32(new Vector4(0.0f, 0.5f, 0.2f, 1.0f)), 2.0f // Border thickness
+                        Dalamud.Bindings.ImGui.ImGui.GetColorU32(new Vector4(0.0f, 0.5f, 0.2f, 1.0f)), 2.0f // Border thickness
                     );
 
                     bool hasRecvItem = layout.traderSlotContents != null &&
@@ -253,41 +249,41 @@ namespace AbsoluteRoleplay.Helpers
                     if (hasRecvItem)
                     {
                         int iconID = layout.traderSlotContents[slotIndex].iconID;
-                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
                         {
-                            ImGui.Image(texture.ImGuiHandle, iconCellSize);
+                            Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
                         }
                         else
                         {
-                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
+                            Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
                     }
 
-                    ImGui.SetCursorScreenPos(cellPos);
-                    ImGui.InvisibleButton($"##recv_slot{slotIndex}", iconCellSize);
+                    Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
+                    Dalamud.Bindings.ImGui.ImGui.InvisibleButton($"##recv_slot{slotIndex}", iconCellSize);
 
                     // Tooltip hover for receiving grid
-                    if (ImGui.IsItemHovered() && hasRecvItem)
+                    if (Dalamud.Bindings.ImGui.ImGui.IsItemHovered() && hasRecvItem)
                     {
-                        ImGui.BeginTooltip();
+                        Dalamud.Bindings.ImGui.ImGui.BeginTooltip();
                         Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name,  400);
-                        ImGui.Spacing();
+                        Dalamud.Bindings.ImGui.ImGui.Spacing();
                         Misc.RenderHtmlElements(layout.traderSlotContents[slotIndex].description, false, true, true, true, null, true);
-                        ImGui.EndTooltip();
+                        Dalamud.Bindings.ImGui.ImGui.EndTooltip();
                     }
 
-                    ImGui.EndGroup();
-                    ImGui.PopID();
+                    Dalamud.Bindings.ImGui.ImGui.EndGroup();
+                    Dalamud.Bindings.ImGui.ImGui.PopID();
 
                     if (x < TradeGridWidth - 1)
-                        ImGui.SameLine();
+                        Dalamud.Bindings.ImGui.ImGui.SameLine();
                 }
-                ImGui.EndGroup();
+                Dalamud.Bindings.ImGui.ImGui.EndGroup();
 
-                ImGui.Dummy(new Vector2(0, 10));
-                ImGui.Text("Inventory");
-                ImGui.Dummy(new Vector2(0, 10));
+                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
+                Dalamud.Bindings.ImGui.ImGui.Text("Inventory");
+                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
             }
 
             // --- INVENTORY GRID (BOTTOM) ---
@@ -298,15 +294,15 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     int slotIndex = y * GridSize + x;
 
-                    ImGui.PushID(slotIndex);
-                    ImGui.BeginGroup();
+                    Dalamud.Bindings.ImGui.ImGui.PushID(slotIndex);
+                    Dalamud.Bindings.ImGui.ImGui.BeginGroup();
 
-                    Vector2 cellPos = ImGui.GetCursorScreenPos();
+                    Vector2 cellPos = Dalamud.Bindings.ImGui.ImGui.GetCursorScreenPos();
 
-                    ImGui.GetWindowDrawList().AddRectFilled(
+                    Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRectFilled(
                         cellPos,
                         cellPos + iconCellSize,
-                        ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f))
+                        Dalamud.Bindings.ImGui.ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f))
                     );
 
                     bool hasInvItem = layout.inventorySlotContents.ContainsKey(slotIndex) && layout.inventorySlotContents[slotIndex].name != string.Empty;
@@ -315,66 +311,67 @@ namespace AbsoluteRoleplay.Helpers
                         if (hasInvItem)
                         {
                             int iconID = layout.inventorySlotContents[slotIndex].iconID;
-                            if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                            if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
                             {
-                                ImGui.Image(texture.ImGuiHandle, iconCellSize);
+                                Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
                             }
                             else
                             {
-                                ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
+                                Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                                 _ = PreloadIconAsync(plugin, iconID);
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        plugin.logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
+                        Plugin.logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
                     }
 
-                    ImGui.SetCursorScreenPos(cellPos);
+                    Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
 
-                    if (ImGui.InvisibleButton($"##slot{slotIndex}", iconCellSize))
+                    if (Dalamud.Bindings.ImGui.ImGui.InvisibleButton($"##slot{slotIndex}", iconCellSize))
                     {
                         // Handle slot click
                     }
 
                     // Tooltip hover for inventory grid
-                    if (ImGui.IsItemHovered() && hasInvItem)
+                    if (Dalamud.Bindings.ImGui.ImGui.IsItemHovered() && hasInvItem)
                     {
-                        ImGui.BeginTooltip();
+                        Dalamud.Bindings.ImGui.ImGui.BeginTooltip();
 
                         int iconID = layout.inventorySlotContents[slotIndex].iconID;
-                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
                         {
-                            ImGui.Image(texture.ImGuiHandle, iconCellSize);
+                            Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
                         }
                         else
                         {
-                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).ImGuiHandle, iconCellSize);
+                            Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
 
                         Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name, 500);
-                        ImGui.Separator();
-                        ImGui.Spacing();
+                        Dalamud.Bindings.ImGui.ImGui.Separator();
+                        Dalamud.Bindings.ImGui.ImGui.Spacing();
                         Misc.RenderHtmlElements(layout.inventorySlotContents[slotIndex].description, false, true, true, true, null, true);
-                        ImGui.EndTooltip();
+                        Dalamud.Bindings.ImGui.ImGui.EndTooltip();
                     }
 
                     // Context menu for inventory grid
                     if (!isTrade)
                     {
-                        if (ImGui.IsItemClicked(ImGuiMouseButton.Right) && hasInvItem)
+                        
+                        if (Dalamud.Bindings.ImGui.ImGui.IsItemClicked(Dalamud.Bindings.ImGui.ImGuiMouseButton.Right) && hasInvItem)
                         {
-                            ImGui.OpenPopup($"##contextMenu{slotIndex}");
+                            Dalamud.Bindings.ImGui.ImGui.OpenPopup($"##contextMenu{slotIndex}");
                         }
-                        if (ImGui.BeginPopup($"##contextMenu{slotIndex}"))
+                        if (Dalamud.Bindings.ImGui.ImGui.BeginPopup($"##contextMenu{slotIndex}"))
                         {
-                            if (ImGui.MenuItem("Delete"))
+                            if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Delete"))
                             {
                                 layout.inventorySlotContents.Remove(slotIndex);
                             }
-                            if (ImGui.MenuItem("Duplicate"))
+                            if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Duplicate"))
                             {
                                 int firstEmptySlotIndex = -1;
                                 for (int i = 0; i < TotalSlots; i++)
@@ -401,16 +398,16 @@ namespace AbsoluteRoleplay.Helpers
                                     iconTexture = itemToDuplicate.iconTexture
                                 };
                             }
-                            ImGui.EndPopup();
+                            Dalamud.Bindings.ImGui.ImGui.EndPopup();
                         }
                     }
-                    else if (isTrade && hasInvItem && ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                    else if (isTrade && hasInvItem && Dalamud.Bindings.ImGui.ImGui.IsItemClicked(Dalamud.Bindings.ImGui.ImGuiMouseButton.Right))
                     {
-                        ImGui.OpenPopup($"##contextMenu{slotIndex}");
+                        Dalamud.Bindings.ImGui.ImGui.OpenPopup($"##contextMenu{slotIndex}");
                     }
-                    if (isTrade && ImGui.BeginPopup($"##contextMenu{slotIndex}"))
+                    if (isTrade && Dalamud.Bindings.ImGui.ImGui.BeginPopup($"##contextMenu{slotIndex}"))
                     {
-                        if (ImGui.MenuItem("Trade"))
+                        if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Trade"))
                         {
                             int firstEmpty = -1;
                             for (int t = 0; t < TradeGridWidth; t++)
@@ -430,31 +427,31 @@ namespace AbsoluteRoleplay.Helpers
                                 DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                             }
                         }
-                        ImGui.EndPopup();
+                        Dalamud.Bindings.ImGui.ImGui.EndPopup();
                     }
 
                     // Begin Drag Source
-                    if (hasInvItem && ImGui.BeginDragDropSource())
+                    if (hasInvItem && Dalamud.Bindings.ImGui.ImGui.BeginDragDropSource())
                     {
                         unsafe
                         {
                             DraggedItemSlot = slotIndex;
                             DraggedSlotContents = layout.inventorySlotContents;
                             int payloadData = slotIndex;
-                            ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
+                            ImGuiNET.ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
                         }
-                        ImGui.Text($"Dragging Slot {slotIndex}");
-                        ImGui.EndDragDropSource();
+                        Dalamud.Bindings.ImGui.ImGui.Text($"Dragging Slot {slotIndex}");
+                        Dalamud.Bindings.ImGui.ImGui.EndDragDropSource();
                     }
 
-                    if (ImGui.BeginDragDropTarget())
+                    if (Dalamud.Bindings.ImGui.ImGui.BeginDragDropTarget())
                     {
-                        var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
+                        var payload = Dalamud.Bindings.ImGui.ImGui.AcceptDragDropPayload("SLOT_MOVE");
                         unsafe
                         {
-                            if (payload.NativePtr != null && DraggedItemSlot.HasValue && DraggedSlotContents != null)
+                            if (payload.IsNull && DraggedItemSlot.HasValue && DraggedSlotContents != null)
                             {
-                                int sourceSlotIndex = *(int*)payload.Data.ToPointer();
+                                int sourceSlotIndex = *(int*)payload.Data;
                                 var draggedItem = DraggedSlotContents[sourceSlotIndex];
 
                                 if (DraggedSlotContents == layout.inventorySlotContents && layout.inventorySlotContents.ContainsKey(sourceSlotIndex))
@@ -515,15 +512,15 @@ namespace AbsoluteRoleplay.Helpers
                                 DraggedSlotContents = null;
                             }
                         }
-                        ImGui.EndDragDropTarget();
+                        Dalamud.Bindings.ImGui.ImGui.EndDragDropTarget();
                     }
 
-                    ImGui.EndGroup();
-                    ImGui.PopID();
+                    Dalamud.Bindings.ImGui.ImGui.EndGroup();
+                    Dalamud.Bindings.ImGui.ImGui.PopID();
 
                     if (x < GridSize - 1)
                     {
-                        ImGui.SameLine();
+                        Dalamud.Bindings.ImGui.ImGui.SameLine();
                     }
                 }
             }

@@ -1,34 +1,16 @@
 using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using Dalamud.Interface;
-using Dalamud.Interface.Colors;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ImGuiFileDialog;
-using Dalamud.Interface.ImGuiFontChooserDialog;
-using Dalamud.Interface.Internal;
 using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Plugin;
-using Dalamud.Storage.Assets;
-using FFXIVClientStructs.FFXIV.Client.System.String;
-using FFXIVClientStructs.FFXIV.Common.Lua;
-using ImGuiNET;
-using Lumina.Excel.Sheets;
-using Microsoft.Extensions.Configuration;
-using OtterGui;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
-using System.IO;
-using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
+using ImGuiHelpers = AbsoluteRoleplay.Helpers.ImGuiHelpers;
 namespace AbsoluteRoleplay
 {
     public class Misc
@@ -363,7 +345,7 @@ namespace AbsoluteRoleplay
                 {
                     string imgUrl = seg.content;
                     float scale = seg.scale;
-                    if (_imageCache.TryGetValue(imgUrl, out var texture) && texture != null && texture.ImGuiHandle != IntPtr.Zero)
+                    if (_imageCache.TryGetValue(imgUrl, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
                     {
                         Vector2 imgSize = new Vector2(texture.Width, texture.Height) * scale;
 
@@ -397,7 +379,7 @@ namespace AbsoluteRoleplay
                                 imgSize *= scaleDown;
                             }
                         }
-                        ImGui.Image(texture.ImGuiHandle, imgSize);
+                        ImGui.Image(texture.Handle, imgSize);
                     }
                     else
                     {
@@ -412,7 +394,7 @@ namespace AbsoluteRoleplay
                                     {
                                         var imageBytes = webClient.DownloadData(imgUrl);
                                         var tex = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
-                                        if (tex != null && tex.ImGuiHandle != IntPtr.Zero)
+                                        if (tex != null && tex.Handle != IntPtr.Zero)
                                         {
                                             _imageCache[imgUrl] = tex;
                                         }
@@ -698,15 +680,15 @@ namespace AbsoluteRoleplay
 
             return null; // Return null if the tag is not found
         }
-        public static void DrawCenteredInput(float center, Vector2 size, string label, string hint, ref string input, uint length, ImGuiInputTextFlags flags)
+        public static void DrawCenteredInput(float center, Vector2 size, string label, string hint, ref string input, int length, ImGuiInputTextFlags flags)
         {
             var currentCursorY = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(center, currentCursorY));
             ImGui.PushItemWidth(size.X);
-            ImGui.InputTextWithHint(label, hint, ref input, length, flags);
+            ImGui.InputTextWithHint(label, hint, ref input, length, ImGuiInputTextFlags.None, null);
             ImGui.PopItemWidth();
         }
-        public static bool DrawXCenteredInput(string label, string id, ref string input, uint length)
+        public static bool DrawXCenteredInput(string label, string id, ref string input, int length)
         {
             var size = ImGui.CalcTextSize(label).X + 400;
 
@@ -719,7 +701,7 @@ namespace AbsoluteRoleplay
             ImGui.Text(label);
             ImGui.SameLine();
             ImGui.PushItemWidth(350);
-            var centeredInput = ImGui.InputText("##ID" + id, ref input, length);
+            var centeredInput = ImGui.InputText("##ID" + id, ref input, length, ImGuiInputTextFlags.None, null);
             ImGui.PopItemWidth();
             return centeredInput;
         }
@@ -839,7 +821,7 @@ namespace AbsoluteRoleplay
                 float xPos = (windowSize.X - size.X -15) / 2; // Center horizontally
                 ImGui.SetCursorPosX(xPos);
             }
-            ImGuiUtil.DrawTextButton(title, Vector2.Zero, 0);
+           ImGuiHelpers.DrawTextButton(title, Vector2.Zero, 0);
 
             using var defInfFontDen = ImRaii.DefaultFont();
             using var defCol = ImRaii.DefaultColors();
@@ -934,7 +916,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+                Plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
             }
         }
         private static readonly Dictionary<string, LoaderTweenState> loaderTweens = new();

@@ -4,12 +4,12 @@ using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Moderator;
 using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Hooking;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
 using JetBrains.Annotations;
-using OtterGui.Text.EndObjects;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -98,6 +98,7 @@ namespace Networking
         SendTreeLayout = 73,
         SendInventoryLayout = 74,
         SendTabReorder = 75,
+        ReceiveConnectedPlayersRequest = 76,
     }
     public class DataSender
     {
@@ -120,7 +121,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Login: " + ex.ToString());
+                    Plugin.logger.Error("Error in Login: " + ex.ToString());
                 }
 
             }
@@ -142,7 +143,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Logout: " + ex.ToString());
+                    Plugin.logger.Error("Error in Logout: " + ex.ToString());
                 }
             }
         }
@@ -165,7 +166,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Register: " + ex.ToString());
+                    Plugin.logger.Error("Error in Register: " + ex.ToString());
                 }
             }
         }
@@ -189,7 +190,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in ReportProfile: " + ex.ToString());
+                    Plugin.logger.Error("Error in ReportProfile: " + ex.ToString());
                 }
             }
 
@@ -227,7 +228,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendGalleryImage: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendGalleryImage: " + ex.ToString());
                 }
             }
         }
@@ -254,7 +255,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendGalleryImage: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendGalleryImage: " + ex.ToString());
                 }
             }
         }
@@ -286,7 +287,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendStory: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendStory: " + ex.ToString());
                 }
             }
         }
@@ -307,13 +308,13 @@ namespace Networking
                         buffer.WriteString(connectionName);
                         buffer.WriteString(connectionWorld);
                         buffer.WriteInt(status);
-                        Plugin.plugin.logger.Error($"Sending profile access update: {localName} on {localServer} to {connectionName} on {connectionWorld} with status {status}");
+                        Plugin.logger.Error($"Sending profile access update: {localName} on {localServer} to {connectionName} on {connectionWorld} with status {status}");
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Login: " + ex.ToString());
+                    Plugin.logger.Error("Error in Login: " + ex.ToString());
                 }
             }
         }
@@ -329,7 +330,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+                Plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
             }
         }
         public static async void FetchProfile(bool self, int profileIndex, string targetName, string targetWorld, int profileID)
@@ -377,7 +378,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in FetchProfile: " + ex.ToString());
+                    Plugin.logger.Error("Error in FetchProfile: " + ex.ToString());
                 }
             }
         }
@@ -403,7 +404,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in CreateProfile: " + ex.ToString());
+                    Plugin.logger.Error("Error in CreateProfile: " + ex.ToString());
                 }
             }
         }
@@ -427,7 +428,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in BookmarkProfile: " + ex.ToString());
+                    Plugin.logger.Error("Error in BookmarkProfile: " + ex.ToString());
                 }
             }
 
@@ -450,7 +451,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in RemoveBookmarkedPlayer: " + ex.ToString());
+                    Plugin.logger.Error("Error in RemoveBookmarkedPlayer: " + ex.ToString());
                 }
             }
         }
@@ -470,7 +471,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in RequestBookmarks: " + ex.ToString());
+                    Plugin.logger.Error("Error in RequestBookmarks: " + ex.ToString());
                 }
             }
 
@@ -478,7 +479,7 @@ namespace Networking
 
         public static async void SubmitProfileBio(int profileIndex, BioLayout layout)
         {
-            plugin.logger.Error($"SubmitProfileBio called for profileIndex={profileIndex}, tabName={layout.name}");
+            Plugin.logger.Error($"SubmitProfileBio called for profileIndex={profileIndex}, tabName={layout.name}");
 
             if (ClientTCP.IsConnected())
             {
@@ -533,7 +534,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitProfileBio: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitProfileBio: " + ex.ToString());
                 }
             }
 
@@ -557,7 +558,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in sending user configuration: " + ex.ToString());
+                    Plugin.logger.Error("Error in sending user configuration: " + ex.ToString());
                 }
             }
         }
@@ -581,7 +582,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitProfileBio: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitProfileBio: " + ex.ToString());
                 }
             }
 
@@ -606,7 +607,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitProfileBio: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitProfileBio: " + ex.ToString());
                 }
             }
 
@@ -638,7 +639,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendHooks: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendHooks: " + ex.ToString());
                 }
             }
 
@@ -665,7 +666,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in AddProfileNotes: " + ex.ToString());
+                    Plugin.logger.Error("Error in AddProfileNotes: " + ex.ToString());
                 }
             }
         }
@@ -686,7 +687,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendVerification: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendVerification: " + ex.ToString());
                 }
             }
 
@@ -707,7 +708,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendRestorationRequest: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendRestorationRequest: " + ex.ToString());
                 }
             }
         }
@@ -729,7 +730,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendRestoration: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendRestoration: " + ex.ToString());
                 }
             }
         }
@@ -755,7 +756,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendInfoLayout: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendInfoLayout: " + ex.ToString());
                 }
             }
         }
@@ -777,7 +778,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in RequestConnections: " + ex.ToString());
+                    Plugin.logger.Error("Error in RequestConnections: " + ex.ToString());
                 }
             }
         }
@@ -822,7 +823,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SetProfileStatus: " + ex.ToString());
+                    Plugin.logger.Error("Error in SetProfileStatus: " + ex.ToString());
                 }
             }
         }
@@ -845,7 +846,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
                 }
             }
         }
@@ -868,7 +869,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
                 }
             }
         }
@@ -916,7 +917,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitListing: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitListing: " + ex.ToString());
                 }
             }
         }
@@ -938,7 +939,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in RequestListing: " + ex.ToString());
+                    Plugin.logger.Error("Error in RequestListing: " + ex.ToString());
                 }
             }
         }
@@ -963,7 +964,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
                 }
             }
         }
@@ -986,7 +987,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendChatmessage: " + ex.ToString());
                 }
             }
         }
@@ -1010,7 +1011,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
+                    Plugin.logger.Error("Error in FetchProfiles: " + ex.ToString());
                 }               
             }
         }
@@ -1035,7 +1036,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SetProfileAsTooltip: " + ex.ToString());
+                    Plugin.logger.Error("Error in SetProfileAsTooltip: " + ex.ToString());
                 }
             }
         }
@@ -1058,7 +1059,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in RequestTargetProfileByCharacter: " + ex.ToString());
+                    Plugin.logger.Error("Error in RequestTargetProfileByCharacter: " + ex.ToString());
                 }
             }
         }
@@ -1082,7 +1083,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in PreviewProfile: " + ex.ToString());
+                    Plugin.logger.Error("Error in PreviewProfile: " + ex.ToString());
                 }
             }
         }
@@ -1095,7 +1096,7 @@ namespace Networking
                 {
                     using (var buffer = new ByteBuffer())
                     {
-                        Plugin.plugin.logger.Error("profile = " + currentProfile);
+                        Plugin.logger.Error("profile = " + currentProfile);
                         buffer.WriteInt((int)ClientPackets.CreateItem);
                         buffer.WriteString(plugin.username);
                         buffer.WriteString(plugin.password);
@@ -1114,7 +1115,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendItemCreation: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendItemCreation: " + ex.ToString());
                 }
             }
         }
@@ -1150,7 +1151,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
                 }
             }
         }
@@ -1187,7 +1188,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendItemOrder: " + ex.ToString());
                 }
             }
         }
@@ -1210,7 +1211,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
                 }
             }
         }
@@ -1231,7 +1232,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
                 }
             }
         }
@@ -1262,7 +1263,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
                 }
             }
         }
@@ -1285,13 +1286,13 @@ namespace Networking
                         buffer.WriteInt(selectedCategory);
                         buffer.WriteInt(index);
                         buffer.WriteInt(pageSize);
-                        Plugin.plugin.logger.Error("Selected Category = " + selectedCategory);
+                        Plugin.logger.Error("Selected Category = " + selectedCategory);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendProfileItems: " + ex.ToString());
                 }
             }
         }
@@ -1317,7 +1318,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Tab Creation: " + ex.ToString());
+                    Plugin.logger.Error("Error in Tab Creation: " + ex.ToString());
                 }
             }
         }
@@ -1345,7 +1346,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Bio Creation: " + ex.ToString());
+                    Plugin.logger.Error("Error in Bio Creation: " + ex.ToString());
                 }
             }
         }
@@ -1371,7 +1372,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in Bio Creation: " + ex.ToString());
+                    Plugin.logger.Error("Error in Bio Creation: " + ex.ToString());
                 }
             }
         }
@@ -1424,8 +1425,8 @@ namespace Networking
             {
                 buffer.WriteInt(node.relatedElement.type);
                 buffer.WriteInt(node.ID); 
-                Plugin.plugin.logger.Error($"WriteInt: node.ID = {node.ID}");    
-                Plugin.plugin.logger.Error($"WriteString: node.Name = '{node.Name ?? "NULL"}'");
+                Plugin.logger.Error($"WriteInt: node.ID = {node.ID}");    
+                Plugin.logger.Error($"WriteString: node.Name = '{node.Name ?? "NULL"}'");
                 buffer.WriteString(node.Name);
                 buffer.WriteBool(node.IsFolder);                
                 buffer.WriteInt(node.Parent != null ? node.Parent.ID : -1);
@@ -1435,7 +1436,7 @@ namespace Networking
                 {
                     FolderElement folderElement = (FolderElement)node.relatedElement;
                     buffer.WriteInt(folderElement.id);
-                    Plugin.plugin.logger.Error(folderElement.id + " " + node.ID);
+                    Plugin.logger.Error(folderElement.id + " " + node.ID);
                 }
                 if (layoutElementType == (int)LayoutElementTypes.Text)
                 {
@@ -1490,11 +1491,11 @@ namespace Networking
                 {
                     WriteLayoutNodeData(buffer, child);
                 }
-                Plugin.plugin.logger.Error($"Wrote node: {node.Name} with ID: {node.ID} and Type: {layoutElementType}");
+                Plugin.logger.Error($"Wrote node: {node.Name} with ID: {node.ID} and Type: {layoutElementType}");
             }
             catch (Exception ex)
             {
-                Plugin.plugin.logger.Error($"Error writing layout node data: {ex}");
+                Plugin.logger.Error($"Error writing layout node data: {ex}");
             }   
         }
         
@@ -1523,7 +1524,7 @@ namespace Networking
                 }
                 finally
                 {
-                    Plugin.plugin.logger.Error($"Requesting trade with {targetCharName} on {targetCharWorld}");
+                    Plugin.logger.Error($"Requesting trade with {targetCharName} on {targetCharWorld}");
                 }
             }
         }
@@ -1553,7 +1554,7 @@ namespace Networking
                             buffer.WriteInt(layout.tradeSlotContents[i].subtype);
                             buffer.WriteInt(layout.tradeSlotContents[i].iconID);
                             buffer.WriteInt(layout.tradeSlotContents[i].quality);
-                            Plugin.plugin.logger.Error($"Trade Slot {i}: {layout.tradeSlotContents[i].name}");
+                            Plugin.logger.Error($"Trade Slot {i}: {layout.tradeSlotContents[i].name}");
                         }
                         for(int i = 0; i < layout.traderSlotContents.Count; i++)
                         {
@@ -1563,7 +1564,7 @@ namespace Networking
                             buffer.WriteInt(layout.traderSlotContents[i].subtype);
                             buffer.WriteInt(layout.traderSlotContents[i].iconID);
                             buffer.WriteInt(layout.traderSlotContents[i].quality);
-                            Plugin.plugin.logger.Error($"Trader Slot {i}: {layout.traderSlotContents[i].name}");
+                            Plugin.logger.Error($"Trader Slot {i}: {layout.traderSlotContents[i].name}");
                         }
                   
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -1591,13 +1592,13 @@ namespace Networking
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(tabID);
                         buffer.WriteInt(index);
-                        Plugin.plugin.logger.Error("Index=" + index);
+                        Plugin.logger.Error("Index=" + index);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendInventorySelection: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendInventorySelection: " + ex.ToString());
                 }
             }
         }
@@ -1624,7 +1625,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendInventorySelection: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendInventorySelection: " + ex.ToString());
                 }
             }
         }
@@ -1648,7 +1649,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SendInventoryTargetSelection: " + ex.ToString());
+                    Plugin.logger.Error("Error in SendInventoryTargetSelection: " + ex.ToString());
                 }
             }
         }
@@ -1721,7 +1722,7 @@ namespace Networking
                             {
                                 buffer.WriteInt(rel.Slot.Value.x);
                                 buffer.WriteInt(rel.Slot.Value.y);
-                                Plugin.plugin.logger.Error($"[PreSend] Slot: {rel.Slot.Value.x}, {rel.Slot.Value.y}");
+                                Plugin.logger.Error($"[PreSend] Slot: {rel.Slot.Value.x}, {rel.Slot.Value.y}");
                             }
 
                             // Serialize Links
@@ -1743,7 +1744,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
                 }
             }
         }
@@ -1772,18 +1773,39 @@ namespace Networking
                             buffer.WriteInt(item.iconID);
                             buffer.WriteInt(item.slot);
                             buffer.WriteInt(item.quality);
-                            Plugin.plugin.logger.Error($"Inventory Slot {item.slot}: {item.name}");
+                            Plugin.logger.Error($"Inventory Slot {item.slot}: {item.name}");
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
                 }
             }
         }
 
+        public static async void FetchQuestsInMap()
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.ReceiveConnectedPlayersRequest);
+                        buffer.WriteString(plugin.username);
+                        buffer.WriteString(plugin.password);
+                    
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.logger.Error("Error in Fetching Connected Players: " + ex.ToString());
+                }
+            }
+        }
         internal static async void SendTabReorder(int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
         {
             if (ClientTCP.IsConnected())
@@ -1809,7 +1831,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
+                    Plugin.logger.Error("Error in SubmitTreeLayout: " + ex.ToString());
                 }
             }
         }
@@ -1837,7 +1859,7 @@ await ClientTCP.SendDataAsync(buffer.ToArray());
 }
 catch (Exception ex)
 {
-plugin.logger.Error("Error in SendTreeData: " + ex.ToString());
+Plugin.logger.Error("Error in SendTreeData: " + ex.ToString());
 }
 }
 }

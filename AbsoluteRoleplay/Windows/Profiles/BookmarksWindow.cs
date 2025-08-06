@@ -1,39 +1,20 @@
-using Dalamud.Interface.Colors;
-using Dalamud.Interface;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
-using OtterGui.Raii;
-using OtterGui;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using Dalamud.Interface.GameFonts;
-using Dalamud.Game.Gui.Dtr;
-using Microsoft.VisualBasic;
 using Networking;
-using FFXIVClientStructs.FFXIV.Client.Graphics.Scene;
-using FFXIVClientStructs.Havok;
-using System.Text.RegularExpressions;
-using Dalamud.Game.ClientState.Objects.SubKinds;
-using Dalamud.Game.ClientState.Objects;
-using Dalamud.Interface.Utility;
-using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class BookmarksWindow : Window, IDisposable
     {
         private Plugin plugin;
-        private IDalamudPluginInterface pg;
         public static bool DisableBookmarkSelection = false;
         internal static List<Bookmark> profileList = new List<Bookmark>();
 
-        public BookmarksWindow(Plugin plugin) : base(
+        public BookmarksWindow() : base(
        "PROFILE LIST", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -41,7 +22,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 MinimumSize = new Vector2(300, 300),
                 MaximumSize = new Vector2(800, 800)
             };
-            this.plugin = plugin;
         }
         public override void Draw()
         {
@@ -106,7 +86,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                plugin.logger.Error("BookmarksWindow Draw Error: " + ex.Message);
+                Plugin.logger.Error("BookmarksWindow Draw Error: " + ex.Message);
 
             }
         }
