@@ -42,18 +42,18 @@ namespace AbsoluteRoleplay.Windows
                 _fileDialogManager.Draw();
                 if (ChangeDataPath)
                 {
-                    Logger.Error("Dialog Opening");
+                    Plugin.PluginLog.Error("Dialog Opening");
                     _fileDialogManager.OpenFolderDialog("Select Data Save Path", (b, path) =>
                     {
                         if(path != null && b)
                         {
                             Plugin.plugin.Configuration.dataSavePath = path;
                             Plugin.plugin.Configuration.Save();
-                            Logger.Error($"Data save path changed to: {path}");
+                            Plugin.PluginLog.Error($"Data save path changed to: {path}");
                         }
                         else
                         {
-                            Logger.Error("Data save path change cancelled.");
+                            Plugin.PluginLog.Error("Data save path change cancelled.");
                         }
                     });
                     ChangeDataPath = false; // Prevent repeated dialog opening
@@ -69,11 +69,6 @@ namespace AbsoluteRoleplay.Windows
 
                 if (ImGui.BeginTabItem("General"))
                 {
-                    if(ImGui.Checkbox("Show ARP Compass", ref showCompass))
-                    {
-                        Plugin.plugin.Configuration.showCompass = showCompass;
-                        Plugin.plugin.Configuration.Save();
-                    }
                     if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
                     {
                         Plugin.plugin.Configuration.showKofi = showKofi;
@@ -94,6 +89,18 @@ namespace AbsoluteRoleplay.Windows
                 }
                 if (ImGui.BeginTabItem("Data"))
                 {
+                    bool autoBackup = Plugin.plugin.Configuration.AutobackupEnabled;
+                    if(ImGui.Checkbox("##AutoBackup", ref autoBackup))
+                    {
+                        Plugin.plugin.Configuration.AutobackupEnabled = autoBackup;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                    if(ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Enable or disable automatic local backup. Disabling will save you disk space but possibly result in data loss. \n (Your data is still stored on the server.) ");
+                    }
+                    ImGui.SameLine();
+                    ImGui.Text("Enable Auto Backup");
                     string customPath = Plugin.plugin.Configuration.dataSavePath ?? string.Empty;
                     ImGui.Text("Auto Backup Dir:");
                     ImGui.SameLine();                    
@@ -231,7 +238,7 @@ namespace AbsoluteRoleplay.Windows
             }
             catch (Exception ex)
             {
-                Logger.Error("OptionsWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Error("OptionsWindow Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

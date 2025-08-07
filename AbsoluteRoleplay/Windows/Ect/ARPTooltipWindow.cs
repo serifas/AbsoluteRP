@@ -43,6 +43,7 @@ namespace AbsoluteRoleplay.Windows.Ect
                 MinimumSize = new Vector2(50, 50),
                 MaximumSize = new Vector2(300, 1000)
             };
+            config = Plugin.plugin.Configuration;
 
         }
 
@@ -58,19 +59,20 @@ namespace AbsoluteRoleplay.Windows.Ect
                 if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Age, 400);
                 if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT:  "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Height, 400);
                 if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Weight, 400);
-                if (config.tooltip_ShowCustomDescriptors)
+                if (config.tooltip_ShowCustomDescriptors && descriptors != null)
                 {
                     foreach (descriptor descriptor in descriptors)
                     {
                         ImGui.Spacing();
-                        ImGui.Text(descriptor.name.ToUpper() + ": ");
+                        ImGui.Text(descriptor.name?.ToUpper() + ": ");
                         ImGui.SameLine();
-                        Misc.RenderHtmlColoredTextInline(descriptor.description, 400);
+                        Misc.RenderHtmlColoredTextInline(descriptor.description ?? string.Empty, 400);
                     }
-                }             
+                }
+
                 if (config.tooltip_showAlignment)
                 {
-                    if (hasAlignment == true)
+                    if (hasAlignment && AlignmentImg != null)
                     {
                         ImGui.Text("ALIGNMENT:");
                         ImGui.Image(AlignmentImg.Handle, new Vector2(32, 32));
@@ -78,39 +80,39 @@ namespace AbsoluteRoleplay.Windows.Ect
                         Misc.RenderHtmlColoredTextInline(UI.AlignmentName(profile.Alignment), 400);
                     }
                 }
+
                 if (config.tooltip_showPersonalityTraits)
                 {
-                    if (showPersonalities == true)
+                    if (showPersonalities)
                     {
                         ImGui.Text("TRAITS:");
-                        if (showPersonality1 == true)
+                        if (showPersonality1 && personality_1Img != null)
                         {
                             ImGui.Image(personality_1Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_1), 400);
                         }
-                        if (showPersonality2 == true)
+                        if (showPersonality2 && personality_2Img != null)
                         {
                             ImGui.Image(personality_2Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_2), 400);
                         }
-                        if (showPersonality3 == true)
+                        if (showPersonality3 && personality_3Img != null)
                         {
                             ImGui.Image(personality_3Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
                             Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_3), 400);
                         }
-
-
                     }
-                    if (config.tooltip_showCustomTraits)
+                    if (config.tooltip_showCustomTraits && personalities != null)
                     {
                         foreach (trait personality in personalities)
                         {
-                            ImGui.Image(personality.icon.icon.Handle, new Vector2(32, 42));
+                            if (personality?.icon?.icon != null)
+                                ImGui.Image(personality.icon.icon.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            Misc.RenderHtmlColoredTextInline(personality.name, 400);
+                            Misc.RenderHtmlColoredTextInline(personality.name ?? string.Empty, 400);
                         }
                     }
                 }
@@ -131,7 +133,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Logger.Error("ARPTooltipWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Error("ARPTooltipWindow Draw Error: " + ex.Message);
             }
         }
 
@@ -159,7 +161,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Logger.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
+                Plugin.PluginLog.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
             }
         }
 

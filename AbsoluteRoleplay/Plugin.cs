@@ -27,6 +27,7 @@ using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina;
 using Networking;
+using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
 //using AbsoluteRoleplay.Windows.Chat;
@@ -73,8 +74,9 @@ namespace AbsoluteRoleplay
         [PluginService] internal static IClientState ClientState { get; private set; } = null;
         [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
         [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
-        [PluginService] internal static IChatGui chatgui { get; private set; } = null; 
+        [PluginService] internal static IChatGui chatgui { get; private set; } = null;
         [PluginService] internal static IDtrBar dtrBar { get; private set; } = null!;
+        [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -104,7 +106,7 @@ namespace AbsoluteRoleplay
         private TradeWindow TradeWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
-        //logger for printing errors and such
+        //PluginLog for printing errors and such
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -152,6 +154,7 @@ namespace AbsoluteRoleplay
             NotesWindow = new NotesWindow();
             ListingWindow = new ListingsWindow();
             TradeWindow = new TradeWindow();
+
             Configuration.Initialize(PluginInterface);
 
             if (string.IsNullOrEmpty(Configuration.dataSavePath))
@@ -216,23 +219,23 @@ namespace AbsoluteRoleplay
                 }
                 else
                 {
-                    Logger.Error($"Failed to parse version from response: {versionText}");
+                    PluginLog.Error($"Failed to parse version from response: {versionText}");
                     return new Version(0, 0, 0, 0); // Default version
                 }
             }
             catch (TaskCanceledException)
             {
-                Logger.Error("Request timed out while fetching the online version.");
+                PluginLog.Error("Request timed out while fetching the online version.");
                 return new Version(0, 0, 0, 0); // Prevents crashes due to timeouts
             }
             catch (HttpRequestException ex)
             {
-                Logger.Error($"HTTP error while fetching version: {ex.Message}");
+                PluginLog.Error($"HTTP error while fetching version: {ex.Message}");
                 return new Version(0, 0, 0, 0);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Unexpected error in GetOnlineVersionAsync: {ex}");
+                PluginLog.Error($"Unexpected error in GetOnlineVersionAsync: {ex}");
                 return new Version(0, 0, 0, 0);
             }
         }
@@ -409,7 +412,7 @@ namespace AbsoluteRoleplay
             e.SetObserved();
             Framework.RunOnFrameworkThread(() =>
             {
-                Logger.Error("Exception handled" + e.Exception.Message);
+                PluginLog.Error("Exception handled" + e.Exception.Message);
             });
         }
         public void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -418,11 +421,11 @@ namespace AbsoluteRoleplay
             {
                 if (e.ExceptionObject is Exception ex)
                 {
-                    Logger.Error($"Unhandled exception: {ex}");
+                    PluginLog.Error($"Unhandled exception: {ex}");
                 }
                 else
                 {
-                    Logger.Error($"Unhandled non-Exception object: {e.ExceptionObject}");
+                    PluginLog.Error($"Unhandled non-Exception object: {e.ExceptionObject}");
                 }
             });
         }
@@ -582,7 +585,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                Logger.Error($"IsOnline() exception: {ex}");
+                PluginLog.Error($"IsOnline() exception: {ex}");
             }
             return false;
         }
@@ -594,7 +597,7 @@ namespace AbsoluteRoleplay
                 WindowSystem.Draw();
 
                 // Draw compass overlay if enabled and player is present
-                if (Configuration != null
+               /* if (Configuration != null
                     && Configuration.showCompass
                     && IsOnline())
                 {
@@ -628,10 +631,11 @@ namespace AbsoluteRoleplay
 
                     ImGui.End();
                 }
+               */
             }
             catch (Exception ex)
             {
-                Logger.Error($"Exception in DrawUI: {ex}");
+                PluginLog.Error($"Exception in DrawUI: {ex}");
             }
         }
         public async System.Threading.Tasks.Task LoadWindow(Window window, bool Toggle)
@@ -642,13 +646,13 @@ namespace AbsoluteRoleplay
             }
             if (window == null)
             {
-                Logger.Error("LoadWindow called with a null window.");
+                PluginLog.Error("LoadWindow called with a null window.");
                 return;
             }
 
             if (await IsToSVersionUpdated()) // Now runs asynchronously
             {
-                Logger.Error($"Version matched, loading window: {window}");
+                PluginLog.Error($"Version matched, loading window: {window}");
                 if (Toggle)
                 {
                     window.Toggle();
@@ -660,7 +664,7 @@ namespace AbsoluteRoleplay
             }
             else
             {
-                Logger.Error("Version mismatch, opening Terms of Service window.");
+                PluginLog.Error("Version mismatch, opening Terms of Service window.");
 
                 if (Configuration.TOSVersion == null)
                 {
@@ -677,12 +681,12 @@ namespace AbsoluteRoleplay
         public void ToggleMainUI() => System.Threading.Tasks.Task.Run(() =>
         {
             try { LoadWindow(MainPanel, true).Wait(); }
-            catch (Exception ex) { Logger.Error($"Exception in ToggleMainUI: {ex}"); }
+            catch (Exception ex) { PluginLog.Error($"Exception in ToggleMainUI: {ex}"); }
         });
         public void OpenMainPanel() => System.Threading.Tasks.Task.Run(() =>
         {
             try { LoadWindow(MainPanel, false).Wait(); }
-            catch (Exception ex) { Logger.Error($"Exception in OpenMainPanel: {ex}"); }
+            catch (Exception ex) { PluginLog.Error($"Exception in OpenMainPanel: {ex}"); }
         });
         public void OpenTermsWindow() => TermsWindow.IsOpen = true;
         public void OpenImagePreview() => ImagePreview.IsOpen = true;
@@ -718,7 +722,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                Logger.Error("Error updating status: " + ex.ToString());
+                PluginLog.Error("Error updating status: " + ex.ToString());
             }
         }
 
@@ -728,7 +732,7 @@ namespace AbsoluteRoleplay
             {
                 if (IsOnline())
                 {
-                    Logger.Error("Player is online, attempting to log in.");    
+                    PluginLog.Error("Player is online, attempting to log in.");    
                     username = Configuration.username;
                     password = Configuration.password;
                     // Add a null check here before accessing LocalPlayer properties
@@ -740,52 +744,56 @@ namespace AbsoluteRoleplay
                         DataSender.Login();
                         loginAttempted = true;
                     }
-                    // Increment timer by delta time
-                    fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
-
-                    // Every 60 seconds, call FetchConnectedPlayers
-                    if (fetchQuestsInRangeTimer >= 25f)
-                    {
-                        fetchQuestsInRangeTimer = 0f;
-                        var localPlayer = ClientState.LocalPlayer;
-                        DataSender.FetchQuestsInMap();
-                    }
-
-                    if (firstopen == true && MainPanel.IsOpen == true)
-                    {
-                        firstopen = false;
-                        MainPanel.IsOpen = false; // Close if on first open
-                    }
-
-                    // Get the current target, prioritizing MouseOverTarget if available
-                    var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
-                    if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
-                    {
-                        lockedtarget = true;
-                    }
-                    else
-                    {
-                        lockedtarget = false;
-                    }
-                    // Check if we have a new target by comparing addresses
-                    if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress)
-                    {
-                        if (InCombatLock() || InDutyLock() || InPvpLock()) return;
-
-                        WindowOperations.DrawTooltipInfo(gameObject);
-
-                        lastTargetAddress = gameObject.Address;  // Update to the new target's address
-                    }
-                    // If there's no target and a tooltip was open, close it
-                    else if (currentTarget == null || currentTarget.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player && TooltipWindow.IsOpen)
-                    {
-                        TooltipWindow.IsOpen = false;
-                        lastTargetAddress = IntPtr.Zero;  // Reset the target address when no target
-                    }
+                  
                 }
+            }  // Increment timer by delta time
+
+            // Every 60 seconds, call FetchConnectedPlayers
+            /*   fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+            if (fetchQuestsInRangeTimer >= 25f)
+              {
+                  fetchQuestsInRangeTimer = 0f;
+                  var localPlayer = ClientState.LocalPlayer;
+                  List<IPlayerCharacter> nearbyPlayers = ObjectTable
+                      .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
+                      .Cast<IPlayerCharacter>()
+                      .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
+                      .ToList();
+              }
+             */
+            if (firstopen == true && MainPanel.IsOpen == true)
+            {
+                firstopen = false;
+                MainPanel.IsOpen = false; // Close if on first open
             }
-          
-                     
+
+            // Get the current target, prioritizing MouseOverTarget if available
+            var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
+            if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
+            {
+                lockedtarget = true;
+            }
+            else
+            {
+                lockedtarget = false;
+            }
+            // Check if we have a new target by comparing addresses
+            if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress)
+            {
+                if (InCombatLock() || InDutyLock() || InPvpLock()) return;
+
+                WindowOperations.DrawTooltipInfo(gameObject);
+
+                lastTargetAddress = gameObject.Address;  // Update to the new target's address
+            }
+            // If there's no target and a tooltip was open, close it
+            else if (currentTarget == null || currentTarget.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player && TooltipWindow.IsOpen)
+            {
+                TooltipWindow.IsOpen = false;
+                lastTargetAddress = IntPtr.Zero;  // Reset the target address when no target
+            }
+
+
         }      
         public bool InDutyLock()
         {

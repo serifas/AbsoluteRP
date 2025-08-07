@@ -1,20 +1,10 @@
 using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
-using System.Linq;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 using static AbsoluteRoleplay.UI;
-using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static TreeLayout;
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
@@ -260,7 +250,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 rel.Name = editingName;
                                 rel.Description = editingDescription;
                                 rel.Slot = SlotEdit.Value;
-                                Logger.Error($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
+                                Plugin.PluginLog.Error($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
 
                                 // Remove any existing relationship at this slot (avoid duplicates)
                                 layout.relationships.RemoveAll(r => r.Slot.HasValue && r.Slot.Value == SlotEdit.Value);
@@ -362,7 +352,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
                         if (isEditing)
                         {
-                            Misc.RenderHtmlElements(editingName, false, true, true, true, null,true);
+                            Misc.RenderHtmlElements(editingName, false, true, true, true, null, true);
                             ImGui.Separator();
                             Misc.RenderHtmlElements(editingDescription, false, true, true, true, null, true);
                         }

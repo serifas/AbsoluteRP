@@ -30,7 +30,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(1200, 950)
             };
-            Logger.Error(capturedAuthor.ToString());          
+            Plugin.PluginLog.Error(capturedAuthor.ToString());          
         }
         public override void Draw()
         {
@@ -72,7 +72,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
             }
             catch (Exception ex)
             {
-                Logger.Error("ModPanel Draw Error: " + ex.Message);
+                Plugin.PluginLog.Error("ModPanel Draw Error: " + ex.Message);
                 status = "An error occurred while processing your request.";
                 statusColor = new Vector4(1, 0, 0, 1); // Red color for error
             }

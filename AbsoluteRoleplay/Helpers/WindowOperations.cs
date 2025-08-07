@@ -16,7 +16,6 @@ namespace AbsoluteRoleplay.Helpers
     internal class WindowOperations
     {
         public static int? selectedTreeIconId = null;
-        public static Plugin Plugin;
         public static int maxIconId = 300000;
         public static IDalamudTextureWrap? selectedIcon;
         public static readonly ITextureProvider textureProvider;
@@ -56,7 +55,7 @@ namespace AbsoluteRoleplay.Helpers
 
         public static void DrawTooltipInfo(IGameObject? mouseOverTarget)
         {
-            if (Plugin.Configuration.tooltip_Enabled && !Plugin.ClientState.IsGPosing)
+            if (Plugin.plugin.Configuration.tooltip_Enabled && !Plugin.ClientState.IsGPosing)
             {
                 if (mouseOverTarget.ObjectKind == ObjectKind.Player)
                 {
@@ -74,8 +73,8 @@ namespace AbsoluteRoleplay.Helpers
             float screenWidth = viewport.WorkSize.X;
             float screenHeight = viewport.WorkSize.Y;
 
-            float positionX = Plugin.Configuration.hPos;
-            float positionY = Plugin.Configuration.vPos;
+            float positionX = Plugin.plugin.Configuration.hPos;
+            float positionY = Plugin.plugin.Configuration.vPos;
 
             if (positionX > screenWidth - ImGui.GetWindowSize().X)
                 positionX = screenWidth - ImGui.GetWindowSize().X;
@@ -264,7 +263,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 iconsLoaded = true;
                 isLoadingIcons = false;
-                Logger.Error("Finished loading all icons.");
+                Plugin.PluginLog.Error("Finished loading all icons.");
             }
             else
             {
@@ -334,22 +333,22 @@ namespace AbsoluteRoleplay.Helpers
                                 }
                                 else
                                 {
-                                    Logger.Error($"Failed to load texture for status icon {statusIconID}. File path was invalid or texture loading failed.");
+                                    Plugin.PluginLog.Error($"Failed to load texture for status icon {statusIconID}. File path was invalid or texture loading failed.");
                                 }
                             }
                             else
                             {
-                                Logger.Error($"Icon not found for Status ID {statusIcon.Value.RowId} with Icon ID {statusIconID}. Skipping.");
+                                Plugin.PluginLog.Error($"Icon not found for Status ID {statusIcon.Value.RowId} with Icon ID {statusIconID}. Skipping.");
                             }
                         }
                         else
                         {
-                            Logger.Error($"Invalid status icon ID {statusIconID} at Status ID {statusIcon.Value.RowId}. Skipping.");
+                            Plugin.PluginLog.Error($"Invalid status icon ID {statusIconID} at Status ID {statusIcon.Value.RowId}. Skipping.");
                         }
                     }
                     else
                     {
-                        Logger.Error($"No valid status row found for icon ID {nextIconToLoad}. Skipping.");
+                        Plugin.PluginLog.Error($"No valid status row found for icon ID {nextIconToLoad}. Skipping.");
                     }
                 }
                 catch (Exception ex)
@@ -365,7 +364,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 iconsLoaded = true;
                 isLoadingIcons = false;
-                Logger.Error("Finished loading all status icons.");
+                Plugin.PluginLog.Error("Finished loading all status icons.");
             }
         }
 
@@ -376,7 +375,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (string.IsNullOrEmpty(gameTexturePath))
                 {
-                    Logger.Error("Game texture path is null or empty.");
+                    Plugin.PluginLog.Error("Game texture path is null or empty.");
                     return null;
                 }
 
@@ -384,11 +383,11 @@ namespace AbsoluteRoleplay.Helpers
                 var texFile = Plugin.DataManager.GetFile<TexFile>(gameTexturePath);
                 if (texFile == null)
                 {
-                    Logger.Error($"TexFile not found for path: {gameTexturePath}");
+                    Plugin.PluginLog.Error($"TexFile not found for path: {gameTexturePath}");
                     return null;
                 }
 
-                Logger.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
+                Plugin.PluginLog.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
 
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
@@ -400,7 +399,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
+                Plugin.PluginLog.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
                 return null;
             }
         }
@@ -681,7 +680,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"RenderStatusIconAsync: Failed to load status effect icon for ID {statusEffectID}. Exception: {ex}");
+                Plugin.PluginLog.Error($"RenderStatusIconAsync: Failed to load status effect icon for ID {statusEffectID}. Exception: {ex}");
             }
 
             return UI.UICommonImage(UI.CommonImageTypes.blank);
@@ -699,7 +698,7 @@ namespace AbsoluteRoleplay.Helpers
                 catch (Exception ex)
                 {
                     // Optionally log the exception, or ignore
-                    Example: Logger.Error($"Dispose failed: {ex}");
+                    Example: Plugin.PluginLog.Error($"Dispose failed: {ex}");
                 }
             }
             // If obj is null or not IDisposable, do nothing (safe)
@@ -741,7 +740,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"RenderIconAsync: Failed to load icon for ID {iconID}. Exception: {ex}");
+                Plugin.PluginLog.Error($"RenderIconAsync: Failed to load icon for ID {iconID}. Exception: {ex}");
             }
 
             return UI.UICommonImage(UI.CommonImageTypes.blank);
@@ -765,25 +764,25 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (statusEffectID <= 0)
                 {
-                    Logger.Error("Invalid status effect ID, returning blank icon.");
+                    Plugin.PluginLog.Error("Invalid status effect ID, returning blank icon.");
                     return UI.UICommonImage(UI.CommonImageTypes.blank);
                 }
 
                 var statusEffect = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Status>()?.GetRow((uint)statusEffectID);
                 if (statusEffect == null )
                 {
-                    Logger.Error($"No status effect found for ID {statusEffectID}, returning blank icon.");
+                    Plugin.PluginLog.Error($"No status effect found for ID {statusEffectID}, returning blank icon.");
                     return UI.UICommonImage(UI.CommonImageTypes.blank);
                 }
 
-                Logger.Error($"Loading status effect icon for ID {statusEffectID} with Icon ID: {statusEffect.Value.Icon}");
+                Plugin.PluginLog.Error($"Loading status effect icon for ID {statusEffectID} with Icon ID: {statusEffect.Value.Icon}");
 
                 var statusIconID = (uint)statusEffect.Value.Icon;
                 var icon = Plugin.DataManager.GameData.GetIcon(statusIconID);
 
                 if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
                 {
-                    Logger.Error($"Loading icon from path: {icon.FilePath}");
+                    Plugin.PluginLog.Error($"Loading icon from path: {icon.FilePath}");
                     var texture = await LoadTextureAsync(icon.FilePath);
                     if (texture != null && texture.Handle != IntPtr.Zero)
                     {
@@ -792,17 +791,17 @@ namespace AbsoluteRoleplay.Helpers
                     }
                     else
                     {
-                        Logger.Error($"Failed to load texture for status effect icon {statusIconID}. FilePath: {icon.FilePath}");
+                        Plugin.PluginLog.Error($"Failed to load texture for status effect icon {statusIconID}. FilePath: {icon.FilePath}");
                     }
                 }
                 else
                 {
-                    Logger.Error($"Invalid icon data for status effect ID {statusEffectID}. Icon ID: {statusIconID}");
+                    Plugin.PluginLog.Error($"Invalid icon data for status effect ID {statusEffectID}. Icon ID: {statusIconID}");
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"RenderStatusEffectIconAsync: Failed to load status effect icon for ID {statusEffectID}. Exception: {ex.Message}");
+                Plugin.PluginLog.Error($"RenderStatusEffectIconAsync: Failed to load status effect icon for ID {statusEffectID}. Exception: {ex.Message}");
             }
 
             return UI.UICommonImage(UI.CommonImageTypes.blank);

@@ -32,7 +32,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 }
             }catch(Exception ex)
             {
-                Logger.Error("InventoryWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Error("InventoryWindow Draw Error: " + ex.Message);
             }
         }
         public static async void DrawInventory(int index, string uniqueID, InventoryLayout layout)

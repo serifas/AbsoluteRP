@@ -1,9 +1,13 @@
+using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using Networking;
+using System;
+using System.Collections.Generic;
 using System.Numerics;
-using System.Runtime.InteropServices;
+
 namespace AbsoluteRoleplay.Helpers
 {
     internal class ItemGrid
@@ -18,6 +22,12 @@ namespace AbsoluteRoleplay.Helpers
         private static readonly Dictionary<int, IDalamudTextureWrap> IconCache = new();
         private static readonly HashSet<int> LoadingIcons = new();
 
+        // Drag state
+        public static int? dragSourceSlot = null;
+        public static Dictionary<int, ItemDefinition> dragSourceDict = null;
+        public static int? dragTargetSlot = null;
+        public static Dictionary<int, ItemDefinition> dragTargetDict = null;
+        public static bool isDragging = false;
         private static async Task PreloadIconAsync(Plugin plugin, int iconID)
         {
             if (IconCache.ContainsKey(iconID) || LoadingIcons.Contains(iconID))
@@ -29,44 +39,18 @@ namespace AbsoluteRoleplay.Helpers
                 IconCache[iconID] = texture;
             LoadingIcons.Remove(iconID);
         }
-        public static void DrawGrid(Plugin plugin, InventoryLayout layout, string targetPlayerName, string targetPlayerWorld, bool isTrade)
+        public static unsafe void DrawGrid(Plugin plugin, InventoryLayout layout, string targetPlayerName, string targetPlayerWorld, bool isTrade)
         {
-            int hoveredSlotIndex = -1;
-            ItemDefinition hoveredItem = null;
-            bool hoveredIsTrade = false;
-
-            // Only reorder inventorySlotContents if needed (optional, can be removed if not required)
-            if (layout.inventorySlotContents.Count > 0)
-            {
-                var items = layout.inventorySlotContents.Values.ToList();
-                layout.inventorySlotContents.Clear();
-                foreach (var item in items)
-                {
-                    layout.inventorySlotContents[item.slot] = item;
-                }
-            }
-
-            // --- Calculate dynamic cell size for grid ---
-            float windowWidth = Dalamud.Bindings.ImGui.ImGui.GetWindowWidth();
-            float windowHeight =Dalamud.Bindings.ImGui.ImGui.GetWindowHeight();
-
-            // Reserve some space for labels/buttons above the grid
-            float reservedHeight = 0;
-            if (isTrade)
-                reservedHeight = 180; // Adjust as needed for trade UI
-            else
-                reservedHeight = 40; // Adjust as needed for inventory-only UI
-
-            // Calculate the available area for the grid
-            float availableWidth = windowWidth - 20; // Padding
+            const int TradeGridWidth = 10;
+            float windowWidth = ImGui.GetWindowWidth();
+            float windowHeight = ImGui.GetWindowHeight();
+            float reservedHeight = isTrade ? 180 : 40;
+            float availableWidth = windowWidth - 20;
             float availableHeight = windowHeight - reservedHeight;
-
-            // Calculate the cell size so the grid fits and remains square
             float cellSize = MathF.Min(availableWidth / GridSize, availableHeight / GridSize);
             Vector2 iconCellSize = new Vector2(cellSize, cellSize);
 
-            // --- SPLIT TRADE GRID (TOP) ---
-            const int TradeGridWidth = 10;
+            // --- TRADE GRID (TOP) ---
             if (isTrade)
             {
                 if (layout.tradeSlotContents == null)
@@ -74,25 +58,23 @@ namespace AbsoluteRoleplay.Helpers
                 if (layout.traderSlotContents == null)
                     layout.traderSlotContents = new Dictionary<int, ItemDefinition>();
 
-                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
-                Dalamud.Bindings.ImGui.ImGui.Text("Sending");
-                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
+                ImGui.Dummy(new Vector2(0, 10));
+                ImGui.Text("Sending");
+                ImGui.Dummy(new Vector2(0, 10));
 
-                // --- "Sending" grid (left) ---
-                Dalamud.Bindings.ImGui.ImGui.BeginGroup();
+                ImGui.BeginGroup();
                 for (int x = 0; x < TradeGridWidth; x++)
                 {
                     int slotIndex = x;
+                    ImGui.PushID($"send_{slotIndex}");
+                    ImGui.BeginGroup();
 
-                    Dalamud.Bindings.ImGui.ImGui.PushID($"send_{slotIndex}");
-                    Dalamud.Bindings.ImGui.ImGui.BeginGroup();
+                    Vector2 cellPos = ImGui.GetCursorScreenPos();
 
-                    Vector2 cellPos = Dalamud.Bindings.ImGui.ImGui.GetCursorScreenPos();
-
-                    Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRectFilled(
+                    ImGui.GetWindowDrawList().AddRectFilled(
                         cellPos,
                         cellPos + iconCellSize,
-                        Dalamud.Bindings.ImGui.ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.5f, 1.0f))
+                        ImGui.GetColorU32(new Vector4(0.2f, 0.2f, 0.5f, 1.0f))
                     );
 
                     bool hasTradeItem = layout.tradeSlotContents.ContainsKey(slotIndex) && layout.tradeSlotContents[slotIndex].name != string.Empty;
@@ -100,102 +82,90 @@ namespace AbsoluteRoleplay.Helpers
                     {
                         int iconID = layout.tradeSlotContents[slotIndex].iconID;
                         if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
-                        {
-                            Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
-                        }
+                            ImGui.Image(texture.Handle, iconCellSize);
                         else
                         {
-                            Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
                     }
 
-                    Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
-                    Dalamud.Bindings.ImGui.ImGui.InvisibleButton($"##send_slot{slotIndex}", iconCellSize);
+                    ImGui.SetCursorScreenPos(cellPos);
+                    ImGui.InvisibleButton($"##send_slot{slotIndex}", iconCellSize);
 
-                    // Tooltip hover for trade grid
-                    if (Dalamud.Bindings.ImGui.ImGui.IsItemHovered() && hasTradeItem)
+                    // Tooltip
+                    if (ImGui.IsItemHovered() && hasTradeItem)
                     {
-                        Dalamud.Bindings.ImGui.ImGui.BeginTooltip();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name, 400);
-                        Dalamud.Bindings.ImGui.ImGui.Spacing();
-                        Misc.RenderHtmlElements(layout.traderSlotContents[slotIndex].description, false, true, true, true, null, true);
-                        Dalamud.Bindings.ImGui.ImGui.EndTooltip();
+                        ImGui.BeginTooltip();
+                        Misc.RenderHtmlColoredTextInline(layout.tradeSlotContents[slotIndex].name, 400);
+                        ImGui.Spacing();
+                        Misc.RenderHtmlElements(layout.tradeSlotContents[slotIndex].description, false, true, true, true, null, true);
+                        ImGui.EndTooltip();
                     }
 
                     // Begin drag source for trade slot
-                    if (hasTradeItem && Dalamud.Bindings.ImGui.ImGui.BeginDragDropSource())
+                    if (hasTradeItem && ImGui.BeginDragDropSource())
                     {
-                        unsafe
-                        {
-                            DraggedItemSlot = slotIndex;
-                            DraggedSlotContents = layout.tradeSlotContents;
-                            int payloadData = slotIndex;
-                            ImGui.SetDragDropPayload("SLOT_MOVE", MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref payloadData, 1)), ImGuiCond.Always);
-                        }
-                        Dalamud.Bindings.ImGui.ImGui.Text($"Dragging Trade Slot {slotIndex}");
-                        Dalamud.Bindings.ImGui.ImGui.EndDragDropSource();
+                        DraggedItemSlot = slotIndex;
+                        DraggedSlotContents = layout.tradeSlotContents;
+                        Span<byte> payloadSpan = stackalloc byte[sizeof(int)];
+                        BitConverter.TryWriteBytes(payloadSpan, slotIndex);
+                        ImGui.SetDragDropPayload("SLOT_MOVE", payloadSpan, ImGuiCond.Always);
+                        ImGui.Text($"Dragging Trade Slot {slotIndex}");
+                        ImGui.EndDragDropSource();
                     }
 
                     // Accept drag from inventory
-                    if (Dalamud.Bindings.ImGui.ImGui.BeginDragDropTarget())
+                    if (ImGui.BeginDragDropTarget())
                     {
-                        var payload = Dalamud.Bindings.ImGui.ImGui.AcceptDragDropPayload("SLOT_MOVE");
-                        unsafe
+                        var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
+                        if (!payload.IsNull && payload.Data != ImGuiPayloadPtr.Null && DraggedItemSlot.HasValue && DraggedSlotContents != null)
                         {
-                            if (payload.IsNull && DraggedItemSlot.HasValue && DraggedSlotContents != null)
+                            Span<byte> buffer = new Span<byte>((void*)payload.Data, sizeof(int));
+                            int sourceSlotIndex = BitConverter.ToInt32(buffer);
+                            if (DraggedSlotContents.ContainsKey(sourceSlotIndex))
                             {
-                                int sourceSlotIndex = *(int*)payload.Data;
-                                if (DraggedSlotContents.ContainsKey(sourceSlotIndex))
+                                var draggedItem = DraggedSlotContents[sourceSlotIndex];
+                                if (DraggedSlotContents == layout.inventorySlotContents)
                                 {
-                                    var draggedItem = DraggedSlotContents[sourceSlotIndex];
-
-                                    // Only allow from inventory to trade
-                                    if (DraggedSlotContents == layout.inventorySlotContents)
+                                    bool tradeChanged = false;
+                                    if (hasTradeItem)
                                     {
-                                        bool tradeChanged = false;
-                                        // If the target trade slot has an item, swap them
-                                        if (hasTradeItem)
-                                        {
-                                            var targetItem = layout.tradeSlotContents[slotIndex];
-                                            layout.tradeSlotContents[slotIndex] = draggedItem;
-                                            layout.tradeSlotContents[slotIndex].slot = slotIndex;
-                                            layout.inventorySlotContents[sourceSlotIndex] = targetItem;
-                                            layout.inventorySlotContents[sourceSlotIndex].slot = sourceSlotIndex;
-                                            tradeChanged = true;
-                                        }
-                                        else
-                                        {
-                                            // Normal move if the target slot is empty
-                                            layout.tradeSlotContents[slotIndex] = draggedItem;
-                                            layout.tradeSlotContents[slotIndex].slot = slotIndex;
-                                            layout.inventorySlotContents.Remove(sourceSlotIndex);
-                                            tradeChanged = true;
-                                        }
-                                        if (tradeChanged)
-                                        {
-                                            DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
-                                        }
+                                        var targetItem = layout.tradeSlotContents[slotIndex];
+                                        layout.tradeSlotContents[slotIndex] = draggedItem;
+                                        layout.tradeSlotContents[slotIndex].slot = slotIndex;
+                                        layout.inventorySlotContents[sourceSlotIndex] = targetItem;
+                                        layout.inventorySlotContents[sourceSlotIndex].slot = sourceSlotIndex;
+                                        tradeChanged = true;
                                     }
-
-                                    DraggedItemSlot = null;
-                                    DraggedSlotContents = null;
+                                    else
+                                    {
+                                        layout.tradeSlotContents[slotIndex] = draggedItem;
+                                        layout.tradeSlotContents[slotIndex].slot = slotIndex;
+                                        layout.inventorySlotContents.Remove(sourceSlotIndex);
+                                        tradeChanged = true;
+                                    }
+                                    if (tradeChanged)
+                                    {
+                                        DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
+                                    }
                                 }
+                                DraggedItemSlot = null;
+                                DraggedSlotContents = null;
                             }
                         }
-                        Dalamud.Bindings.ImGui.ImGui.EndDragDropTarget();
+                        ImGui.EndDragDropTarget();
                     }
 
-                    // --- Right-click context menu for trade slot (only in trade mode) ---
-                    if(Dalamud.Bindings.ImGui.ImGui.IsItemClicked(Dalamud.Bindings.ImGui.ImGuiMouseButton.Right))
+                    // Context menu for trade slot
+                    if (isTrade && hasTradeItem && ImGui.IsItemClicked(ImGuiMouseButton.Right))
                     {
-                        Dalamud.Bindings.ImGui.ImGui.OpenPopup($"##tradeContextMenu{slotIndex}");
+                        ImGui.OpenPopup($"##tradeContextMenu{slotIndex}");
                     }
-                    if (isTrade && Dalamud.Bindings.ImGui.ImGui.BeginPopup($"##tradeContextMenu{slotIndex}"))
+                    if (isTrade && ImGui.BeginPopup($"##tradeContextMenu{slotIndex}"))
                     {
-                        if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Remove from Trade"))
+                        if (ImGui.MenuItem("Remove from Trade"))
                         {
-                            // Find first available inventory slot
                             int firstEmpty = -1;
                             for (int i = 0; i < TotalSlots; i++)
                             {
@@ -214,33 +184,33 @@ namespace AbsoluteRoleplay.Helpers
                                 DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                             }
                         }
-                        Dalamud.Bindings.ImGui.ImGui.EndPopup();
+                        ImGui.EndPopup();
                     }
 
-                    Dalamud.Bindings.ImGui.ImGui.EndGroup();
-                    Dalamud.Bindings.ImGui.ImGui.PopID();
+                    ImGui.EndGroup();
+                    ImGui.PopID();
 
                     if (x < TradeGridWidth - 1)
-                        Dalamud.Bindings.ImGui.ImGui.SameLine();
+                        ImGui.SameLine();
                 }
-                Dalamud.Bindings.ImGui.ImGui.EndGroup();
+                ImGui.EndGroup();
 
-                Dalamud.Bindings.ImGui.ImGui.Text("Receiving");
+                ImGui.Text("Receiving");
 
-                Dalamud.Bindings.ImGui.ImGui.BeginGroup();
+                ImGui.BeginGroup();
                 for (int x = 0; x < TradeGridWidth; x++)
                 {
                     int slotIndex = x;
 
-                    Dalamud.Bindings.ImGui.ImGui.PushID($"recv_{slotIndex}");
-                    Dalamud.Bindings.ImGui.ImGui.BeginGroup();
+                    ImGui.PushID($"recv_{slotIndex}");
+                    ImGui.BeginGroup();
 
-                    Vector2 cellPos = Dalamud.Bindings.ImGui.ImGui.GetCursorScreenPos();
+                    Vector2 cellPos = ImGui.GetCursorScreenPos();
 
-                    Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRect(
+                    ImGui.GetWindowDrawList().AddRect(
                         cellPos,
                         cellPos + iconCellSize,
-                        Dalamud.Bindings.ImGui.ImGui.GetColorU32(new Vector4(0.0f, 0.5f, 0.2f, 1.0f)), 2.0f // Border thickness
+                        ImGui.GetColorU32(new Vector4(0.0f, 0.5f, 0.2f, 1.0f)), 2.0f
                     );
 
                     bool hasRecvItem = layout.traderSlotContents != null &&
@@ -250,128 +220,104 @@ namespace AbsoluteRoleplay.Helpers
                     {
                         int iconID = layout.traderSlotContents[slotIndex].iconID;
                         if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
-                        {
-                            Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
-                        }
+                            ImGui.Image(texture.Handle, iconCellSize);
                         else
                         {
-                            Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
                     }
 
-                    Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
-                    Dalamud.Bindings.ImGui.ImGui.InvisibleButton($"##recv_slot{slotIndex}", iconCellSize);
+                    ImGui.SetCursorScreenPos(cellPos);
+                    ImGui.InvisibleButton($"##recv_slot{slotIndex}", iconCellSize);
 
-                    // Tooltip hover for receiving grid
-                    if (Dalamud.Bindings.ImGui.ImGui.IsItemHovered() && hasRecvItem)
+                    if (ImGui.IsItemHovered() && hasRecvItem)
                     {
-                        Dalamud.Bindings.ImGui.ImGui.BeginTooltip();
-                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name,  400);
-                        Dalamud.Bindings.ImGui.ImGui.Spacing();
+                        ImGui.BeginTooltip();
+                        Misc.RenderHtmlColoredTextInline(layout.traderSlotContents[slotIndex].name, 400);
+                        ImGui.Spacing();
                         Misc.RenderHtmlElements(layout.traderSlotContents[slotIndex].description, false, true, true, true, null, true);
-                        Dalamud.Bindings.ImGui.ImGui.EndTooltip();
+                        ImGui.EndTooltip();
                     }
 
-                    Dalamud.Bindings.ImGui.ImGui.EndGroup();
-                    Dalamud.Bindings.ImGui.ImGui.PopID();
+                    ImGui.EndGroup();
+                    ImGui.PopID();
 
                     if (x < TradeGridWidth - 1)
-                        Dalamud.Bindings.ImGui.ImGui.SameLine();
+                        ImGui.SameLine();
                 }
-                Dalamud.Bindings.ImGui.ImGui.EndGroup();
+                ImGui.EndGroup();
 
-                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
-                Dalamud.Bindings.ImGui.ImGui.Text("Inventory");
-                Dalamud.Bindings.ImGui.ImGui.Dummy(new Vector2(0, 10));
+                ImGui.Dummy(new Vector2(0, 10));
+                ImGui.Text("Inventory");
+                ImGui.Dummy(new Vector2(0, 10));
             }
 
             // --- INVENTORY GRID (BOTTOM) ---
-            // Always render inventory grid, regardless of isTrade
             for (int y = 0; y < GridSize; y++)
             {
                 for (int x = 0; x < GridSize; x++)
                 {
                     int slotIndex = y * GridSize + x;
 
-                    Dalamud.Bindings.ImGui.ImGui.PushID(slotIndex);
-                    Dalamud.Bindings.ImGui.ImGui.BeginGroup();
+                    ImGui.PushID(slotIndex);
+                    ImGui.BeginGroup();
 
-                    Vector2 cellPos = Dalamud.Bindings.ImGui.ImGui.GetCursorScreenPos();
+                    Vector2 cellPos = ImGui.GetCursorScreenPos();
 
-                    Dalamud.Bindings.ImGui.ImGui.GetWindowDrawList().AddRectFilled(
+                    ImGui.GetWindowDrawList().AddRectFilled(
                         cellPos,
                         cellPos + iconCellSize,
-                        Dalamud.Bindings.ImGui.ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f))
+                        ImGui.GetColorU32(new Vector4(0.3f, 0.3f, 0.3f, 1.0f))
                     );
 
                     bool hasInvItem = layout.inventorySlotContents.ContainsKey(slotIndex) && layout.inventorySlotContents[slotIndex].name != string.Empty;
-                    try
+                    if (hasInvItem)
                     {
-                        if (hasInvItem)
-                        {
-                            int iconID = layout.inventorySlotContents[slotIndex].iconID;
-                            if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
-                            {
-                                Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
-                            }
-                            else
-                            {
-                                Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
-                                _ = PreloadIconAsync(plugin, iconID);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
-                    }
-
-                    Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
-
-                    if (Dalamud.Bindings.ImGui.ImGui.InvisibleButton($"##slot{slotIndex}", iconCellSize))
-                    {
-                        // Handle slot click
-                    }
-
-                    // Tooltip hover for inventory grid
-                    if (Dalamud.Bindings.ImGui.ImGui.IsItemHovered() && hasInvItem)
-                    {
-                        Dalamud.Bindings.ImGui.ImGui.BeginTooltip();
-
                         int iconID = layout.inventorySlotContents[slotIndex].iconID;
                         if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
-                        {
-                            Dalamud.Bindings.ImGui.ImGui.Image(texture.Handle, iconCellSize);
-                        }
+                            ImGui.Image(texture.Handle, iconCellSize);
                         else
                         {
-                            Dalamud.Bindings.ImGui.ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
                             _ = PreloadIconAsync(plugin, iconID);
                         }
-
-                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name, 500);
-                        Dalamud.Bindings.ImGui.ImGui.Separator();
-                        Dalamud.Bindings.ImGui.ImGui.Spacing();
-                        Misc.RenderHtmlElements(layout.inventorySlotContents[slotIndex].description, false, true, true, true, null, true);
-                        Dalamud.Bindings.ImGui.ImGui.EndTooltip();
                     }
 
-                    // Context menu for inventory grid
+                    ImGui.SetCursorScreenPos(cellPos);
+                    ImGui.InvisibleButton($"##slot{slotIndex}", iconCellSize);
+
+                    if (ImGui.IsItemHovered() && hasInvItem)
+                    {
+                        ImGui.BeginTooltip();
+                        int iconID = layout.inventorySlotContents[slotIndex].iconID;
+                        if (IconCache.TryGetValue(iconID, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
+                            ImGui.Image(texture.Handle, iconCellSize);
+                        else
+                        {
+                            ImGui.Image(UI.UICommonImage(UI.CommonImageTypes.blankPictureTab).Handle, iconCellSize);
+                            _ = PreloadIconAsync(plugin, iconID);
+                        }
+                        Misc.RenderHtmlColoredTextInline(layout.inventorySlotContents[slotIndex].name, 500);
+                        ImGui.Separator();
+                        ImGui.Spacing();
+                        Misc.RenderHtmlElements(layout.inventorySlotContents[slotIndex].description, false, true, true, true, null, true);
+                        ImGui.EndTooltip();
+                    }
+
                     if (!isTrade)
                     {
-                        
-                        if (Dalamud.Bindings.ImGui.ImGui.IsItemClicked(Dalamud.Bindings.ImGui.ImGuiMouseButton.Right) && hasInvItem)
+                        if (ImGui.IsItemClicked(ImGuiMouseButton.Right) && hasInvItem)
                         {
-                            Dalamud.Bindings.ImGui.ImGui.OpenPopup($"##contextMenu{slotIndex}");
+                            ImGui.OpenPopup($"##contextMenu{slotIndex}");
                         }
-                        if (Dalamud.Bindings.ImGui.ImGui.BeginPopup($"##contextMenu{slotIndex}"))
+                        if (ImGui.BeginPopup($"##contextMenu{slotIndex}"))
                         {
-                            if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Delete"))
+                            if (ImGui.MenuItem("Delete"))
                             {
                                 layout.inventorySlotContents.Remove(slotIndex);
                             }
-                            if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Duplicate"))
+                            if (ImGui.MenuItem("Duplicate"))
                             {
                                 int firstEmptySlotIndex = -1;
                                 for (int i = 0; i < TotalSlots; i++)
@@ -398,16 +344,16 @@ namespace AbsoluteRoleplay.Helpers
                                     iconTexture = itemToDuplicate.iconTexture
                                 };
                             }
-                            Dalamud.Bindings.ImGui.ImGui.EndPopup();
+                            ImGui.EndPopup();
                         }
                     }
-                    else if (isTrade && hasInvItem && Dalamud.Bindings.ImGui.ImGui.IsItemClicked(Dalamud.Bindings.ImGui.ImGuiMouseButton.Right))
+                    else if (isTrade && hasInvItem && ImGui.IsItemClicked(ImGuiMouseButton.Right))
                     {
-                        Dalamud.Bindings.ImGui.ImGui.OpenPopup($"##contextMenu{slotIndex}");
+                        ImGui.OpenPopup($"##contextMenu{slotIndex}");
                     }
-                    if (isTrade && Dalamud.Bindings.ImGui.ImGui.BeginPopup($"##contextMenu{slotIndex}"))
+                    if (isTrade && ImGui.BeginPopup($"##contextMenu{slotIndex}"))
                     {
-                        if (Dalamud.Bindings.ImGui.ImGui.MenuItem("Trade"))
+                        if (ImGui.MenuItem("Trade"))
                         {
                             int firstEmpty = -1;
                             for (int t = 0; t < TradeGridWidth; t++)
@@ -427,97 +373,96 @@ namespace AbsoluteRoleplay.Helpers
                                 DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                             }
                         }
-                        Dalamud.Bindings.ImGui.ImGui.EndPopup();
+                        ImGui.EndPopup();
                     }
 
                     // Begin Drag Source
-                    if (hasInvItem && Dalamud.Bindings.ImGui.ImGui.BeginDragDropSource())
+                    if (hasInvItem && ImGui.BeginDragDropSource())
                     {
                         DraggedItemSlot = slotIndex;
-                        DraggedSlotContents = layout.inventorySlotContents; 
-                        int payloadData = slotIndex;
-                        ImGui.SetDragDropPayload("SLOT_MOVE", MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref payloadData, 1)), ImGuiCond.Always);
-                        Dalamud.Bindings.ImGui.ImGui.Text($"Dragging Slot {slotIndex}");
-                        Dalamud.Bindings.ImGui.ImGui.EndDragDropSource();
+                        DraggedSlotContents = layout.inventorySlotContents;
+                        Span<byte> payloadSpan = stackalloc byte[sizeof(int)];
+                        BitConverter.TryWriteBytes(payloadSpan, slotIndex);
+                        ImGui.SetDragDropPayload("SLOT_MOVE", payloadSpan, ImGuiCond.Always);
+                        ImGui.Text($"Dragging Slot {slotIndex}");
+                        ImGui.EndDragDropSource();
                     }
 
-                    if (Dalamud.Bindings.ImGui.ImGui.BeginDragDropTarget())
+                    if (ImGui.BeginDragDropTarget())
                     {
-                        var payload = Dalamud.Bindings.ImGui.ImGui.AcceptDragDropPayload("SLOT_MOVE");
-                        unsafe
+                        var payload = ImGui.AcceptDragDropPayload("SLOT_MOVE");
+                        if (!payload.IsNull && payload.Data != ImGuiPayloadPtr.Null && DraggedItemSlot.HasValue && DraggedSlotContents != null)
                         {
-                            if (payload.IsNull && DraggedItemSlot.HasValue && DraggedSlotContents != null)
+                            Span<byte> buffer = new Span<byte>((void*)payload.Data, sizeof(int));
+                            int sourceSlotIndex = BitConverter.ToInt32(buffer);
+                            var draggedItem = DraggedSlotContents[sourceSlotIndex];
+
+                            if (DraggedSlotContents == layout.inventorySlotContents && layout.inventorySlotContents.ContainsKey(sourceSlotIndex))
                             {
-                                int sourceSlotIndex = *(int*)payload.Data;
-                                var draggedItem = DraggedSlotContents[sourceSlotIndex];
-
-                                if (DraggedSlotContents == layout.inventorySlotContents && layout.inventorySlotContents.ContainsKey(sourceSlotIndex))
+                                if (layout.inventorySlotContents.ContainsKey(slotIndex))
                                 {
-                                    if (layout.inventorySlotContents.ContainsKey(slotIndex))
+                                    var targetItem = layout.inventorySlotContents[slotIndex];
+                                    layout.inventorySlotContents[slotIndex] = draggedItem;
+                                    layout.inventorySlotContents[slotIndex].slot = slotIndex;
+                                    layout.inventorySlotContents[sourceSlotIndex] = targetItem;
+                                    layout.inventorySlotContents[sourceSlotIndex].slot = sourceSlotIndex;
+                                }
+                                else
+                                {
+                                    layout.inventorySlotContents[slotIndex] = draggedItem;
+                                    layout.inventorySlotContents[slotIndex].slot = slotIndex;
+                                    layout.inventorySlotContents.Remove(sourceSlotIndex);
+                                }
+                                if (!isTrade)
+                                {
+                                    List<ItemDefinition> newItemList = new List<ItemDefinition>();
+                                    for (int i = 0; i < TotalSlots; i++)
                                     {
-                                        var targetItem = layout.inventorySlotContents[slotIndex];
-                                        layout.inventorySlotContents[slotIndex] = draggedItem;
-                                        layout.inventorySlotContents[slotIndex].slot = slotIndex;
-                                        layout.inventorySlotContents[sourceSlotIndex] = targetItem;
-                                        layout.inventorySlotContents[sourceSlotIndex].slot = sourceSlotIndex;
-                                    }
-                                    else
-                                    {
-                                        layout.inventorySlotContents[slotIndex] = draggedItem;
-                                        layout.inventorySlotContents[slotIndex].slot = slotIndex;
-                                        layout.inventorySlotContents.Remove(sourceSlotIndex);
-                                    }
-                                    if (!isTrade)
-                                    {
-                                        List<ItemDefinition> newItemList = new List<ItemDefinition>();
-                                        for (int i = 0; i < TotalSlots; i++)
+                                        if (layout.inventorySlotContents.ContainsKey(i) && layout.inventorySlotContents[i].name != string.Empty)
                                         {
-                                            if (layout.inventorySlotContents.ContainsKey(i) && layout.inventorySlotContents[i].name != string.Empty)
-                                            {
-                                                newItemList.Add(layout.inventorySlotContents[i]);
-                                            }
+                                            newItemList.Add(layout.inventorySlotContents[i]);
                                         }
-                                        DataSender.SendItemOrder(ProfileWindow.profileIndex, layout, newItemList);
                                     }
+                                    DataSender.SendItemOrder(ProfileWindow.profileIndex, layout, newItemList);
                                 }
-                                else if (DraggedSlotContents == layout.tradeSlotContents && layout.tradeSlotContents.ContainsKey(sourceSlotIndex))
-                                {
-                                    bool tradeChanged = false;
-                                    if (layout.inventorySlotContents.ContainsKey(slotIndex) && layout.inventorySlotContents[slotIndex].name != string.Empty)
-                                    {
-                                        var targetItem = layout.inventorySlotContents[slotIndex];
-                                        layout.inventorySlotContents[slotIndex] = draggedItem;
-                                        layout.inventorySlotContents[slotIndex].slot = slotIndex;
-                                        layout.tradeSlotContents[sourceSlotIndex] = targetItem;
-                                        layout.tradeSlotContents[sourceSlotIndex].slot = sourceSlotIndex;
-                                        tradeChanged = true;
-                                    }
-                                    else
-                                    {
-                                        layout.inventorySlotContents[slotIndex] = draggedItem;
-                                        layout.inventorySlotContents[slotIndex].slot = slotIndex;
-                                        layout.tradeSlotContents.Remove(sourceSlotIndex);
-                                        tradeChanged = true;
-                                    }
-                                    if (tradeChanged)
-                                    {
-                                        DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
-                                    }
-                                }
-
-                                DraggedItemSlot = null;
-                                DraggedSlotContents = null;
                             }
+                            else if (DraggedSlotContents == layout.tradeSlotContents && layout.tradeSlotContents.ContainsKey(sourceSlotIndex))
+                            {
+                                bool tradeChanged = false;
+                                if (layout.inventorySlotContents.ContainsKey(slotIndex) && layout.inventorySlotContents[slotIndex].name != string.Empty)
+                                {
+                                    var targetItem = layout.inventorySlotContents[slotIndex];
+                                    layout.inventorySlotContents[slotIndex] = draggedItem;
+                                    layout.inventorySlotContents[slotIndex].slot = slotIndex;
+                                    layout.tradeSlotContents[sourceSlotIndex] = targetItem;
+                                    layout.tradeSlotContents[sourceSlotIndex].slot = sourceSlotIndex;
+                                    tradeChanged = true;
+                                }
+                                else
+                                {
+                                    layout.inventorySlotContents[slotIndex] = draggedItem;
+                                    layout.inventorySlotContents[slotIndex].slot = slotIndex;
+                                    layout.tradeSlotContents.Remove(sourceSlotIndex);
+                                    tradeChanged = true;
+                                }
+                                if (tradeChanged)
+                                {
+                                    DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
+                                }
+                            }
+
+                            DraggedItemSlot = null;
+                            DraggedSlotContents = null;
                         }
-                        Dalamud.Bindings.ImGui.ImGui.EndDragDropTarget();
+                        ImGui.EndDragDropTarget();
                     }
 
-                    Dalamud.Bindings.ImGui.ImGui.EndGroup();
-                    Dalamud.Bindings.ImGui.ImGui.PopID();
+                    ImGui.EndGroup();
+                    ImGui.PopID();
 
                     if (x < GridSize - 1)
                     {
-                        Dalamud.Bindings.ImGui.ImGui.SameLine();
+                        ImGui.SameLine();
                     }
                 }
             }

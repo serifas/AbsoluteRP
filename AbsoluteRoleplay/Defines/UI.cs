@@ -496,13 +496,13 @@ namespace AbsoluteRoleplay
                 var fullPath = Path.Combine(path, "UI/common/profiles/background_holder.png");
                 if (!File.Exists(fullPath))
                 {
-                    Logger.Error($"[baseImageBytes] File does not exist: {fullPath}");
+                    Plugin.PluginLog.Error($"[baseImageBytes] File does not exist: {fullPath}");
                     return null;
                 }
                 // This should just read the file as bytes
                 return File.ReadAllBytes(fullPath);
             }
-            Logger.Error("[baseImageBytes] PluginInterface or path is null.");
+            Plugin.PluginLog.Error("[baseImageBytes] PluginInterface or path is null.");
             return null;
         }
 
@@ -1502,7 +1502,7 @@ public class LayoutTreeNode
         set
         {
             if (value == null)
-                Logger.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
+                Plugin.PluginLog.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
             _name = value ?? string.Empty;
         }
     }

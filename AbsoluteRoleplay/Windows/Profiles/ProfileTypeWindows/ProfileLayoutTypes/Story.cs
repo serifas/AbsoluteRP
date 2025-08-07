@@ -1,8 +1,9 @@
-using Dalamud.Interface.Utility.Raii;
-using System.Numerics;
-using System.Collections.Generic;
 using AbsoluteRoleplay.Helpers;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
+using Dalamud.Utility;
+using System.Collections.Generic;
+using System.Numerics;
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     public class Story
@@ -18,11 +19,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
         public static void RenderStoryPreview(StoryLayout storyLayout, Vector4 TitleColor)
         {
-            
             Misc.SetTitle(Plugin.plugin, true, storyLayout.name, TitleColor);
 
             ImGui.PushStyleColor(ImGuiCol.ChildBg, new Vector4(0f, 0f, 0f, 0.8f));
-            using (ImRaii.Child($"StoryNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
+            using (ImRaii.Child("StoryNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
             {
                 if (currentChapter > 0)
                 {
@@ -51,25 +51,22 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
 
             ImGui.PopStyleColor();
-            using (ImRaii.Child("StoryContent", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y /2 ), true))
+            using (ImRaii.Child("StoryContent", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y / 2), true))
             {
                 Misc.RenderHtmlElements(storyLayout.chapters[currentChapter].content, true, true, true, false);
             }
-
-
         }
 
         public static void RenderStoryLayout(int profileIndex, string uniqueID, StoryLayout layout)
         {
-
             ImGui.Text("Story Title");
             ImGui.SameLine();
             string title = layout.name;
-            if(currentChapter >= layout.chapters.Count)
+            if (currentChapter >= layout.chapters.Count)
             {
                 currentChapter = 0; // Reset to first chapter if current exceeds available chapters
             }
-            if(ImGui.InputText($"##storyTitle {profileIndex} {uniqueID}", ref title, 35))
+            if (ImGui.InputText($"##storyTitle_{profileIndex}_{uniqueID}", ref title, 35))
             {
                 layout.name = title; // Update the title if changed
             }
@@ -101,30 +98,26 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
             ImGui.NewLine();
         }
+
         public static void AddChapterSelection(StoryLayout layout)
         {
-            var chatperTitle = layout.chapters[currentChapter].title;
-            using var combo = ImRaii.Combo($"##Chapter {layout.id}", chatperTitle);
+            var safeId = layout.id > 0 ? layout.id.ToString() : "default";
+            var chapterTitle = layout.chapters[currentChapter].title;
+            using var combo = ImRaii.Combo($"ChapterCombo_{safeId}", chapterTitle);
             if (!combo)
                 return;
             foreach (var (newText, idx) in layout.chapters.WithIndex())
             {
-                var label = newText.title;
-                if (label == string.Empty)
+                var label = string.IsNullOrEmpty(newText.title) ? "New Chapter" : newText.title;
+                if (ImGui.Selectable($"{label}##{safeId}_{idx}", idx == currentChapter))
                 {
-                    label = "New Chapter";
+                    currentChapter = idx;
+                    layout.loadChapters = true; // Set to true to load the chapter content
                 }
-                if (newText.title != string.Empty)
-                {
-                    if (ImGui.Selectable(label + $"##{layout.id}" + idx, idx == currentChapter))
-                    {
-                        currentChapter = idx;
-                        layout.loadChapters = true; // Set to true to load the chapter content
-                    }
-                    UIHelpers.SelectableHelpMarker("Select to edit chapter");
-                }
+                UIHelpers.SelectableHelpMarker("Select to edit chapter");
             }
         }
+
         public static void CreateChapter(StoryLayout layout)
         {
             storyChapterCount = layout.chapters.Count - 1;
@@ -140,56 +133,44 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             drawChapter = true;
             ReorderChapters = true;
         }
+
         public static void DrawChapter(int i, StoryChapter chapter, StoryLayout layout, Plugin plugin)
         {
-
-            //create a new child with the scale of the window size but inset slightly
+            var safeId = layout.id > 0 ? layout.id.ToString() : "default";
             var windowSize = ImGui.GetWindowSize();
-            using var profileTable = ImRaii.Child($"##Chapter{layout.id}" + i, new Vector2(windowSize.X - 20, windowSize.Y - 130));
+            using var profileTable = ImRaii.Child($"Chapter_{safeId}_{i}", new Vector2(windowSize.X - 20, windowSize.Y - 130));
             if (profileTable)
             {
                 ImGui.TextUnformatted("Chapter Name:");
                 ImGui.SameLine();
                 string chapterTitle = chapter.title;
-                if(ImGui.InputText(string.Empty, ref chapterTitle, 100))
+                if (ImGui.InputText($"##ChapterTitle_{safeId}_{i}", ref chapterTitle, 100))
                 {
                     chapter.title = chapterTitle; // Update the title if changed
                 }
-                //set an input size for our input text as well to adjust with window scale
-                var inputSize = new Vector2(windowSize.X - 30, windowSize.Y / 1.7f); // Adjust as needed
-                                                                     
+                var inputSize = new Vector2(windowSize.X - 30, windowSize.Y / 1.7f);
                 string chapterContent = chapter.content;
-                //ChapterContents[i] = Misc.WrapTextToFit(ChapterContents[i], inputSize.X);
-                if( ImGui.InputTextMultiline($"##ChapterContent{layout.id}" + i, ref chapterContent, 50000, inputSize))
+                if (ImGui.InputTextMultiline($"##ChapterContent_{safeId}_{i}", ref chapterContent, 50000, inputSize))
                 {
                     chapter.content = chapterContent; // Update the content if changed
                 }
-               
-                // Display InputTextMultiline and detect changes
 
-
-                using var chapterControlTable = ImRaii.Child($"##ChapterControls {layout.id}" + i);
+                using var chapterControlTable = ImRaii.Child($"ChapterControls_{safeId}_{i}");
                 if (chapterControlTable)
                 {
                     using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                     {
-                        if (ImGui.Button($"Remove## {layout.id}" + "chapter" + i))
+                        if (ImGui.Button($"Remove##{safeId}_chapter_{i}"))
                         {
                             layout.chapters.Remove(chapter);
                         }
-
                     }
                     if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                     {
                         ImGui.SetTooltip("Ctrl Click to Enable");
                     }
-
-
                 }
             }
         }
-
-
-
     }
 }

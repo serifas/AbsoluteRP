@@ -1,13 +1,10 @@
-using Dalamud.Interface.Colors;
-using Dalamud.Interface;
+using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
-using Dalamud.Interface.Utility;
-using AbsoluteRoleplay.Helpers;
-using Dalamud.Bindings.ImGui;
-using Dalamud.Interface.Utility.Raii;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -35,6 +32,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
         {
             try
             {
+               
                 AddConnectionListingOptions();
                 Vector2 windowSize = ImGui.GetWindowSize();
                 var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
@@ -187,14 +185,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Logger.Error("ConnectionsWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Error("ConnectionsWindow Draw Error: " + ex.Message);
             }
         }
         public void AddConnectionListingOptions()
         {
             var (text, desc) = UI.ConnectionListingVals[currentListing];
             using var combo = ImRaii.Combo("##Connetions", text);
-            
             if (!combo)
                 return;
 
@@ -203,7 +200,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.Selectable(newText, idx == currentListing))
                     currentListing = idx;
 
-                Helpers.UIHelpers.SelectableHelpMarker(newDesc);
+                UIHelpers.SelectableHelpMarker(newDesc);
             }
         }
         public void Dispose()

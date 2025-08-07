@@ -191,7 +191,7 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, discPos));
                 if (ImGui.ImageButton(discoBtn.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
-                    Util.OpenLink("https://discord.gg/hWprwTUwqj");
+                    Util.OpenLink("https://discord.gg/absolute-roleplay");
                 }
             }
 
@@ -233,8 +233,8 @@ public class MainPanel : Window, IDisposable
 
         } catch (Exception e)
         {
-            Logger.Error("MainPanel Draw Error: " + e.Message);
-            Logger.Error(e.StackTrace);
+            Plugin.PluginLog.Error("MainPanel Draw Error: " + e.Message);
+            Plugin.PluginLog.Error(e.StackTrace);
 
         }
 

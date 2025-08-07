@@ -800,34 +800,33 @@ namespace AbsoluteRoleplay
             }
         }
 
-        
+
         //sets a title at the center of the window and resets the font back to default afterwards
         public static void SetTitle(Plugin plugin, bool center, string title, Vector4 borderColor)
         {
-            Jupiter = Plugin.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Jupiter, 35)); 
-      
+            Jupiter = Plugin.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Jupiter, 35));
+
 
 
             using var col = ImRaii.PushColor(ImGuiCol.Border, borderColor);
-            using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * UIHelpers.GlobalScale);
+            using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * ImGuiHelpers.GlobalScale);
             using var font = Jupiter.Push();
-            if(center == true)
+            if (center == true)
             {
                 var size = ImGui.CalcTextSize(title);
 
                 var windowSize = ImGui.GetWindowSize();
 
                 // Set the cursor position to center the button horizontally
-                float xPos = (windowSize.X - size.X -15) / 2; // Center horizontally
+                float xPos = (windowSize.X - size.X - 15) / 2; // Center horizontally
                 ImGui.SetCursorPosX(xPos);
             }
-           UIHelpers.DrawTextButton(title, Vector2.Zero, 0);
+            UIHelpers.DrawTextButton(title, Vector2.Zero, 0);
 
             using var defInfFontDen = ImRaii.DefaultFont();
             using var defCol = ImRaii.DefaultColors();
             using var defStyle = ImRaii.DefaultStyle();
         }
-
 
 
 
@@ -916,7 +915,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                Logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+                Plugin.PluginLog.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
             }
         }
         private static readonly Dictionary<string, LoaderTweenState> loaderTweens = new();

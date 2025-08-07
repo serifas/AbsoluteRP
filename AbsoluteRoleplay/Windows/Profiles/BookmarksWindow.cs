@@ -11,7 +11,6 @@ namespace AbsoluteRoleplay.Windows.Profiles
 {
     public class BookmarksWindow : Window, IDisposable
     {
-        private Plugin plugin;
         public static bool DisableBookmarkSelection = false;
         internal static List<Bookmark> profileList = new List<Bookmark>();
 
@@ -41,13 +40,13 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 {
                     if (profileTable)
                     {
-                        if (plugin.IsOnline())
+                        if (Plugin.plugin.IsOnline())
                         {
                             for (var i = 0; i < profileList.Count; i++)
                             {
                                 if (DisableBookmarkSelection)
                                     ImGui.BeginDisabled();
-                                 
+
                                 if (ImGui.Button(profileList[i].ProfileName))
                                 {
                                     Plugin.plugin.OpenTargetWindow();
@@ -87,10 +86,10 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Logger.Error("BookmarksWindow Draw Error: " + ex.Message);
-
+                Plugin.PluginLog.Error($"Error in BookmarksWindow Draw: {ex.Message}");
             }
         }
+
 
 
         public void Dispose()

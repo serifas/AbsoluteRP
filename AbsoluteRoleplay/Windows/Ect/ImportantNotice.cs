@@ -36,7 +36,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Logger.Error("ImportantNotice Draw Error: " + ex.Message);
+                Plugin.PluginLog.Error("ImportantNotice Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

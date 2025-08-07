@@ -100,7 +100,6 @@ namespace Networking
 
         public static RankPermissions permissions { get; set; }
         public static Vector4 accounStatusColor, verificationStatusColor, forgotStatusColor, restorationStatusColor = new Vector4(255, 255, 255, 255);
-        public static Plugin Plugin;
         public static Dictionary<int, string> characters = new Dictionary<int, string>();
         public static Dictionary<int, string> adminCharacters = new Dictionary<int, string>();
         public static Dictionary<int, byte[]> adminCharacterAvatars = new Dictionary<int, byte[]>();
@@ -148,14 +147,14 @@ namespace Networking
                         Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
                         BookmarksWindow.profileList.Add(bookmark);
                     }
-                    Plugin.UpdateStatus();
-                    Plugin.OpenBookmarksWindow();
+                    Plugin.plugin.UpdateStatus();
+                    Plugin.plugin.OpenBookmarksWindow();
                     // Handle the message as needed
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling Bookmark message: {ex}");
+                Plugin.PluginLog.Error($"Error handling Bookmark message: {ex}");
             }
         }
 
@@ -168,13 +167,13 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     var msg = buffer.ReadString();
-                    Plugin.UpdateStatus();
+                    Plugin.plugin.UpdateStatus();
                     // Handle the message as needed
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling Welcome message: {ex}");
+                Plugin.PluginLog.Error($"Error handling Welcome message: {ex}");
             }
 
         }
@@ -191,7 +190,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling BadLogin message: {ex}");
+                Plugin.PluginLog.Error($"Error handling BadLogin message: {ex}");
             }
         }
 
@@ -211,7 +210,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling RecProfileReportSuccessfully message: {ex}");
+                Plugin.PluginLog.Error($"Error handling RecProfileReportSuccessfully message: {ex}");
             }
         }
         public static void RecProfileAlreadyReported(byte[] data)
@@ -227,7 +226,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling RecProfileAlreadyReported message: {ex}");
+                Plugin.PluginLog.Error($"Error handling RecProfileAlreadyReported message: {ex}");
             }
 
         }
@@ -264,7 +263,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling NoProfile message: {ex}");
+                Plugin.PluginLog.Error($"Error handling NoProfile message: {ex}");
             }
 
         }
@@ -288,12 +287,12 @@ namespace Networking
                     BookmarksWindow.DisableBookmarkSelection = false;
                     ReportWindow.reportStatus = "";
 
-                    Plugin.OpenTargetWindow();
+                    Plugin.plugin.OpenTargetWindow();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling NoTargetProfile message: {ex}");
+                Plugin.PluginLog.Error($"Error handling NoTargetProfile message: {ex}");
             }
         }
       
@@ -316,7 +315,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfile message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfile message: {ex}");
             }
         }
 
@@ -353,27 +352,27 @@ namespace Networking
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account Banned";
-                        Plugin.loginAttempted = true;
+                        Plugin.plugin.loginAttempted = true;
                     }
                     if (status == (int)UI.StatusMessages.LOGIN_UNVERIFIED)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Unverified Account";
-                        Plugin.loginAttempted = true;
+                        Plugin.plugin.loginAttempted = true;
                     }
                     if (status == (int)UI.StatusMessages.LOGIN_VERIFIED)
                     {
                         MainPanel.status = "Logged In";
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                         MainPanel.loggedIn = true;
-                        Plugin.loginAttempted = true;
-                        Plugin.loggedIn = true;
+                        Plugin.plugin.loginAttempted = true;
+                        Plugin.plugin.loggedIn = true;
                     }
                     if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
                         MainPanel.status = "Incorrect login details";
-                        Plugin.loginAttempted = true;
+                        Plugin.plugin.loginAttempted = true;
                     }
                     if (status == (int)UI.StatusMessages.REGISTRATION_SUCCESSFUL)
                     {
@@ -443,40 +442,40 @@ namespace Networking
                     {
                         ImportantNotice.messageTitle = "Warning";
                         ImportantNotice.moderatorMessage = message;
-                        Plugin.OpenImportantNoticeWindow();
+                        Plugin.plugin.OpenImportantNoticeWindow();
                     }
                     if (status == (int)UI.StatusMessages.ACCOUNT_STRIKE)
                     {
                         ImportantNotice.messageTitle = "Your account received a strike!";
                         ImportantNotice.moderatorMessage = message;
-                        Plugin.OpenImportantNoticeWindow();
+                        Plugin.plugin.OpenImportantNoticeWindow();
                     }
                     if (status == (int)UI.StatusMessages.ACCOUNT_SUSPENDED)
                     {
-                        Plugin.loginAttempted = true;
-                        Plugin.DisconnectAndLogOut();
-                        Plugin.username = string.Empty;
-                        Plugin.password = string.Empty;
-                        Plugin.Configuration.username = string.Empty;
-                        Plugin.Configuration.password = string.Empty;
-                        Plugin.Configuration.Save();
+                        Plugin.plugin.loginAttempted = true;
+                        Plugin.plugin.DisconnectAndLogOut();
+                        Plugin.plugin.username = string.Empty;
+                        Plugin.plugin.password = string.Empty;
+                        Plugin.plugin.Configuration.username = string.Empty;
+                        Plugin.plugin.Configuration.password = string.Empty;
+                        Plugin.plugin.Configuration.Save();
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account suspended"; ;
                         if (message != string.Empty)
                         {
                             ImportantNotice.messageTitle = "Account Suspended!";
                             ImportantNotice.moderatorMessage = message;
-                            Plugin.OpenImportantNoticeWindow();
+                            Plugin.plugin.OpenImportantNoticeWindow();
                         }
                     }
                     if (status == (int)UI.StatusMessages.ACCOUNT_BANNED)
                     {
-                        Plugin.DisconnectAndLogOut();
+                        Plugin.plugin.DisconnectAndLogOut();
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account banned";
                         ImportantNotice.messageTitle = "Account Banned!";
                         ImportantNotice.moderatorMessage = message;
-                        Plugin.OpenImportantNoticeWindow();
+                        Plugin.plugin.OpenImportantNoticeWindow();
                     }
                     if (status == (int)UI.StatusMessages.ACTION_SUCCESS)
                     {
@@ -487,7 +486,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling StatusMessage message: {ex}");
+                Plugin.PluginLog.Error($"Error handling StatusMessage message: {ex}");
             }
         }
 
@@ -507,7 +506,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveNoProfileGallery message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveNoProfileGallery message: {ex}");
             }
         }
 
@@ -552,7 +551,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ExistingProfile message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ExistingProfile message: {ex}");
             }
         }
 
@@ -579,7 +578,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileHooks message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileHooks message: {ex}");
             }
         }
 
@@ -600,7 +599,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling NoProfileNotes message: {ex}");
+                Plugin.PluginLog.Error($"Error handling NoProfileNotes message: {ex}");
             }
         }
         public static void RecProfileNotes(byte[] data)
@@ -618,7 +617,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling RecProfileNotes message: {ex}");
+                Plugin.PluginLog.Error($"Error handling RecProfileNotes message: {ex}");
             }
         }
 
@@ -636,7 +635,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveNoAuthorization message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveNoAuthorization message: {ex}");
             }
         }
         public static void ReceiveVerificationMessage(byte[] data)
@@ -647,14 +646,14 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    Plugin.OpenVerificationWindow();
+                    Plugin.plugin.OpenVerificationWindow();
                     MainPanel.status = "Successfully Registered!";
                     MainPanel.statusColor = new Vector4(0, 255, 0, 255);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveVerificationMessage message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveVerificationMessage message: {ex}");
             }
         }
         public static void ReceivePasswordModificationForm(byte[] data)
@@ -667,12 +666,12 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     string email = buffer.ReadString();
                     RestorationWindow.restorationEmail = email;
-                    Plugin.OpenRestorationWindow();
+                    Plugin.plugin.OpenRestorationWindow();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceivePasswordModificationForm message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceivePasswordModificationForm message: {ex}");
             }
         }
 
@@ -711,7 +710,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveNoTargetOOCInfo message: {ex}");
             }
         }
         internal static void ReceiveConnectedPlayers(byte[] data)
@@ -737,7 +736,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnections message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnections message: {ex}");
             }
         }
         internal static void ReceiveConnections(byte[] data)
@@ -810,15 +809,15 @@ namespace Networking
                         }
                     }
 
-                    Plugin.OpenConnectionsWindow();
-                    Plugin.newConnection = false;
-                    Plugin.CheckConnectionsRequestStatus();
+                    Plugin.plugin.OpenConnectionsWindow();
+                    Plugin.plugin.newConnection = false;
+                    Plugin.plugin.CheckConnectionsRequestStatus();
 
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnections message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnections message: {ex}");
             }
         }
 
@@ -830,14 +829,14 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
-                    Plugin.newConnection = true;
-                    Plugin.CheckConnectionsRequestStatus();
+                    Plugin.plugin.newConnection = true;
+                    Plugin.plugin.CheckConnectionsRequestStatus();
 
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
 
@@ -873,7 +872,7 @@ namespace Networking
                             quality = quality
                         };
                         // Validate and ensure compatibility
-                        if (WindowOperations.RenderIconAsync(Plugin, iconID) == null)
+                        if (WindowOperations.RenderIconAsync(Plugin.plugin, iconID) == null)
                         {
                             throw new InvalidOperationException($"Invalid iconID: {iconID}");
                         }
@@ -885,7 +884,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileItems message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileItems message: {ex}");
             }
         }
         internal static void RecieveProfileWarning(byte[] data)
@@ -937,7 +936,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling RecieveProfileWarning message: {ex}");
+                Plugin.PluginLog.Error($"Error handling RecieveProfileWarning message: {ex}");
             }
         }
 
@@ -1063,7 +1062,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileSettings message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileSettings message: {ex}");
             }
         }
 
@@ -1122,7 +1121,7 @@ namespace Networking
                         string customName = buffer.ReadString();
                         string customDescription = buffer.ReadString();
                         int customIconID = buffer.ReadInt();
-                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(Plugin, customIconID).GetAwaiter().GetResult();
+                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(Plugin.plugin, customIconID).GetAwaiter().GetResult();
                         if (customIcon == null)
                         {
                             customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
@@ -1175,13 +1174,13 @@ namespace Networking
 
 
                     Plugin.tooltipLoaded = true;
-                    Plugin.OpenARPTooltip();
+                    Plugin.plugin.OpenARPTooltip();
 
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveTooltip message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveTooltip message: {ex}");
             }
         }
 
@@ -1213,7 +1212,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
         internal static void ReceiveDynamicTab(byte[] data)
@@ -1339,7 +1338,7 @@ namespace Networking
                         else
                         {
                             // Invalid parent ID, log error
-                            Logger.Error($"Node {node.ID} has invalid parent ID {node.ParentID}");
+                            Plugin.PluginLog.Error($"Node {node.ID} has invalid parent ID {node.ParentID}");
                         }
                     }
 
@@ -1357,7 +1356,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveDynamicTab message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveDynamicTab message: {ex}");
             }
         }
 
@@ -1402,7 +1401,7 @@ namespace Networking
                             }
                             catch (Exception ex)
                             {
-                                Logger.Error($"Invalid avatar image for profile {profileID}: {ex.Message}");
+                                Plugin.PluginLog.Error($"Invalid avatar image for profile {profileID}: {ex.Message}");
                                 avatar = null;
                             }
                         }
@@ -1435,7 +1434,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceivePersonalListings message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceivePersonalListings message: {ex}");
             }
         }
 
@@ -1460,7 +1459,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
 
@@ -1488,7 +1487,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
         internal static void ReceiveTabsUpdate(byte[] data)
@@ -1515,7 +1514,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
         }
 
@@ -1554,7 +1553,7 @@ namespace Networking
                              slot = slotID,
                              quality = quality
                          };
-                         Logger.Error(itemDefinition.name);
+                         Plugin.PluginLog.Error(itemDefinition.name);
                          inventory.Add(slotID, itemDefinition);
                          // Validate and ensure compatibility
                      }
@@ -1566,13 +1565,13 @@ namespace Networking
                      TradeWindow.inventoryLayout = inventoryLayout;
                      TradeWindow.slotContents = inventory; // <-- Add this line
                      TradeWindow.targetProfile = profileID;
-                     Logger.Error(requesterProfileName + " is requesting a trade with you.");
+                     Plugin.PluginLog.Error(requesterProfileName + " is requesting a trade with you.");
 
                  }
              }
              catch (Exception ex)
              {
-                 Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                 Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
              }
              finally
              {
@@ -1613,11 +1612,11 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
             finally
             {
-                Plugin.OpenTradeWindow();
+                Plugin.plugin.OpenTradeWindow();
             }
         }
         internal static void ReceiveTradeInventory(byte[] data)
@@ -1658,11 +1657,11 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveConnectionsRequest message: {ex}");
             }
             finally
             {
-                Plugin.OpenTradeWindow();
+                Plugin.plugin.OpenTradeWindow();
             }
         }
         internal static void ReceiveTradeUpdate(byte[] data)
@@ -1697,7 +1696,7 @@ namespace Networking
                             slot = slot,
                             quality = quality
                         };
-                        Logger.Error($"Received item for trade: {itemDefinition.name} (Slot: {slot})");
+                        Plugin.PluginLog.Error($"Received item for trade: {itemDefinition.name} (Slot: {slot})");
                         traderItems[slot] = itemDefinition;
                     }
 
@@ -1710,11 +1709,11 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveTradeUpdate message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveTradeUpdate message: {ex}");
             }
             finally
             {
-                Plugin.OpenTradeWindow();
+                Plugin.plugin.OpenTradeWindow();
             }
         }
         internal static void ReceiveTradeStatus(byte[] data)
@@ -1729,13 +1728,13 @@ namespace Networking
                     bool receiverStatus = buffer.ReadBool();
                     TradeWindow.receiverReady = receiverStatus;
                     TradeWindow.senderReady = senderStatus;
-                    Logger.Error($"Trade status updated - Sender: {senderStatus}, Receiver: {receiverStatus}");
-                    Plugin.CloseTradeWindow();
+                    Plugin.PluginLog.Error($"Trade status updated - Sender: {senderStatus}, Receiver: {receiverStatus}");
+                    Plugin.plugin.CloseTradeWindow();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveTradeUpdate message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveTradeUpdate message: {ex}");
             }
         }
         public static void ReceiveInventoryTab(byte[] data)
@@ -1807,7 +1806,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveInventoryTab message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveInventoryTab message: {ex}");
             }
         }
 
@@ -1855,7 +1854,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveTargetOOCInfo message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveTargetOOCInfo message: {ex}");
             }
         }
 
@@ -1872,7 +1871,7 @@ namespace Networking
                     int tabIndex = buffer.ReadInt();
                     string storyTitle = buffer.ReadString();
                     bool self = buffer.ReadBool();
-                    Logger.Error($"Story Title: {storyTitle}");
+                    Plugin.PluginLog.Error($"Story Title: {storyTitle}");
                     int chapterCount = buffer.ReadInt();
                     List<StoryChapter> chapters = new List<StoryChapter>();
                     for (int i = 0; i < chapterCount; i++)
@@ -1917,7 +1916,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileBio message: {ex}");
             }
         }
 
@@ -1947,7 +1946,7 @@ namespace Networking
                             name = name,
                             content = content
                         });
-                        Logger.Error($"{name}  {content} {id}");
+                        Plugin.PluginLog.Error($"{name}  {content} {id}");
                     }
 
                     DetailsLayout detailsLayout = new DetailsLayout
@@ -1982,7 +1981,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileBio message: {ex}");
             }
             finally
             {
@@ -2011,7 +2010,7 @@ namespace Networking
                         string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        ProfileGalleryImage galleryImage = Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, Plugin, i).GetAwaiter().GetResult();
+                        ProfileGalleryImage galleryImage = Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, Plugin.plugin, i).GetAwaiter().GetResult();
                         if (galleryImage.thumbnail == null || galleryImage.thumbnail.Handle == IntPtr.Zero)
                         {
                             galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
@@ -2074,7 +2073,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileBio message: {ex}");
             }
         }
         public static void ReceiveTreeLayout(byte[] data)
@@ -2122,7 +2121,7 @@ namespace Networking
                             int toX = buffer.ReadInt();
                             int toY = buffer.ReadInt();
                             conns.Add(((fromX, fromY), (toX, toY)));
-                            Logger.Error($"Path Connection: From ({fromX}, {fromY}) To ({toX}, {toY})");
+                            Plugin.PluginLog.Error($"Path Connection: From ({fromX}, {fromY}) To ({toX}, {toY})");
                         }
                         pathConnections.Add(conns);
                     }
@@ -2137,7 +2136,7 @@ namespace Networking
                         rel.Description = buffer.ReadString();
                         rel.IconID = buffer.ReadInt();
                         rel.active = buffer.ReadBool();
-                        rel.IconTexture = WindowOperations.RenderIconAsync(Plugin, rel.IconID).GetAwaiter().GetResult();
+                        rel.IconTexture = WindowOperations.RenderIconAsync(Plugin.plugin, rel.IconID).GetAwaiter().GetResult();
                         bool hasSlot = buffer.ReadBool();
                         if (hasSlot)
                         {
@@ -2188,7 +2187,7 @@ namespace Networking
                         if (path == null) continue;
                         foreach (var conn in path)
                         {
-                            Logger.Error($"Path Connection: From ({conn.from.x}, {conn.from.y}) To ({conn.to.x}, {conn.to.y})");
+                            Plugin.PluginLog.Error($"Path Connection: From ({conn.from.x}, {conn.from.y}) To ({conn.to.x}, {conn.to.y})");
                         }
                     }
 
@@ -2217,37 +2216,10 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveTreeLayout: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveTreeLayout: {ex}");
             }
         }
-        public static void ReceiveConnectedPlayersInMap(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int connectionsCount = buffer.ReadInt();
-                    for(int i = 0; i < connectionsCount; i++)
-                    {
-                        string playerName = buffer.ReadString();
-                        string playerWorld = buffer.ReadString();
-                        PlayerData playerData = new PlayerData
-                        {
-                            playername = playerName,
-                            worldname = playerWorld
-                        };
-                        Logger.Error($"Received player data: {playerData.playername} from {playerData.worldname}");
-                        PlayerInteractions.playerDataMap.Add(playerData);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error($"Error handling ReceiveConnectedPlayersInMap message: {ex}");
-            }
-        }
+       
         public static void RecieveBioTab(byte[] data)
         {
             try
@@ -2302,7 +2274,7 @@ namespace Networking
                         string customName = buffer.ReadString();
                         string customDescription = buffer.ReadString();
                         int customIconID = buffer.ReadInt();
-                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(Plugin, customIconID).GetAwaiter().GetResult();
+                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(Plugin.plugin, customIconID).GetAwaiter().GetResult();
                         if (customIcon == null)
                         {
                             customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
@@ -2394,7 +2366,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Error($"Error handling ReceiveProfileBio message: {ex}");
             }
         }
     }

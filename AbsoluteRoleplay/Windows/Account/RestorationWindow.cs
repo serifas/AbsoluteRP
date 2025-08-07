@@ -68,7 +68,7 @@ namespace AbsoluteRoleplay.Windows.Account
             }catch(Exception e)
             {
                 restorationStatus = "An error occurred";
-                Logger.Error(e.Message);
+                Plugin.PluginLog.Error(e.Message);
                 restorationCol = new Vector4(255, 0, 0, 255);
             }
         }

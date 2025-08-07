@@ -162,7 +162,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
+                Plugin.PluginLog.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
             }
         }
 

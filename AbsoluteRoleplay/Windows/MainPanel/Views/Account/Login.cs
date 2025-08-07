@@ -1,25 +1,33 @@
 using Dalamud.Bindings.ImGui;
 using Networking;
+using System.Numerics;
+using System.Reflection.Emit;
+using static FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.VertexShader;
 
 namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
 {
     internal class Login
     {
+        public static string username = Plugin.plugin.Configuration.username;
+        public static string password = Plugin.plugin.Configuration.password;
         public static void LoadLogin()
         {
-            string username = Plugin.plugin.Configuration.username;
-            string password = Plugin.plugin.Configuration.password;   
             var centeredX = MainPanel.centeredX;
             var ButtonSize = MainPanel.ButtonSize;
 
-            if(ImGui.InputText("##username", ref username, 100, ImGuiInputTextFlags.None))
+            var currentCursorY = ImGui.GetCursorPosY();
+            ImGui.SetCursorPos(new Vector2(centeredX, currentCursorY));
+            ImGui.PushItemWidth(ButtonSize.X);
+            if(ImGui.InputText("##Username", ref username, 30, ImGuiInputTextFlags.None))
             {
                 Plugin.plugin.Configuration.username = username;
             }
-            if(ImGui.InputText("##password", ref password, 100, ImGuiInputTextFlags.Password))
+            if (ImGui.InputText("##Password", ref password, 45, ImGuiInputTextFlags.Password))
             {
                 Plugin.plugin.Configuration.password = password;
-            }   
+            }
+            ImGui.PopItemWidth();
+
             if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Login"))
             {
                 if (Plugin.plugin.IsOnline() && ClientTCP.IsConnected() == true)

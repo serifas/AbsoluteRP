@@ -69,7 +69,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (string.IsNullOrEmpty(gameTexturePath))
                 {
-                    Logger.Error("Game texture path is null or empty.");
+                    Plugin.PluginLog.Error("Game texture path is null or empty.");
                     return null;
                 }
 
@@ -77,11 +77,11 @@ namespace AbsoluteRoleplay.Helpers
                 var texFile = Plugin.DataManager.GetFile<TexFile>(gameTexturePath);
                 if (texFile == null)
                 {
-                    Logger.Error($"TexFile not found for path: {gameTexturePath}");
+                    Plugin.PluginLog.Error($"TexFile not found for path: {gameTexturePath}");
                     return null;
                 }
 
-                Logger.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
+                Plugin.PluginLog.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
 
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
@@ -93,7 +93,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
+                Plugin.PluginLog.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
                 return null;
             }
         }
@@ -121,7 +121,7 @@ namespace AbsoluteRoleplay.Helpers
 
             if (Plugin.TextureProvider == null)
             {
-                Logger.Error("TextureProvider is not initialized.");
+                Plugin.PluginLog.Error("TextureProvider is not initialized.");
                 return galleryImage;
             }
 
@@ -177,32 +177,32 @@ namespace AbsoluteRoleplay.Helpers
                             response.StatusCode == HttpStatusCode.BadGateway ||
                             response.StatusCode == HttpStatusCode.InternalServerError)
                         {
-                            Logger.Error($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
+                            Plugin.PluginLog.Error($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
                             await Task.Delay(delayMs * attempt);
                             continue;
                         }
                         else
                         {
-                            Logger.Error($"Image download failed with status code: {response.StatusCode}");
+                            Plugin.PluginLog.Error($"Image download failed with status code: {response.StatusCode}");
                             break;
                         }
                     }
                 }
                 catch (HttpRequestException httpEx)
                 {
-                    Logger.Error($"HTTP Request Error: {httpEx.Message}");
+                    Plugin.PluginLog.Error($"HTTP Request Error: {httpEx.Message}");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (TaskCanceledException)
                 {
-                    Logger.Error("Download request timed out.");
+                    Plugin.PluginLog.Error("Download request timed out.");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error($"Unexpected error: {ex.Message}");
+                    Plugin.PluginLog.Error($"Unexpected error: {ex.Message}");
                     break;
                 }
             }
@@ -226,7 +226,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
+                Plugin.PluginLog.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
             }
             return null;
         }
@@ -244,7 +244,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
+                Plugin.PluginLog.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
             }
             return null;
         }
@@ -267,7 +267,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Logger.Error($"Error fetching image bytes: {ex.Message}");
+                Plugin.PluginLog.Error($"Error fetching image bytes: {ex.Message}");
                 return Array.Empty<byte>();
             }
         }
@@ -279,7 +279,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (Plugin.TextureProvider == null)
                 {
-                    Logger.Error("TextureProvider is not initialized.");
+                    Plugin.PluginLog.Error("TextureProvider is not initialized.");
                 }
                 else
                 {
@@ -315,15 +315,15 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (HttpRequestException httpEx)
             {
-                Logger.Error($"HTTP Request Error: {httpEx.Message}");
+                Plugin.PluginLog.Error($"HTTP Request Error: {httpEx.Message}");
             }
             catch (TaskCanceledException)
             {
-                Logger.Error("Download request timed out.");
+                Plugin.PluginLog.Error("Download request timed out.");
             }
             catch (Exception ex)
             {
-                Logger.Error($"Unexpected error: {ex.Message}");
+                Plugin.PluginLog.Error($"Unexpected error: {ex.Message}");
             }
             return image;
         }
