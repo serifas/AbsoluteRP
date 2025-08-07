@@ -5,6 +5,7 @@ using Networking;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
+using AbsoluteRoleplay.Helpers;
 
 namespace AbsoluteRoleplay.Windows.Profiles
 {
@@ -86,7 +87,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("BookmarksWindow Draw Error: " + ex.Message);
+                Logger.Error("BookmarksWindow Draw Error: " + ex.Message);
 
             }
         }

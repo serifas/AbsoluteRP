@@ -141,7 +141,7 @@ namespace AbsoluteRoleplay.Windows.Listings
             {
                 if (ImGui.Selectable(newText, idx == currentCategory))
                     currentCategory = idx;
-                ImGuiHelpers.SelectableHelpMarker(newDesc);
+                UIHelpers.SelectableHelpMarker(newDesc);
             }
         }
 

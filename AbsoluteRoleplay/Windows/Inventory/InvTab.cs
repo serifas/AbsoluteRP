@@ -182,7 +182,7 @@ namespace InventoryTab
                     selectedItemType = idx;
                     itemSubType = Items.InventoryTypes[idx].Item3;
                 }
-                ImGuiHelpers.SelectableHelpMarker(newDesc);
+                UIHelpers.SelectableHelpMarker(newDesc);
             }
         }
 

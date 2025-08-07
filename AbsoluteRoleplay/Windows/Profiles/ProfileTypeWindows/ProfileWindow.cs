@@ -17,8 +17,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
     //changed
     public class ProfileWindow : Window, IDisposable
     {
-        public static string loading; //loading status string for loading the profile gallery mainly
-        private Plugin plugin;
+        public static string loading; 
         public static FileDialogManager _fileDialogManager; //for avatars only at the moment
         public Configuration configuration;
         public static IDalamudTextureWrap pictureTab; //picturetab.png for base picture in gallery
@@ -90,8 +89,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 MaximumSize = new Vector2(600, 1000)
             };
 
-            this.plugin = plugin;
-            configuration = plugin.Configuration;
+            configuration = Plugin.plugin.Configuration;
             _fileDialogManager = new FileDialogManager();
             profileWindow = this; 
         }
@@ -140,7 +138,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow OnOpen Error: " + ex.Message);
+                Logger.Error("ProfileWindow OnOpen Error: " + ex.Message);
             }
         }
         //method to check if we have loaded our data received from the server
@@ -153,7 +151,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             var nullFields = new List<string>();
 
             // Instance fields
-            if (plugin == null) { nullFields.Add(nameof(plugin)); allNotNull = false; }
+            if (Plugin.plugin == null) { nullFields.Add(nameof(Plugin.plugin)); allNotNull = false; }
             if (configuration == null) { nullFields.Add(nameof(configuration)); allNotNull = false; }
 
             // Static fields
@@ -169,7 +167,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             // Print any null fields
             if (nullFields.Count > 0)
             {
-                Plugin.logger.Error("Null ProfileWindow fields: " + string.Join(", ", nullFields));
+                Logger.Error("Null ProfileWindow fields: " + string.Join(", ", nullFields));
             }
 
             return allNotNull;
@@ -242,7 +240,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         this.Flags = ImGuiWindowFlags.None;
                     }
 
-                    if (plugin.IsOnline())
+                    if (Plugin.plugin.IsOnline())
                     {
                         _fileDialogManager.Draw();
 
@@ -260,7 +258,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 TargetProfileWindow.RequestingProfile = true;
                                 TargetProfileWindow.ResetAllData();
                                 Plugin.plugin.OpenTargetWindow();
-                                DataSender.FetchProfile(false, -1, plugin.playername, plugin.playerworld, -1);
+                                DataSender.FetchProfile(false, -1, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
                             }
                             DrawProfile();
                         }
@@ -285,7 +283,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 if(hasDrawException == false) // Prevent spamming the log with the same error  
                 {
                     hasDrawException = true;
-                    Plugin.logger.Error("ProfileWindow Draw Error: " + ex.Message);
+                    Logger.Error("ProfileWindow Draw Error: " + ex.Message);
                 }
             }
         }
@@ -293,7 +291,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         {
             DataSender.CreateProfile(NewProfileTitle, currentProfileType, profiles.Count);
             profileIndex = profiles.Count;
-            Plugin.logger.Error(profileIndex.ToString());
+            Logger.Error(profileIndex.ToString());
             DataSender.FetchProfiles();
             DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             ExistingProfile = true;
@@ -332,7 +330,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
             }catch(Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow RenderProfileTypeCreation Error: " + ex.Message);
+                Logger.Error("ProfileWindow RenderProfileTypeCreation Error: " + ex.Message);
             }
         }
         public void DrawProfile()
@@ -340,17 +338,17 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             // Defensive checks to prevent null reference spam
             if (profiles == null || profiles.Count == 0 || profileIndex < 0 || profileIndex >= profiles.Count)
             {
-                Plugin.logger.Error("DrawProfile: Profiles not loaded or profileIndex out of range.");
+                Logger.Error("DrawProfile: Profiles not loaded or profileIndex out of range.");
                 return;
             }
             if (CurrentProfile == null)
             {
-                Plugin.logger.Error("DrawProfile: CurrentProfile is null.");
+                Logger.Error("DrawProfile: CurrentProfile is null.");
                 return;
             }
             if (CurrentProfile.customTabs == null)
             {
-                Plugin.logger.Error("DrawProfile: CurrentProfile.customTabs is null.");
+                Logger.Error("DrawProfile: CurrentProfile.customTabs is null.");
                 return;
             }
             if (currentAvatarImg == null)
@@ -359,7 +357,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 currentAvatarImg = pictureTab ?? UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                 if (currentAvatarImg == null)
                 {
-                    Plugin.logger.Error("DrawProfile: currentAvatarImg is still null after fallback. Skipping draw.");
+                    Logger.Error("DrawProfile: currentAvatarImg is still null after fallback. Skipping draw.");
                     return;
                 }
             }  
@@ -405,7 +403,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     }
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfiles();
-                    DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
+                    DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
                     if (profiles.Count == 0)
                     {
                         ExistingProfile = false;
@@ -462,7 +460,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             if (currentAvatarImg == null || currentAvatarImg.Size == null)
             {
-                Plugin.logger.Error("DrawProfile: currentAvatarImg or its Size is null. Skipping draw.");
+                Logger.Error("DrawProfile: currentAvatarImg or its Size is null. Skipping draw.");
                 return;
             }
             Vector2 avatarSize = currentAvatarImg.Size * ImGui.GetIO().FontGlobalScale;
@@ -483,7 +481,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
 
             if (ProfileTitle.Length > 0)
             {
-                Misc.SetTitle(plugin, true, ProfileTitle, color);
+                Misc.SetTitle(Plugin.plugin, true, ProfileTitle, color);
             }
             Misc.DrawXCenteredInput("TITLE:", $"Title{profileIndex}", ref ProfileTitle, 50);
             ImGui.SameLine();
@@ -616,7 +614,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 if (Gallery.loadPreview == true)
                 {
                     //load gallery image preview if requested
-                    plugin.OpenImagePreview();
+                    Plugin.plugin.OpenImagePreview();
                     Gallery.loadPreview = false;
                 }
                 if (Gallery.addGalleryImageGUI == true)
@@ -629,13 +627,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 if (editAvatar == true)
                 {
                     editAvatar = false;
-                    Misc.EditImage(plugin, _fileDialogManager, null, true, false, 0);
+                    Misc.EditImage(Plugin.plugin, _fileDialogManager, null, true, false, 0);
                 }
 
                 if (editBackground == true)
                 {
                     editBackground = false;
-                    Misc.EditImage(plugin, _fileDialogManager, null, false, true, 0);
+                    Misc.EditImage(Plugin.plugin, _fileDialogManager, null, false, true, 0);
                 }
             }      
 
@@ -686,13 +684,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         else if (currentLayoutType == (int)LayoutTypes.Relationship)
                                             layout = new TreeLayout { tabIndex = customTabsCount };
                                         else
-                                            Plugin.logger.Error($"Unknown layout type: {currentLayoutType}");
+                                            Logger.Error($"Unknown layout type: {currentLayoutType}");
 
 
                                         DataSender.CreateTab(newTabNames[i], currentLayoutType, CurrentProfile.index, customTabsCount + 1);
                                         CurrentProfile.customTabs.Clear();
                                         customLayouts.Clear();
-                                        DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
+                                        DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
 
                                         Sending = true;
 
@@ -707,7 +705,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 }
                                 finally
                                 {
-                                    Plugin.logger.Error($"RenderCustomTabs: Popup for tab {i} closed with name '{newTabNames[i]}'");
+                                    Logger.Error($"RenderCustomTabs: Popup for tab {i} closed with name '{newTabNames[i]}'");
                                 }
                             }
                         }
@@ -783,7 +781,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow RenderCustomTabs Error: " + ex.Message);
+                Logger.Error("ProfileWindow RenderCustomTabs Error: " + ex.Message);
                 loading = "An error occurred while rendering custom tabs.";
             }
         }
@@ -843,7 +841,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
             }catch(Exception ex)
             {
-                Plugin.logger.Error($"ProfileWindow RenderTab Error: {ex.Message}");
+                Logger.Error($"ProfileWindow RenderTab Error: {ex.Message}");
             }
         }
 
@@ -994,11 +992,11 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                         profileType = UI.ListingCategoryVals[idx];
                         currentProfileType = idx;
                     }
-                    ImGuiHelpers.SelectableHelpMarker(description);
+                    UIHelpers.SelectableHelpMarker(description);
                 }
             }catch(Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow DrawProfileTypeSelection Error: " + ex.Message);
+                Logger.Error("ProfileWindow DrawProfileTypeSelection Error: " + ex.Message);
             }
         }
         private void DrawLayoutTypeSelection()
@@ -1016,13 +1014,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                             layoutType = UI.LayoutTypeVals[idx];
                             currentLayoutType = idx;
                         }
-                        ImGuiHelpers.SelectableHelpMarker(description);
+                        UIHelpers.SelectableHelpMarker(description);
                     }
                 }
             }
             catch(Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow DrawLayoutTypeSelection Error: " + ex.Message);
+                Logger.Error("ProfileWindow DrawLayoutTypeSelection Error: " + ex.Message);
             }
         }
 
@@ -1063,10 +1061,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                 profileIndex = idx;
                                 TargetProfileWindow.ResetAllData();
                                 DataSender.FetchProfiles();
-                                DataSender.FetchProfile(true, idx, plugin.playername, plugin.playerworld, -1);
+                                DataSender.FetchProfile(true, idx, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
                                 Fetching = true;
                             }
-                            ImGuiHelpers.SelectableHelpMarker("Select to edit profile");
+                            UIHelpers.SelectableHelpMarker("Select to edit profile");
                         }
 
                         if (showTypeCreation == true)
@@ -1080,7 +1078,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
+                Logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
             }
         }
      
@@ -1252,7 +1250,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                     LoadTabsFromBackup(tabContent, "treeTab", BackupLoader.LoadTreeLayout);
                                     break;
                                 default:
-                                    Plugin.logger.Error($"Unknown tab type in backup: {tag}");
+                                    Logger.Error($"Unknown tab type in backup: {tag}");
                                     break;
                             }
                         }
@@ -1260,7 +1258,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                     }
                     catch (Exception ex)
                     {
-                        Plugin.logger.Error($"Error loading backup file: {ex.Message}");
+                        Logger.Error($"Error loading backup file: {ex.Message}");
                     }
                 }
             );
@@ -1324,10 +1322,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             try
             {
                 DataSender.SetProfileStatus(isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
-                Plugin.logger.Error($"Tabs count before submit: {CurrentProfile.customTabs.Count}");
+                Logger.Error($"Tabs count before submit: {CurrentProfile.customTabs.Count}");
                 foreach (var tab in CurrentProfile.customTabs)
                 {
-                    Plugin.logger.Error($"Tab: {tab.Name}, Type: {tab.Layout?.GetType().Name}");
+                    Logger.Error($"Tab: {tab.Name}, Type: {tab.Layout?.GetType().Name}");
                 }
 
                 Sending = true;
@@ -1366,13 +1364,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch(Exception ex)
             {
-                Plugin.logger.Error("Received exception in SubmitProfileBio " + ex.Message);
+                Logger.Error("Received exception in SubmitProfileBio " + ex.Message);
             }
             finally
             {
                 CurrentProfile.customTabs.Clear();
                 customLayouts.Clear();
-                DataSender.FetchProfile(true, profileIndex, plugin.playername, plugin.playerworld, -1);
+                DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             }
 
         }
@@ -1390,7 +1388,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error($"Error Loading Backup Dialog: {ex.Message}");
+                Logger.Error($"Error Loading Backup Dialog: {ex.Message}");
             }
         }
         public void SaveBackupFile(string dataPath)
@@ -1422,7 +1420,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error($"Error saving backup file: {ex.Message}");
+                Logger.Error($"Error saving backup file: {ex.Message}");
             }
         }
 

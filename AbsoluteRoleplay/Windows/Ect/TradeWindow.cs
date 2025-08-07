@@ -152,7 +152,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                                     DataSender.SendInventorySelection(inventoryTabs[idx].Item1, inventoryTabs[idx].Item2);
                                 }
                             }
-                            Helpers.ImGuiHelpers.SelectableHelpMarker("Select an inventory to send and receive items.");
+                            Helpers.UIHelpers.SelectableHelpMarker("Select an inventory to send and receive items.");
                         }
 
                        
@@ -162,7 +162,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
+                Logger.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
             }
         }
 

@@ -41,7 +41,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ImagePreview Draw Error: " + ex.Message);
+                Logger.Error("ImagePreview Draw Error: " + ex.Message);
             }
         }
         private void GetImGuiWindowDimensions(out int width, out int height)

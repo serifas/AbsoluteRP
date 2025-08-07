@@ -1,4 +1,3 @@
-using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,9 +5,45 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Numerics;
+using Dalamud.Bindings.ImGui;
 namespace AbsoluteRoleplay.Helpers
 {
-    public static class ImGuiHelpers
+    public static class Logger
+    {
+        private static readonly object _lock = new();
+        private static string? _logFilePath;
+
+        private static string LogFilePath
+        {
+            get
+            {
+                if (_logFilePath == null)
+                {
+                    // Use the plugin's folder if available, otherwise fallback to current directory
+                    var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                    _logFilePath = Path.Combine(baseDir, "AbsoluteRoleplay.log");
+                }
+                return _logFilePath;
+            }
+        }
+
+        public static void Error(string message)
+        {
+            try
+            {
+                var logLine = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] ERROR: {message}{Environment.NewLine}";
+                lock (_lock)
+                {
+                    File.AppendAllText(LogFilePath, logLine);
+                }
+            }
+            catch
+            {
+                // Swallow exceptions to avoid recursive logging failures
+            }
+        }
+    }
+    public static class UIHelpers
     {
         public static float GlobalScale
         {

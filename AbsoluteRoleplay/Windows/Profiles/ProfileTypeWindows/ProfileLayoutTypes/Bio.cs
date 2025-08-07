@@ -116,7 +116,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     var icon = UI.AlignmentIcon(layout.alignment);
                     if (icon != null)
                     {
-                        Plugin.logger.Error($"[RenderBioPreview] Alignment icon: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.Handle}");
+                        Logger.Error($"[RenderBioPreview] Alignment icon: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.Handle}");
                     }
                     if (icon != null && icon.Handle != IntPtr.Zero)
                     {
@@ -126,7 +126,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         }
                         catch (Exception ex)
                         {
-                            Plugin.logger.Error($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
+                            Logger.Error($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
                         }
                         var alignmentVal = UI.AlignmentVals[layout.alignment];
                         if (ImGui.IsItemHovered())
@@ -180,7 +180,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 var icon = UI.PersonalityIcon(personalityIdx);
                                 if (icon != null)
                                 {
-                                    Plugin.logger.Error($"[RenderBioPreview] Personality icon {i + 1}: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.Handle}");
+                                    Logger.Error($"[RenderBioPreview] Personality icon {i + 1}: {(icon == null ? "null" : icon.ToString())}, Handle: {icon.Handle}");
                                 }
                                 if (icon == null || icon.Handle == IntPtr.Zero)
                                 {
@@ -193,7 +193,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 }
                                 catch (Exception ex)
                                 {
-                                    Plugin.logger.Error($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
+                                    Logger.Error($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
                                 }
                                 if (ImGui.IsItemHovered())
                                 {
@@ -205,7 +205,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                     }
                                     catch (Exception ex)
                                     {
-                                        Plugin.logger.Error($"RenderBioPreview: Tooltip error: {ex.Message}");
+                                        Logger.Error($"RenderBioPreview: Tooltip error: {ex.Message}");
                                     }
                                     ImGui.EndTooltip();
                                 }
@@ -235,7 +235,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         var traitIcon = personality.icon?.icon;
                         if (traitIcon != null)
                         {
-                            Plugin.logger.Error($"[RenderBioPreview] Custom trait icon: {(traitIcon == null ? "null" : traitIcon.ToString())}, Handle: {traitIcon.Handle}");
+                            Logger.Error($"[RenderBioPreview] Custom trait icon: {(traitIcon == null ? "null" : traitIcon.ToString())}, Handle: {traitIcon.Handle}");
                         }
                         if (traitIcon == null || traitIcon.Handle == IntPtr.Zero)
                         {
@@ -248,7 +248,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         }
                         catch (Exception ex)
                         {
-                            Plugin.logger.Error($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
+                            Logger.Error($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
                         }
                         if (ImGui.IsItemHovered())
                         {
@@ -260,7 +260,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                             }
                             catch (Exception ex)
                             {
-                                Plugin.logger.Error($"RenderBioPreview: Trait tooltip error: {ex.Message}");
+                                Logger.Error($"RenderBioPreview: Trait tooltip error: {ex.Message}");
                             }
                             ImGui.EndTooltip();
                         }
@@ -269,7 +269,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error($"RenderBioPreview: Exception: {ex.Message}");
+                Logger.Error($"RenderBioPreview: Exception: {ex.Message}");
             }
         }
         public static void RenderBioLayout(int index, string id, BioLayout layout)
@@ -487,7 +487,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 return;
             if (ImGui.Selectable("None", layout.personality_1 == 26))
                 layout.personality_1 = 26;
-            ImGuiHelpers.SelectableHelpMarker("Undefined");
+            UIHelpers.SelectableHelpMarker("Undefined");
 
             foreach (var ((newText, newDesc), idx) in PersonalityValues.WithIndex())
             {
@@ -496,7 +496,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.personality_1))
                         layout.personality_1 = idx;
 
-                    ImGuiHelpers.SelectableHelpMarker(newDesc);
+                    UIHelpers.SelectableHelpMarker(newDesc);
                 }
             }
         }
@@ -513,7 +513,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
             if (ImGui.Selectable("None", layout.personality_2 == 26))
                 layout.personality_2 = 26;
-            ImGuiHelpers.SelectableHelpMarker("Undefined");
+            UIHelpers.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in PersonalityValues.WithIndex())
             {
                 if (idx != (int)Personalities.None)
@@ -521,7 +521,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.personality_2))
                         layout.personality_2 = idx;
 
-                    ImGuiHelpers.SelectableHelpMarker(newDesc);
+                    UIHelpers.SelectableHelpMarker(newDesc);
                 }
             }
         }
@@ -538,7 +538,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
             if (ImGui.Selectable("None", layout.personality_3 == 26))
                 layout.personality_3 = 26;
-            ImGuiHelpers.SelectableHelpMarker("Undefined");
+            UIHelpers.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in PersonalityValues.WithIndex())
             {
                 if (idx != (int)Personalities.None)
@@ -546,7 +546,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.personality_3))
                         layout.personality_3 = idx;
 
-                    ImGuiHelpers.SelectableHelpMarker(newDesc);
+                    UIHelpers.SelectableHelpMarker(newDesc);
                 }
             }
         }
@@ -562,7 +562,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 return;
             if (ImGui.Selectable("None", layout.alignment == 9))
                 layout.alignment = 9;
-            ImGuiHelpers.SelectableHelpMarker("Undefined");
+            UIHelpers.SelectableHelpMarker("Undefined");
             foreach (var ((newText, newDesc), idx) in AlignmentVals.WithIndex())
             {
                 if (idx != 9)
@@ -570,7 +570,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     if (ImGui.Selectable(newText, idx == layout.alignment))
                         layout.alignment = idx;
 
-                    ImGuiHelpers.SelectableHelpMarker(newDesc);
+                    UIHelpers.SelectableHelpMarker(newDesc);
                 }
 
             }

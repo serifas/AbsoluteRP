@@ -260,7 +260,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 rel.Name = editingName;
                                 rel.Description = editingDescription;
                                 rel.Slot = SlotEdit.Value;
-                                Plugin.logger.Error($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
+                                Logger.Error($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
 
                                 // Remove any existing relationship at this slot (avoid duplicates)
                                 layout.relationships.RemoveAll(r => r.Slot.HasValue && r.Slot.Value == SlotEdit.Value);

@@ -10,7 +10,7 @@ using Dalamud.Interface.Utility.Raii;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
-using ImGuiHelpers = AbsoluteRoleplay.Helpers.ImGuiHelpers;
+using UIHelpers = AbsoluteRoleplay.Helpers.UIHelpers;
 namespace AbsoluteRoleplay
 {
     public class Misc
@@ -685,7 +685,7 @@ namespace AbsoluteRoleplay
             var currentCursorY = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(center, currentCursorY));
             ImGui.PushItemWidth(size.X);
-            ImGui.InputTextWithHint(label, hint, ref input, length, ImGuiInputTextFlags.None, null);
+            ImGui.InputTextWithHint(label, hint, ref input, length, flags & (string.IsNullOrEmpty(input) ? ~ImGuiInputTextFlags.Password : ~ImGuiInputTextFlags.None));
             ImGui.PopItemWidth();
         }
         public static bool DrawXCenteredInput(string label, string id, ref string input, int length)
@@ -809,7 +809,7 @@ namespace AbsoluteRoleplay
 
 
             using var col = ImRaii.PushColor(ImGuiCol.Border, borderColor);
-            using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * ImGuiHelpers.GlobalScale);
+            using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * UIHelpers.GlobalScale);
             using var font = Jupiter.Push();
             if(center == true)
             {
@@ -821,7 +821,7 @@ namespace AbsoluteRoleplay
                 float xPos = (windowSize.X - size.X -15) / 2; // Center horizontally
                 ImGui.SetCursorPosX(xPos);
             }
-           ImGuiHelpers.DrawTextButton(title, Vector2.Zero, 0);
+           UIHelpers.DrawTextButton(title, Vector2.Zero, 0);
 
             using var defInfFontDen = ImRaii.DefaultFont();
             using var defCol = ImRaii.DefaultColors();
@@ -916,7 +916,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+                Logger.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
             }
         }
         private static readonly Dictionary<string, LoaderTweenState> loaderTweens = new();

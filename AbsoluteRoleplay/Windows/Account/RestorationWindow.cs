@@ -5,6 +5,7 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
 using Dalamud.Bindings.ImGui;
+using AbsoluteRoleplay.Helpers;
 
 namespace AbsoluteRoleplay.Windows.Account
 {
@@ -67,7 +68,7 @@ namespace AbsoluteRoleplay.Windows.Account
             }catch(Exception e)
             {
                 restorationStatus = "An error occurred";
-                Plugin.logger.Error(e.Message);
+                Logger.Error(e.Message);
                 restorationCol = new Vector4(255, 0, 0, 255);
             }
         }

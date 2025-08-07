@@ -1,8 +1,8 @@
 using Dalamud.Interface.Utility.Raii;
-using ImGuiNET;
 using System.Numerics;
 using System.Collections.Generic;
 using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     public class Story
@@ -121,7 +121,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         currentChapter = idx;
                         layout.loadChapters = true; // Set to true to load the chapter content
                     }
-                    ImGuiHelpers.SelectableHelpMarker("Select to edit chapter");
+                    UIHelpers.SelectableHelpMarker("Select to edit chapter");
                 }
             }
         }

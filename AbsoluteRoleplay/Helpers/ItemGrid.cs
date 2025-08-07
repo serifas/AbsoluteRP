@@ -3,7 +3,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using Networking;
 using System.Numerics;
-using ImGuiNET;
+using System.Runtime.InteropServices;
 namespace AbsoluteRoleplay.Helpers
 {
     internal class ItemGrid
@@ -131,7 +131,7 @@ namespace AbsoluteRoleplay.Helpers
                             DraggedItemSlot = slotIndex;
                             DraggedSlotContents = layout.tradeSlotContents;
                             int payloadData = slotIndex;
-                            ImGuiNET.ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
+                            ImGui.SetDragDropPayload("SLOT_MOVE", MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref payloadData, 1)), ImGuiCond.Always);
                         }
                         Dalamud.Bindings.ImGui.ImGui.Text($"Dragging Trade Slot {slotIndex}");
                         Dalamud.Bindings.ImGui.ImGui.EndDragDropSource();
@@ -324,7 +324,7 @@ namespace AbsoluteRoleplay.Helpers
                     }
                     catch (Exception ex)
                     {
-                        Plugin.logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
+                        Logger.Error($"Failed to render icon for slotIndex {slotIndex}: {ex.Message}");
                     }
 
                     Dalamud.Bindings.ImGui.ImGui.SetCursorScreenPos(cellPos);
@@ -433,13 +433,10 @@ namespace AbsoluteRoleplay.Helpers
                     // Begin Drag Source
                     if (hasInvItem && Dalamud.Bindings.ImGui.ImGui.BeginDragDropSource())
                     {
-                        unsafe
-                        {
-                            DraggedItemSlot = slotIndex;
-                            DraggedSlotContents = layout.inventorySlotContents;
-                            int payloadData = slotIndex;
-                            ImGuiNET.ImGui.SetDragDropPayload("SLOT_MOVE", new IntPtr(&payloadData), sizeof(int));
-                        }
+                        DraggedItemSlot = slotIndex;
+                        DraggedSlotContents = layout.inventorySlotContents; 
+                        int payloadData = slotIndex;
+                        ImGui.SetDragDropPayload("SLOT_MOVE", MemoryMarshal.AsBytes(MemoryMarshal.CreateReadOnlySpan(ref payloadData, 1)), ImGuiCond.Always);
                         Dalamud.Bindings.ImGui.ImGui.Text($"Dragging Slot {slotIndex}");
                         Dalamud.Bindings.ImGui.ImGui.EndDragDropSource();
                     }

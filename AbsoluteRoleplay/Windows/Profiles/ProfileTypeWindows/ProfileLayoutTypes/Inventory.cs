@@ -1,6 +1,7 @@
+using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
-using ImGuiNET;
 using InventoryTab;
 using System.Numerics;
 
@@ -31,7 +32,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 }
             }catch(Exception ex)
             {
-                Plugin.logger.Error("InventoryWindow Draw Error: " + ex.Message);
+                Logger.Error("InventoryWindow Draw Error: " + ex.Message);
             }
         }
         public static async void DrawInventory(int index, string uniqueID, InventoryLayout layout)

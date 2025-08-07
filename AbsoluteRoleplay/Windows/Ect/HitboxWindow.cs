@@ -1,10 +1,11 @@
 using AbsoluteRoleplay;
+using AbsoluteRoleplay.Helpers;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
 using System;
 using System.Collections.Generic;
 using System.Numerics;
@@ -33,7 +34,7 @@ public class HitboxWindow : Window
             }
         }catch(Exception ex)
         {
-            Plugin.logger.Error("HitboxWindow Draw Error: " + ex.Message);
+            Logger.Error("HitboxWindow Draw Error: " + ex.Message);
         }
     }
     public static void DrawTooltipHitbox(IPlayerCharacter player, IGameGui gui, float radius)

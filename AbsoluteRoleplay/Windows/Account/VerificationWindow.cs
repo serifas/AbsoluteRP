@@ -3,6 +3,7 @@ using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
 using Dalamud.Interface.Colors;
 using Dalamud.Bindings.ImGui;
+using AbsoluteRoleplay.Helpers;
 
 namespace AbsoluteRoleplay.Windows.Account
 {
@@ -45,7 +46,7 @@ namespace AbsoluteRoleplay.Windows.Account
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("VerificationWindow Draw Error: " + ex.Message);
+                Logger.Error("VerificationWindow Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

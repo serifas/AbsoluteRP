@@ -8,6 +8,7 @@ using AbsoluteRoleplay.Windows.MainPanel.Views;
 using AbsoluteRoleplay.Windows.Moderator;
 using AbsoluteRoleplay.Windows.Profiles;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -24,22 +25,13 @@ using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using ImGuiNET;
+using Lumina;
 using Networking;
 using System.Numerics;
 using System.Runtime.InteropServices;
 //using AbsoluteRoleplay.Windows.Chat;
 namespace AbsoluteRoleplay
 {
-    public class Logger
-    {
-        private readonly Serilog.ILogger _pluginLogger;
-        public Serilog.ILogger MainLogger;
-        public void Error(string text)
-        {
-            MainLogger.Error(text); 
-        }
-    }
     public partial class Plugin : IDalamudPlugin
     {
         private float fetchQuestsInRangeTimer = 0f; // Add this field to your Plugin class
@@ -61,11 +53,9 @@ namespace AbsoluteRoleplay
         public static bool firstopen = true; 
         private bool pendingFetchConnections = false;
         private ushort pendingTerritory = 0;
-        public static Logger logger = new Logger();
         //WIP
         private const string ChatToggleCommand = "/arpchat";
         public bool loginAttempted = false;
-        private IDtrBar dtrBar;
         private IDtrBarEntry? statusBarEntry;
         private IDtrBarEntry? connectionsBarEntry;
         private IDtrBarEntry? chatBarEntry;
@@ -83,7 +73,8 @@ namespace AbsoluteRoleplay
         [PluginService] internal static IClientState ClientState { get; private set; } = null;
         [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
         [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
-        [PluginService] internal static IChatGui chatgui { get; private set; } = null;
+        [PluginService] internal static IChatGui chatgui { get; private set; } = null; 
+        [PluginService] internal static IDtrBar dtrBar { get; private set; } = null!;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -124,38 +115,12 @@ namespace AbsoluteRoleplay
         public static Dictionary<int, IDalamudTextureWrap> staticTextures = new Dictionary<int, IDalamudTextureWrap>();
 
         //initialize our plugin
-        public Plugin(
-            IDalamudPluginInterface pluginInterface,
-            ICommandManager commandManager,
-            ITextureProvider textureProvider,
-            IClientState clientState,
-            ITargetManager targetManager,
-            IFramework framework,
-            ICondition condition,
-            IContextMenu contextMenu,
-            IDataManager dataManager,
-            IObjectTable objectTable,
-            IDtrBar dtrBar,
-            IGameGui gameGui,
-            IChatGui ChatGui
-            )
+        public Plugin()
         {
 
+            plugin = this;
             // Wrap the original service
-            this.dtrBar = dtrBar;
-            DataManager = dataManager;
-            ObjectTable = objectTable;
-            PluginInterface = pluginInterface;
-            CommandManager = commandManager;
-            ClientState = clientState;
-            TargetManager = targetManager;
-            TextureProvider = textureProvider;
-            Condition = condition;
-            ContextMenu = contextMenu;
-            Framework = framework;
-            Plugin.logger = logger;
-            GameGUI = gameGui;
-            chatgui = ChatGui;
+        
 
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
@@ -191,7 +156,7 @@ namespace AbsoluteRoleplay
 
             if (string.IsNullOrEmpty(Configuration.dataSavePath))
             {
-                Configuration.dataSavePath = $"{pluginInterface?.AssemblyLocation?.Directory?.FullName}\\ARPProfileData";
+                Configuration.dataSavePath = $"{PluginInterface?.AssemblyLocation?.Directory?.FullName}\\ARPProfileData";
                 Configuration.Save();
             }
             //add the windows to the windowsystem
@@ -226,9 +191,7 @@ namespace AbsoluteRoleplay
             ClientState.TerritoryChanged += FetchConnectionsInMap;
             Framework.Update += Update;
             
-            MainPanel.pluginInstance = this;
             
-            plugin = this;
 
         }
 
@@ -253,23 +216,23 @@ namespace AbsoluteRoleplay
                 }
                 else
                 {
-                    logger.Error($"Failed to parse version from response: {versionText}");
+                    Logger.Error($"Failed to parse version from response: {versionText}");
                     return new Version(0, 0, 0, 0); // Default version
                 }
             }
             catch (TaskCanceledException)
             {
-                logger.Error("Request timed out while fetching the online version.");
+                Logger.Error("Request timed out while fetching the online version.");
                 return new Version(0, 0, 0, 0); // Prevents crashes due to timeouts
             }
             catch (HttpRequestException ex)
             {
-                logger.Error($"HTTP error while fetching version: {ex.Message}");
+                Logger.Error($"HTTP error while fetching version: {ex.Message}");
                 return new Version(0, 0, 0, 0);
             }
             catch (Exception ex)
             {
-                logger.Error($"Unexpected error in GetOnlineVersionAsync: {ex}");
+                Logger.Error($"Unexpected error in GetOnlineVersionAsync: {ex}");
                 return new Version(0, 0, 0, 0);
             }
         }
@@ -297,10 +260,7 @@ namespace AbsoluteRoleplay
             {
                 return;
             }
-
             var obj = ObjectTable.SearchById(ctx->TargetObjectId.ObjectId);
-            // Check if the object kind is Companion or Other, which are often used for minions
-            // Check if the object kind is Companion, which is often used for minions and pets
 
             if (ctx->TargetObjectId.ObjectId != 0xE000_0000)
             {
@@ -449,7 +409,7 @@ namespace AbsoluteRoleplay
             e.SetObserved();
             Framework.RunOnFrameworkThread(() =>
             {
-                logger.Error("Exception handled" + e.Exception.Message);
+                Logger.Error("Exception handled" + e.Exception.Message);
             });
         }
         public void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -458,11 +418,11 @@ namespace AbsoluteRoleplay
             {
                 if (e.ExceptionObject is Exception ex)
                 {
-                    logger.Error($"Unhandled exception: {ex}");
+                    Logger.Error($"Unhandled exception: {ex}");
                 }
                 else
                 {
-                    logger.Error($"Unhandled non-Exception object: {e.ExceptionObject}");
+                    Logger.Error($"Unhandled non-Exception object: {e.ExceptionObject}");
                 }
             });
         }
@@ -604,15 +564,27 @@ namespace AbsoluteRoleplay
         }
         public bool IsOnline()
         {
-            bool loggedIn = false;
-            //if player is online in game and player is present
-            if (ClientState.IsLoggedIn == true && ClientState.LocalPlayer != null)
+            if (ClientState == null || ObjectTable == null)
+                return false;
+
+            try
             {
-                playername = ClientState.LocalPlayer.Name.ToString();
-                playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
-                loggedIn = true;
+                if (ClientState.IsLoggedIn)
+                {
+                    var localPlayer = ClientState.LocalPlayer;
+                    if (localPlayer != null)
+                    {
+                        playername = localPlayer.Name.ToString();
+                        playerworld = localPlayer.HomeWorld.Value.Name.ToString() ?? string.Empty;
+                        return true;
+                    }
+                }
             }
-            return loggedIn; //return our logged in status
+            catch (Exception ex)
+            {
+                Logger.Error($"IsOnline() exception: {ex}");
+            }
+            return false;
         }
         private bool avatarTextureSpawned = false;
         private void DrawUI()
@@ -624,7 +596,7 @@ namespace AbsoluteRoleplay
                 // Draw compass overlay if enabled and player is present
                 if (Configuration != null
                     && Configuration.showCompass
-                    && ClientState?.LocalPlayer != null)
+                    && IsOnline())
                 {
                     var viewport = ImGui.GetMainViewport(); // Only get this here, never store as static/field
 
@@ -651,28 +623,15 @@ namespace AbsoluteRoleplay
 
                     // If you want to draw a spinning avatar texture, do it here
                     // (If you need to spawn it only once, use a non-static field)
-                    if (!avatarTextureSpawned)
-                    {
-                        avatarTextureSpawned = true;
-                        float spinSpeed = 1.0f; // radians per second
-                        float rotation = (float)(Environment.TickCount / 1000.0 * spinSpeed);
-                        WorldInteractions.DrawTextureFlatOnFloorSpinning(
-                            UI.UICommonImage(UI.CommonImageTypes.avatarHolder),
-                            ClientState.LocalPlayer.Position,
-                            2.0f,
-                            rotation
-                        );
-                    }
-
+              
                     // Draw all floor textures every frame
-                    WorldInteractions.DrawAllFloorTextures();
 
                     ImGui.End();
                 }
             }
             catch (Exception ex)
             {
-                logger.Error($"Exception in DrawUI: {ex}");
+                Logger.Error($"Exception in DrawUI: {ex}");
             }
         }
         public async System.Threading.Tasks.Task LoadWindow(Window window, bool Toggle)
@@ -683,13 +642,13 @@ namespace AbsoluteRoleplay
             }
             if (window == null)
             {
-                logger.Error("LoadWindow called with a null window.");
+                Logger.Error("LoadWindow called with a null window.");
                 return;
             }
 
             if (await IsToSVersionUpdated()) // Now runs asynchronously
             {
-                logger.Error($"Version matched, loading window: {window}");
+                Logger.Error($"Version matched, loading window: {window}");
                 if (Toggle)
                 {
                     window.Toggle();
@@ -701,7 +660,7 @@ namespace AbsoluteRoleplay
             }
             else
             {
-                logger.Error("Version mismatch, opening Terms of Service window.");
+                Logger.Error("Version mismatch, opening Terms of Service window.");
 
                 if (Configuration.TOSVersion == null)
                 {
@@ -718,12 +677,12 @@ namespace AbsoluteRoleplay
         public void ToggleMainUI() => System.Threading.Tasks.Task.Run(() =>
         {
             try { LoadWindow(MainPanel, true).Wait(); }
-            catch (Exception ex) { logger.Error($"Exception in ToggleMainUI: {ex}"); }
+            catch (Exception ex) { Logger.Error($"Exception in ToggleMainUI: {ex}"); }
         });
         public void OpenMainPanel() => System.Threading.Tasks.Task.Run(() =>
         {
             try { LoadWindow(MainPanel, false).Wait(); }
-            catch (Exception ex) { logger.Error($"Exception in OpenMainPanel: {ex}"); }
+            catch (Exception ex) { Logger.Error($"Exception in OpenMainPanel: {ex}"); }
         });
         public void OpenTermsWindow() => TermsWindow.IsOpen = true;
         public void OpenImagePreview() => ImagePreview.IsOpen = true;
@@ -759,7 +718,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                logger.Error("Error updating status: " + ex.ToString());
+                Logger.Error("Error updating status: " + ex.ToString());
             }
         }
 
@@ -769,65 +728,64 @@ namespace AbsoluteRoleplay
             {
                 if (IsOnline())
                 {
+                    Logger.Error("Player is online, attempting to log in.");    
                     username = Configuration.username;
                     password = Configuration.password;
+                    // Add a null check here before accessing LocalPlayer properties
                     playername = ClientState.LocalPlayer.Name.ToString();
                     playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
-                    if(username != string.Empty && password != string.Empty)
+                    if (username != string.Empty && password != string.Empty)
                     {
                         ToggleMainUI();
                         DataSender.Login();
                         loginAttempted = true;
                     }
+                    // Increment timer by delta time
+                    fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+
+                    // Every 60 seconds, call FetchConnectedPlayers
+                    if (fetchQuestsInRangeTimer >= 25f)
+                    {
+                        fetchQuestsInRangeTimer = 0f;
+                        var localPlayer = ClientState.LocalPlayer;
+                        DataSender.FetchQuestsInMap();
+                    }
+
+                    if (firstopen == true && MainPanel.IsOpen == true)
+                    {
+                        firstopen = false;
+                        MainPanel.IsOpen = false; // Close if on first open
+                    }
+
+                    // Get the current target, prioritizing MouseOverTarget if available
+                    var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
+                    if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
+                    {
+                        lockedtarget = true;
+                    }
+                    else
+                    {
+                        lockedtarget = false;
+                    }
+                    // Check if we have a new target by comparing addresses
+                    if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress)
+                    {
+                        if (InCombatLock() || InDutyLock() || InPvpLock()) return;
+
+                        WindowOperations.DrawTooltipInfo(gameObject);
+
+                        lastTargetAddress = gameObject.Address;  // Update to the new target's address
+                    }
+                    // If there's no target and a tooltip was open, close it
+                    else if (currentTarget == null || currentTarget.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player && TooltipWindow.IsOpen)
+                    {
+                        TooltipWindow.IsOpen = false;
+                        lastTargetAddress = IntPtr.Zero;  // Reset the target address when no target
+                    }
                 }
             }
-
-            // Increment timer by delta time
-            fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
-
-            // Every 60 seconds, call FetchConnectedPlayers
-            if (fetchQuestsInRangeTimer >= 25f)
-            {
-                fetchQuestsInRangeTimer = 0f;
-                var localPlayer = ClientState.LocalPlayer;
-                if (localPlayer != null)
-                {
-                    logger.Error("Printing avatar on floor");
-                    WorldInteractions.SpawnTextureOnNpc(UI.UICommonImage(UI.CommonImageTypes.avatarHolder));
-                }
-            }
-
-            if (firstopen == true && MainPanel.IsOpen == true)
-            {
-                firstopen = false;
-                MainPanel.IsOpen = false; // Close if on first open
-            }
-            
-            // Get the current target, prioritizing MouseOverTarget if available
-            var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
-            if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
-            {
-                lockedtarget = true;
-            }
-            else
-            {
-                lockedtarget = false;
-            }
-            // Check if we have a new target by comparing addresses
-            if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress )
-            {
-                if (InCombatLock() || InDutyLock() || InPvpLock()) return;
-               
-                WindowOperations.DrawTooltipInfo(gameObject);
-
-                lastTargetAddress = gameObject.Address;  // Update to the new target's address
-            }
-            // If there's no target and a tooltip was open, close it
-            else if (currentTarget == null || currentTarget.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player && TooltipWindow.IsOpen )
-            {
-                TooltipWindow.IsOpen = false;
-                lastTargetAddress = IntPtr.Zero;  // Reset the target address when no target
-            }
+          
+                     
         }      
         public bool InDutyLock()
         {

@@ -1,14 +1,15 @@
 using AbsoluteRoleplay;
 using AbsoluteRoleplay.Defines;
+using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
-using ImGuiNET;
 using Lumina.Data;
 using Lumina.Data.Files;
 using Microsoft.VisualBasic;
@@ -495,13 +496,13 @@ namespace AbsoluteRoleplay
                 var fullPath = Path.Combine(path, "UI/common/profiles/background_holder.png");
                 if (!File.Exists(fullPath))
                 {
-                    Plugin.logger.Error($"[baseImageBytes] File does not exist: {fullPath}");
+                    Logger.Error($"[baseImageBytes] File does not exist: {fullPath}");
                     return null;
                 }
                 // This should just read the file as bytes
                 return File.ReadAllBytes(fullPath);
             }
-            Plugin.logger.Error("[baseImageBytes] PluginInterface or path is null.");
+            Logger.Error("[baseImageBytes] PluginInterface or path is null.");
             return null;
         }
 
@@ -1501,7 +1502,7 @@ public class LayoutTreeNode
         set
         {
             if (value == null)
-                Plugin.logger.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
+                Logger.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
             _name = value ?? string.Empty;
         }
     }

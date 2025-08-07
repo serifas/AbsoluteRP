@@ -10,7 +10,6 @@ namespace AbsoluteRoleplay.Windows
 {
     public class OptionsWindow : Window, IDisposable
     {
-        public static Plugin plugin;
         public static bool showTargetOptions;
         public static bool autoLogin;
         public static bool showKofi;
@@ -30,10 +29,10 @@ namespace AbsoluteRoleplay.Windows
                 MinimumSize = new Vector2(300, 180),
                 MaximumSize = new Vector2(800, 800)
             };
-            showKofi = plugin.Configuration.showKofi;
-            showPatreon = plugin.Configuration.showPatreon;
-            showDisc = plugin.Configuration.showDisc;
-            autoLogin = plugin.Configuration.autoLogin;
+            showKofi = Plugin.plugin.Configuration.showKofi;
+            showPatreon = Plugin.plugin.Configuration.showPatreon;
+            showDisc = Plugin.plugin.Configuration.showDisc;
+            autoLogin = Plugin.plugin.Configuration.autoLogin;
             _fileDialogManager = new FileDialogManager();
         }
         public override void Draw()
@@ -43,27 +42,27 @@ namespace AbsoluteRoleplay.Windows
                 _fileDialogManager.Draw();
                 if (ChangeDataPath)
                 {
-                    Plugin.logger.Error("Dialog Opening");
+                    Logger.Error("Dialog Opening");
                     _fileDialogManager.OpenFolderDialog("Select Data Save Path", (b, path) =>
                     {
                         if(path != null && b)
                         {
-                            plugin.Configuration.dataSavePath = path;
-                            plugin.Configuration.Save();
-                            Plugin.logger.Error($"Data save path changed to: {path}");
+                            Plugin.plugin.Configuration.dataSavePath = path;
+                            Plugin.plugin.Configuration.Save();
+                            Logger.Error($"Data save path changed to: {path}");
                         }
                         else
                         {
-                            Plugin.logger.Error("Data save path change cancelled.");
+                            Logger.Error("Data save path change cancelled.");
                         }
                     });
                     ChangeDataPath = false; // Prevent repeated dialog opening
                 }
-                Misc.SetTitle(plugin, false, "Options", ImGuiColors.TankBlue);
+                Misc.SetTitle(Plugin.plugin, false, "Options", ImGuiColors.TankBlue);
                 //okay that's done.
                 ImGui.Spacing();
                 //now for some simple toggles
-                Configuration = plugin.Configuration;
+                Configuration = Plugin.plugin.Configuration;
 
 
                 ImGui.BeginTabBar("MouseTargetTooltipOptions");
@@ -72,30 +71,30 @@ namespace AbsoluteRoleplay.Windows
                 {
                     if(ImGui.Checkbox("Show ARP Compass", ref showCompass))
                     {
-                        plugin.Configuration.showCompass = showCompass;
-                        plugin.Configuration.Save();
+                        Plugin.plugin.Configuration.showCompass = showCompass;
+                        Plugin.plugin.Configuration.Save();
                     }
                     if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
                     {
-                        plugin.Configuration.showKofi = showKofi;
-                        plugin.Configuration.Save();
+                        Plugin.plugin.Configuration.showKofi = showKofi;
+                        Plugin.plugin.Configuration.Save();
                     }
                     if (ImGui.Checkbox("Show Patreon Button.", ref showPatreon))
                     {
-                        plugin.Configuration.showPatreon = showPatreon;
-                        plugin.Configuration.Save();
+                        Plugin.plugin.Configuration.showPatreon = showPatreon;
+                        Plugin.plugin.Configuration.Save();
                     }
                     if (ImGui.Checkbox("Show Discord Button.", ref showDisc))
                     {
-                        plugin.Configuration.showDisc = showDisc;
-                        plugin.Configuration.Save();
+                        Plugin.plugin.Configuration.showDisc = showDisc;
+                        Plugin.plugin.Configuration.Save();
                     }
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
                 if (ImGui.BeginTabItem("Data"))
                 {
-                    string customPath = plugin.Configuration.dataSavePath ?? string.Empty;
+                    string customPath = Plugin.plugin.Configuration.dataSavePath ?? string.Empty;
                     ImGui.Text("Auto Backup Dir:");
                     ImGui.SameLine();                    
                     ImGui.InputText("", ref customPath, 300);
@@ -174,7 +173,7 @@ namespace AbsoluteRoleplay.Windows
                         var showRace = Configuration.tooltip_showRace;
                         if (ImGui.Checkbox("Show Race", ref showRace))
                         {
-                            plugin.Configuration.tooltip_showRace = showRace;
+                            Plugin.plugin.Configuration.tooltip_showRace = showRace;
                             Configuration.Save();
                         }
                         ImGui.SameLine();
@@ -232,7 +231,7 @@ namespace AbsoluteRoleplay.Windows
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("OptionsWindow Draw Error: " + ex.Message);
+                Logger.Error("OptionsWindow Draw Error: " + ex.Message);
             }
         }
         public void Dispose()

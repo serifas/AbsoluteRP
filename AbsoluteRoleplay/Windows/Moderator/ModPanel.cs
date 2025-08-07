@@ -1,18 +1,16 @@
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using ImGuiNET;
 using AbsoluteRoleplay.Helpers;
 using Networking;
 using Dalamud.Interface.Colors;
 using AbsoluteRoleplay.Defines;
 using Dalamud.Interface.Utility.Raii;
-
+using Dalamud.Bindings.ImGui;
 namespace AbsoluteRoleplay.Windows.Moderator
 {
     public class ModPanel : Window, IDisposable
     {
 
-        public static Plugin pg;
         public static string moderatorNotes = string.Empty;
         public static string moderatorMessage = string.Empty;
         public static string capturedMessage = string.Empty;
@@ -32,16 +30,15 @@ namespace AbsoluteRoleplay.Windows.Moderator
                 MinimumSize = new Vector2(100, 100),
                 MaximumSize = new Vector2(1200, 950)
             };
-            Plugin.logger.Error(capturedAuthor.ToString());
-          
+            Logger.Error(capturedAuthor.ToString());          
         }
         public override void Draw()
         {
             try
             {
-                if (pg.IsOnline())
+                if (Plugin.plugin.IsOnline())
                 {
-                    Misc.SetTitle(pg, true, "Moderator Panel", ImGuiColors.TankBlue);
+                    Misc.SetTitle(Plugin.plugin, true, "Moderator Panel", ImGuiColors.TankBlue);
                     DrawActionSelection();
                     ImGui.Text("Message to user:");
                     ImGui.InputTextMultiline("##message", ref moderatorMessage, 4000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 4));
@@ -75,7 +72,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ModPanel Draw Error: " + ex.Message);
+                Logger.Error("ModPanel Draw Error: " + ex.Message);
                 status = "An error occurred while processing your request.";
                 statusColor = new Vector4(1, 0, 0, 1); // Red color for error
             }
@@ -106,7 +103,7 @@ namespace AbsoluteRoleplay.Windows.Moderator
                     if (ImGui.Selectable(newText, idx == (int)currentAction))
                         currentAction = (ModeratorAction)idx;
                         
-                    ImGuiHelpers.SelectableHelpMarker(newDesc);
+                    UIHelpers.SelectableHelpMarker(newDesc);
                 }
 
             }

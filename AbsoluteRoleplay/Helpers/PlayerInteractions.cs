@@ -1,5 +1,4 @@
 using Networking;
-using ImGuiNET;
 using JetBrains.Annotations;
 using System.Drawing.Imaging;
 using Dalamud.Interface.Utility;
@@ -16,6 +15,7 @@ using Dalamud.Interface.Windowing;
 using static FFXIVClientStructs.FFXIV.Client.UI.UIModule.Delegates;
 using Lumina.Excel.Sheets;
 using static Lumina.Data.Parsing.Layer.LayerCommon;
+using Dalamud.Bindings.ImGui;
 
 namespace AbsoluteRoleplay.Helpers
 {
@@ -50,7 +50,6 @@ namespace AbsoluteRoleplay.Helpers
                         float distance = Vector3.Distance(localPlayer.Position, player.Position);
                         if (distance <= range)
                         {
-                            WorldInteractions.DrawSquareAbovePlayer(player, connectedPlayer);
                             action?.Invoke(player, connectedPlayer);
                         }
                     }
@@ -60,8 +59,7 @@ namespace AbsoluteRoleplay.Helpers
         public static void DrawDynamicCompass(
             float centerX, float centerY, float compassWidth, float compassHeight, float characterYawRadians)
         {
-            if (ImGui.GetCurrentContext() == IntPtr.Zero)
-                return;
+     
             if (compassWidth <= 0 || compassHeight <= 0)
                 return;
 

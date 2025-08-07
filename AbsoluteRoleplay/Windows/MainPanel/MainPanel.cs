@@ -42,7 +42,6 @@ public class MainPanel : Window, IDisposable
                                  //systems
                                  combatImage, statSystemImage,
                                  reconnectImage;
-    public static Plugin pluginInstance;
     public static bool LoggedIN = false;
     public static Vector2 ButtonSize = new Vector2();
     public static float centeredX = 0f;
@@ -52,11 +51,6 @@ public class MainPanel : Window, IDisposable
         ImGuiWindowFlags.NoScrollWithMouse)
     {
         SizeCondition = ImGuiCond.Always;
-        pluginInstance = Plugin.plugin;
-        Login.username = Plugin.plugin.Configuration.username;
-        Login.password = Plugin.plugin.Configuration.password;
-
-
         Remember = Plugin.plugin.Configuration.rememberInformation;
     }
     public override void OnOpen()
@@ -158,22 +152,22 @@ public class MainPanel : Window, IDisposable
             // can't ref a property, so use a local copy
             if (login == true)
             {
-                Login.LoadLogin(pluginInstance);
+                Login.LoadLogin();
             }
             if (forgot == true)
             {
-                Forgot.LoadForgot(pluginInstance);
+                Forgot.LoadForgot(Plugin.plugin);
             }
             if (register == true)
             {
-                Register.LoadRegistration(pluginInstance);
+                Register.LoadRegistration(Plugin.plugin);
             }
             if (loggedIn == true)
             {
-                LoggedIn.LoadLoggedIn(pluginInstance);
+                LoggedIn.LoadLoggedIn(Plugin.plugin);
             }
 
-            if (pluginInstance.Configuration.showKofi)
+            if (Plugin.plugin.Configuration.showKofi)
             {
                 var currentCursorY = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, currentCursorY));
@@ -182,7 +176,7 @@ public class MainPanel : Window, IDisposable
                     Util.OpenLink("https://ko-fi.com/absoluteroleplay");
                 }
             }
-            if (pluginInstance.Configuration.showPatreon == true)
+            if (Plugin.plugin.Configuration.showPatreon == true)
             {
                 var patreonPos = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
@@ -191,7 +185,7 @@ public class MainPanel : Window, IDisposable
                     Util.OpenLink("https://patreon.com/AbsoluteRoleplay");
                 }
             }
-            if (pluginInstance.Configuration.showDisc == true)
+            if (Plugin.plugin.Configuration.showDisc == true)
             {
                 var discPos = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, discPos));
@@ -212,7 +206,7 @@ public class MainPanel : Window, IDisposable
             if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
             {
                 ClientTCP.AttemptConnect();
-                pluginInstance.UpdateStatus();
+                Plugin.plugin.UpdateStatus();
             }
             if (loggedIn == false && viewProfile == false && viewListings == false)
             {
@@ -228,9 +222,9 @@ public class MainPanel : Window, IDisposable
             {
                 if (ImGui.Button("Logout", new Vector2(buttonWidth, buttonHeight / 2f)))
                 {
-                    pluginInstance.newConnection = false;
-                    pluginInstance.CloseAllWindows();
-                    pluginInstance.OpenMainPanel();
+                    Plugin.plugin.newConnection = false;
+                    Plugin.plugin.CloseAllWindows();
+                    Plugin.plugin.OpenMainPanel();
                     login = CurrentElement();
                     status = "Logged Out";
                     statusColor = new Vector4(255, 0, 0, 255);
@@ -239,8 +233,8 @@ public class MainPanel : Window, IDisposable
 
         } catch (Exception e)
         {
-            Plugin.logger.Error("MainPanel Draw Error: " + e.Message);
-            Plugin.logger.Error(e.StackTrace);
+            Logger.Error("MainPanel Draw Error: " + e.Message);
+            Logger.Error(e.StackTrace);
 
         }
 
@@ -260,20 +254,20 @@ public class MainPanel : Window, IDisposable
     }
     public static void SaveLoginPreferences(string username, string password)
     {
-        pluginInstance.Configuration.rememberInformation = Remember;
-        if (pluginInstance.Configuration.rememberInformation == true)
+        Plugin.plugin.Configuration.rememberInformation = Remember;
+        if (Plugin.plugin.Configuration.rememberInformation == true)
         {
-            pluginInstance.Configuration.username = username;
-            pluginInstance.Configuration.password = password;
+            Plugin.plugin.Configuration.username = username;
+            Plugin.plugin.Configuration.password = password;
         }
         else
         {
-            pluginInstance.Configuration.username = string.Empty;
-            pluginInstance.Configuration.password = string.Empty;
+            Plugin.plugin.Configuration.username = string.Empty;
+            Plugin.plugin.Configuration.password = string.Empty;
         }
-        pluginInstance.username = username;
-        pluginInstance.password = password;
-        pluginInstance.Configuration.Save();
+        Plugin.plugin.username = username;
+        Plugin.plugin.password = password;
+        Plugin.plugin.Configuration.Save();
     }
     public void switchUI()
     {

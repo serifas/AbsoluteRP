@@ -22,7 +22,6 @@ namespace AbsoluteRoleplay.Windows.Ect
         public static IDalamudTextureWrap personality_3Img;
         public static IDalamudTextureWrap AlignmentImg;
 
-        public Plugin plugin;
         internal static bool hasAlignment = false;
         internal static bool showPersonality1 = false;
         internal static bool showPersonality2 = false;
@@ -37,8 +36,6 @@ namespace AbsoluteRoleplay.Windows.Ect
                                               | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse |
                                               ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoFocusOnAppearing)
         {
-            config = plugin.Configuration;
-            this.plugin = plugin;
 
             SizeConstraints = new WindowSizeConstraints
             {
@@ -53,7 +50,7 @@ namespace AbsoluteRoleplay.Windows.Ect
         {
             try
             {
-                if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(plugin, false, profile.title, profile.titleColor);
+                if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(Plugin.plugin, false, profile.title, profile.titleColor);
                 if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.Handle, new Vector2(100, 100));
                 if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text("NAME: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Name, 400);
                 if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Race, 400);
@@ -134,7 +131,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ARPTooltipWindow Draw Error: " + ex.Message);
+                Logger.Error("ARPTooltipWindow Draw Error: " + ex.Message);
             }
         }
 
@@ -162,7 +159,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.logger?.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
+                Logger.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
             }
         }
 

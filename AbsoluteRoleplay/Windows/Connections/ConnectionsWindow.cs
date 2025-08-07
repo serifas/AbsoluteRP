@@ -187,7 +187,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error("ConnectionsWindow Draw Error: " + ex.Message);
+                Logger.Error("ConnectionsWindow Draw Error: " + ex.Message);
             }
         }
         public void AddConnectionListingOptions()
@@ -203,7 +203,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
                 if (ImGui.Selectable(newText, idx == currentListing))
                     currentListing = idx;
 
-                Helpers.ImGuiHelpers.SelectableHelpMarker(newDesc);
+                Helpers.UIHelpers.SelectableHelpMarker(newDesc);
             }
         }
         public void Dispose()

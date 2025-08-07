@@ -5,18 +5,24 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
 {
     internal class Login
     {
-        public static string username = string.Empty;
-        public static string password = string.Empty;
-        public static void LoadLogin(Plugin pluginInstance)
+        public static void LoadLogin()
         {
+            string username = Plugin.plugin.Configuration.username;
+            string password = Plugin.plugin.Configuration.password;   
             var centeredX = MainPanel.centeredX;
             var ButtonSize = MainPanel.ButtonSize;
 
-            Misc.DrawCenteredInput(centeredX, ButtonSize, "##username", $"Username", ref username, 100, ImGuiInputTextFlags.None);
-            Misc.DrawCenteredInput(centeredX, ButtonSize, "##password", $"Password", ref password, 100, ImGuiInputTextFlags.Password);
+            if(ImGui.InputText("##username", ref username, 100, ImGuiInputTextFlags.None))
+            {
+                Plugin.plugin.Configuration.username = username;
+            }
+            if(ImGui.InputText("##password", ref password, 100, ImGuiInputTextFlags.Password))
+            {
+                Plugin.plugin.Configuration.password = password;
+            }   
             if (Misc.DrawCenteredButton(centeredX, ButtonSize, "Login"))
             {
-                if (pluginInstance.IsOnline() && ClientTCP.IsConnected() == true)
+                if (Plugin.plugin.IsOnline() && ClientTCP.IsConnected() == true)
                 {
                     MainPanel.SaveLoginPreferences(username.ToString(), password.ToString());
                     DataSender.Login();

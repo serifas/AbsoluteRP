@@ -1,4 +1,5 @@
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
@@ -6,7 +7,6 @@ using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.UI.Info;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using ImGuiNET;
 using JetBrains.Annotations;
 using Lumina.Data.Files;
 using Networking;
@@ -69,7 +69,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (string.IsNullOrEmpty(gameTexturePath))
                 {
-                    Plugin.logger.Error("Game texture path is null or empty.");
+                    Logger.Error("Game texture path is null or empty.");
                     return null;
                 }
 
@@ -77,11 +77,11 @@ namespace AbsoluteRoleplay.Helpers
                 var texFile = Plugin.DataManager.GetFile<TexFile>(gameTexturePath);
                 if (texFile == null)
                 {
-                    Plugin.logger.Error($"TexFile not found for path: {gameTexturePath}");
+                    Logger.Error($"TexFile not found for path: {gameTexturePath}");
                     return null;
                 }
 
-                Plugin.logger.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
+                Logger.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
 
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
@@ -93,7 +93,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
+                Logger.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
                 return null;
             }
         }
@@ -121,7 +121,7 @@ namespace AbsoluteRoleplay.Helpers
 
             if (Plugin.TextureProvider == null)
             {
-                Plugin.logger?.Error("TextureProvider is not initialized.");
+                Logger.Error("TextureProvider is not initialized.");
                 return galleryImage;
             }
 
@@ -177,32 +177,32 @@ namespace AbsoluteRoleplay.Helpers
                             response.StatusCode == HttpStatusCode.BadGateway ||
                             response.StatusCode == HttpStatusCode.InternalServerError)
                         {
-                            Plugin.logger.Error($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
+                            Logger.Error($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
                             await Task.Delay(delayMs * attempt);
                             continue;
                         }
                         else
                         {
-                            Plugin.logger.Error($"Image download failed with status code: {response.StatusCode}");
+                            Logger.Error($"Image download failed with status code: {response.StatusCode}");
                             break;
                         }
                     }
                 }
                 catch (HttpRequestException httpEx)
                 {
-                    Plugin.logger.Error($"HTTP Request Error: {httpEx.Message}");
+                    Logger.Error($"HTTP Request Error: {httpEx.Message}");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (TaskCanceledException)
                 {
-                    Plugin.logger.Error("Download request timed out.");
+                    Logger.Error("Download request timed out.");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (Exception ex)
                 {
-                    Plugin.logger?.Error($"Unexpected error: {ex.Message}");
+                    Logger.Error($"Unexpected error: {ex.Message}");
                     break;
                 }
             }
@@ -226,7 +226,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
+                Logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
             }
             return null;
         }
@@ -244,7 +244,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
+                Logger.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
             }
             return null;
         }
@@ -267,7 +267,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.logger?.Error($"Error fetching image bytes: {ex.Message}");
+                Logger.Error($"Error fetching image bytes: {ex.Message}");
                 return Array.Empty<byte>();
             }
         }
@@ -279,7 +279,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (Plugin.TextureProvider == null)
                 {
-                    Plugin.logger?.Error("TextureProvider is not initialized.");
+                    Logger.Error("TextureProvider is not initialized.");
                 }
                 else
                 {
@@ -315,15 +315,15 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (HttpRequestException httpEx)
             {
-                Plugin.logger?.Error($"HTTP Request Error: {httpEx.Message}");
+                Logger.Error($"HTTP Request Error: {httpEx.Message}");
             }
             catch (TaskCanceledException)
             {
-                Plugin.logger?.Error("Download request timed out.");
+                Logger.Error("Download request timed out.");
             }
             catch (Exception ex)
             {
-                Plugin.logger?.Error($"Unexpected error: {ex.Message}");
+                Logger.Error($"Unexpected error: {ex.Message}");
             }
             return image;
         }
