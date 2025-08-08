@@ -86,7 +86,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Error in BookmarksWindow Draw: {ex.Message}");
+                Plugin.PluginLog.Debug($"Debug in BookmarksWindow Draw: {ex.Message}");
             }
         }
 

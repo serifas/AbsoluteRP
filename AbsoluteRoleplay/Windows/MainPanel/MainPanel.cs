@@ -233,8 +233,8 @@ public class MainPanel : Window, IDisposable
 
         } catch (Exception e)
         {
-            Plugin.PluginLog.Error("MainPanel Draw Error: " + e.Message);
-            Plugin.PluginLog.Error(e.StackTrace);
+            Plugin.PluginLog.Debug("MainPanel Draw Debug: " + e.Message);
+            Plugin.PluginLog.Debug(e.StackTrace);
 
         }
 

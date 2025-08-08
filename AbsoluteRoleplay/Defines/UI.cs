@@ -24,6 +24,8 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Linq;
+using static AbsoluteRoleplay.Misc;
+using static AbsoluteRoleplay.UI;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
 namespace AbsoluteRoleplay
@@ -74,10 +76,46 @@ namespace AbsoluteRoleplay
         public List<CustomTab> customTabs { get; set; } = new List<CustomTab>();
        
         public string OOC { get; set; }
+
+    }
     
+    public class descriptor
+    {
+        public int index { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        // Add parsed cache
+        public ParsedNode parsedName;
+        public string lastName;
+        public ParsedNode parsedDescription;
+        public string lastDescription;
+    }
+    public class field
+    {
+        public int index { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        // Add parsed cache
+        public ParsedNode parsedName;
+        public string lastName;
+        public ParsedNode parsedDescription;
+        public string lastDescription;
+    }
+    public class trait
+    {
+        public int iconID { get; set; }
+        public int index { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public bool modifying { get; set; } // Controls window visibility
+        public IconElement icon { get; set; } = new IconElement { icon = UICommonImage(CommonImageTypes.blank) };
+        // Add parsed cache
+        public ParsedNode parsedName;
+        public string lastName;
+        public ParsedNode parsedDescription;
+        public string lastDescription;
     }
 
-    
     public class RosterLayout : CustomLayout
     {
         public int tabIndex { get; set; } = 0;
@@ -245,14 +283,11 @@ namespace AbsoluteRoleplay
         public static string[] months = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" };
         public static string[] timezones = { "Eastern Standard Time (EST)", "Eastern Daylight Time (EDT)", "Central Standard Time (CST)", "Central Daylight Time (CDT)", "Mountain Standard Time (MST)", "Mountain Daylight Time (MDT)", "Pacific Standard Time (PST)", "Pacific Daylight Time (PDT)" };
          internal static string inputHelperUrlInfo =
-            "URL: \n <url>https://example.com</url>\n" +
+            "URL: \n <url>https://urlhere</url>\n" +
             "You can use this to link to your Discord, Ko-Fi, Patreon, or any other site you wish to link to solong as they to not contain jumpscares or illigal / triggering content.\n\n" +
 
-            "IMAGE: \n <img>https://imageurl.ext</img>\n" +
+            "IMAGE: \n <img>https://urlhere</img>\n" +
             "You can use this to link to an image url you wish to display in your profile solong as it abides by the Rules and ToS.\n\n" +
-
-            "SCALE: \n <scale=''0.5''><image>https://imageurl.ext</image></scale>\n" +
-            "This currently only works with images and will scale the image to the point value specified.\n\n" +    
 
             "COLOR: \n <color hex=FF0000>Red Text</color>\n" +
             "You can use this to color text in your profile. The hex value can be any valid hex color code.\n\n" +
@@ -262,6 +297,12 @@ namespace AbsoluteRoleplay
             "You can use this to create a table in your profile. The table can contain columns to align content side by side and so on.\n" +
             "The columns tag is used to define the number of columns in the table.\n There is currently no row support.\n\n"+
             
+            "NAVIGATION: \n <nav>content here</nav> \n" +
+            "You can use this to create a navigation bar in your profile. The navigation bar can contain page tags to set the pages content to navigate.\n" +
+
+            "PAGE: \n <page>content here</page> \n" +
+            "You can use this to create a page in your profile. The page can contain any content including tags. (Must be placed within nav tags) \n\n" +
+
             "<<Although most these features are not very suited for some fields they are still enabled. Get creative! ♥>>"
             ;
              
@@ -496,13 +537,13 @@ namespace AbsoluteRoleplay
                 var fullPath = Path.Combine(path, "UI/common/profiles/background_holder.png");
                 if (!File.Exists(fullPath))
                 {
-                    Plugin.PluginLog.Error($"[baseImageBytes] File does not exist: {fullPath}");
+                    Plugin.PluginLog.Debug($"[baseImageBytes] File does not exist: {fullPath}");
                     return null;
                 }
                 // This should just read the file as bytes
                 return File.ReadAllBytes(fullPath);
             }
-            Plugin.PluginLog.Error("[baseImageBytes] PluginInterface or path is null.");
+            Plugin.PluginLog.Debug("[baseImageBytes] PluginInterface or path is null.");
             return null;
         }
 
@@ -1320,6 +1361,21 @@ public class BioLayout : CustomLayout
     public List<descriptor> descriptors { get; set; } = new List<descriptor>(); // List of descriptors
     public List<trait> traits { get; set; } = new List<trait>(); // List of traits
     public List<field> fields { get; set; } = new List<field>(); // List of custom fields
+                                                                 // Add parsed node caches and last-value tracking for each property
+    public ParsedNode parsedName;
+    public string lastName;
+    public ParsedNode parsedRace;
+    public string lastRace;
+    public ParsedNode parsedGender;
+    public string lastGender;
+    public ParsedNode parsedAge;
+    public string lastAge;
+    public ParsedNode parsedHeight;
+    public string lastHeight;
+    public ParsedNode parsedWeight;
+    public string lastWeight;
+    public ParsedNode parsedAfg;
+    public string lastAfg;
 
 }
 public class GalleryLayout : CustomLayout
@@ -1330,10 +1386,14 @@ public class GalleryLayout : CustomLayout
 }
 public class InfoLayout : CustomLayout
 {
-    public  string tabName { get; set; } = string.Empty;
-    public int tabIndex { get; set; } = 0; // Index of the currently selected tab
-    public string text { get; set; } = string.Empty; // Text for the Info layout
-} //OOC
+    public string tabName { get; set; }
+    public int tabIndex { get; set; }
+    public string text { get; set; }
+    // Add parsed cache
+    public ParsedNode parsedText;
+    public string lastText;
+}
+
 public class DetailsLayout : CustomLayout
 {
     public  string tabName { get; set; } = string.Empty;
@@ -1502,7 +1562,7 @@ public class LayoutTreeNode
         set
         {
             if (value == null)
-                Plugin.PluginLog.Error($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
+                Plugin.PluginLog.Debug($"[DEBUG] Attempted to set node.Name to null for node ID {ID}");
             _name = value ?? string.Empty;
         }
     }

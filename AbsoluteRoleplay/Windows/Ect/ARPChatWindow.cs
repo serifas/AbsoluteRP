@@ -268,9 +268,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ARPChatWindow Draw Error: " + ex.Message);
-                // Optionally, you can display an error message in the chat window
-                chatgui.PrintError($"Error in ARPChatWindow: {ex.Message}");
+                Plugin.PluginLog.Debug("ARPChatWindow Draw Debug: " + ex.Message);
             }
            
         }

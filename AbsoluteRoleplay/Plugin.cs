@@ -103,10 +103,9 @@ namespace AbsoluteRoleplay
         private TargetProfileWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
-        private TradeWindow TradeWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
-        //PluginLog for printing errors and such
+        //PluginLog for printing Debugs and such
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -153,7 +152,6 @@ namespace AbsoluteRoleplay
             TooltipWindow = new ARPTooltipWindow();
             NotesWindow = new NotesWindow();
             ListingWindow = new ListingsWindow();
-            TradeWindow = new TradeWindow();
 
             Configuration.Initialize(PluginInterface);
 
@@ -180,7 +178,6 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ListingWindow);
             WindowSystem.AddWindow(ArpChatWindow);
             WindowSystem.AddWindow(ImportantNoticeWindow);
-            WindowSystem.AddWindow(TradeWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
             // Subscribe to condition change events
             PluginInterface.UiBuilder.Draw += DrawUI;
@@ -219,23 +216,23 @@ namespace AbsoluteRoleplay
                 }
                 else
                 {
-                    PluginLog.Error($"Failed to parse version from response: {versionText}");
+                    PluginLog.Debug($"Failed to parse version from response: {versionText}");
                     return new Version(0, 0, 0, 0); // Default version
                 }
             }
             catch (TaskCanceledException)
             {
-                PluginLog.Error("Request timed out while fetching the online version.");
+                PluginLog.Debug("Request timed out while fetching the online version.");
                 return new Version(0, 0, 0, 0); // Prevents crashes due to timeouts
             }
             catch (HttpRequestException ex)
             {
-                PluginLog.Error($"HTTP error while fetching version: {ex.Message}");
+                PluginLog.Debug($"HTTP Debug while fetching version: {ex.Message}");
                 return new Version(0, 0, 0, 0);
             }
             catch (Exception ex)
             {
-                PluginLog.Error($"Unexpected error in GetOnlineVersionAsync: {ex}");
+                PluginLog.Debug($"Unexpected Debug in GetOnlineVersionAsync: {ex}");
                 return new Version(0, 0, 0, 0);
             }
         }
@@ -343,17 +340,7 @@ namespace AbsoluteRoleplay
                     DataSender.FetchProfile(false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
-            /*
-            args.AddMenuItem(new MenuItem
-            {
-                Name = "Trade ARP Items",
-                PrefixColor = 56,
-                Prefix = SeIconChar.Gil,
-                OnClicked = _ => {
-                    DataSender.RequestTargetTrade(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
-                },
-            });
-            */
+            
         }
         private Version? cachedVersion = null;
         private bool isCheckingVersion = false;
@@ -412,7 +399,7 @@ namespace AbsoluteRoleplay
             e.SetObserved();
             Framework.RunOnFrameworkThread(() =>
             {
-                PluginLog.Error("Exception handled" + e.Exception.Message);
+                PluginLog.Debug("Exception handled" + e.Exception.Message);
             });
         }
         public void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -421,11 +408,11 @@ namespace AbsoluteRoleplay
             {
                 if (e.ExceptionObject is Exception ex)
                 {
-                    PluginLog.Error($"Unhandled exception: {ex}");
+                    PluginLog.Debug($"Unhandled exception: {ex}");
                 }
                 else
                 {
-                    PluginLog.Error($"Unhandled non-Exception object: {e.ExceptionObject}");
+                    PluginLog.Debug($"Unhandled non-Exception object: {e.ExceptionObject}");
                 }
             });
         }
@@ -585,7 +572,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                PluginLog.Error($"IsOnline() exception: {ex}");
+                PluginLog.Debug($"IsOnline() exception: {ex}");
             }
             return false;
         }
@@ -597,45 +584,12 @@ namespace AbsoluteRoleplay
                 WindowSystem.Draw();
 
                 // Draw compass overlay if enabled and player is present
-               /* if (Configuration != null
-                    && Configuration.showCompass
-                    && IsOnline())
-                {
-                    var viewport = ImGui.GetMainViewport(); // Only get this here, never store as static/field
-
-                    ImGui.SetNextWindowBgAlpha(0.0f);
-                    ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
-
-                    ImGui.Begin("##CompassOverlay",
-                        ImGuiWindowFlags.NoTitleBar
-                        | ImGuiWindowFlags.NoResize
-                        | ImGuiWindowFlags.NoMove
-                        | ImGuiWindowFlags.NoScrollbar
-                        | ImGuiWindowFlags.NoScrollWithMouse
-                        | ImGuiWindowFlags.NoInputs
-                        | ImGuiWindowFlags.NoSavedSettings
-                        | ImGuiWindowFlags.NoFocusOnAppearing);
-
-                    PlayerInteractions.DrawDynamicCompass(
-                        viewport.WorkSize.X / 2,
-                        300,
-                        400,
-                        40,
-                        ClientState.LocalPlayer.Rotation
-                    );
-
-                    // If you want to draw a spinning avatar texture, do it here
-                    // (If you need to spawn it only once, use a non-static field)
-              
-                    // Draw all floor textures every frame
-
-                    ImGui.End();
-                }
-               */
+               
+               
             }
             catch (Exception ex)
             {
-                PluginLog.Error($"Exception in DrawUI: {ex}");
+                PluginLog.Debug($"Exception in DrawUI: {ex}");
             }
         }
         public async System.Threading.Tasks.Task LoadWindow(Window window, bool Toggle)
@@ -646,13 +600,13 @@ namespace AbsoluteRoleplay
             }
             if (window == null)
             {
-                PluginLog.Error("LoadWindow called with a null window.");
+                PluginLog.Debug("LoadWindow called with a null window.");
                 return;
             }
 
             if (await IsToSVersionUpdated()) // Now runs asynchronously
             {
-                PluginLog.Error($"Version matched, loading window: {window}");
+                PluginLog.Debug($"Version matched, loading window: {window}");
                 if (Toggle)
                 {
                     window.Toggle();
@@ -664,7 +618,7 @@ namespace AbsoluteRoleplay
             }
             else
             {
-                PluginLog.Error("Version mismatch, opening Terms of Service window.");
+                PluginLog.Debug("Version mismatch, opening Terms of Service window.");
 
                 if (Configuration.TOSVersion == null)
                 {
@@ -681,12 +635,12 @@ namespace AbsoluteRoleplay
         public void ToggleMainUI() => System.Threading.Tasks.Task.Run(() =>
         {
             try { LoadWindow(MainPanel, true).Wait(); }
-            catch (Exception ex) { PluginLog.Error($"Exception in ToggleMainUI: {ex}"); }
+            catch (Exception ex) { PluginLog.Debug($"Exception in ToggleMainUI: {ex}"); }
         });
         public void OpenMainPanel() => System.Threading.Tasks.Task.Run(() =>
         {
             try { LoadWindow(MainPanel, false).Wait(); }
-            catch (Exception ex) { PluginLog.Error($"Exception in OpenMainPanel: {ex}"); }
+            catch (Exception ex) { PluginLog.Debug($"Exception in OpenMainPanel: {ex}"); }
         });
         public void OpenTermsWindow() => TermsWindow.IsOpen = true;
         public void OpenImagePreview() => ImagePreview.IsOpen = true;
@@ -706,9 +660,7 @@ namespace AbsoluteRoleplay
         public void OpenListingsWindow() => ListingWindow.IsOpen = true;
         public void ToggleChatWindow() => ArpChatWindow.IsOpen = true;
         public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
-        public void OpenTradeWindow() => TradeWindow.IsOpen = true;
 
-        public void CloseTradeWindow() => TradeWindow.IsOpen = false;
 
         internal void UpdateStatus()
         {
@@ -722,7 +674,7 @@ namespace AbsoluteRoleplay
             }
             catch (Exception ex)
             {
-                PluginLog.Error("Error updating status: " + ex.ToString());
+                PluginLog.Debug("Debug updating status: " + ex.ToString());
             }
         }
 
@@ -732,7 +684,7 @@ namespace AbsoluteRoleplay
             {
                 if (IsOnline())
                 {
-                    PluginLog.Error("Player is online, attempting to log in.");    
+                    PluginLog.Debug("Player is online, attempting to log in.");    
                     username = Configuration.username;
                     password = Configuration.password;
                     // Add a null check here before accessing LocalPlayer properties
@@ -749,7 +701,7 @@ namespace AbsoluteRoleplay
             }  // Increment timer by delta time
 
             // Every 60 seconds, call FetchConnectedPlayers
-            /*   fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+               fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
             if (fetchQuestsInRangeTimer >= 25f)
               {
                   fetchQuestsInRangeTimer = 0f;
@@ -759,8 +711,9 @@ namespace AbsoluteRoleplay
                       .Cast<IPlayerCharacter>()
                       .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
                       .ToList();
-              }
-             */
+                DataSender.RequestCompassFromList(nearbyPlayers);
+            }
+             
             if (firstopen == true && MainPanel.IsOpen == true)
             {
                 firstopen = false;

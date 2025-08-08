@@ -420,7 +420,9 @@ namespace AbsoluteRoleplay.Helpers
                                     {
                                         if (layout.inventorySlotContents.ContainsKey(i) && layout.inventorySlotContents[i].name != string.Empty)
                                         {
-                                            newItemList.Add(layout.inventorySlotContents[i]);
+                                            var item = layout.inventorySlotContents[i];
+                                            item.slot = i; // Ensure slot is set
+                                            newItemList.Add(item);
                                         }
                                     }
                                     DataSender.SendItemOrder(ProfileWindow.profileIndex, layout, newItemList);

@@ -67,8 +67,8 @@ namespace AbsoluteRoleplay.Windows.Account
             ImGui.TextColored(restorationCol, restorationStatus);
             }catch(Exception e)
             {
-                restorationStatus = "An error occurred";
-                Plugin.PluginLog.Error(e.Message);
+                restorationStatus = "An Debug occurred";
+                Plugin.PluginLog.Debug(e.Message);
                 restorationCol = new Vector4(255, 0, 0, 255);
             }
         }

@@ -139,7 +139,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ProfileWindow OnOpen Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ProfileWindow OnOpen Debug: " + ex.Message);
             }
         }
         //method to check if we have loaded our data received from the server
@@ -168,7 +168,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             // Print any null fields
             if (nullFields.Count > 0)
             {
-                Plugin.PluginLog.Error("Null ProfileWindow fields: " + string.Join(", ", nullFields));
+                Plugin.PluginLog.Debug("Null ProfileWindow fields: " + string.Join(", ", nullFields));
             }
 
             return allNotNull;
@@ -285,10 +285,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                if(hasDrawException == false) // Prevent spamming the log with the same error  
+                if(hasDrawException == false) // Prevent spamming the log with the same Debug  
                 {
                     hasDrawException = true;
-                    Plugin.PluginLog.Error("ProfileWindow Draw Error: " + ex.Message);
+                    Plugin.PluginLog.Debug("ProfileWindow Draw Debug: " + ex.Message);
                 }
             }
         }
@@ -296,7 +296,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
         {
             DataSender.CreateProfile(NewProfileTitle, currentProfileType, profiles.Count);
             profileIndex = profiles.Count;
-            Plugin.PluginLog.Error(profileIndex.ToString());
+            Plugin.PluginLog.Debug(profileIndex.ToString());
             DataSender.FetchProfiles();
             DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             ExistingProfile = true;
@@ -335,7 +335,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
             }catch(Exception ex)
             {
-                Plugin.PluginLog.Error("ProfileWindow RenderProfileTypeCreation Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ProfileWindow RenderProfileTypeCreation Debug: " + ex.Message);
             }
         }
         public void DrawProfile()
@@ -343,17 +343,17 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             // Defensive checks to prevent null reference spam
             if (profiles == null || profiles.Count == 0 || profileIndex < 0 || profileIndex >= profiles.Count)
             {
-                Plugin.PluginLog.Error("DrawProfile: Profiles not loaded or profileIndex out of range.");
+                Plugin.PluginLog.Debug("DrawProfile: Profiles not loaded or profileIndex out of range.");
                 return;
             }
             if (CurrentProfile == null)
             {
-                Plugin.PluginLog.Error("DrawProfile: CurrentProfile is null.");
+                Plugin.PluginLog.Debug("DrawProfile: CurrentProfile is null.");
                 return;
             }
             if (CurrentProfile.customTabs == null)
             {
-                Plugin.PluginLog.Error("DrawProfile: CurrentProfile.customTabs is null.");
+                Plugin.PluginLog.Debug("DrawProfile: CurrentProfile.customTabs is null.");
                 return;
             }
             if (currentAvatarImg == null)
@@ -362,7 +362,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 currentAvatarImg = pictureTab ?? UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
                 if (currentAvatarImg == null)
                 {
-                    Plugin.PluginLog.Error("DrawProfile: currentAvatarImg is still null after fallback. Skipping draw.");
+                    Plugin.PluginLog.Debug("DrawProfile: currentAvatarImg is still null after fallback. Skipping draw.");
                     return;
                 }
             }  
@@ -465,7 +465,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             if (currentAvatarImg == null || currentAvatarImg.Size == null)
             {
-                Plugin.PluginLog.Error("DrawProfile: currentAvatarImg or its Size is null. Skipping draw.");
+                Plugin.PluginLog.Debug("DrawProfile: currentAvatarImg or its Size is null. Skipping draw.");
                 return;
             }
             Vector2 avatarSize = currentAvatarImg.Size * ImGui.GetIO().FontGlobalScale;
@@ -689,7 +689,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         else if (currentLayoutType == (int)LayoutTypes.Relationship)
                                             layout = new TreeLayout { tabIndex = customTabsCount };
                                         else
-                                            Plugin.PluginLog.Error($"Unknown layout type: {currentLayoutType}");
+                                            Plugin.PluginLog.Debug($"Unknown layout type: {currentLayoutType}");
 
 
                                         DataSender.CreateTab(newTabNames[i], currentLayoutType, CurrentProfile.index, customTabsCount + 1);
@@ -707,10 +707,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         showInputPopup[i] = false;
                                         ImGui.CloseCurrentPopup();
                                     }
-                                }
-                                finally
+                                }catch(Exception ex)
                                 {
-                                    Plugin.PluginLog.Error($"RenderCustomTabs: Popup for tab {i} closed with name '{newTabNames[i]}'");
+                                    Plugin.PluginLog.Debug($"ProfileWindow RenderCustomTabs Popup Debug: {ex.Message}");
+                                    loading = "An Debug occurred while rendering the new tab popup.";
                                 }
                             }
                         }
@@ -786,8 +786,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ProfileWindow RenderCustomTabs Error: " + ex.Message);
-                loading = "An error occurred while rendering custom tabs.";
+                Plugin.PluginLog.Debug("ProfileWindow RenderCustomTabs Debug: " + ex.Message);
+                loading = "An Debug occurred while rendering custom tabs.";
             }
         }
 
@@ -846,7 +846,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
             }catch(Exception ex)
             {
-                Plugin.PluginLog.Error($"ProfileWindow RenderTab Error: {ex.Message}");
+                Plugin.PluginLog.Debug($"ProfileWindow RenderTab Debug: {ex.Message}");
             }
         }
 
@@ -1001,7 +1001,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 }
             }catch(Exception ex)
             {
-                Plugin.PluginLog.Error("ProfileWindow DrawProfileTypeSelection Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ProfileWindow DrawProfileTypeSelection Debug: " + ex.Message);
             }
         }
         private void DrawLayoutTypeSelection()
@@ -1025,7 +1025,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch(Exception ex)
             {
-                Plugin.PluginLog.Error("ProfileWindow DrawLayoutTypeSelection Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ProfileWindow DrawLayoutTypeSelection Debug: " + ex.Message);
             }
         }
 
@@ -1083,7 +1083,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ProfileWindow AddProfileSelection Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ProfileWindow AddProfileSelection Debug: " + ex.Message);
             }
         }
      
@@ -1145,8 +1145,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             catch (Exception ex)
             {
                 // Handle exceptions (e.g., file not found, etc.)
-                Console.Error.WriteLine($"Error reading file: {ex.Message}");
-                return string.Empty; // Return empty if an error occurs
+                Plugin.PluginLog.Debug($"Debug reading file: {ex.Message}");
+                return string.Empty; // Return empty if an Debug occurs
             }
         }
 
@@ -1255,14 +1255,14 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                     LoadTabsFromBackup(tabContent, "treeTab", BackupLoader.LoadTreeLayout).GetAwaiter().GetResult();
                                     break;
                                 default:
-                                    Plugin.PluginLog.Error($"Unknown tab type in backup: {tag}");
+                                    Plugin.PluginLog.Debug($"Unknown tab type in backup: {tag}");
                                     break;
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        Plugin.PluginLog.Error($"Error loading backup file: {ex.Message}");
+                        Plugin.PluginLog.Debug($"Debug loading backup file: {ex.Message}");
                     }
                     finally
                     {
@@ -1330,10 +1330,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             try
             {
                 DataSender.SetProfileStatus(isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
-                Plugin.PluginLog.Error($"Tabs count before submit: {CurrentProfile.customTabs.Count}");
+                Plugin.PluginLog.Debug($"Tabs count before submit: {CurrentProfile.customTabs.Count}");
                 foreach (var tab in CurrentProfile.customTabs)
                 {
-                    Plugin.PluginLog.Error($"Tab: {tab.Name}, Type: {tab.Layout?.GetType().Name}");
+                    Plugin.PluginLog.Debug($"Tab: {tab.Name}, Type: {tab.Layout?.GetType().Name}");
                 }
 
                 Sending = true;
@@ -1372,7 +1372,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch(Exception ex)
             {
-                Plugin.PluginLog.Error("Received exception in SubmitProfileBio " + ex.Message);
+                Plugin.PluginLog.Debug("Received exception in SubmitProfileBio " + ex.Message);
             }
             finally
 
@@ -1401,7 +1401,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Error Loading Backup Dialog: {ex.Message}");
+                Plugin.PluginLog.Debug($"Debug Loading Backup Dialog: {ex.Message}");
             }
         }
         public async Task SaveBackupFile(string dataPath)
@@ -1420,7 +1420,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                 // Prevent writing if a directory exists with the same name
                 if (Directory.Exists(filePath))
                 {
-                    Plugin.PluginLog.Error($"Cannot overwrite: '{filePath}' is a directory.");
+                    Plugin.PluginLog.Debug($"Cannot overwrite: '{filePath}' is a directory.");
                     return;
                 }
 
@@ -1440,7 +1440,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Error saving backup file: {ex.Message}");
+                Plugin.PluginLog.Debug($"Debug saving backup file: {ex.Message}");
             }
         }
 

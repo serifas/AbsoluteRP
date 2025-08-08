@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Helpers;
+﻿using AbsoluteRoleplay.Helpers;
 using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
@@ -15,6 +15,28 @@ namespace AbsoluteRoleplay
 {
     public class Misc
     {
+        public class ParsedNode
+        {
+            public string Type; // "text", "img", "color", "url", "table", "column", etc.
+            public string Content;
+            public float Scale = 1.0f;
+            public string ColorHex;
+            public string Url;
+            public List<ParsedNode> Children = new();
+            public TextStyle Style = new();
+        }
+        public struct TextStyle
+        {
+            public bool Bold;
+            public bool Italic;
+            public bool Underline;
+            public Vector4? Color;
+            public int Scale;
+        }
+        const float minImageSize = 8f; // Minimum image width/height in pixels
+        const int minFontSize = 12;    // Minimum font size
+        public static Dictionary<int, ImFontPtr> FontSizes = new();
+
         private static Dictionary<string, IDalamudTextureWrap> _imageCache = new();
         private static HashSet<string> _imagesLoading = new();
         private static string previousInputText = "";
@@ -47,78 +69,422 @@ namespace AbsoluteRoleplay
             // Return the percentage
             return value / 100f * 100f;
         }
-        private static Vector2 ParseImageSize(string sizeAttr)
+    
+        private static ImFontPtr GetFontForStyle(TextStyle style, int baseSize)
         {
-            if (string.IsNullOrEmpty(sizeAttr)) return new Vector2(200, 200);
-            var parts = sizeAttr.Split(',');
-            if (parts.Length == 2 &&
-                float.TryParse(parts[0], out float w) &&
-                float.TryParse(parts[1], out float h))
-                return new Vector2(w, h);
-            return new Vector2(200, 200);
+            int key = baseSize;
+            if (style.Bold && style.Italic)
+                key = 300 + baseSize;
+            else if (style.Bold)
+                key = 100 + baseSize;
+            else if (style.Italic)
+                key = 200 + baseSize;
+
+            if (FontSizes.TryGetValue(key, out var font) && !font.IsNull)
+                return font;
+            if (FontSizes.TryGetValue(baseSize, out var regularFont) && !regularFont.IsNull)
+                return regularFont;
+            return ImGui.GetFont();
         }
 
+        private static void ParseStyledText(string text, TextStyle style, List<ParsedNode> nodes)
+        {
+            var tagRegex = new Regex(@"<(b|i|u)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            int idx = 0;
+            while (idx < text.Length)
+            {
+                var match = tagRegex.Match(text, idx);
+                if (match.Success && match.Index == idx)
+                {
+                    var tag = match.Groups[1].Value.ToLower();
+                    var inner = match.Groups[2].Value;
+                    var newStyle = style;
+                    if (tag == "b") newStyle.Bold = true;
+                    else if (tag == "i") newStyle.Italic = true;
+                    else if (tag == "u") newStyle.Underline = true;
+                    ParseStyledText(inner, newStyle, nodes);
+                    idx += match.Length;
+                }
+                else
+                {
+                    int nextTag = text.IndexOf('<', idx);
+                    if (nextTag == -1) nextTag = text.Length;
+                    string plain = text.Substring(idx, nextTag - idx);
+                    if (!string.IsNullOrEmpty(plain))
+                        nodes.Add(new ParsedNode { Type = "text", Content = plain, Style = style });
+                    idx = nextTag;
+                }
+            }
+        }
         private static float ParseFontSize(string sizeAttr)
         {
             if (string.IsNullOrEmpty(sizeAttr)) return ImGui.GetFontSize();
             if (float.TryParse(sizeAttr, out float sz)) return sz;
             return ImGui.GetFontSize();
         }
+        public static ParsedNode ParseHtmlLayout(string text)
+        {
+            var root = new ParsedNode { Type = "root" };
+            int idx = 0;
+            while (idx < text.Length)
+            {
+                // ... existing tag parsing for nav, table, img, color, url, scale ...
+
+                // Plain text and style tags
+                int nextTagIdx = text.IndexOf('<', idx);
+                if (nextTagIdx == -1) nextTagIdx = text.Length;
+                string plainText = text.Substring(idx, nextTagIdx - idx);
+                if (!string.IsNullOrWhiteSpace(plainText))
+                    ParseStyledText(plainText, new TextStyle(), root.Children);
+                idx = nextTagIdx;
+            }
+            return root;
+        }
+        // Add at the top of the Misc class:
+        private static Dictionary<string, int> _tabIndices = new(); // Stores current tab index per unique tab group
+
+        private static Dictionary<string, int> _navIndices = new(); // Stores current tab index per navigation group
+
+        public static void RenderParsedLayout(ParsedNode node, float wrapWidth, float wrapHeight, bool url, bool image, bool color)
+        {
+            foreach (var child in node.Children)
+            {
+                switch (child.Type)
+                {
+                    case "nav":
+                        // Only render current page (add your navigation logic here)
+                        int pageIdx = 0;
+                        if (child.Children.Count > pageIdx)
+                            RenderParsedLayout(child.Children[pageIdx], wrapWidth, wrapHeight, url, image, color);
+                        break;
+                    case "page":
+                        RenderParsedLayout(child.Children[0], wrapWidth, wrapHeight, url, image, color);
+                        break;
+                    case "table":
+                        if (ImGui.BeginTable("CustomTable", child.Children.Count, ImGuiTableFlags.None))
+                        {
+                            ImGui.TableNextRow();
+                            for (int col = 0; col < child.Children.Count; col++)
+                            {
+                                ImGui.TableSetColumnIndex(col);
+                                ImGui.BeginGroup();
+                                RenderParsedLayout(child.Children[col], wrapWidth / child.Children.Count, wrapHeight, url, image, color);
+                                ImGui.EndGroup();
+                            }
+                            ImGui.EndTable();
+                        }
+                        break;
+                    case "column":
+                        foreach (var colChild in child.Children)
+                            RenderParsedLayout(colChild, wrapWidth, wrapHeight, url, image, color);
+                        break;
+                    case "img":
+                        if (image && _imageCache.TryGetValue(child.Content, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
+                        {
+                            Vector2 imgSize = new Vector2(texture.Width, texture.Height);
+                            imgSize.X = Math.Max(imgSize.X, minImageSize);
+                            imgSize.Y = Math.Max(imgSize.Y, minImageSize);
+                            ImGui.Image(texture.Handle, imgSize);
+                        }
+                        else
+                        {
+                            ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image or image failed!]");
+                        }
+                        break;
+                    case "color":
+                        if (color && TryParseHexColor(child.ColorHex, out Vector4 colorVal))
+                            ImGui.TextColored(colorVal, child.Content);
+                        else
+                            ImGui.Text(child.Content);
+                        break;
+                    case "url":
+                        if (url)
+                        {
+                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.2f, 0.5f, 1f, 1f));
+                            ImGui.Text(child.Content);
+                            ImGui.PopStyleColor();
+                        }
+                        else
+                        {
+                            ImGui.Text(child.Content);
+                        }
+                        break;
+                    case "scale":
+                        ImGui.PushFont(FontSizes.TryGetValue((int)Math.Round(child.Scale), out var font) ? font : ImGui.GetFont());
+                        foreach (var scaleChild in child.Children)
+                            RenderParsedLayout(scaleChild, wrapWidth, wrapHeight, url, image, color);
+                        ImGui.PopFont();
+                        break;
+                    case "text":
+                        ImFontPtr Font = ImGui.GetFont();
+                        if (child.Style.Bold && FontSizes.TryGetValue(18, out var boldFont)) Font = boldFont;
+                        if (child.Style.Italic && FontSizes.TryGetValue(16, out var italicFont)) Font = italicFont;
+                        if (child.Style.Scale > 0 && FontSizes.TryGetValue(child.Style.Scale, out var scaledFont)) Font = scaledFont;
+
+                        ImGui.PushFont(Font);
+
+                        if (child.Style.Color.HasValue)
+                            ImGui.TextColored(child.Style.Color.Value, child.Content);
+                        else
+                            ImGui.TextWrapped(child.Content);
+
+                        ImGui.PopFont();
+
+                        if (child.Style.Underline)
+                        {
+                            var min = ImGui.GetItemRectMin();
+                            var max = ImGui.GetItemRectMax();
+                            var drawList = ImGui.GetWindowDrawList();
+                            drawList.AddLine(
+                                new Vector2(min.X, max.Y),
+                                new Vector2(max.X, max.Y),
+                                ImGui.GetColorU32(child.Style.Color ?? new Vector4(1, 1, 1, 1)),
+                                2.0f
+                            );
+                        }
+                        break;
+                }
+            }
+        }
+
         public static void RenderHtmlElements(string text, bool url, bool image, bool color, bool isLimited, Vector2? overrideWrapSize = null, bool disableWordWrap = false)
         {
             Vector2 wrapSize = overrideWrapSize ?? (ImGui.GetWindowSize() - new Vector2(50, 0));
             float wrapWidth = wrapSize.X;
             float wrapHeight = wrapSize.Y;
 
-            var samelineImgRegex = new Regex(@"<sameline>\s*<(img|image)>(.*?)</\1>\s*</sameline>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            // Navigation and page support
+            var navRegex = new Regex(@"<(navigation|nav)(?:\s+id\s*=\s*""([^""]+)"")?\s*>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var navMatches = navRegex.Matches(text);
 
             int lastIndex = 0;
-            var matches = samelineImgRegex.Matches(text);
-
-            if (matches.Count == 0)
+            int navBlockCount = 0;
+            foreach (Match navMatch in navMatches)
             {
-                RenderHtmlElementsNoSameline(text, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
-                return;
-            }
-
-            if (matches.Count > 0 && matches[0].Index > 0)
-            {
-                string beforeFirst = text.Substring(0, matches[0].Index);
-                if (!string.IsNullOrEmpty(beforeFirst))
-                    RenderHtmlElementsNoSameline(beforeFirst, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
-                lastIndex = matches[0].Index;
-            }
-
-            bool firstTable = true;
-            foreach (Match match in matches)
-            {
-                int imgStart = match.Index;
-                string imgUrl = match.Groups[2].Value.Trim();
-
-                if (ImGui.BeginTable("TextImageTable" + imgStart, 2, ImGuiTableFlags.None))
+                // Render content before this navigation block
+                if (navMatch.Index > lastIndex)
                 {
-                    ImGui.TableNextColumn();
-                    if (imgStart > lastIndex)
-                    {
-                        string between = text.Substring(lastIndex, imgStart - lastIndex);
-                        RenderHtmlElementsNoSameline(between, url, image, color, wrapWidth, wrapHeight, isLimited, firstTable, disableWordWrap);
-                        firstTable = false;
-                    }
-
-                    ImGui.TableNextColumn();
-                    RenderHtmlElementsNoTable($"<img>{imgUrl}</img>", url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
-                    ImGui.EndTable();
+                    string beforeNav = text.Substring(lastIndex, navMatch.Index - lastIndex);
+                    if (!string.IsNullOrWhiteSpace(beforeNav))
+                        RenderHtmlElementsNoSameline(beforeNav, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
                 }
 
-                lastIndex = match.Index + match.Length;
+                string navId = navMatch.Groups[2].Success && !string.IsNullOrWhiteSpace(navMatch.Groups[2].Value)
+                    ? navMatch.Groups[2].Value
+                    : $"nav_{navBlockCount}";
+
+                string navContent = navMatch.Groups[3].Value;
+
+                // Parse <page title="...">...</page> blocks inside navigation
+                var pageRegex = new Regex(@"<page\s+title\s*=\s*""([^""]+)""\s*>(.*?)</page>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+                var pageMatches = pageRegex.Matches(navContent);
+
+                List<string> pageTitles = new();
+                List<string> pageContents = new();
+
+                foreach (Match pageMatch in pageMatches)
+                {
+                    pageTitles.Add(pageMatch.Groups[1].Value);
+                    pageContents.Add(pageMatch.Groups[2].Value);
+                }
+
+                if (!_navIndices.ContainsKey(navId))
+                    _navIndices[navId] = 0;
+                int currentPage = _navIndices[navId];
+
+                using (ImRaii.Child("Navigation_" + navId, new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
+                {
+                    if (currentPage > 0)
+                    {
+                        if (ImGui.Button("《 "))
+                        {
+                            _navIndices[navId] = currentPage - 1;
+                            currentPage = _navIndices[navId];
+                        }
+                    }
+
+                    ImGui.SameLine();
+                    if (pageTitles.Count > currentPage)
+                    {
+                        ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize(pageTitles[currentPage].ToUpper()).X / 2);
+                        ImGui.TextUnformatted(pageTitles[currentPage].ToUpper());
+                    }
+                    ImGui.SameLine();
+                    if (currentPage < pageContents.Count - 1)
+                    {
+                        Misc.RenderAlignmentToRight(" 》");
+                        if (ImGui.Button(" 》"))
+                        {
+                            _navIndices[navId] = currentPage + 1;
+                            currentPage = _navIndices[navId];
+                        }
+                    }
+                }
+
+                // Render current page content
+                if (pageContents.Count > currentPage)
+                {
+                    RenderHtmlElementsNoSameline(pageContents[currentPage], url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
+                }
+
+                lastIndex = navMatch.Index + navMatch.Length;
+                navBlockCount++;
             }
 
+            // Render any content after the last navigation block
             if (lastIndex < text.Length)
             {
-                string afterImg = text.Substring(lastIndex);
-                RenderHtmlElementsNoSameline(afterImg, url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
+                string afterNav = text.Substring(lastIndex);
+                if (!string.IsNullOrWhiteSpace(afterNav))
+                    RenderHtmlElementsNoSameline(afterNav, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
             }
         }
+        private static bool TryParseHexColor(string hex, out Vector4 color)
+        {
+            color = new Vector4(1, 1, 1, 1);
+            if (hex.StartsWith("#"))
+                hex = hex.Substring(1);
+            if (hex.Length != 6)
+                return false;
+            if (int.TryParse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out int r) &&
+                int.TryParse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out int g) &&
+                int.TryParse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out int b))
+            {
+                color = new Vector4(r / 255f, g / 255f, b / 255f, 1);
+                return true;
+            }
+            return false;
+        }
+        // ... (other helpers unchanged) ...
+        private static void RenderStyledText(string input, TextStyle style)
+        {
+            int idx = 0;
+            int inputLen = input.Length;
+            while (idx < inputLen)
+            {
+                int openTag = input.IndexOf('<', idx);
+                if (openTag == -1 || openTag + 1 >= inputLen)
+                {
+                    // No more tags, render the rest
+                    string plain = input.Substring(idx);
+                    if (!string.IsNullOrEmpty(plain))
+                    {
+                        RenderStyledTextSegment(plain, style);
+                    }
+                    break;
+                }
+
+                // Render text before the tag
+                if (openTag > idx)
+                {
+                    string plain = input.Substring(idx, openTag - idx);
+                    if (!string.IsNullOrEmpty(plain))
+                    {
+                        RenderStyledTextSegment(plain, style);
+                    }
+                }
+
+                // Try to parse a tag
+                int closeTag = input.IndexOf('>', openTag + 1);
+                if (closeTag == -1)
+                {
+                    // Malformed tag, render as plain text
+                    RenderStyledTextSegment(input.Substring(openTag), style);
+                    break;
+                }
+
+                string tagName = null;
+                string colorHex = null;
+                bool isColorTag = false;
+                // Support <b>, <i>, <u>, <color hex=xxxxxx>
+                if (input[openTag + 1] == 'b' && input.Substring(openTag, closeTag - openTag + 1).StartsWith("<b>"))
+                    tagName = "b";
+                else if (input[openTag + 1] == 'i' && input.Substring(openTag, closeTag - openTag + 1).StartsWith("<i>"))
+                    tagName = "i";
+                else if (input[openTag + 1] == 'u' && input.Substring(openTag, closeTag - openTag + 1).StartsWith("<u>"))
+                    tagName = "u";
+                else if (input.Substring(openTag, closeTag - openTag + 1).StartsWith("<color"))
+                {
+                    // Parse color hex
+                    var hexMatch = Regex.Match(input.Substring(openTag, closeTag - openTag + 1), @"hex\s*=\s*([A-Fa-f0-9]{6})");
+                    if (hexMatch.Success)
+                    {
+                        colorHex = hexMatch.Groups[1].Value;
+                        isColorTag = true;
+                        tagName = "color";
+                    }
+                }
+
+                if (tagName == null)
+                {
+                    // Not a supported tag, render as plain text
+                    RenderStyledTextSegment(input.Substring(openTag, closeTag - openTag + 1), style);
+                    idx = closeTag + 1;
+                    continue;
+                }
+
+                // Find closing tag
+                string closeTagStr = $"</{tagName}>";
+                int closeTagIdx = input.IndexOf(closeTagStr, closeTag + 1, StringComparison.OrdinalIgnoreCase);
+                if (closeTagIdx == -1)
+                {
+                    // Malformed, treat as plain text
+                    RenderStyledTextSegment(input.Substring(openTag, closeTag - openTag + 1), style);
+                    idx = closeTag + 1;
+                    continue;
+                }
+
+                // Get inner text
+                int innerStart = closeTag + 1;
+                int innerLen = closeTagIdx - innerStart;
+                string inner = input.Substring(innerStart, innerLen);
+
+                // Update style
+                var newStyle = style;
+                if (tagName == "b") newStyle.Bold = true;
+                else if (tagName == "i") newStyle.Italic = true;
+                else if (tagName == "u") newStyle.Underline = true;
+                else if (isColorTag && TryParseHexColor(colorHex, out Vector4 colorVal)) newStyle.Color = colorVal;
+
+                // Render inner text (no recursion, just loop)
+                RenderStyledText(inner, newStyle);
+
+                idx = closeTagIdx + closeTagStr.Length;
+            }
+        }
+
+        // Helper to render a segment with style
+        private static void RenderStyledTextSegment(string text, TextStyle style)
+        {
+            int styleFontSize = style.Scale > 0 ? style.Scale : minFontSize;
+            if (styleFontSize < minFontSize) styleFontSize = minFontSize;
+            ImFontPtr font = GetFontForStyle(style, styleFontSize);
+
+            ImGui.PushFont(font);
+
+            if (style.Color.HasValue)
+                ImGui.TextColored(style.Color.Value, text);
+            else
+                ImGui.TextWrapped(text);
+
+            ImGui.PopFont();
+
+            if (style.Underline)
+            {
+                var min = ImGui.GetItemRectMin();
+                var max = ImGui.GetItemRectMax();
+                var drawList = ImGui.GetWindowDrawList();
+                drawList.AddLine(
+                    new Vector2(min.X, max.Y),
+                    new Vector2(max.X, max.Y),
+                    ImGui.GetColorU32(style.Color ?? new Vector4(1, 1, 1, 1)),
+                    2.0f
+                );
+            }
+        }
+
+        // No changes needed for RenderHtmlElementsNoSameline and RenderHtmlElementsNoTable unless you want to support nested tabs/pages inside tables or other elements.
+        // If you do, you can add similar tab/page parsing logic to those functions as well.
 
         private static void RenderHtmlElementsNoSameline(string text, bool url, bool image, bool color, float wrapWidth, float wrapHeight, bool isFirstSegment, bool isLimited, bool disableWordWrap)
         {
@@ -183,7 +549,8 @@ namespace AbsoluteRoleplay
                         var tooltip = columns[col].tooltip; 
                         ImGui.BeginGroup();
                         float columnWidth = wrapWidth / columnCount;
-                        RenderHtmlElementsNoTable(colText, url, image, color, columnWidth, wrapHeight, isLimited, true, disableWordWrap);
+                        // Use NoSameline to allow nested tags (including <scale>, <img>, etc.)
+                        RenderHtmlElementsNoSameline(colText, url, image, color, columnWidth, wrapHeight, isLimited, true, disableWordWrap);
                         ImGui.EndGroup();
                         if (!string.IsNullOrEmpty(tooltip) && ImGui.IsItemHovered())
                         {
@@ -204,34 +571,51 @@ namespace AbsoluteRoleplay
                 RenderHtmlElementsNoTable(afterTable, url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
             }
         }
-
         private static void RenderHtmlElementsNoTable(
-      string text,
-      bool url,
-      bool image,
-      bool color,
-      float wrapWidth,
-      float wrapHeight,
-      bool isFirstSegment,
-      bool isLimited,
-      bool disableWordWrap)
+            string text,
+            bool url,
+            bool image,
+            bool color,
+            float wrapWidth,
+            float wrapHeight,
+            bool isFirstSegment,
+            bool isLimited,
+            bool disableWordWrap)
         {
+      
             var scaleBlockRegex = new Regex(@"<scale\s*=\s*""([\d\.]+)""\s*>(.*?)</scale>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var imgRegex = new Regex(@"<(img|image)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var colorRegex = new Regex(@"<color\s+hex\s*=\s*([A-Fa-f0-9]{6})\s*>(.*?)</color>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var urlRegex = new Regex(@"<url>(.*?)</url>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var tooltipRegex = new Regex(@"<tooltip>(.*?)</tooltip>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var boldRegex = new Regex(@"<b>(.*?)</b>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var italicRegex = new Regex(@"<i>(.*?)</i>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var underlineRegex = new Regex(@"<u>(.*?)</u>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
             var segments = new List<(string type, string content, float scale, string colorHex, string url)>();
             int idx = 0;
             while (idx < text.Length)
             {
+                if (text.Substring(idx).StartsWith("</"))
+                {
+                    int closeIdx = text.IndexOf('>', idx);
+                    if (closeIdx != -1)
+                    {
+                        idx = closeIdx + 1;
+                        continue;
+                    }
+                }
+                // Find the next tag
                 var scaleMatch = scaleBlockRegex.Match(text, idx);
                 var imgMatch = imgRegex.Match(text, idx);
                 var colorMatch = colorRegex.Match(text, idx);
                 var urlMatch = urlRegex.Match(text, idx);
                 var tooltipMatch = tooltipRegex.Match(text, idx);
+                var boldMatch = boldRegex.Match(text, idx);
+                var italicMatch = italicRegex.Match(text, idx);
+                var underlineMatch = underlineRegex.Match(text, idx);
 
+                // Find the earliest tag
                 int nextTagIdx = text.Length;
                 string nextType = null;
                 Match nextMatch = null;
@@ -240,7 +624,11 @@ namespace AbsoluteRoleplay
                 if (colorMatch.Success && colorMatch.Index < nextTagIdx) { nextTagIdx = colorMatch.Index; nextType = "color"; nextMatch = colorMatch; }
                 if (urlMatch.Success && urlMatch.Index < nextTagIdx) { nextTagIdx = urlMatch.Index; nextType = "url"; nextMatch = urlMatch; }
                 if (tooltipMatch.Success && tooltipMatch.Index < nextTagIdx) { nextTagIdx = tooltipMatch.Index; nextType = "tooltip"; nextMatch = tooltipMatch; }
+                if (boldMatch.Success && boldMatch.Index < nextTagIdx) { nextTagIdx = boldMatch.Index; nextType = "bold"; nextMatch = boldMatch; }
+                if (italicMatch.Success && italicMatch.Index < nextTagIdx) { nextTagIdx = italicMatch.Index; nextType = "italic"; nextMatch = italicMatch; }
+                if (underlineMatch.Success && underlineMatch.Index < nextTagIdx) { nextTagIdx = underlineMatch.Index; nextType = "underline"; nextMatch = underlineMatch; }
 
+                // Add only the text before the tag
                 if (nextTagIdx > idx)
                 {
                     string plainText = text.Substring(idx, nextTagIdx - idx);
@@ -251,11 +639,14 @@ namespace AbsoluteRoleplay
                 if (nextMatch == null)
                     break;
 
+                // Handle the tag and skip over it
                 if (nextType == "scale")
                 {
                     float scale = 1.0f;
                     float.TryParse(nextMatch.Groups[1].Value, out scale);
+                    if (scale < minFontSize) scale = minFontSize;
                     string scaleContent = nextMatch.Groups[2].Value;
+                    // Recursively parse scaleContent for tags
                     int scaleIdx = 0;
                     while (scaleIdx < scaleContent.Length)
                     {
@@ -263,6 +654,9 @@ namespace AbsoluteRoleplay
                         var colorMatch2 = colorRegex.Match(scaleContent, scaleIdx);
                         var urlMatch2 = urlRegex.Match(scaleContent, scaleIdx);
                         var tooltipMatch2 = tooltipRegex.Match(scaleContent, scaleIdx);
+                        var boldMatch2 = boldRegex.Match(scaleContent, scaleIdx);
+                        var italicMatch2 = italicRegex.Match(scaleContent, scaleIdx);
+                        var underlineMatch2 = underlineRegex.Match(scaleContent, scaleIdx);
 
                         int nextTagIdx2 = scaleContent.Length;
                         string nextType2 = null;
@@ -271,6 +665,9 @@ namespace AbsoluteRoleplay
                         if (colorMatch2.Success && colorMatch2.Index < nextTagIdx2) { nextTagIdx2 = colorMatch2.Index; nextType2 = "color"; nextMatch2 = colorMatch2; }
                         if (urlMatch2.Success && urlMatch2.Index < nextTagIdx2) { nextTagIdx2 = urlMatch2.Index; nextType2 = "url"; nextMatch2 = urlMatch2; }
                         if (tooltipMatch2.Success && tooltipMatch2.Index < nextTagIdx2) { nextTagIdx2 = tooltipMatch2.Index; nextType2 = "tooltip"; nextMatch2 = tooltipMatch2; }
+                        if (boldMatch2.Success && boldMatch2.Index < nextTagIdx2) { nextTagIdx2 = boldMatch2.Index; nextType2 = "bold"; nextMatch2 = boldMatch2; }
+                        if (italicMatch2.Success && italicMatch2.Index < nextTagIdx2) { nextTagIdx2 = italicMatch2.Index; nextType2 = "italic"; nextMatch2 = italicMatch2; }
+                        if (underlineMatch2.Success && underlineMatch2.Index < nextTagIdx2) { nextTagIdx2 = underlineMatch2.Index; nextType2 = "underline"; nextMatch2 = underlineMatch2; }
 
                         if (nextTagIdx2 > scaleIdx)
                         {
@@ -285,7 +682,8 @@ namespace AbsoluteRoleplay
                         if (nextType2 == "img")
                         {
                             string imgUrl = nextMatch2.Groups[2].Value.Trim();
-                            segments.Add(("img", imgUrl, scale, null, null));
+                            float imgScale = scale < 0.01f ? 0.01f : scale;
+                            segments.Add(("img", imgUrl, imgScale, null, null));
                             scaleIdx = nextMatch2.Index + nextMatch2.Length;
                         }
                         else if (nextType2 == "color")
@@ -304,6 +702,21 @@ namespace AbsoluteRoleplay
                         else if (nextType2 == "tooltip")
                         {
                             segments.Add(("tooltip", nextMatch2.Groups[1].Value, scale, null, null));
+                            scaleIdx = nextMatch2.Index + nextMatch2.Length;
+                        }
+                        else if (nextType2 == "bold")
+                        {
+                            segments.Add(("bold", nextMatch2.Groups[1].Value, scale, null, null));
+                            scaleIdx = nextMatch2.Index + nextMatch2.Length;
+                        }
+                        else if (nextType2 == "italic")
+                        {
+                            segments.Add(("italic", nextMatch2.Groups[1].Value, scale, null, null));
+                            scaleIdx = nextMatch2.Index + nextMatch2.Length;
+                        }
+                        else if (nextType2 == "underline")
+                        {
+                            segments.Add(("underline", nextMatch2.Groups[1].Value, scale, null, null));
                             scaleIdx = nextMatch2.Index + nextMatch2.Length;
                         }
                     }
@@ -333,6 +746,21 @@ namespace AbsoluteRoleplay
                     segments.Add(("tooltip", nextMatch.Groups[1].Value, 1.0f, null, null));
                     idx = nextMatch.Index + nextMatch.Length;
                 }
+                else if (nextType == "bold")
+                {
+                    segments.Add(("bold", nextMatch.Groups[1].Value, 1.0f, null, null));
+                    idx = nextMatch.Index + nextMatch.Length;
+                }
+                else if (nextType == "italic")
+                {
+                    segments.Add(("italic", nextMatch.Groups[1].Value, 1.0f, null, null));
+                    idx = nextMatch.Index + nextMatch.Length;
+                }
+                else if (nextType == "underline")
+                {
+                    segments.Add(("underline", nextMatch.Groups[1].Value, 1.0f, null, null));
+                    idx = nextMatch.Index + nextMatch.Length;
+                }
             }
 
             string pendingTooltip = null;
@@ -340,20 +768,25 @@ namespace AbsoluteRoleplay
             {
                 var seg = segments[i];
 
-                // Image rendering (only once per segment)
+                // Image rendering (clamped)
                 if (seg.type == "img" && image)
                 {
                     string imgUrl = seg.content;
-                    float scale = seg.scale;
-                    if (_imageCache.TryGetValue(imgUrl, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
-                    {
-                        Vector2 imgSize = new Vector2(texture.Width, texture.Height) * scale;
+                    float imageScale = seg.scale < 0.01f ? 0.01f : seg.scale;
 
+                    if (_imageCache.TryGetValue(imgUrl, out var texture) &&
+                        texture != null &&
+                        texture.Handle != IntPtr.Zero &&
+                        texture.Width > 0 &&
+                        texture.Height > 0)
+                    {
+                        Vector2 imgSize = new Vector2(texture.Width, texture.Height) * imageScale;
+
+                        // Additional scaling logic
                         if (disableWordWrap)
                         {
-                            // Always scale image to max 400px width, preserving aspect ratio
                             float maxWidth = 400f;
-                            if (imgSize.X > maxWidth)
+                            if (imgSize.X > maxWidth && imgSize.X > 0)
                             {
                                 float scaleDown = maxWidth / imgSize.X;
                                 imgSize *= scaleDown;
@@ -361,62 +794,101 @@ namespace AbsoluteRoleplay
                         }
                         else if (isLimited)
                         {
-                            // Always fit image to column width (up or down), preserving aspect ratio
                             float maxWidth = wrapWidth;
                             float maxHeight = wrapHeight;
-                            float widthScale = maxWidth / imgSize.X;
-                            float heightScale = maxHeight / imgSize.Y;
-                            float finalScale = Math.Min(widthScale, heightScale);
-                            imgSize *= finalScale;
+                            if (imgSize.X > 0 && imgSize.Y > 0)
+                            {
+                                float widthScale = maxWidth / imgSize.X;
+                                float heightScale = maxHeight / imgSize.Y;
+                                float finalScale = Math.Min(widthScale, heightScale);
+                                imgSize *= finalScale;
+                            }
                         }
                         else
                         {
-                            // If not limited, only scale down if image is wider than column
                             float maxWidth = wrapWidth;
-                            if (imgSize.X > maxWidth)
+                            if (imgSize.X > maxWidth && imgSize.X > 0)
                             {
                                 float scaleDown = maxWidth / imgSize.X;
                                 imgSize *= scaleDown;
                             }
                         }
-                        ImGui.Image(texture.Handle, imgSize);
+
+                        // Clamp to minimum image size
+                        imgSize.X = Math.Max(imgSize.X, minImageSize);
+                        imgSize.Y = Math.Max(imgSize.Y, minImageSize);
+
+                        if (imgSize.X > 0 && imgSize.Y > 0)
+                        {
+                            ImGui.Image(texture.Handle, imgSize);
+                        }
+                        else
+                        {
+                            ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Image size invalid]");
+                        }
                     }
                     else
                     {
                         if (!_imagesLoading.Contains(imgUrl))
                         {
                             _imagesLoading.Add(imgUrl);
-                            System.Threading.Tasks.Task.Run(() =>
+                            // Use async void for fire-and-forget image loading
+                            async void LoadImageAsync(string url)
                             {
                                 try
                                 {
                                     using (var webClient = new System.Net.WebClient())
                                     {
-                                        var imageBytes = webClient.DownloadData(imgUrl);
-                                        var tex = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
-                                        if (tex != null && tex.Handle != IntPtr.Zero)
+                                        var imageBytes = await webClient.DownloadDataTaskAsync(url);
+                                        var tex = await Plugin.TextureProvider.CreateFromImageAsync(imageBytes);
+                                        if (tex != null && tex.Handle != IntPtr.Zero &&
+                                            tex.Width > 0 && tex.Height > 0)
                                         {
-                                            _imageCache[imgUrl] = tex;
+                                            _imageCache[url] = tex;
                                         }
                                         else
                                         {
-                                            _imageCache[imgUrl] = null;
+                                            _imageCache[url] = null;
                                         }
                                     }
                                 }
                                 catch
                                 {
-                                    _imageCache[imgUrl] = null;
+                                    _imageCache[url] = null;
                                 }
                                 finally
                                 {
-                                    _imagesLoading.Remove(imgUrl);
+                                    _imagesLoading.Remove(url);
                                 }
-                            });
+                            }
+                            LoadImageAsync(imgUrl);
                         }
-                        ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image...]");
+                        ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image or image failed!]");
                     }
-                    continue; // Only render once per segment
+                    continue;
+                }
+   
+
+                // Font rendering (clamped)
+                if (seg.type == "text")
+                {
+                    int fontSize = (int)Math.Round(seg.scale);
+                    if (fontSize < minFontSize) fontSize = minFontSize;
+                    ImFontPtr font = null;
+                    if (FontSizes.TryGetValue(fontSize, out font) && !font.IsNull)
+                    {
+                        ImGui.PushFont(font);
+                    }
+
+                    if (disableWordWrap)
+                        ImGui.TextUnformatted(seg.content);
+                    else
+                        ImGui.TextWrapped(seg.content);
+
+                    if (!font.IsNull)
+                        ImGui.PopFont();
+
+                    continue;
                 }
 
                 // Colored text
@@ -459,13 +931,39 @@ namespace AbsoluteRoleplay
                         }
                     }
                 }
-                // Plain text
-                if (seg.type == "text")
+                else if (seg.type == "bold" || seg.type == "italic" || seg.type == "underline" || seg.type == "text")
                 {
-                    if (disableWordWrap)
-                        ImGui.TextUnformatted(seg.content);
+                    var style = new TextStyle
+                    {
+                        Bold = seg.type == "bold",
+                        Italic = seg.type == "italic",
+                        Underline = seg.type == "underline",
+                        Scale = (int)Math.Round(seg.scale) // <-- Use scale here!
+                    };
+                    int fontSize = style.Scale > 0 ? style.Scale : minFontSize;
+                    if (fontSize < minFontSize) fontSize = minFontSize;
+                    ImFontPtr font = GetFontForStyle(style, fontSize);
+                    ImGui.PushFont(font);
+
+                    if (seg.colorHex != null && color && TryParseHexColor(seg.colorHex, out Vector4 colorVal))
+                        ImGui.TextColored(colorVal, seg.content);
                     else
                         ImGui.TextWrapped(seg.content);
+
+                    ImGui.PopFont();
+
+                    if (style.Underline)
+                    {
+                        var min = ImGui.GetItemRectMin();
+                        var max = ImGui.GetItemRectMax();
+                        var drawList = ImGui.GetWindowDrawList();
+                        drawList.AddLine(
+                            new Vector2(min.X, max.Y),
+                            new Vector2(max.X, max.Y),
+                            ImGui.GetColorU32(new Vector4(1, 1, 1, 1)),
+                            2.0f
+                        );
+                    }
                     continue;
                 }
 
@@ -634,22 +1132,7 @@ namespace AbsoluteRoleplay
                 }
             }
         }
-        private static bool TryParseHexColor(string hex, out Vector4 color)
-        {
-            color = new Vector4(1, 1, 1, 1);
-            if (hex.StartsWith("#"))
-                hex = hex.Substring(1);
-            if (hex.Length != 6)
-                return false;
-            if (int.TryParse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber, null, out int r) &&
-                int.TryParse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber, null, out int g) &&
-                int.TryParse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber, null, out int b))
-            {
-                color = new Vector4(r / 255f, g / 255f, b / 255f, 1);
-                return true;
-            }
-            return false;
-        }
+    
         public static void SetCenter(Plugin plugin, string name)
         {
          
@@ -910,12 +1393,10 @@ namespace AbsoluteRoleplay
                 // Reset loader tweens for target profile loading
                 Misc.ResetLoaderTween("tabs");
                 Misc.ResetLoaderTween("gallery");
-
-                // ... rest of your code ...
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("TargetProfileWindow ResetAllData Error: " + ex.Message);
+                Plugin.PluginLog.Debug("TargetProfileWindow ResetAllData Debug: " + ex.Message);
             }
         }
         private static readonly Dictionary<string, LoaderTweenState> loaderTweens = new();

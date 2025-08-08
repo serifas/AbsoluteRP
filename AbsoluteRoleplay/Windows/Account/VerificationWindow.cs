@@ -46,7 +46,7 @@ namespace AbsoluteRoleplay.Windows.Account
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("VerificationWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Debug("VerificationWindow Draw Debug: " + ex.Message);
             }
         }
         public void Dispose()

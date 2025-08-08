@@ -69,7 +69,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (string.IsNullOrEmpty(gameTexturePath))
                 {
-                    Plugin.PluginLog.Error("Game texture path is null or empty.");
+                    Plugin.PluginLog.Debug("Game texture path is null or empty.");
                     return null;
                 }
 
@@ -77,11 +77,11 @@ namespace AbsoluteRoleplay.Helpers
                 var texFile = Plugin.DataManager.GetFile<TexFile>(gameTexturePath);
                 if (texFile == null)
                 {
-                    Plugin.PluginLog.Error($"TexFile not found for path: {gameTexturePath}");
+                    Plugin.PluginLog.Debug($"TexFile not found for path: {gameTexturePath}");
                     return null;
                 }
 
-                Plugin.PluginLog.Error($"Successfully loaded TexFile for path: {gameTexturePath}");
+                Plugin.PluginLog.Debug($"Successfully loaded TexFile for path: {gameTexturePath}");
 
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
@@ -93,7 +93,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
+                Plugin.PluginLog.Debug($"Failed to load texture from path: {gameTexturePath}. Exception: {ex}");
                 return null;
             }
         }
@@ -121,7 +121,7 @@ namespace AbsoluteRoleplay.Helpers
 
             if (Plugin.TextureProvider == null)
             {
-                Plugin.PluginLog.Error("TextureProvider is not initialized.");
+                Plugin.PluginLog.Debug("TextureProvider is not initialized.");
                 return galleryImage;
             }
 
@@ -131,7 +131,7 @@ namespace AbsoluteRoleplay.Helpers
                 {
                     using (var handler = new HttpClientHandler
                     {
-                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                        ServerCertificateCustomValidationCallback = (message, cert, chain, Debugs) => true
                     })
                     using (var client = new HttpClient(handler))
                     {
@@ -177,32 +177,32 @@ namespace AbsoluteRoleplay.Helpers
                             response.StatusCode == HttpStatusCode.BadGateway ||
                             response.StatusCode == HttpStatusCode.InternalServerError)
                         {
-                            Plugin.PluginLog.Error($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
+                            Plugin.PluginLog.Debug($"Image download attempt {attempt} failed with {response.StatusCode}. Retrying in {delayMs}ms...");
                             await Task.Delay(delayMs * attempt);
                             continue;
                         }
                         else
                         {
-                            Plugin.PluginLog.Error($"Image download failed with status code: {response.StatusCode}");
+                            Plugin.PluginLog.Debug($"Image download failed with status code: {response.StatusCode}");
                             break;
                         }
                     }
                 }
                 catch (HttpRequestException httpEx)
                 {
-                    Plugin.PluginLog.Error($"HTTP Request Error: {httpEx.Message}");
+                    Plugin.PluginLog.Debug($"HTTP Request Debug: {httpEx.Message}");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (TaskCanceledException)
                 {
-                    Plugin.PluginLog.Error("Download request timed out.");
+                    Plugin.PluginLog.Debug("Download request timed out.");
                     if (attempt < maxRetries)
                         await Task.Delay(delayMs * attempt);
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Error($"Unexpected error: {ex.Message}");
+                    Plugin.PluginLog.Debug($"Unexpected Debug: {ex.Message}");
                     break;
                 }
             }
@@ -226,7 +226,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
+                Plugin.PluginLog.Debug($"SafeLoadImGuiImageAsync: Failed to load image from bytes. Exception: {ex}");
             }
             return null;
         }
@@ -244,7 +244,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
+                Plugin.PluginLog.Debug($"SafeLoadImGuiImageAsync: Failed to load image from path '{filePath}'. Exception: {ex}");
             }
             return null;
         }
@@ -255,7 +255,7 @@ namespace AbsoluteRoleplay.Helpers
             {
                 using (HttpClientHandler handler = new HttpClientHandler
                 {
-                    ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                    ServerCertificateCustomValidationCallback = (message, cert, chain, Debugs) => true
                 })
                 using (HttpClient client = new HttpClient(handler))
                 {
@@ -267,7 +267,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Error fetching image bytes: {ex.Message}");
+                Plugin.PluginLog.Debug($"Debug fetching image bytes: {ex.Message}");
                 return Array.Empty<byte>();
             }
         }
@@ -279,13 +279,13 @@ namespace AbsoluteRoleplay.Helpers
             {
                 if (Plugin.TextureProvider == null)
                 {
-                    Plugin.PluginLog.Error("TextureProvider is not initialized.");
+                    Plugin.PluginLog.Debug("TextureProvider is not initialized.");
                 }
                 else
                 {
                     using (HttpClientHandler handler = new HttpClientHandler
                     {
-                        ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+                        ServerCertificateCustomValidationCallback = (message, cert, chain, Debugs) => true
                     })
                     using (HttpClient client = new HttpClient(handler))
                     {
@@ -315,15 +315,15 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (HttpRequestException httpEx)
             {
-                Plugin.PluginLog.Error($"HTTP Request Error: {httpEx.Message}");
+                Plugin.PluginLog.Debug($"HTTP Request Debug: {httpEx.Message}");
             }
             catch (TaskCanceledException)
             {
-                Plugin.PluginLog.Error("Download request timed out.");
+                Plugin.PluginLog.Debug("Download request timed out.");
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Unexpected error: {ex.Message}");
+                Plugin.PluginLog.Debug($"Unexpected Debug: {ex.Message}");
             }
             return image;
         }
@@ -360,7 +360,7 @@ namespace AbsoluteRoleplay.Helpers
 
                     if (!response.IsSuccessStatusCode)
                     {
-                        Console.WriteLine($"[Error] Failed to fetch URL: {response.StatusCode}");
+                        Console.WriteLine($"[Debug] Failed to fetch URL: {response.StatusCode}");
                         return false;
                     }
 
@@ -371,12 +371,12 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (HttpRequestException ex)
             {
-                Console.WriteLine($"[Error] HTTP Request failed: {ex.Message}");
+                Console.WriteLine($"[Debug] HTTP Request failed: {ex.Message}");
                 return false;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[Error] Unexpected error: {ex.Message}");
+                Console.WriteLine($"[Debug] Unexpected Debug: {ex.Message}");
                 return false;
             }
 

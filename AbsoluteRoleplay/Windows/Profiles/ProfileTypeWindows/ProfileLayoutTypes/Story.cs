@@ -103,7 +103,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         {
             var safeId = layout.id > 0 ? layout.id.ToString() : "default";
             var chapterTitle = layout.chapters[currentChapter].title;
-            using var combo = ImRaii.Combo($"ChapterCombo_{safeId}", chapterTitle);
+            using var combo = ImRaii.Combo($"##ChapterCombo_{safeId}", chapterTitle);
             if (!combo)
                 return;
             foreach (var (newText, idx) in layout.chapters.WithIndex())
@@ -138,7 +138,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         {
             var safeId = layout.id > 0 ? layout.id.ToString() : "default";
             var windowSize = ImGui.GetWindowSize();
-            using var profileTable = ImRaii.Child($"Chapter_{safeId}_{i}", new Vector2(windowSize.X - 20, windowSize.Y - 130));
+            using var profileTable = ImRaii.Child($"##Chapter_{safeId}_{i}", new Vector2(windowSize.X - 20, windowSize.Y - 130));
             if (profileTable)
             {
                 ImGui.TextUnformatted("Chapter Name:");
@@ -155,7 +155,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     chapter.content = chapterContent; // Update the content if changed
                 }
 
-                using var chapterControlTable = ImRaii.Child($"ChapterControls_{safeId}_{i}");
+                using var chapterControlTable = ImRaii.Child($"##ChapterControls_{safeId}_{i}");
                 if (chapterControlTable)
                 {
                     using (ImRaii.Disabled(!Plugin.CtrlPressed()))

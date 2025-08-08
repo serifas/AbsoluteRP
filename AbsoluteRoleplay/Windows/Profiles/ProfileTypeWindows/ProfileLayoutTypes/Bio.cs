@@ -1,50 +1,37 @@
 using AbsoluteRoleplay.Helpers;
+using AbsoluteRoleplay.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using System.Numerics;
+using static AbsoluteRoleplay.Misc;
 using static AbsoluteRoleplay.UI;
-using AbsoluteRoleplay.Helpers;
 namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
-{
-    public class descriptor
-    {
-        public int index { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-    }
-    public class field
-    {
-        public int index { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-    }
-    public class trait
-    {
-        public int iconID { get; set; }
-
-        public int index { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-        public bool modifying { get; set; } // Controls window visibility
-
-        public IconElement icon { get; set; } = new IconElement { icon = UICommonImage(CommonImageTypes.blank) };
-    }
+{ 
 
     internal class Bio
     {
         public static int currentAlignment = (int)Alignments.None;
 
-        private static bool firstLoad = true;
+        private static bool firstLoad = true; private static ParsedNode UpdateParsed(ref ParsedNode cache, ref string lastValue, string currentValue)
+        {
+            if (lastValue != currentValue)
+            {
+                cache = Misc.ParseHtmlLayout(currentValue ?? string.Empty);
+                lastValue = currentValue;
+            }
+            return cache;
+        }
         public static void RenderBioPreview(BioLayout layout, string tabName, Vector4 titleColor)
         {
             try
             {
-
                 Misc.SetTitle(Plugin.plugin, true, tabName, titleColor);
-                // Defensive: Ensure lists are not null
                 var descriptors = layout.descriptors ?? new List<descriptor>();
                 var fields = layout.fields ?? new List<field>();
                 var traits = layout.traits ?? new List<trait>();
+
+                float wrapWidth = ImGui.GetWindowSize().X - 50;
+                float wrapHeight = ImGui.GetWindowSize().Y;
 
                 // NAME
                 if (!string.IsNullOrEmpty(layout.name) && layout.name != "New Profile")
@@ -52,42 +39,42 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     ImGui.Spacing();
                     ImGui.TextWrapped("NAME: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.name, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.name ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
                 // RACE
                 if (!string.IsNullOrEmpty(layout.race))
                 {
                     ImGui.TextWrapped("RACE: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.race, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.race ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
                 // GENDER
                 if (!string.IsNullOrEmpty(layout.gender))
                 {
                     ImGui.TextWrapped("GENDER: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.gender, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.gender ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
                 // AGE
                 if (!string.IsNullOrEmpty(layout.age))
                 {
                     ImGui.TextWrapped("AGE: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.age, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.age ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
                 // HEIGHT
                 if (!string.IsNullOrEmpty(layout.height))
                 {
                     ImGui.TextWrapped("HEIGHT: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.height, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.height ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
                 // WEIGHT
                 if (!string.IsNullOrEmpty(layout.weight))
                 {
                     ImGui.TextWrapped("WEIGHT: ");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(layout.weight, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.weight ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
 
                 // DESCRIPTORS
@@ -95,18 +82,18 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 {
                     if (descriptor == null) continue;
                     ImGui.Spacing();
-                    Misc.RenderHtmlElements(descriptor.name ?? string.Empty, true, true, true, false);
+                    Misc.RenderHtmlElements(descriptor.name ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                     ImGui.SameLine();
                     ImGui.TextWrapped(":");
                     ImGui.SameLine();
-                    Misc.RenderHtmlElements(descriptor.description ?? string.Empty, true, true, true, false);
+                    Misc.RenderHtmlElements(descriptor.description ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
 
                 // AT FIRST GLANCE
                 if (!string.IsNullOrEmpty(layout.afg))
                 {
                     ImGui.TextWrapped("AT FIRST GLANCE: ");
-                    Misc.RenderHtmlElements(layout.afg ?? string.Empty, true, true, true, false);
+                    Misc.RenderHtmlElements(layout.afg ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
 
                 // ALIGNMENT
@@ -122,7 +109,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         }
                         catch (Exception ex)
                         {
-                            Plugin.PluginLog.Error($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
+                            Plugin.PluginLog.Debug($"RenderBioPreview: Failed to render alignment icon: {ex.Message}");
                         }
                         var alignmentVal = UI.AlignmentVals[layout.alignment];
                         if (ImGui.IsItemHovered())
@@ -141,8 +128,8 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 {
                     if (field == null) continue;
                     ImGui.Spacing();
-                    Misc.RenderHtmlColoredTextInline((field.name ?? string.Empty).ToUpper() + ": ", 400);
-                    Misc.RenderHtmlElements(field.description ?? string.Empty, true, true, true, false);
+                    Misc.RenderHtmlElements((field.name ?? string.Empty).ToUpper() + ": ", true, true, true, false, new Vector2(400, wrapHeight));
+                    Misc.RenderHtmlElements(field.description ?? string.Empty, true, true, true, false, new Vector2(wrapWidth, wrapHeight));
                 }
 
                 Vector2 alignmentSize = new Vector2(ImGui.GetIO().FontGlobalScale * 25, ImGui.GetIO().FontGlobalScale * 32);
@@ -185,7 +172,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                 }
                                 catch (Exception ex)
                                 {
-                                    Plugin.PluginLog.Error($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
+                                    Plugin.PluginLog.Debug($"RenderBioPreview: Failed to render personality icon: {ex.Message}");
                                 }
                                 if (ImGui.IsItemHovered())
                                 {
@@ -197,7 +184,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                                     }
                                     catch (Exception ex)
                                     {
-                                        Plugin.PluginLog.Error($"RenderBioPreview: Tooltip error: {ex.Message}");
+                                        Plugin.PluginLog.Debug($"RenderBioPreview: Tooltip Debug: {ex.Message}");
                                     }
                                     ImGui.EndTooltip();
                                 }
@@ -220,14 +207,12 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         if (personality == null)
                         {
                             ImGui.TableNextColumn();
-                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Trait missing.");
                             continue;
                         }
                         ImGui.TableNextColumn();
                         var traitIcon = personality.icon?.icon;
                         if (traitIcon == null || traitIcon.Handle == IntPtr.Zero)
                         {
-                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Personality icon not loaded.");
                             continue;
                         }
                         try
@@ -236,19 +221,19 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         }
                         catch (Exception ex)
                         {
-                            Plugin.PluginLog.Error($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
+                            Plugin.PluginLog.Debug($"RenderBioPreview: Failed to render trait icon: {ex.Message}");
                         }
                         if (ImGui.IsItemHovered())
                         {
                             ImGui.BeginTooltip();
                             try
                             {
-                                Misc.RenderHtmlColoredTextInline(personality.name ?? string.Empty, 400);
+                                Misc.RenderHtmlElements(personality.name ?? string.Empty, false, true, true, true, null, true);
                                 Misc.RenderHtmlElements(personality.description ?? string.Empty, false, true, true, true, null, true);
                             }
                             catch (Exception ex)
                             {
-                                Plugin.PluginLog.Error($"RenderBioPreview: Trait tooltip error: {ex.Message}");
+                                Plugin.PluginLog.Debug($"RenderBioPreview: Trait tooltip Debug: {ex.Message}");
                             }
                             ImGui.EndTooltip();
                         }
@@ -257,7 +242,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"RenderBioPreview: Exception: {ex.Message}");
+                Plugin.PluginLog.Debug($"RenderBioPreview: Exception: {ex.Message}");
             }
         }
         public static void RenderBioLayout(int index, string id, BioLayout layout)

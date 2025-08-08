@@ -72,7 +72,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("TOS Draw Error: " + ex.Message);
+                Plugin.PluginLog.Debug("TOS Draw Debug: " + ex.Message);
             }
         }
         public void Dispose()

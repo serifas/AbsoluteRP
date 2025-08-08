@@ -77,7 +77,7 @@ namespace AbsoluteRoleplay.Helpers
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error(ex.Message);
+                Plugin.PluginLog.Debug(ex.Message);
             }
         }
 

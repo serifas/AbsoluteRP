@@ -185,7 +185,7 @@ namespace AbsoluteRoleplay.Windows.Profiles
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ConnectionsWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ConnectionsWindow Draw Debug: " + ex.Message);
             }
         }
         public void AddConnectionListingOptions()

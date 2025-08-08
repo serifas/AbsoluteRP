@@ -21,6 +21,7 @@ namespace AbsoluteRoleplay.Windows
         public static string[] alertPositions = { "Bottom Left", "Bottom Right", "Top Left", "Top Right", "Center" };
         public static bool ChangeDataPath = false;
         private bool showCompass;
+        private bool showCompassInCombat;
 
         public OptionsWindow() : base("OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -42,18 +43,18 @@ namespace AbsoluteRoleplay.Windows
                 _fileDialogManager.Draw();
                 if (ChangeDataPath)
                 {
-                    Plugin.PluginLog.Error("Dialog Opening");
+                    Plugin.PluginLog.Debug("Dialog Opening");
                     _fileDialogManager.OpenFolderDialog("Select Data Save Path", (b, path) =>
                     {
                         if(path != null && b)
                         {
                             Plugin.plugin.Configuration.dataSavePath = path;
                             Plugin.plugin.Configuration.Save();
-                            Plugin.PluginLog.Error($"Data save path changed to: {path}");
+                            Plugin.PluginLog.Debug($"Data save path changed to: {path}");
                         }
                         else
                         {
-                            Plugin.PluginLog.Error("Data save path change cancelled.");
+                            Plugin.PluginLog.Debug("Data save path change cancelled.");
                         }
                     });
                     ChangeDataPath = false; // Prevent repeated dialog opening
@@ -63,6 +64,7 @@ namespace AbsoluteRoleplay.Windows
                 ImGui.Spacing();
                 //now for some simple toggles
                 Configuration = Plugin.plugin.Configuration;
+
 
 
                 ImGui.BeginTabBar("MouseTargetTooltipOptions");
@@ -87,6 +89,7 @@ namespace AbsoluteRoleplay.Windows
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
+
                 if (ImGui.BeginTabItem("Data"))
                 {
                     bool autoBackup = Plugin.plugin.Configuration.AutobackupEnabled;
@@ -102,10 +105,8 @@ namespace AbsoluteRoleplay.Windows
                     ImGui.SameLine();
                     ImGui.Text("Enable Auto Backup");
                     string customPath = Plugin.plugin.Configuration.dataSavePath ?? string.Empty;
-                    ImGui.Text("Auto Backup Dir:");
-                    ImGui.SameLine();                    
-                    ImGui.InputText("", ref customPath, 300);
-                    ImGui.SameLine();
+                    ImGui.Text($"Auto Backup Dir: {customPath}" );
+                    ImGui.SameLine();  
                     if(ImGui.Button("Change Path"))
                     {
                         ChangeDataPath = true;
@@ -238,7 +239,7 @@ namespace AbsoluteRoleplay.Windows
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("OptionsWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Debug("OptionsWindow Draw Debug: " + ex.Message);
             }
         }
         public void Dispose()

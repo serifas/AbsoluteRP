@@ -50,7 +50,6 @@ public class Configuration : IPluginConfiguration
     // the below exist just to make saving less cumbersome
     [NonSerialized]
     private IDalamudPluginInterface? PluginInterface;
-    public  bool showCompass { get; set; } = true;
     public bool AutobackupEnabled { get; set; } = true; 
     public string dataSavePath { get; set; }
     public float fontSize { get; set; } = 35;

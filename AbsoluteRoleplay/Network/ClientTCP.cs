@@ -23,8 +23,8 @@ namespace Networking
         public static TcpClient clientSocket;
         public static SslStream sslStream;
         private static byte[] recBuffer = new byte[8192];
-        private static readonly string server = "jointest.infinite-roleplay.net";
-        private static readonly int port = 53921;
+        private static readonly string server = "join.infinite-roleplay.net";
+        private static readonly int port = 53922;
         public static Plugin Plugin;
 
         // Ensure all access to recBuffer is on the same thread and always copy before use.
@@ -50,7 +50,7 @@ namespace Networking
 
                 if (bytesRead <= 0)
                 {
-                    Plugin.PluginLog.Error("No data received or connection closed by the server.");
+                    Plugin.PluginLog.Debug("No data received or connection closed by the server.");
                     Disconnect();
                     return;
                 }
@@ -68,7 +68,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Error("Exception in HandleData: " + ex);
+                    Plugin.PluginLog.Debug("Exception in HandleData: " + ex);
                 }
 
                 // Continue reading more data asynchronously from the stream
@@ -79,17 +79,17 @@ namespace Networking
             }
             catch (IOException ioEx)
             {
-                Plugin.PluginLog.Error("IO error during data reception: " + ioEx.Message);
+                Plugin.PluginLog.Debug("IO Debug during data reception: " + ioEx.Message);
                 Disconnect();
             }
             catch (ObjectDisposedException ex)
             {
-                Plugin.PluginLog.Error("SslStream has been disposed: " + ex.Message);
+                Plugin.PluginLog.Debug("SslStream has been disposed: " + ex.Message);
                 Disconnect();
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Error during data reception: {ex}");
+                Plugin.PluginLog.Debug($"Debug during data reception: {ex}");
                 Disconnect();
             }
         }
@@ -114,12 +114,12 @@ namespace Networking
 
                     if (length <= 0)
                     {
-                        Plugin.PluginLog.Error("Server closed the connection.");
+                        Plugin.PluginLog.Debug("Server closed the connection.");
                         Disconnect();
                         break;
                     }
 
-                    Plugin.PluginLog.Error($"Received {length} bytes from the server.");
+                    Plugin.PluginLog.Debug($"Received {length} bytes from the server.");
 
                     // Defensive: Always copy the buffer before passing to handler.
                     var newBytes = new byte[length];
@@ -131,13 +131,13 @@ namespace Networking
                     }
                     catch (Exception ex)
                     {
-                        Plugin.PluginLog.Error("Exception in HandleData: " + ex);
+                        Plugin.PluginLog.Debug("Exception in HandleData: " + ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Error receiving data: " + ex);
+                Plugin.PluginLog.Debug("Debug receiving data: " + ex);
                 Disconnect();
             }
         }
@@ -171,11 +171,11 @@ namespace Networking
                     {
                         byte[] buffer = new byte[1];
                         int bytesRead = await _tcpClient.Client.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.Peek);
-                        Plugin.PluginLog.Error($"Bytes peeked: {bytesRead}");
+                        Plugin.PluginLog.Debug($"Bytes peeked: {bytesRead}");
 
                         if (bytesRead == 0)
                         {
-                            Plugin.PluginLog.Error("No data received (0 bytes), connection likely closed.");
+                            Plugin.PluginLog.Debug("No data received (0 bytes), connection likely closed.");
                             return disconnected;
                         }
                         return connected;
@@ -183,25 +183,25 @@ namespace Networking
 
                     if (isSocketWritable && !isSocketReadable)
                     {
-                        Plugin.PluginLog.Error("Connected");
+                        Plugin.PluginLog.Debug("Connected");
                         return connected;
                     }
 
-                    Plugin.PluginLog.Error("Socket is neither readable nor writable, returning Disconnected.");
+                    Plugin.PluginLog.Debug("Socket is neither readable nor writable, returning Disconnected.");
                     return disconnected;
                 }
 
-                Plugin.PluginLog.Error("TcpClient is null or not connected.");
+                Plugin.PluginLog.Debug("TcpClient is null or not connected.");
                 return disconnected;
             }
             catch (SocketException ex)
             {
-                Plugin.PluginLog.Error($"SocketException during connection check: {ex.Message}");
+                Plugin.PluginLog.Debug($"SocketException during connection check: {ex.Message}");
                 return disconnected;
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error($"Exception during connection check: {ex.Message}");
+                Plugin.PluginLog.Debug($"Exception during connection check: {ex.Message}");
                 return disconnected;
             }
         }
@@ -214,7 +214,7 @@ namespace Networking
             }
             else
             {
-                Plugin.PluginLog.Error("SSL/TLS stream is not readable after handshake.");
+                Plugin.PluginLog.Debug("SSL/TLS stream is not readable after handshake.");
             }
         }
 
@@ -236,7 +236,7 @@ namespace Networking
                 }
                 else
                 {
-                    Plugin.PluginLog.Error("SSL/TLS stream is not authenticated or readable.");
+                    Plugin.PluginLog.Debug("SSL/TLS stream is not authenticated or readable.");
                     Disconnect();
                     Plugin.CloseAllWindows();
                     Plugin.OpenMainPanel();
@@ -245,19 +245,19 @@ namespace Networking
             }
             catch (AuthenticationException authEx)
             {
-                Plugin.PluginLog.Error("SSL/TLS authentication failed: " + authEx.Message);
+                Plugin.PluginLog.Debug("SSL/TLS authentication failed: " + authEx.Message);
                 if (authEx.InnerException != null)
-                    Plugin.PluginLog.Error("Inner exception: " + authEx.InnerException.Message);
+                    Plugin.PluginLog.Debug("Inner exception: " + authEx.InnerException.Message);
                 Disconnect();
             }
             catch (SocketException sockEx)
             {
-                Plugin.PluginLog.Error("Socket error during connection: " + sockEx.Message);
+                Plugin.PluginLog.Debug("Socket Debug during connection: " + sockEx.Message);
                 Disconnect();
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Connection error: " + ex);
+                Plugin.PluginLog.Debug("Connection Debug: " + ex);
                 Disconnect();
             }
         }
@@ -270,7 +270,7 @@ namespace Networking
             if (sslPolicyErrors == SslPolicyErrors.None)
                 return true;
 
-            Console.WriteLine("SSL certificate error: " + sslPolicyErrors);
+            Console.WriteLine("SSL certificate Debug: " + sslPolicyErrors);
             return false;
         }
 
@@ -303,7 +303,7 @@ namespace Networking
             catch { }
             clientSocket = null;
 
-            Plugin.PluginLog.Error("Disconnected from server.");
+            Plugin.PluginLog.Debug("Disconnected from server.");
         }
 
         public static bool IsConnected()
@@ -332,7 +332,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Error checking server connection: " + ex);
+                Plugin.PluginLog.Debug("Debug checking server connection: " + ex);
                 return false;
             }
         }
@@ -349,7 +349,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Error checking server status: " + ex);
+                Plugin.PluginLog.Debug("Debug checking server status: " + ex);
             }
         }
 
@@ -365,7 +365,7 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Could not establish connection: " + ex);
+                Plugin.PluginLog.Debug("Could not establish connection: " + ex);
             }
         }
 
@@ -406,12 +406,12 @@ namespace Networking
                 }
                 else
                 {
-                    Plugin.PluginLog.Error("Error: SSL/TLS stream is not authenticated or writable.");
+                    Plugin.PluginLog.Debug("Debug: SSL/TLS stream is not authenticated or writable.");
                 }
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Error sending data: " + ex);
+                Plugin.PluginLog.Debug("Debug sending data: " + ex);
             }
             finally
             {

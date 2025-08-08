@@ -18,11 +18,11 @@ namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
             var currentCursorY = ImGui.GetCursorPosY();
             ImGui.SetCursorPos(new Vector2(centeredX, currentCursorY));
             ImGui.PushItemWidth(ButtonSize.X);
-            if(ImGui.InputText("##Username", ref username, 30, ImGuiInputTextFlags.None))
+            if(ImGui.InputTextWithHint("##Username", "Username", ref username, 30, ImGuiInputTextFlags.None))
             {
                 Plugin.plugin.Configuration.username = username;
             }
-            if (ImGui.InputText("##Password", ref password, 45, ImGuiInputTextFlags.Password))
+            if (ImGui.InputTextWithHint("##Password", "Password", ref password, 45, ImGuiInputTextFlags.Password))
             {
                 Plugin.plugin.Configuration.password = password;
             }

@@ -133,7 +133,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ARPTooltipWindow Draw Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ARPTooltipWindow Draw Debug: " + ex.Message);
             }
         }
 
@@ -161,7 +161,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("ARPTooltipWindow Dispose Error: " + ex.Message);
+                Plugin.PluginLog.Debug("ARPTooltipWindow Dispose Debug: " + ex.Message);
             }
         }
 

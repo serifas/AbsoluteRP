@@ -15,7 +15,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         public static void RenderInfoLayout(int index, string uniqueID, InfoLayout layout)
         {
             string content = layout.text;
-            if(ImGui.InputTextMultiline($"##InfoContent {index}_{uniqueID}" , ref content, 50000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y /2)))
+            if(ImGui.InputTextMultiline($"##InfoContent {index}_{uniqueID}" , ref content, 5000000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y /2)))
             {
                layout.text = content; 
             }
