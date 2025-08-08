@@ -69,6 +69,8 @@ namespace AbsoluteRoleplay.Windows
 
                 ImGui.BeginTabBar("MouseTargetTooltipOptions");
 
+   
+
                 if (ImGui.BeginTabItem("General"))
                 {
                     if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))

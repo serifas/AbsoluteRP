@@ -88,7 +88,8 @@ namespace Networking
         ReceiveTradeUpdate = 76,
         ReceiveTradeStatus = 77,
         ReceiveTradeInventory = 78,
-        ReceiveTreeLayout = 79
+        ReceiveTreeLayout = 79,
+        RecConnectedPlayersInMap = 80
     }
     class DataReceiver
     {
@@ -1890,6 +1891,7 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
             }
         }
+     
         public static void ReceiveTreeLayout(byte[] data)
         {
             try

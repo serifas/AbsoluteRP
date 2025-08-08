@@ -583,9 +583,8 @@ namespace AbsoluteRoleplay
             {
                 WindowSystem.Draw();
 
-                // Draw compass overlay if enabled and player is present
-               
-               
+          
+
             }
             catch (Exception ex)
             {
@@ -698,21 +697,9 @@ namespace AbsoluteRoleplay
                     }
                   
                 }
-            }  // Increment timer by delta time
+            } 
 
-            // Every 60 seconds, call FetchConnectedPlayers
-               fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
-            if (fetchQuestsInRangeTimer >= 25f)
-              {
-                  fetchQuestsInRangeTimer = 0f;
-                  var localPlayer = ClientState.LocalPlayer;
-                  List<IPlayerCharacter> nearbyPlayers = ObjectTable
-                      .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
-                      .Cast<IPlayerCharacter>()
-                      .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
-                      .ToList();
-                DataSender.RequestCompassFromList(nearbyPlayers);
-            }
+
              
             if (firstopen == true && MainPanel.IsOpen == true)
             {

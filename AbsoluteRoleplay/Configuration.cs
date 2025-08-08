@@ -42,6 +42,7 @@ public class Configuration : IPluginConfiguration
     public bool tooltip_HideInCombat { get; set; }
     public float hPos {  get; set; }
     public float vPos { get; set; }
+    public bool showCompass { get; set; } = false;
     public List<string> customIconCategory { get; set; } = new List<string>();
     public bool autoLogin { get; set; }
     public List<IconData> iconBookmarks { get; set; } = new List<IconData>();

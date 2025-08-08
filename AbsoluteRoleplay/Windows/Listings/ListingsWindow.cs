@@ -52,6 +52,12 @@ namespace AbsoluteRoleplay.Windows.Listings
             worldSearchQuery = "Adamantoise";
             _fileDialogManager = new FileDialogManager();
         }
+        // ... (rest of the file unchanged)
+
+        // ... (rest of the file unchanged)
+
+        // ... (rest of the file unchanged)
+
         public override void Draw()
         {
             DrawFFXIVLocationSelectors();
@@ -87,21 +93,25 @@ namespace AbsoluteRoleplay.Windows.Listings
                 }
                 DataSender.RequestPersonals(worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
             }
+
             // Draw personal listings
-            using (ImRaii.Table("Personal Listings", 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
+            if (ImGui.BeginTable("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
             {
-                ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed,200);
+                ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
                 ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableHeadersRow();
 
                 foreach (var listing in listings.Where(l => l.type == type))
                 {
                     ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
-                    if(listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
+
+                    if (listing.avatar != null && listing.avatar.Handle != IntPtr.Zero)
                     {
                         ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
                     }
                     ImGui.TextColored(listing.color, listing.name);
+
                     ImGui.TableSetColumnIndex(1);
                     if (ImGui.Button($"View##{listing.id}"))
                     {
@@ -111,6 +121,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                         DataSender.FetchProfile(false, -1, string.Empty, string.Empty, listing.id);
                     }
                 }
+                ImGui.EndTable();
             }
         }
         public static void DrawPageCountSelection()
