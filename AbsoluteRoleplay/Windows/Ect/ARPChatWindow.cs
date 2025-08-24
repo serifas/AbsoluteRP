@@ -1,6 +1,6 @@
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Moderator;
+using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Moderator;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -13,7 +13,7 @@ using Networking;
 using System.Numerics;
 
 
-namespace AbsoluteRoleplay.Windows.Ect
+namespace AbsoluteRP.Windows.Ect
 {
     internal class ARPChatWindow : Window, IDisposable
     {
@@ -65,7 +65,7 @@ namespace AbsoluteRoleplay.Windows.Ect
         {
             try
             {
-                List<ChatChannelTabs> channelTabs = Plugin.plugin.Configuration.chatChannelTabs;
+                List<ARPChatGroups> channelTabs = Plugin.plugin.Configuration.ARPChatGroupMemberships;
                 using (var child = ImRaii.Child("Chat", new Vector2(ImGui.GetWindowSize().X, ImGui.GetWindowSize().Y - 150)))
                 {
                     if (child)
@@ -312,7 +312,7 @@ namespace AbsoluteRoleplay.Windows.Ect
             // You can check for any channel using XivChatType enum
         }
     }
-    public  class ChatMessage
+    public class ChatMessage
     {
         public int authorProfileID {  get; set; }
         public string name { get; set; }

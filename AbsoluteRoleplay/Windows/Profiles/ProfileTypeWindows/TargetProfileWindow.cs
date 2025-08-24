@@ -1,5 +1,5 @@
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -7,7 +7,7 @@ using Dalamud.Plugin;
 using Networking;
 using System.Numerics;
 
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 {
     public class TargetProfileWindow : Window, IDisposable
     {

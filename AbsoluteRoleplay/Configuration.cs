@@ -1,10 +1,10 @@
-using AbsoluteRoleplay.Defines;
+using AbsoluteRP.Defines;
 using Dalamud.Configuration;
 using Dalamud.Plugin;
 using System;
 using System.Numerics;
 
-namespace AbsoluteRoleplay;
+namespace AbsoluteRP;
 
 [Serializable]
 public class Configuration : IPluginConfiguration
@@ -42,15 +42,16 @@ public class Configuration : IPluginConfiguration
     public bool tooltip_HideInCombat { get; set; }
     public float hPos {  get; set; }
     public float vPos { get; set; }
-    public bool showCompass { get; set; } = false;
     public List<string> customIconCategory { get; set; } = new List<string>();
     public bool autoLogin { get; set; }
     public List<IconData> iconBookmarks { get; set; } = new List<IconData>();
-    public List<ChatChannelTabs> chatChannelTabs { get; set; } = new List<ChatChannelTabs>();
+    public List<ARPChatGroups> ARPChatGroupMemberships { get; set; } = new List<ARPChatGroups>();
     public static string defaultDataPath = string.Empty;
     // the below exist just to make saving less cumbersome
     [NonSerialized]
     private IDalamudPluginInterface? PluginInterface;
+    //public bool showCompass { get; set; } = false;
+    //public bool showCompassInCombat { get; set; } = false;
     public bool AutobackupEnabled { get; set; } = true; 
     public string dataSavePath { get; set; }
     public float fontSize { get; set; } = 35;

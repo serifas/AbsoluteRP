@@ -1,7 +1,7 @@
 using Dalamud.Bindings.ImGui;
 using Networking;
 
-namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
+namespace AbsoluteRP.Windows.MainPanel.Views.Account
 {
     internal class Forgot
     {

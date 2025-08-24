@@ -1,12 +1,12 @@
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Networking;
 using Dalamud.Interface.Colors;
-using AbsoluteRoleplay.Defines;
+using AbsoluteRP.Defines;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
-namespace AbsoluteRoleplay.Windows.Moderator
+namespace AbsoluteRP.Windows.Moderator
 {
     public class ModPanel : Window, IDisposable
     {

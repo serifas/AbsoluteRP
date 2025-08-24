@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -6,7 +6,7 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
 
-namespace AbsoluteRoleplay.Windows.Profiles
+namespace AbsoluteRP.Windows.Profiles
 {
     public class ConnectionsWindow : Window, IDisposable
     {

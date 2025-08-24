@@ -1,18 +1,20 @@
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using System.Numerics;
-using static AbsoluteRoleplay.Misc;
-using static AbsoluteRoleplay.UI;
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+using static AbsoluteRP.Misc;
+using static AbsoluteRP.UI;
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 { 
 
     internal class Bio
     {
         public static int currentAlignment = (int)Alignments.None;
 
-        private static bool firstLoad = true; private static ParsedNode UpdateParsed(ref ParsedNode cache, ref string lastValue, string currentValue)
+        private static bool firstLoad = true;
+
+        private static ParsedNode UpdateParsed(ref ParsedNode cache, ref string lastValue, string currentValue)
         {
             if (lastValue != currentValue)
             {
@@ -207,12 +209,14 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                         if (personality == null)
                         {
                             ImGui.TableNextColumn();
+                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Trait missing.");
                             continue;
                         }
                         ImGui.TableNextColumn();
                         var traitIcon = personality.icon?.icon;
                         if (traitIcon == null || traitIcon.Handle == IntPtr.Zero)
                         {
+                            ImGui.TextColored(new Vector4(1, 0, 0, 1), "Personality icon not loaded.");
                             continue;
                         }
                         try
@@ -250,7 +254,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             //display for avatar
             ImGui.Spacing();
             bool isTooltip = layout.isTooltip;
-            if (ImGui.Checkbox($"Set as toolip##{id}", ref isTooltip))
+            if (ImGui.Checkbox($"Set as tooltip##Tooltip{layout.id}", ref isTooltip))
             {
                 for(int i = 0; i < ProfileWindow.CurrentProfile.customTabs.Count; i++)
                 {
@@ -261,7 +265,21 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                 }
                 layout.isTooltip = isTooltip;
             }
-
+            if(ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Set this bio as the tooltip of the profile.\nOnly one profile can be set as a tooltip at a time.");
+            }
+           /* ImGui.SameLine();
+            bool viewable = layout.viewable;
+            if(ImGui.Checkbox($"Viewable##Viewable{layout.id}", ref viewable))
+            {
+                layout.viewable = viewable;
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
+            }
+           */
             if (ImGui.CollapsingHeader("Basic Info", ImGuiTreeNodeFlags.None))
             {
                 string name = layout.name;

@@ -5,14 +5,14 @@ using System.Security.Authentication;
 using System.Text;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
-using AbsoluteRoleplay;
+using AbsoluteRP;
 using System.IO;
 using System.Net.Http;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
-using AbsoluteRoleplay.Windows.MainPanel;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Windows.MainPanel;
+using AbsoluteRP.Helpers;
 
 namespace Networking
 {
@@ -23,8 +23,8 @@ namespace Networking
         public static TcpClient clientSocket;
         public static SslStream sslStream;
         private static byte[] recBuffer = new byte[8192];
-        private static readonly string server = "jointest.infinite-roleplay.net";
-        private static readonly int port = 53921;
+        private static readonly string server = "Host";
+        private static readonly int port = 100000;
         public static Plugin Plugin;
 
         // Ensure all access to recBuffer is on the same thread and always copy before use.

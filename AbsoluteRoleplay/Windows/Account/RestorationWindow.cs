@@ -5,9 +5,9 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
 using Dalamud.Bindings.ImGui;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 
-namespace AbsoluteRoleplay.Windows.Account
+namespace AbsoluteRP.Windows.Account
 {
     public class RestorationWindow : Window, IDisposable
     {

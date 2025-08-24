@@ -1,6 +1,6 @@
-using AbsoluteRoleplay;
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP;
+using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility.Raii;

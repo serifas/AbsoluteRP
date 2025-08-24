@@ -3,9 +3,9 @@ using Lumina.Data.Parsing;
 using Lumina.Excel.Sheets;
 using System.Numerics;
 using System.Runtime.Intrinsics;
-using static AbsoluteRoleplay.Defines.Items;
+using static AbsoluteRP.Defines.Items;
 
-namespace AbsoluteRoleplay.Defines
+namespace AbsoluteRP.Defines
 {
 
    

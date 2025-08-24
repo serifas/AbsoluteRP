@@ -1,11 +1,11 @@
 using Dalamud.Interface.Windowing;
 using System.Numerics;
 using Dalamud.Interface.Textures.TextureWraps;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 
-namespace AbsoluteRoleplay.Windows.Ect
+namespace AbsoluteRP.Windows.Ect
 {
     public class ARPTooltipWindow : Window, IDisposable
     {

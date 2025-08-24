@@ -1,9 +1,9 @@
-using AbsoluteRoleplay;
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Moderator;
-using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP;
+using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Moderator;
+using AbsoluteRP.Windows.Profiles;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Hooking;
 using Dalamud.Interface.Textures.TextureWraps;

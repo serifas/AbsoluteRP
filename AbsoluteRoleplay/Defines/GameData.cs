@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AbsoluteRoleplay.Defines
+namespace AbsoluteRP.Defines
 {
     internal enum FFXIVRegion
     {

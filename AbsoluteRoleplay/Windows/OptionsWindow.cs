@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Colors;
 using Dalamud.Interface.GameFonts;
@@ -6,7 +6,7 @@ using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using System;
-namespace AbsoluteRoleplay.Windows
+namespace AbsoluteRP.Windows
 {
     public class OptionsWindow : Window, IDisposable
     {
@@ -34,6 +34,7 @@ namespace AbsoluteRoleplay.Windows
             showPatreon = Plugin.plugin.Configuration.showPatreon;
             showDisc = Plugin.plugin.Configuration.showDisc;
             autoLogin = Plugin.plugin.Configuration.autoLogin;
+           // showCompass = Plugin.plugin.Configuration.showCompass;
             _fileDialogManager = new FileDialogManager();
         }
         public override void Draw()
@@ -69,8 +70,6 @@ namespace AbsoluteRoleplay.Windows
 
                 ImGui.BeginTabBar("MouseTargetTooltipOptions");
 
-   
-
                 if (ImGui.BeginTabItem("General"))
                 {
                     if (ImGui.Checkbox("Show Ko-fi Button", ref showKofi))
@@ -91,7 +90,24 @@ namespace AbsoluteRoleplay.Windows
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
+                /*
+                if (ImGui.BeginTabItem("Compass"))
+                {
+                    if (ImGui.Checkbox("Show Compass", ref showCompass))
+                    {
+                        Plugin.plugin.Configuration.showCompass = showCompass;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                    if (ImGui.Checkbox("Show Compass in Combat", ref showCompassInCombat))
+                    {
+                        Plugin.plugin.Configuration.showCompassInCombat = showCompassInCombat;
+                        Plugin.plugin.Configuration.Save();
+                    }
 
+                    //DrawAlertOptions();
+                    ImGui.EndTabItem();
+                }
+                */
                 if (ImGui.BeginTabItem("Data"))
                 {
                     bool autoBackup = Plugin.plugin.Configuration.AutobackupEnabled;

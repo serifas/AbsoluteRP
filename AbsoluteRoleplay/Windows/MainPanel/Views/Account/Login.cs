@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Reflection.Emit;
 using static FFXIVClientStructs.FFXIV.Client.Graphics.Kernel.VertexShader;
 
-namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
+namespace AbsoluteRP.Windows.MainPanel.Views.Account
 {
     internal class Login
     {

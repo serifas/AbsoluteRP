@@ -1,13 +1,13 @@
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows;
-using AbsoluteRoleplay.Windows.Account;
-using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.Listings;
-using AbsoluteRoleplay.Windows.MainPanel;
-using AbsoluteRoleplay.Windows.MainPanel.Views;
-using AbsoluteRoleplay.Windows.Moderator;
-using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows;
+using AbsoluteRP.Windows.Account;
+using AbsoluteRP.Windows.Ect;
+using AbsoluteRP.Windows.Listings;
+using AbsoluteRP.Windows.MainPanel;
+using AbsoluteRP.Windows.MainPanel.Views;
+using AbsoluteRP.Windows.Moderator;
+using AbsoluteRP.Windows.Profiles;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
@@ -30,8 +30,8 @@ using Networking;
 using System;
 using System.Numerics;
 using System.Runtime.InteropServices;
-//using AbsoluteRoleplay.Windows.Chat;
-namespace AbsoluteRoleplay
+//using AbsoluteRP.Windows.Chat;
+namespace AbsoluteRP
 {
     public partial class Plugin : IDalamudPlugin
     {
@@ -45,7 +45,6 @@ namespace AbsoluteRoleplay
         public string playername = string.Empty;
         public bool connected = false;
         public string playerworld = string.Empty;
-        private const string CommandName = "/arp";
         private IntPtr lastTargetAddress = IntPtr.Zero;
         public static bool lockedtarget = false;
         private bool openItemTooltip;
@@ -54,8 +53,8 @@ namespace AbsoluteRoleplay
         public static bool firstopen = true; 
         private bool pendingFetchConnections = false;
         private ushort pendingTerritory = 0;
-        //WIP
-        private const string ChatToggleCommand = "/arpchat";
+        private const string CommandName = "/arp";
+
         public bool loginAttempted = false;
         private IDtrBarEntry? statusBarEntry;
         private IDtrBarEntry? connectionsBarEntry;
@@ -103,6 +102,7 @@ namespace AbsoluteRoleplay
         private TargetProfileWindow TargetWindow { get; init; }
         private ImagePreview ImagePreview { get; init; }
         private TOS TermsWindow { get; init; }
+        private TradeWindow TradeWindow { get; init; }
         private ConnectionsWindow ConnectionsWindow { get; init; }
 
         //PluginLog for printing Debugs and such
@@ -152,6 +152,7 @@ namespace AbsoluteRoleplay
             TooltipWindow = new ARPTooltipWindow();
             NotesWindow = new NotesWindow();
             ListingWindow = new ListingsWindow();
+            TradeWindow = new TradeWindow();
 
             Configuration.Initialize(PluginInterface);
 
@@ -178,6 +179,7 @@ namespace AbsoluteRoleplay
             WindowSystem.AddWindow(ListingWindow);
             WindowSystem.AddWindow(ArpChatWindow);
             WindowSystem.AddWindow(ImportantNoticeWindow);
+            WindowSystem.AddWindow(TradeWindow);
             //don't know why this is needed but it is (I legit passed it to the window above.)
             // Subscribe to condition change events
             PluginInterface.UiBuilder.Draw += DrawUI;
@@ -208,7 +210,7 @@ namespace AbsoluteRoleplay
                 using HttpClient client = new HttpClient();
                 client.Timeout = TimeSpan.FromSeconds(5); // Prevents hanging requests
 
-                string versionText = await client.GetStringAsync("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Version.txt");
+                string versionText = await client.GetStringAsync("https://raw.githubusercontent.com/serifas/Absolute-Roleplay/refs/heads/main/Version.txt");
 
                 if (Version.TryParse(versionText.Trim(), out Version version))
                 {
@@ -340,7 +342,17 @@ namespace AbsoluteRoleplay
                     DataSender.FetchProfile(false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
-            
+            /*
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Trade ARP Items",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+                    DataSender.RequestTargetTrade(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });
+            */
         }
         private Version? cachedVersion = null;
         private bool isCheckingVersion = false;
@@ -434,7 +446,7 @@ namespace AbsoluteRoleplay
         //server connection status dtrBarEntry
         public void LoadStatusBarEntry()
         {
-            var entry = dtrBar.Get("AbsoluteRoleplay");
+            var entry = dtrBar.Get("AbsoluteRP");
             statusBarEntry = entry;
             string icon = "\uE03E"; //dice icon
             statusBarEntry.Text = icon; //set text to icon
@@ -583,8 +595,38 @@ namespace AbsoluteRoleplay
             {
                 WindowSystem.Draw();
 
-          
+                // Draw compass overlay if enabled and player is present
+               /*if (Configuration != null
+                    && Configuration.showCompass
+                    && IsOnline())
+                {
+                    var viewport = ImGui.GetMainViewport(); // Only get this here, never store as static/field
 
+                    ImGui.SetNextWindowBgAlpha(0.0f);
+                    ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
+
+                    ImGui.Begin("##CompassOverlay",
+                        ImGuiWindowFlags.NoTitleBar
+                        | ImGuiWindowFlags.NoResize
+                        | ImGuiWindowFlags.NoMove
+                        | ImGuiWindowFlags.NoScrollbar
+                        | ImGuiWindowFlags.NoScrollWithMouse
+                        | ImGuiWindowFlags.NoInputs
+                        | ImGuiWindowFlags.NoSavedSettings
+                        | ImGuiWindowFlags.NoFocusOnAppearing);
+
+                    PlayerInteractions.DrawDynamicCompass(
+                        viewport.WorkSize.X / 2,
+                        300,
+                        400,
+                        40,
+                        ClientState.LocalPlayer.Rotation
+                    );
+                     
+
+                    ImGui.End();
+                }
+               */
             }
             catch (Exception ex)
             {
@@ -659,7 +701,9 @@ namespace AbsoluteRoleplay
         public void OpenListingsWindow() => ListingWindow.IsOpen = true;
         public void ToggleChatWindow() => ArpChatWindow.IsOpen = true;
         public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
+        public void OpenTradeWindow() => TradeWindow.IsOpen = true;
 
+        public void CloseTradeWindow() => TradeWindow.IsOpen = false;
 
         internal void UpdateStatus()
         {
@@ -683,7 +727,7 @@ namespace AbsoluteRoleplay
             {
                 if (IsOnline())
                 {
-                    PluginLog.Debug("Player is online, attempting to log in.");    
+                    PluginLog.Debug("Player is online, attempting to log in.");
                     username = Configuration.username;
                     password = Configuration.password;
                     // Add a null check here before accessing LocalPlayer properties
@@ -695,12 +739,26 @@ namespace AbsoluteRoleplay
                         DataSender.Login();
                         loginAttempted = true;
                     }
-                  
                 }
-            } 
+            }  // Increment timer by delta time
 
-
-             
+            // Every 60 seconds, call FetchConnectedPlayers
+            /*if (Configuration.showCompass)
+            {
+                fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+                if (fetchQuestsInRangeTimer >= 25f)
+                {
+                    fetchQuestsInRangeTimer = 0f;
+                    var localPlayer = ClientState.LocalPlayer;
+                    List<IPlayerCharacter> nearbyPlayers = ObjectTable
+                        .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
+                        .Cast<IPlayerCharacter>()
+                        .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
+                        .ToList();
+                    DataSender.RequestCompassFromList(nearbyPlayers);
+                }
+            }
+            */
             if (firstopen == true && MainPanel.IsOpen == true)
             {
                 firstopen = false;

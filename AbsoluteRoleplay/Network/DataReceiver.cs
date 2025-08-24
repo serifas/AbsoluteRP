@@ -1,17 +1,17 @@
 
 
-using AbsoluteRoleplay;
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Account;
-using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.Listings;
-using AbsoluteRoleplay.Windows.MainPanel;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Moderator;
-using AbsoluteRoleplay.Windows.Profiles;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP;
+using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Account;
+using AbsoluteRP.Windows.Ect;
+using AbsoluteRP.Windows.Listings;
+using AbsoluteRP.Windows.MainPanel;
+using AbsoluteRP.Windows.MainPanel.Views.Account;
+using AbsoluteRP.Windows.Moderator;
+using AbsoluteRP.Windows.Profiles;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Common.Math;
 
@@ -247,7 +247,7 @@ namespace Networking
                     OOCLoadStatus = 0;
                     GalleryLoadStatus = 0;
 
-                    AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.Story.storyTitle = string.Empty;
+                    AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.Story.storyTitle = string.Empty;
                     ProfileWindow.CurrentProfile.GalleryLayouts.Clear();
                     BookmarkLoadStatus = 0;
 
@@ -685,7 +685,6 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
-                    ListingsWindow.percentage = listingCount;
                     for (int i = 0; i < listingCount; i++)
                     {
                         string name = buffer.ReadString();
@@ -702,8 +701,6 @@ namespace Networking
                         //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
                         //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
                         //   ListingsWindow.listings.Add(listing);
-                        ListingsWindow.loading = "Listing: " + i;
-                        ListingsWindow.loaderInd = i;
                     }
                     ListingsLoadStatus = 1;
                 }
@@ -713,7 +710,32 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveNoTargetOOCInfo message: {ex}");
             }
         }
+        internal static void ReceiveConnectedPlayers(byte[] data)
+        {
+            try
+            {
+                List<PlayerData> connectedPlayers = new List<PlayerData>();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int connectionsCount = buffer.ReadInt();
 
+                    for (int i = 0; i < connectionsCount; i++)
+                    {
+                        string playerName = buffer.ReadString();
+                        string playerWorld = buffer.ReadString();
+                        PlayerData playerData = new PlayerData() { playername = playerName, worldname = playerWorld };
+                        connectedPlayers.Add(playerData);
+                    }
+                    PlayerInteractions.playerDataMap = connectedPlayers;
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug handling ReceiveConnections message: {ex}");
+            }
+        }
         internal static void ReceiveConnections(byte[] data)
         {
             try
@@ -745,6 +767,8 @@ namespace Networking
                             }
                             if (status == (int)UI.ConnectionStatus.accepted)
                             {
+                                PlayerData playerData = new PlayerData() { playername = requesterName, worldname = requesterWorld };
+                                PlayerInteractions.playerDataMap.Add(playerData);
                                 ConnectionsWindow.connetedProfileList.Add(requester);
                             }
                             if (status == (int)UI.ConnectionStatus.blocked)
@@ -767,6 +791,8 @@ namespace Networking
                             }
                             if (status == (int)UI.ConnectionStatus.accepted)
                             {
+                                PlayerData playerData = new PlayerData() { playername = receiverName, worldname = receiverWorld };
+                                PlayerInteractions.playerDataMap.Add(playerData);
                                 ConnectionsWindow.connetedProfileList.Add(receiver);
                             }
                             if (status == (int)UI.ConnectionStatus.blocked)
@@ -822,7 +848,6 @@ namespace Networking
                     int itemsCount = buffer.ReadInt();
 
                     Inventory.percentage = itemsCount;
-
                     for (int i = 0; i < itemsCount; i++)
                     {
 
@@ -1341,7 +1366,6 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
-                    ListingsWindow.percentage = listingCount;
                     ListingsWindow.listings.Clear();
                     for (int i = 0; i < listingCount; i++)
                     {
@@ -1382,7 +1406,6 @@ namespace Networking
                         if (avatar == null)
                             continue;
 
-                        ListingsWindow.type = 6;
                         ListingsWindow.listings.Add(
                             new Listing
                             {
@@ -1399,8 +1422,6 @@ namespace Networking
                                 color = new Vector4(colX, colY, colZ, colW),
                             });
 
-                        ListingsWindow.loading = "Personal Listing: " + i;
-                        ListingsWindow.loaderInd = i;
                     }
                 }
             }
@@ -1552,6 +1573,163 @@ namespace Networking
          }
         */
    
+        internal static void ReceiveTradeRequest(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    string requesterProfileName = buffer.ReadString();
+                    string receiverProfileName = buffer.ReadString();
+                    string requesterCharacterName = buffer.ReadString();
+                    string requesterCharacterWorld = buffer.ReadString();
+                    string receiverCharacterName = buffer.ReadString(); 
+                    string receiverCharacterWorld = buffer.ReadString();
+                    TradeWindow.tradeTargetName = receiverCharacterName;
+                    TradeWindow.tradeTargetWorld = receiverCharacterWorld;
+                    int inventoryTabCount = buffer.ReadInt();
+                    TradeWindow.inventoryTabs.Clear();
+                    for (int i = 0; i < inventoryTabCount; i++)
+                    {
+                        int index = buffer.ReadInt();
+                        int id = buffer.ReadInt();
+                        string tabName = buffer.ReadString();
+                        Tuple<int, int, string> tab = Tuple.Create(index, id, tabName);
+
+                        TradeWindow.inventoryTabs.Add(tab);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug handling ReceiveConnectionsRequest message: {ex}");
+            }
+            finally
+            {
+                Plugin.plugin.OpenTradeWindow();
+            }
+        }
+        internal static void ReceiveTradeInventory(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int inventoryID = buffer.ReadInt();
+                    int inventoryCount = buffer.ReadInt();
+                    TradeWindow.inventoryLayout.inventorySlotContents.Clear();
+                    TradeWindow.inventoryLayout.tradeSlotContents.Clear();
+                    TradeWindow.inventoryLayout.traderSlotContents.Clear();
+                    for (int i = 0; i < inventoryCount; i++)
+                    {
+                        string itemName = buffer.ReadString();
+                        string itemDescription = buffer.ReadString();
+                        int itemType = buffer.ReadInt();
+                        int itemSubType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt(); // Ensure iconID is valid
+                        int slotID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+                        ItemDefinition itemDefinition = new ItemDefinition
+                        {
+                            name = itemName,
+                            description = itemDescription,
+                            type = itemType,
+                            subtype = itemSubType,
+                            iconID = iconID, // Ensure iconID is valid
+                            slot = slotID,
+                            quality = quality
+                        };
+                        TradeWindow.inventoryLayout.inventorySlotContents.Add(slotID, itemDefinition);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug handling ReceiveConnectionsRequest message: {ex}");
+            }
+            finally
+            {
+                Plugin.plugin.OpenTradeWindow();
+            }
+        }
+        internal static void ReceiveTradeUpdate(byte[] data)
+        {
+            try
+            {
+                Dictionary<int, ItemDefinition> traderItems = new Dictionary<int, ItemDefinition>();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int profileID = buffer.ReadInt();
+                    int itemCount = buffer.ReadInt();
+
+                    for (int i = 0; i < itemCount; i++)
+                    {
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        int type = buffer.ReadInt();
+                        int subtype = buffer.ReadInt();
+                        int iconID = buffer.ReadInt();
+                        int slot = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+
+                        ItemDefinition itemDefinition = new ItemDefinition
+                        {
+                            name = name,
+                            description = description,
+                            type = type,
+                            subtype = subtype,
+                            iconID = iconID,
+                            slot = slot,
+                            quality = quality
+                        };
+                        Plugin.PluginLog.Debug($"Received item for trade: {itemDefinition.name} (Slot: {slot})");
+                        traderItems[slot] = itemDefinition;
+                    }
+
+                    // Update the active trade window's InventoryLayout
+                    if (TradeWindow.inventoryLayout != null)
+                    {
+                        TradeWindow.inventoryLayout.traderSlotContents = traderItems;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug handling ReceiveTradeUpdate message: {ex}");
+            }
+            finally
+            {
+                Plugin.plugin.OpenTradeWindow();
+            }
+        }
+        internal static void ReceiveTradeStatus(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    bool senderStatus = buffer.ReadBool(); 
+                    bool receiverStatus = buffer.ReadBool();
+                    TradeWindow.receiverReady = receiverStatus;
+                    TradeWindow.senderReady = senderStatus;
+                    Plugin.PluginLog.Debug($"Trade status updated - Sender: {senderStatus}, Receiver: {receiverStatus}");
+                    Plugin.plugin.CloseTradeWindow();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug handling ReceiveTradeUpdate message: {ex}");
+            }
+        }
         public static void ReceiveInventoryTab(byte[] data)
         {
             try
@@ -1587,7 +1765,7 @@ namespace Networking
                             slot = slotID,
                             quality = quality
                         };
-                        inventory.Add(slotID, itemDefinition);
+                        inventory.Add(i, itemDefinition);
                     }
                     InventoryLayout inventoryLayout = new InventoryLayout
                     {
@@ -1891,7 +2069,6 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
             }
         }
-     
         public static void ReceiveTreeLayout(byte[] data)
         {
             try
@@ -2035,7 +2212,42 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveTreeLayout: {ex}");
             }
         }
+        public static void ReceiveConnectedPlayersInMap(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int connectionsCount = buffer.ReadInt();
+                    for (int i = 0; i < connectionsCount; i++)
+                    {
+                        bool active = buffer.ReadBool();
+                        string playerName = buffer.ReadString();
+                        string playerWorld = buffer.ReadString();
 
+                        if (active)
+                        {
+                            PlayerData playerData = new PlayerData
+                            {
+                                playername = playerName,
+                                worldname = playerWorld
+                            };
+                            Plugin.PluginLog.Debug($"Received player data: {playerData.playername} from {playerData.worldname}");
+                            PlayerInteractions.playerDataMap.Add(playerData);
+                        }
+                        
+                     
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"Debug handling ReceiveConnectedPlayersInMap message: {ex}");
+            }
+        }
 
         public static void RecieveBioTab(byte[] data)
         {

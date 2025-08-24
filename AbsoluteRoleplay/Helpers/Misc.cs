@@ -1,5 +1,5 @@
-﻿using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+﻿using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ImGuiFileDialog;
@@ -10,8 +10,8 @@ using Dalamud.Interface.Utility.Raii;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
-using UIHelpers = AbsoluteRoleplay.Helpers.UIHelpers;
-namespace AbsoluteRoleplay
+using UIHelpers = AbsoluteRP.Helpers.UIHelpers;
+namespace AbsoluteRP
 {
     public class Misc
     {
@@ -1184,7 +1184,7 @@ namespace AbsoluteRoleplay
             ImGui.Text(label);
             ImGui.SameLine();
             ImGui.PushItemWidth(350);
-            var centeredInput = ImGui.InputText("##ID" + id, ref input, length, ImGuiInputTextFlags.None, null);
+            var centeredInput = ImGui.InputText("##ID" + id, ref input, length, ImGuiInputTextFlags.None);
             ImGui.PopItemWidth();
             return centeredInput;
         }

@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,7 +52,12 @@ namespace Networking
             packets.Add((int)ServerPackets.ReceiveTabsUpdate, DataReceiver.ReceiveTabsUpdate);
             packets.Add((int)ServerPackets.ReceiveInventoryTab, DataReceiver.ReceiveInventoryTab);
             packets.Add((int)ServerPackets.ReceiveDynamicTab, DataReceiver.ReceiveDynamicTab);
+            packets.Add((int)ServerPackets.ReceiveTradeRequest, DataReceiver.ReceiveTradeRequest);
+            packets.Add((int)ServerPackets.ReceiveTradeUpdate, DataReceiver.ReceiveTradeUpdate);
+            packets.Add((int)ServerPackets.ReceiveTradeStatus, DataReceiver.ReceiveTradeStatus);
+            packets.Add((int)ServerPackets.ReceiveTradeInventory, DataReceiver.ReceiveTradeInventory);
             packets.Add((int)ServerPackets.ReceiveTreeLayout, DataReceiver.ReceiveTreeLayout);
+            packets.Add((int)ServerPackets.RecConnectedPlayersInMap, DataReceiver.ReceiveConnectedPlayersInMap);
 
             //simple message back from server, simply for verification that the user is connected
         }

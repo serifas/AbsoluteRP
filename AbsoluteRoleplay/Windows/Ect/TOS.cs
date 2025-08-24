@@ -1,12 +1,12 @@
 using Dalamud.Interface.Windowing;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Colors;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
-namespace AbsoluteRoleplay.Windows.Ect
+namespace AbsoluteRP.Windows.Ect
 {
     public class TOS : Window, IDisposable
     {
@@ -31,10 +31,10 @@ namespace AbsoluteRoleplay.Windows.Ect
             {
 
                 //get our online tos and rules
-                ToS1 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/TOS1.txt");
-                ToS2 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/TOS2.txt");
-                Rules1 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Rules1.txt");
-                Rules2 = ReadTOS("https://raw.githubusercontent.com/serifas/AbsoluteRoleplay/main/Rules2.txt");
+                ToS1 = ReadTOS("https://raw.githubusercontent.com/serifas/Absolute-Roleplay/main/TOS1.txt");
+                ToS2 = ReadTOS("https://raw.githubusercontent.com/serifas/Absolute-Roleplay/main/TOS2.txt");
+                Rules1 = ReadTOS("https://raw.githubusercontent.com/serifas/Absolute-Roleplay/main/Rules1.txt");
+                Rules2 = ReadTOS("https://raw.githubusercontent.com/serifas/Absolute-Roleplay/main/Rules2.txt");
             } );
         }
         public override async void Draw()

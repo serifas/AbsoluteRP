@@ -4,7 +4,7 @@ using Networking;
 using Dalamud.Interface.Colors;
 using Dalamud.Bindings.ImGui;
 
-namespace AbsoluteRoleplay.Windows.Profiles
+namespace AbsoluteRP.Windows.Profiles
 {
     public class NotesWindow : Window, IDisposable
     {

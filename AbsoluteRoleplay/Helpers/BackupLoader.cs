@@ -1,11 +1,11 @@
-﻿using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+﻿using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace AbsoluteRoleplay.Helpers
+namespace AbsoluteRP.Helpers
 {
     internal static class BackupLoader
     {

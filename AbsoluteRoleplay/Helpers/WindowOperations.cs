@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -11,7 +11,7 @@ using Lumina.Excel.Sheets;
 using Lumina.Extensions;
 using Networking;
 using System.Numerics;
-namespace AbsoluteRoleplay.Helpers
+namespace AbsoluteRP.Helpers
 {
     internal class WindowOperations
     {
@@ -331,8 +331,24 @@ namespace AbsoluteRoleplay.Helpers
                                     // Add to categorized icons (e.g., Buffs or Debuffs)
                                     categorizedStatusIcons["Buffs"].Add(((uint)nextIconToLoad, texture));
                                 }
+                                else
+                                {
+                                    Plugin.PluginLog.Debug($"Failed to load texture for status icon {statusIconID}. File path was invalid or texture loading failed.");
+                                }
+                            }
+                            else
+                            {
+                                Plugin.PluginLog.Debug($"Icon not found for Status ID {statusIcon.Value.RowId} with Icon ID {statusIconID}. Skipping.");
                             }
                         }
+                        else
+                        {
+                            Plugin.PluginLog.Debug($"Invalid status icon ID {statusIconID} at Status ID {statusIcon.Value.RowId}. Skipping.");
+                        }
+                    }
+                    else
+                    {
+                        Plugin.PluginLog.Debug($"No valid status row found for icon ID {nextIconToLoad}. Skipping.");
                     }
                 }
                 catch (Exception ex)

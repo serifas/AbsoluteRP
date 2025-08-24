@@ -1,12 +1,12 @@
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Numerics;
-using static AbsoluteRoleplay.UI;
+using static AbsoluteRP.UI;
 using static TreeLayout;
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     internal class Tree
     {
@@ -24,11 +24,24 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         private static bool firstLoad = true;
 
         private static bool learnedToggle = true; // Default: not learned
+        private static bool viewable = true;
+
         public static bool IconSelection { get; private set; }
 
         public static void RenderTreeLayout(int index, bool self, string id, TreeLayout layout, string name, Vector4 titleColor)
         {
+            /*
+            if (self)
+            {
+                ImGui.Checkbox($"Viewable##Viewable{layout.id}", ref viewable);
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
+                }
+            }*/
+
             ImGui.Spacing();
+
             if (!self)
             {
                 Misc.SetTitle(Plugin.plugin, true, name, titleColor);

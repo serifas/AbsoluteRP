@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AbsoluteRoleplay.Defines
+namespace AbsoluteRP.Defines
 {
-    public class ChatChannelTabs
+    public class ARPChatGroups
     {
         public int id;
         public string name;

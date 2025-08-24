@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Internal;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -17,7 +17,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-namespace AbsoluteRoleplay.Helpers
+namespace AbsoluteRP.Helpers
 {
     internal static class Imaging
     {
@@ -500,7 +500,7 @@ namespace AbsoluteRoleplay.Helpers
             }
         }
 
-        internal static void RemoveAllImages(AbsoluteRoleplay.Plugin plugin)
+        internal static void RemoveAllImages(AbsoluteRP.Plugin plugin)
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
             {

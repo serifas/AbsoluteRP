@@ -2,7 +2,7 @@ using Dalamud.Bindings.ImGui;
 using Networking;
 using System.Numerics;
 
-namespace AbsoluteRoleplay.Windows.MainPanel.Views.Account
+namespace AbsoluteRP.Windows.MainPanel.Views.Account
 {
     internal class Register
     {

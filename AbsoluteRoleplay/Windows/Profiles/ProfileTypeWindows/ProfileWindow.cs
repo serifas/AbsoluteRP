@@ -1,5 +1,5 @@
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -9,10 +9,10 @@ using Dalamud.Utility;
 using Networking;
 using System.Numerics;
 using System.Text.RegularExpressions;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using System.Runtime.CompilerServices;
 
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 {
     
     //changed
@@ -707,10 +707,10 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows
                                         showInputPopup[i] = false;
                                         ImGui.CloseCurrentPopup();
                                     }
-                                }catch(Exception ex)
+                                }
+                                finally
                                 {
-                                    Plugin.PluginLog.Debug($"ProfileWindow RenderCustomTabs Popup Debug: {ex.Message}");
-                                    loading = "An Debug occurred while rendering the new tab popup.";
+                                    Plugin.PluginLog.Debug($"RenderCustomTabs: Popup for tab {i} closed with name '{newTabNames[i]}'");
                                 }
                             }
                         }

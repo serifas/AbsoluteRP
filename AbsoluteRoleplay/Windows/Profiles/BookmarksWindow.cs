@@ -2,12 +2,12 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 
-namespace AbsoluteRoleplay.Windows.Profiles
+namespace AbsoluteRP.Windows.Profiles
 {
     public class BookmarksWindow : Window, IDisposable
     {

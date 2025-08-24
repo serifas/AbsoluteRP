@@ -4,12 +4,12 @@ using Dalamud.Interface.Windowing;
 using Networking;
 using Dalamud.Utility;
 using Dalamud.Interface.Textures.TextureWraps;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.MainPanel.Views;
+using AbsoluteRP.Windows.MainPanel.Views.Account;
+using AbsoluteRP.Windows.MainPanel.Views;
 using Dalamud.Interface.Utility.Raii;
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
-namespace AbsoluteRoleplay.Windows.MainPanel;
+namespace AbsoluteRP.Windows.MainPanel;
 
 public class MainPanel : Window, IDisposable
 {
@@ -182,7 +182,7 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
                 if (ImGui.ImageButton(patreonBtn.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
-                    Util.OpenLink("https://patreon.com/AbsoluteRoleplay");
+                    Util.OpenLink("https://patreon.com/AbsoluteRP");
                 }
             }
             if (Plugin.plugin.Configuration.showDisc == true)

@@ -3,7 +3,7 @@ using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
 
-namespace AbsoluteRoleplay.Windows.Profiles
+namespace AbsoluteRP.Windows.Profiles
 {
     public class ReportWindow : Window, IDisposable
     {

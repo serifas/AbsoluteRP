@@ -1,10 +1,10 @@
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Utility;
 using System.Collections.Generic;
 using System.Numerics;
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     public class Story
     {
@@ -16,6 +16,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         public static bool AddStoryChapter;
         public static string storyTitle = string.Empty;
         public static bool ReorderChapters;
+        private static bool viewable = true;
 
         public static void RenderStoryPreview(StoryLayout storyLayout, Vector4 TitleColor)
         {
@@ -59,6 +60,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
 
         public static void RenderStoryLayout(int profileIndex, string uniqueID, StoryLayout layout)
         {
+            /*
+            ImGui.Checkbox($"Viewable##Viewable{layout.id}", ref viewable);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
+            }
+            */
             ImGui.Text("Story Title");
             ImGui.SameLine();
             string title = layout.name;
@@ -70,9 +78,6 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
             {
                 layout.name = title; // Update the title if changed
             }
-
-            ImGui.Text("Chapter");
-            ImGui.SameLine();
 
             if (layout.chapters.Count > 0)
             {
@@ -138,7 +143,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         {
             var safeId = layout.id > 0 ? layout.id.ToString() : "default";
             var windowSize = ImGui.GetWindowSize();
-            using var profileTable = ImRaii.Child($"##Chapter_{safeId}_{i}", new Vector2(windowSize.X - 20, windowSize.Y - 130));
+            using var profileTable = ImRaii.Child($"Chapter_{safeId}_{i}", new Vector2(windowSize.X - 20, windowSize.Y - 130));
             if (profileTable)
             {
                 ImGui.TextUnformatted("Chapter Name:");
@@ -155,7 +160,7 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
                     chapter.content = chapterContent; // Update the content if changed
                 }
 
-                using var chapterControlTable = ImRaii.Child($"##ChapterControls_{safeId}_{i}");
+                using var chapterControlTable = ImRaii.Child($"ChapterControls_{safeId}_{i}");
                 if (chapterControlTable)
                 {
                     using (ImRaii.Disabled(!Plugin.CtrlPressed()))

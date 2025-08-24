@@ -1,10 +1,10 @@
-using AbsoluteRoleplay.Helpers;
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Windowing;
 using System.Numerics;
 
-namespace AbsoluteRoleplay.Windows.Ect
+namespace AbsoluteRP.Windows.Ect
 {
     public class ImagePreview : Window, IDisposable
     {

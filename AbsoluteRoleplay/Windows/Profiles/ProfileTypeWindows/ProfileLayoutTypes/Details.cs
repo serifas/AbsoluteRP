@@ -1,4 +1,4 @@
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
+using AbsoluteRP.Windows.MainPanel.Views.Account;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
@@ -8,13 +8,26 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using static Dalamud.Interface.Utility.Raii.ImRaii;
 
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     internal class Details
     {
+
         public static void RenderDetailsLayout(int index, string uniqueID, DetailsLayout layout)
         {
+            /*
+            bool viewable = layout.viewable;
+            if (ImGui.Checkbox($"Viewable##Viewable{layout.id}", ref viewable))
+            {
+                layout.viewable = viewable;
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
+            }*/
+
             if (ImGui.Button("Add"))
             {
                 Detail detail = new Detail

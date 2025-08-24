@@ -1,16 +1,18 @@
-using AbsoluteRoleplay.Windows.Ect;
+using AbsoluteRP.Windows.Ect;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Networking;
 using System.Numerics;
+using static Dalamud.Interface.Utility.Raii.ImRaii;
 
-namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     internal class Gallery
     {
         public static bool addGalleryImageGUI, ReorderGallery;
         public static int galleryImageCount = 0;
         public static bool loadPreview;
+        private static bool viewable = true;
 
         public static void RenderGalleryPreview(GalleryLayout galleryLayout, Vector4 TitleColor)
         {
@@ -76,6 +78,13 @@ namespace AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutType
         }
         public static void RenderGalleryLayout(int index, string uniqueID, GalleryLayout layout)
         {
+            /*
+            ImGui.Checkbox($"Viewable##Viewable{layout.id}", ref viewable);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
+            }*/
+
             if (ImGui.Button("Add Image"))
             {
                 byte[] baseImageBytes = new byte[0];

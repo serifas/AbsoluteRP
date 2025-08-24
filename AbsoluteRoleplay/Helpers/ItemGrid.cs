@@ -1,6 +1,6 @@
-using AbsoluteRoleplay.Windows.Ect;
-using AbsoluteRoleplay.Windows.MainPanel.Views.Account;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Ect;
+using AbsoluteRP.Windows.MainPanel.Views.Account;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using Networking;
@@ -8,7 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 
-namespace AbsoluteRoleplay.Helpers
+namespace AbsoluteRP.Helpers
 {
     internal class ItemGrid
     {
@@ -420,9 +420,7 @@ namespace AbsoluteRoleplay.Helpers
                                     {
                                         if (layout.inventorySlotContents.ContainsKey(i) && layout.inventorySlotContents[i].name != string.Empty)
                                         {
-                                            var item = layout.inventorySlotContents[i];
-                                            item.slot = i; // Ensure slot is set
-                                            newItemList.Add(item);
+                                            newItemList.Add(layout.inventorySlotContents[i]);
                                         }
                                     }
                                     DataSender.SendItemOrder(ProfileWindow.profileIndex, layout, newItemList);

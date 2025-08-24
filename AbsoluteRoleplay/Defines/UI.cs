@@ -1,8 +1,8 @@
-using AbsoluteRoleplay;
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP;
+using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.Internal;
@@ -24,11 +24,11 @@ using System.Reflection.Metadata.Ecma335;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Linq;
-using static AbsoluteRoleplay.Misc;
-using static AbsoluteRoleplay.UI;
+using static AbsoluteRP.Misc;
+using static AbsoluteRP.UI;
 using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
-namespace AbsoluteRoleplay
+namespace AbsoluteRP
 {
 
 
@@ -1204,7 +1204,7 @@ namespace AbsoluteRoleplay
         public static readonly (string, string, Type)[] LayoutTypeVals =
         {
             ( "Tree", "For talent trees or social connections.", typeof(Relationship)),
-            ( "Roster", "Coming soon", typeof(Roster)),
+            ( "Roster", "Coming soon", typeof(Relationship)),
             ( "Bio", "Biography page with pre-defined and custom input elements.", typeof(Bio)),
             ( "Details", "Details page with input element creation.", typeof(Details)),
             ( "Story", "Story page with chapters creation.", typeof(Story)),
@@ -1620,4 +1620,5 @@ public class CustomLayout
     public int id { get; set; }
     public string name { get; set; }
     public LayoutTypes layoutType { get; set; }
+    public bool viewable { get; set; } = true; // If the layout is viewable by others   
 }

@@ -1,6 +1,6 @@
-using AbsoluteRoleplay.Defines;
-using AbsoluteRoleplay.Helpers;
-using AbsoluteRoleplay.Windows.Profiles.ProfileTypeWindows;
+﻿using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Windowing;
@@ -9,7 +9,7 @@ using Dalamud.Bindings.ImGui;
 using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
 
-namespace AbsoluteRoleplay.Windows.Listings
+namespace AbsoluteRP.Windows.Listings
 {
     internal class ListingsWindow : Window, IDisposable
     {
@@ -39,7 +39,7 @@ namespace AbsoluteRoleplay.Windows.Listings
         public bool DrawListingCreation { get; private set; }
 
         public ListingsWindow() : base(
-       "LISTINGS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+       "PUBLIC PROFILES", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
@@ -52,12 +52,6 @@ namespace AbsoluteRoleplay.Windows.Listings
             worldSearchQuery = "Adamantoise";
             _fileDialogManager = new FileDialogManager();
         }
-        // ... (rest of the file unchanged)
-
-        // ... (rest of the file unchanged)
-
-        // ... (rest of the file unchanged)
-
         public override void Draw()
         {
             DrawFFXIVLocationSelectors();
@@ -93,25 +87,21 @@ namespace AbsoluteRoleplay.Windows.Listings
                 }
                 DataSender.RequestPersonals(worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
             }
-
             // Draw personal listings
-            if (ImGui.BeginTable("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
+            using (ImRaii.Table("Personal Listings", 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
             {
                 ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
                 ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
-                ImGui.TableHeadersRow();
 
                 foreach (var listing in listings.Where(l => l.type == type))
                 {
                     ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
-
-                    if (listing.avatar != null && listing.avatar.Handle != IntPtr.Zero)
+                    if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
                     {
                         ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
                     }
                     ImGui.TextColored(listing.color, listing.name);
-
                     ImGui.TableSetColumnIndex(1);
                     if (ImGui.Button($"View##{listing.id}"))
                     {
@@ -121,7 +111,6 @@ namespace AbsoluteRoleplay.Windows.Listings
                         DataSender.FetchProfile(false, -1, string.Empty, string.Empty, listing.id);
                     }
                 }
-                ImGui.EndTable();
             }
         }
         public static void DrawPageCountSelection()
@@ -158,7 +147,7 @@ namespace AbsoluteRoleplay.Windows.Listings
 
         public void Dispose()
         {
-            foreach(Listing listing in listings)
+            foreach (Listing listing in listings)
             {
                 WindowOperations.SafeDispose(listing.avatar);
                 listing.avatar = null;
@@ -188,7 +177,7 @@ namespace AbsoluteRoleplay.Windows.Listings
                         }
                     }
                 }
-            } 
+            }
             ImGui.SameLine();
 
             // Data Center Combo
