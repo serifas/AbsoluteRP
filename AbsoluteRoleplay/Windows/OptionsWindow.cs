@@ -124,7 +124,6 @@ namespace AbsoluteRP.Windows
                     ImGui.Text("Enable Auto Backup");
                     string customPath = Plugin.plugin.Configuration.dataSavePath ?? string.Empty;
                     ImGui.Text($"Auto Backup Dir: {customPath}" );
-                    ImGui.SameLine();  
                     if(ImGui.Button("Change Path"))
                     {
                         ChangeDataPath = true;

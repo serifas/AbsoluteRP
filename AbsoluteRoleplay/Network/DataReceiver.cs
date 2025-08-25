@@ -147,7 +147,7 @@ namespace Networking
                         Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
                         BookmarksWindow.profileList.Add(bookmark);
                     }
-                    Plugin.plugin.UpdateStatus();
+                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
                     Plugin.plugin.OpenBookmarksWindow();
                     // Handle the message as needed
                 }
@@ -167,7 +167,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     var msg = buffer.ReadString();
-                    Plugin.plugin.UpdateStatus();
+                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
                     // Handle the message as needed
                 }
             }

@@ -206,7 +206,7 @@ public class MainPanel : Window, IDisposable
             if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
             {
                 ClientTCP.AttemptConnect();
-                Plugin.plugin.UpdateStatus();
+                Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
             }
             if (loggedIn == false && viewProfile == false && viewListings == false)
             {
