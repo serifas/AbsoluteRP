@@ -39,6 +39,7 @@ namespace AbsoluteRP
 {
     public partial class Plugin : IDalamudPlugin
     {
+        private bool windowsInitialized = false;
         private float fetchQuestsInRangeTimer = 0f;
         private int lastObjectTableCount = -1;
         public static IGameObject? LastMouseOverTarget;
@@ -88,24 +89,24 @@ namespace AbsoluteRP
         public static bool tooltipLoaded = false;
         public static Plugin? Ui { get; private set; }
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
-        public OptionsWindow OptionsWindow { get; init; }
-        public NotesWindow NotesWindow { get; init; }
-        private VerificationWindow VerificationWindow { get; init; }
-        private RestorationWindow RestorationWindow { get; init; }
-        private ModPanel ModeratorPanel { get; init; }
-        private ListingsWindow ListingWindow { get; init; }
-        public ARPTooltipWindow TooltipWindow { get; init; }
-        private ReportWindow ReportWindow { get; init; }
-        private MainPanel MainPanel { get; init; }
-        private ImportantNotice ImportantNoticeWindow { get; init; }
-        private ProfileWindow ProfileWindow { get; init; }
-        private BookmarksWindow BookmarksWindow { get; init; }
-        private ARPChatWindow ArpChatWindow { get; init; }
-        private TargetProfileWindow TargetWindow { get; init; }
-        private ImagePreview ImagePreview { get; init; }
-        private TOS TermsWindow { get; init; }
-        private TradeWindow TradeWindow { get; init; }
-        private ConnectionsWindow ConnectionsWindow { get; init; }
+        public OptionsWindow? OptionsWindow { get; private set; }
+        public NotesWindow? NotesWindow { get; private set; }
+        private VerificationWindow? VerificationWindow { get; set; }
+        private RestorationWindow? RestorationWindow { get; set; }
+        private ModPanel? ModeratorPanel { get; set; }
+        private ListingsWindow? ListingWindow { get; set; }
+        public ARPTooltipWindow? TooltipWindow { get; private set; }
+        private ReportWindow? ReportWindow { get; set; }
+        private MainPanel? MainPanel { get; set; }
+        private ImportantNotice? ImportantNoticeWindow { get; set; }
+        private ProfileWindow? ProfileWindow { get; set; }
+        private BookmarksWindow? BookmarksWindow { get; set; }
+        private ARPChatWindow? ArpChatWindow { get; set; }
+        private TargetProfileWindow? TargetWindow { get; set; }
+        private ImagePreview? ImagePreview { get; set; }
+        private TOS? TermsWindow { get; set; }
+        private TradeWindow? TradeWindow { get; set; }
+        private ConnectionsWindow? ConnectionsWindow { get; set; }
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -131,25 +132,6 @@ namespace AbsoluteRP
                 HelpMessage = "opens the plugin window."
             });
 
-            OptionsWindow = new OptionsWindow();
-            MainPanel = new MainPanel();
-            TermsWindow = new TOS();
-            ProfileWindow = new ProfileWindow();
-            ImagePreview = new ImagePreview();
-            BookmarksWindow = new BookmarksWindow();
-            ImportantNoticeWindow = new ImportantNotice();
-            TargetWindow = new TargetProfileWindow();
-            VerificationWindow = new VerificationWindow();
-            ModeratorPanel = new ModPanel();
-            ArpChatWindow = new ARPChatWindow(chatgui);
-            RestorationWindow = new RestorationWindow();
-            ReportWindow = new ReportWindow();
-            ConnectionsWindow = new ConnectionsWindow();
-            TooltipWindow = new ARPTooltipWindow();
-            NotesWindow = new NotesWindow();
-            ListingWindow = new ListingsWindow();
-            TradeWindow = new TradeWindow();
-
             Configuration.Initialize(PluginInterface);
 
             if (string.IsNullOrEmpty(Configuration.dataSavePath))
@@ -158,31 +140,11 @@ namespace AbsoluteRP
                 Configuration.Save();
             }
 
-            WindowSystem.AddWindow(OptionsWindow);
-            WindowSystem.AddWindow(MainPanel);
-            WindowSystem.AddWindow(TermsWindow);
-            WindowSystem.AddWindow(ProfileWindow);
-            WindowSystem.AddWindow(ImagePreview);
-            WindowSystem.AddWindow(BookmarksWindow);
-            WindowSystem.AddWindow(TargetWindow);
-            WindowSystem.AddWindow(VerificationWindow);
-            WindowSystem.AddWindow(ModeratorPanel);
-            WindowSystem.AddWindow(RestorationWindow);
-            WindowSystem.AddWindow(ReportWindow);
-            WindowSystem.AddWindow(ConnectionsWindow);
-            WindowSystem.AddWindow(TooltipWindow);
-            WindowSystem.AddWindow(NotesWindow);
-            WindowSystem.AddWindow(ListingWindow);
-            WindowSystem.AddWindow(ArpChatWindow);
-            WindowSystem.AddWindow(ImportantNoticeWindow);
-            WindowSystem.AddWindow(TradeWindow);
-
             //PluginInterface.UiBuilder.Draw += DrawHitboxes;
             PluginInterface.UiBuilder.Draw += DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
             ContextMenu!.OnMenuOpened += this.OnMenuOpened;
-            chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
             ClientState.Logout += OnLogout;
             ClientState.Login += LoadConnection;
             ClientState.TerritoryChanged += FetchConnectionsInMap;
@@ -708,6 +670,50 @@ namespace AbsoluteRP
             {
                 needsAsyncInit = false;
                 _ = InitializeAsync();
+            }
+            if (!windowsInitialized && IsOnline())
+            {
+                windowsInitialized = true;
+
+                OptionsWindow = new OptionsWindow();
+                MainPanel = new MainPanel();
+                TermsWindow = new TOS();
+                ProfileWindow = new ProfileWindow();
+                ImagePreview = new ImagePreview();
+                BookmarksWindow = new BookmarksWindow();
+                ImportantNoticeWindow = new ImportantNotice();
+                TargetWindow = new TargetProfileWindow();
+                VerificationWindow = new VerificationWindow();
+                ModeratorPanel = new ModPanel();
+                ArpChatWindow = new ARPChatWindow(chatgui);
+                RestorationWindow = new RestorationWindow();
+                ReportWindow = new ReportWindow();
+                ConnectionsWindow = new ConnectionsWindow();
+                TooltipWindow = new ARPTooltipWindow();
+                NotesWindow = new NotesWindow();
+                ListingWindow = new ListingsWindow();
+                TradeWindow = new TradeWindow();
+
+                WindowSystem.AddWindow(OptionsWindow);
+                WindowSystem.AddWindow(MainPanel);
+                WindowSystem.AddWindow(TermsWindow);
+                WindowSystem.AddWindow(ProfileWindow);
+                WindowSystem.AddWindow(ImagePreview);
+                WindowSystem.AddWindow(BookmarksWindow);
+                WindowSystem.AddWindow(TargetWindow);
+                WindowSystem.AddWindow(VerificationWindow);
+                WindowSystem.AddWindow(ModeratorPanel);
+                WindowSystem.AddWindow(RestorationWindow);
+                WindowSystem.AddWindow(ReportWindow);
+                WindowSystem.AddWindow(ConnectionsWindow);
+                WindowSystem.AddWindow(TooltipWindow);
+                WindowSystem.AddWindow(NotesWindow);
+                WindowSystem.AddWindow(ListingWindow);
+                WindowSystem.AddWindow(ArpChatWindow);
+                WindowSystem.AddWindow(ImportantNoticeWindow);
+                WindowSystem.AddWindow(TradeWindow);
+
+                chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
             }
 
             if (!loginAttempted)
