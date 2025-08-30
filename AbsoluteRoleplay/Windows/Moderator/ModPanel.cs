@@ -85,7 +85,7 @@ namespace AbsoluteRP.Windows.Moderator
                 ImGui.SameLine();
                 if(ImGui.Button("Confirm Submition"))
                 {
-                    DataSender.SubmitModeratorAction(capturedAuthor, capturedMessage, moderatorMessage, moderatorNotes, currentAction);
+                    DataSender.SubmitModeratorAction(Plugin.character, capturedAuthor, capturedMessage, moderatorMessage, moderatorNotes, currentAction);
                     status = "Please stand by...";
                 }
             }

@@ -43,7 +43,7 @@ namespace AbsoluteRP.Windows.Profiles
                 {
                     if (Plugin.plugin.IsOnline())
                     {
-                        DataSender.AddProfileNotes(characterIndex, profileNotes);
+                        DataSender.AddProfileNotes(Plugin.character, characterIndex, profileNotes);
                     }
                 }
             }

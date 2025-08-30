@@ -96,6 +96,12 @@ public class MainPanel : Window, IDisposable
         if (listingsGroupImg != null) { listingsGroup = listingsGroupImg; }
         if (listingsVenueImg != null) { listingsVenue = listingsVenueImg; }
         if (listingsPersonalImg != null) { listingsPersonal = listingsPersonalImg; }
+
+        if (Plugin.plugin.Configuration.account.accountKey != null)
+        {
+            DataSender.SendLogin();
+        }
+
     }
 
     public void Dispose()

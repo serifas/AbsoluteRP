@@ -65,7 +65,7 @@ namespace AbsoluteRP.Windows.Listings
                     if (ImGui.Button("《 "))
                     {
                         currentIndex--;
-                        DataSender.RequestPersonals(worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
+                        DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                     }
                 }
                 ImGui.SameLine();
@@ -76,7 +76,7 @@ namespace AbsoluteRP.Windows.Listings
                 if (ImGui.Button(" 》"))
                 {
                     currentIndex++;
-                    DataSender.RequestPersonals(worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
+                    DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                 }
             }
             if (ImGui.Button("Search"))
@@ -85,7 +85,7 @@ namespace AbsoluteRP.Windows.Listings
                 {
                     profileSearchQuery = "ALL PROFILES";
                 }
-                DataSender.RequestPersonals(worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
+                DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
             }
             // Draw personal listings
             using (ImRaii.Table("Personal Listings", 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
@@ -108,7 +108,7 @@ namespace AbsoluteRP.Windows.Listings
                         Plugin.plugin.OpenTargetWindow();
                         TargetProfileWindow.RequestingProfile = true;
                         TargetProfileWindow.ResetAllData();
-                        DataSender.FetchProfile(false, -1, string.Empty, string.Empty, listing.id);
+                        DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
                     }
                 }
             }

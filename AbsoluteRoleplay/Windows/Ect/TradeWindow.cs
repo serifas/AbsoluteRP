@@ -72,13 +72,13 @@ namespace AbsoluteRP.Windows.Profiles
                 }
                 else
                 {
-                    DataSender.SendTradeStatus(-1 ,inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
+                    DataSender.SendTradeStatus(Plugin.character, -1 ,inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
                 }
             }
             ImGui.SameLine();
             if (Misc.DrawCenteredButton(centeredX + 160, new Vector2(150, 30), "Cancel Trade"))
             {
-                DataSender.SendTradeStatus(-1, inventoryLayout, tradeTargetName, tradeTargetWorld, false, true);
+                DataSender.SendTradeStatus(Plugin.character, -1, inventoryLayout, tradeTargetName, tradeTargetWorld, false, true);
             }
             
             // Confirmation Popup
@@ -92,7 +92,7 @@ namespace AbsoluteRP.Windows.Profiles
 
                     if (ImGui.Button("Confirm", new Vector2(120, 0)))
                     {
-                        DataSender.SendTradeStatus(inventoryTabs[selectedTab].Item1, inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
+                        DataSender.SendTradeStatus(Plugin.character, inventoryTabs[selectedTab].Item1, inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
                         showConfirmTradePopup = false;
                         ImGui.CloseCurrentPopup();
                     }
@@ -149,7 +149,7 @@ namespace AbsoluteRP.Windows.Profiles
                                 selectedTab = idx;
                                 if (!finishingTrade)
                                 {
-                                    DataSender.SendInventorySelection(inventoryTabs[idx].Item1, inventoryTabs[idx].Item2);
+                                    DataSender.SendInventorySelection(Plugin.character, inventoryTabs[idx].Item1, inventoryTabs[idx].Item2);
                                 }
                             }
                             Helpers.UIHelpers.SelectableHelpMarker("Select an inventory to send and receive items.");

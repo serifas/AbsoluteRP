@@ -53,7 +53,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Decline##Decline" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -65,7 +65,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Accept##Accept" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -77,7 +77,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Block##Block" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -103,7 +103,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Remove##Remove" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -115,7 +115,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Block##Block" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -143,7 +143,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Cancel##Cancel" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
@@ -169,7 +169,7 @@ namespace AbsoluteRP.Windows.Profiles
                             {
                                 if (ImGui.Button("Unblock##Unblock" + i))
                                 {
-                                    DataSender.SendProfileAccessUpdate(username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
+                                    DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
                                 }
                             }
                             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

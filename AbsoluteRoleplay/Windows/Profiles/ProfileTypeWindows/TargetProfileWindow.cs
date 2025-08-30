@@ -70,7 +70,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     ImGui.Text("This player either does not have an active profile or has not granted you permission to view it.");
                     if (ImGui.Button("Request Access"))
                     {
-                        DataSender.SendProfileAccessUpdate(Plugin.plugin.accountTag, Plugin.plugin.playername, Plugin.plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
+                        DataSender.SendProfileAccessUpdate(Plugin.character, Plugin.plugin.accountTag, Plugin.plugin.playername, Plugin.plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
                     }
                 }
                 else

@@ -220,16 +220,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             }
                             if (VerificationSucceeded)
                             {
-                                ImGui.TextColored(new Vector4(0, 1, 0, 1), "Character Verified!");
-                                if (ImGui.Button("Finish"))
-                                {
-                                    ImGui.CloseCurrentPopup();
-                                    openVerifyPopup = false;
-                                }
+                                DataSender.FetchProfiles(character);
+                                DataSender.FetchProfile(Plugin.character, true, 0, Plugin.character.characterName, Plugin.character.characterWorld, -1);
                             }
                             else
                             {
-                                if (ImGui.Button("Check Lodestone"))
+                                if (ImGui.Button("Verify Lodestone"))
                                 {
                                     DataSender.CheckLodestoneEntry(LodeSUrl);
                                 }
@@ -336,7 +332,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     TargetProfileWindow.RequestingProfile = true;
                                     TargetProfileWindow.ResetAllData();
                                     Plugin.plugin.OpenTargetWindow();
-                                    DataSender.FetchProfile(false, -1, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                                    DataSender.FetchProfile(Plugin.character, false, -1, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
                                 }
                                 DrawProfile();
                             }
@@ -368,11 +364,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         }
         public static void CreateProfile()
         {
-            DataSender.CreateProfile(NewProfileTitle, currentProfileType, profiles.Count);
+            DataSender.CreateProfile(Plugin.character, NewProfileTitle, currentProfileType, profiles.Count);
+            Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
             profileIndex = profiles.Count;
             Plugin.PluginLog.Debug(profileIndex.ToString());
-            DataSender.FetchProfiles();
-            DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+            DataSender.FetchProfiles(character);
+            DataSender.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             ExistingProfile = true;
         }
         private void RenderProfileTypeCreation(int index)
@@ -474,15 +471,16 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             {
                 if (ImGui.Button("Delete Profile"))
                 {
-                    DataSender.DeleteProfile(profileIndex);
+                    DataSender.DeleteProfile(Plugin.character, profileIndex);
                     profileIndex -= 1;
                     if (profileIndex < 0)
                     {
                         profileIndex = 0;
                     }
                     TargetProfileWindow.ResetAllData();
-                    DataSender.FetchProfiles();
-                    DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                    Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
+                    DataSender.FetchProfiles(character);
+                    DataSender.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
                     if (profiles.Count == 0)
                     {
                         ExistingProfile = false;
@@ -669,7 +667,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     if (oldIdx != newIdx)
                                         indexChanges.Add((oldIdx, newIdx));
                                 }
-                                DataSender.SendTabReorder(profileIndex, indexChanges);
+                                DataSender.SendTabReorder(Plugin.character, profileIndex, indexChanges);
 
                                 // Actually reorder the tabs in the UI
                                 var newTabs = tabOrder.Select(idx => CurrentProfile.customTabs[idx]).ToList();
@@ -766,10 +764,10 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                             Plugin.PluginLog.Debug($"Unknown layout type: {currentLayoutType}");
 
 
-                                        DataSender.CreateTab(newTabNames[i], currentLayoutType, CurrentProfile.index, customTabsCount + 1);
+                                        DataSender.CreateTab(Plugin.character, newTabNames[i], currentLayoutType, CurrentProfile.index, customTabsCount + 1);
                                         CurrentProfile.customTabs.Clear();
                                         customLayouts.Clear();
-                                        DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                                        DataSender.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
 
                                         Sending = true;
 
@@ -825,7 +823,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                         CurrentProfile.customTabs.RemoveAt(tabToDeleteIndex);
 
                                     // Send delete request to server (optional, for persistence)
-                                    DataSender.DeleteTab(
+                                    DataSender.DeleteTab(Plugin.character,
                                         CurrentProfile.index,
                                         tabToDeleteIndex + 1,
                                         (tabToDeleteIndex >= 0 && tabToDeleteIndex < CurrentProfile.customTabs.Count)
@@ -1139,8 +1137,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                 Bio.currentAlignment = 9;
                                 profileIndex = idx;
                                 TargetProfileWindow.ResetAllData();
-                                DataSender.FetchProfiles();
-                                DataSender.FetchProfile(true, idx, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                                Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
+                                DataSender.FetchProfiles(character);
+                                DataSender.FetchProfile(Plugin.character, true, idx, Plugin.plugin.playername, Plugin.plugin.playerworld, profileIndex);
                                 Fetching = true;
                             }
                             UIHelpers.SelectableHelpMarker("Select to edit profile");
@@ -1381,7 +1380,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     IsOpen = true,
                     type = tabType,   // <-- Set type
                 };
-                DataSender.CreateTab(tab.Name, tab.type, profileIndex, tabIndex);
+                DataSender.CreateTab(Plugin.character, tab.Name, tab.type, profileIndex, tabIndex);
                 CurrentProfile.customTabs.Add(tab);
             }
         }
@@ -1403,7 +1402,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         {
             try
             {
-                DataSender.SetProfileStatus(isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
+                DataSender.SetProfileStatus(Plugin.character, isPrivate, activeProfile, profileIndex, ProfileTitle, color, avatarBytes, backgroundBytes, SpoilerARR, SpoilerHW, SpoilerSB, SpoilerSHB, SpoilerEW, SpoilerDT, NSFW, Triggering);
                 Plugin.PluginLog.Debug($"Tabs count before submit: {CurrentProfile.customTabs.Count}");
                 foreach (var tab in CurrentProfile.customTabs)
                 {
@@ -1415,31 +1414,31 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 {                    
                     if (tab.Layout is BioLayout bioLayout)
                     {
-                        DataSender.SubmitProfileBio(profileIndex, bioLayout);
+                        DataSender.SubmitProfileBio(Plugin.character, profileIndex, bioLayout);
                     }
                     if(tab.Layout is DetailsLayout detailsLayout)
                     {
-                        DataSender.SubmitProfileDetails(profileIndex, detailsLayout);
+                        DataSender.SubmitProfileDetails(Plugin.character, profileIndex, detailsLayout);
                     }
                     if(tab.Layout is GalleryLayout galleryLayout)
                     {
-                        DataSender.SubmitGalleryLayout(profileIndex, galleryLayout);
+                        DataSender.SubmitGalleryLayout(Plugin.character, profileIndex, galleryLayout);
                     }
                     if(tab.Layout is InfoLayout infoLayout)
                     {
-                        DataSender.SubmitInfoLayout(profileIndex, infoLayout);
+                        DataSender.SubmitInfoLayout(Plugin.character, profileIndex, infoLayout);
                     }
                     if(tab.Layout is StoryLayout storyLayout)
                     {
-                        DataSender.SubmitStoryLayout(profileIndex, storyLayout);
+                        DataSender.SubmitStoryLayout(Plugin.character, profileIndex, storyLayout);
                     }
                     if(tab.Layout is InventoryLayout inventoryLayout)
                     {
-                        DataSender.SubmitInventoryLayout(profileIndex, inventoryLayout);    
+                        DataSender.SubmitInventoryLayout(Plugin.character, profileIndex, inventoryLayout);    
                     }
                     if(tab.Layout is TreeLayout treeLayout)
                     {
-                        DataSender.SubmitTreeLayout(profileIndex, treeLayout);
+                        DataSender.SubmitTreeLayout(Plugin.character, profileIndex, treeLayout);
                     }
                     //SaveBackupFile(configuration.dataSavePath);
                 }          
@@ -1457,7 +1456,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 }
                 CurrentProfile.customTabs.Clear();
                 customLayouts.Clear();
-                DataSender.FetchProfile(true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                DataSender.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             }
 
         }

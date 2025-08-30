@@ -40,6 +40,7 @@ namespace AbsoluteRP
 {
     public partial class Plugin : IDalamudPlugin
     {
+        public static Character character { get; set; } = new();
         private bool windowsInitialized = false;
         private float fetchQuestsInRangeTimer = 0f;
         private int lastObjectTableCount = -1;
@@ -47,7 +48,6 @@ namespace AbsoluteRP
         public float tooltipAlpha;
         public static Plugin plugin;
         public string accountTag = string.Empty;
-        public Character character { get; set; } = null;
         public string playername = string.Empty;
         public bool connected = false;
         public string playerworld = string.Empty;
@@ -203,17 +203,18 @@ namespace AbsoluteRP
 
         public void OpenAndLoadProfileWindow(bool self, int index)
         {
+            Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == playername && x.characterWorld == playerworld);
             if (self)
             {
                 OpenProfileWindow();
-                DataSender.FetchProfiles();
+                DataSender.FetchProfiles(character);
             }
             else
             {
                 TargetProfileWindow.RequestingProfile = true;
                 OpenTargetWindow();
             }
-            DataSender.FetchProfile(self, index, plugin.playername, plugin.playerworld, -1);
+            DataSender.FetchProfile(character, self, index, character.characterName, character.characterWorld, -1);
         }
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
@@ -250,7 +251,7 @@ namespace AbsoluteRP
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(name, worldname);
+                    DataSender.BookmarkPlayer(Plugin.character, name, worldname);
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -264,7 +265,7 @@ namespace AbsoluteRP
                     TargetProfileWindow.characterWorld = worldname;
                     TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
-                    DataSender.FetchProfile(false, -1, name, worldname, -1);
+                    DataSender.FetchProfile(Plugin.character, false, -1, name, worldname, -1);
                 },
             });   /*
             args.AddMenuItem(new MenuItem
@@ -293,7 +294,7 @@ namespace AbsoluteRP
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                    DataSender.BookmarkPlayer(Plugin.character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -307,7 +308,7 @@ namespace AbsoluteRP
                     TargetProfileWindow.characterWorld = chara.HomeWorld.Value.Name.ToString();
                     TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
-                    DataSender.FetchProfile(false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                    DataSender.FetchProfile(Plugin.character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
         }
@@ -391,7 +392,7 @@ namespace AbsoluteRP
             if (IsOnline())
             {
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
-                DataSender.BookmarkPlayer(targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
+                DataSender.BookmarkPlayer(Plugin.character, targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
             }
         }
 
@@ -414,7 +415,7 @@ namespace AbsoluteRP
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
             ConnectionsWindow.currentListing = 2;
-            entry.OnClick = _ => DataSender.RequestConnections();
+            entry.OnClick = _ => DataSender.RequestConnections(Plugin.character);
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse);
             statusString.AddText("\uE070");
@@ -720,8 +721,7 @@ namespace AbsoluteRP
 
             if (IsOnline())
             {
-                playername = ClientState.LocalPlayer.Name.ToString();
-                playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
+                Character character = Plugin.plugin.Configuration?.characters?.FirstOrDefault(x => x?.characterName == ClientState.LocalPlayer.Name.ToString() && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
 
             // Every 60 seconds, call FetchConnectedPlayers

@@ -401,7 +401,7 @@ namespace Networking
                         {
                             characterName = characterName,
                             characterWorld = characterWorld,
-                            characterKey = message,
+                            characterKey = message2,
                         };
                         Plugin.plugin.Configuration.characters.Add(character);                       
 
@@ -478,7 +478,7 @@ namespace Networking
                         Plugin.plugin.loginAttempted = true;
                         Plugin.plugin.DisconnectAndLogOut();
                         Plugin.plugin.accountTag = string.Empty;
-                        Plugin.plugin.character.characterKey = string.Empty;
+                        Plugin.character.characterKey = string.Empty;
                         Plugin.plugin.Configuration.Save();
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account suspended"; ;

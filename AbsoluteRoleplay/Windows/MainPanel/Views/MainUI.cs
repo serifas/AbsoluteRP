@@ -29,7 +29,7 @@ namespace AbsoluteRP.Windows.MainPanel.Views
                 ImGui.SameLine();
                 if (ImGui.ImageButton(MainPanel.connectionsSectionImage.Handle, new Vector2(buttonWidth, buttonHeight)))
                 {
-                    DataSender.RequestConnections();
+                    DataSender.RequestConnections(Plugin.character);
                 }
                 if (ImGui.IsItemHovered())
                 {
@@ -67,7 +67,7 @@ namespace AbsoluteRP.Windows.MainPanel.Views
                 {
                     if (pluginInstance.IsOnline())
                     {
-                        DataSender.RequestBookmarks();
+                        DataSender.RequestBookmarks(Plugin.character);
                         pluginInstance.OpenBookmarksWindow();
                     }
 

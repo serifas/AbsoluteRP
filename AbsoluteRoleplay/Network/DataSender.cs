@@ -107,73 +107,29 @@ namespace Networking
     {
         public static int userID;
         public static Plugin plugin;
-        public static async void Login()
+
+
+        public static async void SendLogin()
         {
             if (ClientTCP.IsConnected())
             {
                 try
                 {
-                    Plugin.justRegistered = false;
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.CLogin);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Debug("Debug in Login: " + ex.ToString());
+                    Plugin.PluginLog.Debug("Debug in ReportProfile: " + ex.ToString());
                 }
-
             }
 
         }
-        public static async void Logout(string username, string password, string playerName, string playerWorld)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.Logout);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in Logout: " + ex.ToString());
-                }
-            }
-        }
-
-        public static async void Register(string username, string password, string email)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    Plugin.justRegistered = true;
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.CRegister);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(email);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in Register: " + ex.ToString());
-                }
-            }
-        }
-        public static async void ReportProfile(string reporterAccount, string playerName, string playerWorld, string reportInfo)
+        public static async void ReportProfile(Character character, string reporterAccount, string playerName, string playerWorld, string reportInfo)
         {
             if (ClientTCP.IsConnected())
             {
@@ -183,7 +139,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CReportProfile);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(playerName);
                         buffer.WriteString(playerWorld);
                         buffer.WriteString(reporterAccount);
@@ -198,7 +154,7 @@ namespace Networking
             }
 
         }
-        public static async void SubmitGalleryLayout(int profileIndex, GalleryLayout layout)
+        public static async void SubmitGalleryLayout(Character character, int profileIndex, GalleryLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -210,7 +166,7 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.CSendGallery);
                         buffer.WriteInt(layout.tabIndex);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
@@ -235,7 +191,7 @@ namespace Networking
                 }
             }
         }
-        public static async void RemoveGalleryImage(int profileIndex, string playername, string playerworld, int index, int imageCount)
+        public static async void RemoveGalleryImage(Character character, int profileIndex, string playername, string playerworld, int index, int imageCount)
         {
             if (ClientTCP.IsConnected())
             {
@@ -246,7 +202,7 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.CSendGalleryRemoveRequest);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(playername);
                         buffer.WriteString(playerworld);
 
@@ -262,7 +218,7 @@ namespace Networking
                 }
             }
         }
-        public static async void SubmitStoryLayout(int profileIndex, StoryLayout layout)
+        public static async void SubmitStoryLayout(Character character, int profileIndex, StoryLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -272,7 +228,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CSendStory);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
@@ -295,7 +251,7 @@ namespace Networking
             }
         }
        
-        public static async void SendProfileAccessUpdate(string username, string localName, string localServer, string connectionName, string connectionWorld, int status)
+        public static async void SendProfileAccessUpdate(Character character, string username, string localName, string localServer, string connectionName, string connectionWorld, int status)
         {
             if (ClientTCP.IsConnected())
             {
@@ -305,7 +261,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SSendProfileAccessUpdate);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(localName);
                         buffer.WriteString(localServer);
                         buffer.WriteString(connectionName);
@@ -335,7 +291,7 @@ namespace Networking
                 Plugin.PluginLog.Debug("TargetProfileWindow ResetAllData Debug: " + ex.Message);
             }
         }
-        public static async void FetchProfile(bool self, int profileIndex, string targetName, string targetWorld, int profileID)
+        public static async void FetchProfile(Character character, bool self, int profileIndex, string targetName, string targetWorld, int profileID)
         {
             if (ClientTCP.IsConnected())
             {
@@ -369,11 +325,10 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CFetchProfile);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(targetName);
                         buffer.WriteString(targetWorld);
                         buffer.WriteInt(profileIndex);
-                        buffer.WriteInt(profileID);
                         buffer.WriteBool(self); // Indicate if this is a self profile fetch
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -384,7 +339,7 @@ namespace Networking
                 }
             }
         }
-        public static async void CreateProfile(string profileTitle, int profileType, int index)
+        public static async void CreateProfile(Character character, string profileTitle, int profileType, int index)
         {
             if (ClientTCP.IsConnected())
             {
@@ -393,10 +348,10 @@ namespace Networking
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.CCreateProfile);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(index);
                         buffer.WriteInt(profileType);
                         buffer.WriteString(profileTitle);
@@ -412,7 +367,7 @@ namespace Networking
         }
 
 
-        public static async void BookmarkPlayer(string playerName, string playerWorld)
+        public static async void BookmarkPlayer(Character character, string playerName, string playerWorld)
         {
             if (ClientTCP.IsConnected())
             {
@@ -422,7 +377,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CSendPlayerBookmark);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(playerName);
                         buffer.WriteString(playerWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -435,7 +390,7 @@ namespace Networking
             }
 
         }
-        public static async void RemoveBookmarkedPlayer(string playerName, int profileID)
+        public static async void RemoveBookmarkedPlayer(Character character, string playerName, int profileID)
         {
             if (ClientTCP.IsConnected())
             {
@@ -446,7 +401,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CSendRemovePlayerBookmark);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteInt(profileID);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -457,7 +412,7 @@ namespace Networking
                 }
             }
         }
-        public static async void RequestBookmarks()
+        public static async void RequestBookmarks(Character character)
         {
             if (ClientTCP.IsConnected())
             {
@@ -467,7 +422,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CSendBookmarkRequest);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -479,7 +434,7 @@ namespace Networking
 
         }
 
-        public static async void SubmitProfileBio(int profileIndex, BioLayout layout)
+        public static async void SubmitProfileBio(Character character, int profileIndex, BioLayout layout)
         {
             Plugin.PluginLog.Debug($"SubmitProfileBio called for profileIndex={profileIndex}, tabName={layout.name}");
 
@@ -491,7 +446,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CCreateProfileBio);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
@@ -542,7 +497,7 @@ namespace Networking
 
         }
       
-        public static async void SaveProfileConfiguration(bool showProfilePublicly, int profileIndex)
+        public static async void SaveProfileConfiguration(Character character, bool showProfilePublicly, int profileIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -552,7 +507,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendProfileConfiguration);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteBool(showProfilePublicly);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -564,7 +519,7 @@ namespace Networking
                 }
             }
         }
-        public static async void RequestTargetProfiles(string targetPlayerName, string targetPlayerWorld)
+        public static async void RequestTargetProfiles(Character character, string targetPlayerName, string targetPlayerWorld)
         {
             if (ClientTCP.IsConnected())
             {
@@ -575,7 +530,7 @@ namespace Networking
                         BookmarksWindow.profileList.Clear();
                         buffer.WriteInt((int)ClientPackets.RequestTargetProfileByCharacter);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(targetPlayerName);
                         buffer.WriteString(targetPlayerWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -588,7 +543,7 @@ namespace Networking
                 }
             }
         }
-        public static async void RequestTargetProfile(int currentIndex)
+        public static async void RequestTargetProfile(Character character, int currentIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -598,7 +553,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SRequestTargetProfile);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(currentIndex);
@@ -613,7 +568,7 @@ namespace Networking
             }
 
         }
-        public static async void SubmitProfileDetails(int profileIndex, DetailsLayout layout)
+        public static async void SubmitProfileDetails(Character character, int profileIndex, DetailsLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -623,7 +578,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendProfileDetails);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(profileIndex);
@@ -644,11 +599,11 @@ namespace Networking
                 }
             }
 
-        }
+        }   
 
 
 
-        public static async void AddProfileNotes(int characterIndex, string notes)
+        public static async void AddProfileNotes(Character character, int characterIndex, string notes)
         {
             if (ClientTCP.IsConnected())
             {
@@ -659,7 +614,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CSendProfileNotes);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteInt(characterIndex);
                         buffer.WriteString(notes);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -736,7 +691,7 @@ namespace Networking
             }
         }
 
-        internal static async void SubmitInfoLayout(int currentProfile, InfoLayout layout)
+        internal static async void SubmitInfoLayout(Character character, int currentProfile, InfoLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -746,7 +701,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SSendInfo);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(currentProfile);
@@ -763,7 +718,7 @@ namespace Networking
         }
 
 
-        internal static async void RequestConnections()
+        internal static async void RequestConnections(Character character)
         {
             if (ClientTCP.IsConnected())
             {
@@ -773,7 +728,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SSendConnectionsRequest);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -785,7 +740,7 @@ namespace Networking
         }
 
 
-        internal static async void SetProfileStatus(bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
+        internal static async void SetProfileStatus(Character character, bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
         {
             if (ClientTCP.IsConnected())
             {
@@ -795,7 +750,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SSendProfileStatus);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteString(profileTitle);
@@ -830,7 +785,7 @@ namespace Networking
         }
 
 
-        internal static async void CreateGroup(string groupName, string username, string password)
+        internal static async void CreateGroup(Character character, string groupName, string username, string password)
         {
             if (ClientTCP.IsConnected())
             {
@@ -840,7 +795,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SCreateGroupChat);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(groupName);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -852,7 +807,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendRequestPlayerTooltip(string playerName, string playerWorld)
+        internal static async void SendRequestPlayerTooltip(Character character, string targetName, string targetWorld)
         {
             if (ClientTCP.IsConnected())
             {
@@ -862,9 +817,11 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SRequestTooltip);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(playerName);
-                        buffer.WriteString(playerWorld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
+                        buffer.WriteString(targetName);
+                        buffer.WriteString(targetWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -874,7 +831,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SubmitListing(byte[] bannerBytes, string listingName, string listingDescription, string listingRules, int inclusion, int currentCategory, int currentType, int currentFocus, int currentSetting, bool nsfw, string triggers,
+        internal static async void SubmitListing(Character character, byte[] bannerBytes, string listingName, string listingDescription, string listingRules, int inclusion, int currentCategory, int currentType, int currentFocus, int currentSetting, bool nsfw, string triggers,
                                          int selectedStartYear, int selectedStartMonth, int selectedStartDay, int selectedStartHour, int selectedStartMinute, int selectedStartAmPm, int selectedStartTimezone,
                                          int selectedEndYear, int selectedEndMonth, int selectedEndDay, int selectedEndHour, int selectedEndMinute, int selectedEndAmPm, int selectedEndTimezone)
         {
@@ -886,7 +843,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SCreateListing);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteInt(bannerBytes.Length);
                         buffer.WriteBytes(bannerBytes);
                         buffer.WriteString(listingName);
@@ -923,7 +880,7 @@ namespace Networking
             }
         }
 
-        internal static async void RequestListingsSection(int id)
+        internal static async void RequestListingsSection(Character character, int id)
         {
             if (ClientTCP.IsConnected())
             {
@@ -933,7 +890,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SRequestListing);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteInt(id);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -945,7 +902,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendARPChatMessage(string message, bool isAnnouncement)
+        internal static async void SendARPChatMessage(Character character, string message, bool isAnnouncement)
         {
             if (ClientTCP.IsConnected())
             {
@@ -955,9 +912,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SSendChatMessage);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteString(message);
                         buffer.WriteBool(isAnnouncement);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -969,7 +926,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void DeleteProfile(int profileIndex)
+        internal static async void DeleteProfile(Character character, int profileIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -979,9 +936,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SDeleteProfile);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -993,7 +950,7 @@ namespace Networking
             }
         }
 
-        internal static async void FetchProfiles()
+        internal static async void FetchProfiles(Character character)
         {
             
             if (ClientTCP.IsConnected())
@@ -1003,10 +960,10 @@ namespace Networking
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.SFetchProfiles);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1017,7 +974,7 @@ namespace Networking
             }
         }
 
-        internal static async void SetProfileAsTooltip(bool isPrivate, string playername, string playerworld, int profileIndex, bool status)
+        internal static async void SetProfileAsTooltip(Character character, bool isPrivate, string playername, string playerworld, int profileIndex, bool status)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1027,9 +984,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SetAsTooltip);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(playername);
-                        buffer.WriteString(playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteBool(status);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -1042,86 +999,13 @@ namespace Networking
             }
         }
 
-        internal static async void RequestTargetProfileByCharacter(string name, string worldname)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.RequestTargetProfileByCharacter);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(name);
-                        buffer.WriteString(worldname);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in RequestTargetProfileByCharacter: " + ex.ToString());
-                }
-            }
-        }
+    
 
-        internal static async void PreviewProfile(int currentProfile)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.PreviewProfile);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(currentProfile);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in PreviewProfile: " + ex.ToString());
-                }
-            }
-        }
+     
+   
+        
 
-        internal static async void SendItemCreation(int currentProfile, int tabIndex, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        Plugin.PluginLog.Debug("profile = " + currentProfile);
-                        buffer.WriteInt((int)ClientPackets.CreateItem);
-                        buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
-                        buffer.WriteInt(currentProfile);
-                        buffer.WriteInt(tabIndex);
-                        buffer.WriteString(itemName);
-                        buffer.WriteString(itemDescription);
-                        buffer.WriteInt(selectedItemType);
-                        buffer.WriteInt(itemSubType);
-                        buffer.WriteInt((int)createItemIconID);
-                        buffer.WriteInt(itemQuality);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in SendItemCreation: " + ex.ToString());
-                }
-            }
-        }
-
-        internal static async void SendItemOrder(int profileIndex, InventoryLayout layout, List<ItemDefinition> slotContents)
+        internal static async void SendItemOrder(Character character, int profileIndex, InventoryLayout layout, List<ItemDefinition> slotContents)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1131,9 +1015,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SortItems);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(layout.tabIndex);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(slotContents.Count);
@@ -1156,7 +1040,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SendTradeUpdate(int profileIndex, string targetPlayerName, string targetPlayerWorld, InventoryLayout layout, List<ItemDefinition> slotContents)
+        internal static async void SendTradeUpdate(Character character, int profileIndex, string targetPlayerName, string targetPlayerWorld, InventoryLayout layout, List<ItemDefinition> slotContents)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1166,7 +1050,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTradeUpdate);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteString(plugin.playername);
                         buffer.WriteString(plugin.playerworld);
                         buffer.WriteInt(layout.tabIndex);
@@ -1194,7 +1078,7 @@ namespace Networking
             }
         }
 
-        internal static async void FetchProfileItems(int profileIndex)
+        internal static async void FetchProfileItems(Character character, int profileIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1204,9 +1088,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.FetchProfileItems);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1217,7 +1101,7 @@ namespace Networking
             }
         }
 
-        internal static async void RequestOwnedListings(int profileIndex)
+        internal static async void RequestOwnedListings(Character character, int profileIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1227,7 +1111,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.FetchProfileItems);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1240,7 +1124,7 @@ namespace Networking
 
        
 
-        internal static async void SubmitModeratorAction(int capturedAuthor, string capturedMessage, string moderatorMessage, string moderatorNotes, ModeratorAction currentAction)
+        internal static async void SubmitModeratorAction(Character character, int capturedAuthor, string capturedMessage, string moderatorMessage, string moderatorNotes, ModeratorAction currentAction)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1250,9 +1134,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendModeratorAction);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(capturedAuthor);
                         buffer.WriteString(capturedMessage);
                         buffer.WriteString(moderatorMessage);
@@ -1269,7 +1153,7 @@ namespace Networking
             }
         }
 
-        internal static async void RequestPersonals(string searchWorld, int index, int pageSize, string searchProfile, int selectedCategory)
+        internal static async void RequestPersonals(Character character, string searchWorld, int index, int pageSize, string searchProfile, int selectedCategory)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1279,9 +1163,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendPersonalsRequest);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteString(searchWorld);
                         buffer.WriteString(searchProfile);
                         buffer.WriteInt(selectedCategory);
@@ -1297,7 +1181,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void CreateTab(string name, int type, int profileIndex, int index)
+        internal static async void CreateTab(Character character, string name, int type, int profileIndex, int index)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1307,9 +1191,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CreateTab);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteString(name);
                         buffer.WriteInt(type);
@@ -1327,7 +1211,7 @@ namespace Networking
 
         
 
-        internal static async void CreateProfileBio(int index, int tabIndex)
+        internal static async void CreateProfileBio(Character character, int index, int tabIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1337,9 +1221,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CreateBio);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(index);
                         buffer.WriteInt(tabIndex);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -1352,7 +1236,7 @@ namespace Networking
             }
         }
 
-        internal static async void DeleteTab(int profileIndex, int tabIndex, int tab_type)
+        internal static async void DeleteTab(Character character, int profileIndex, int tabIndex, int tab_type)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1362,9 +1246,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.DeleteTab);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(tabIndex);
                         buffer.WriteInt(tab_type);
@@ -1377,7 +1261,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SubmitDynamicLayout(int profileIndex, DynamicLayout dynamicLayout)
+        internal static async void SubmitDynamicLayout(Character character, int profileIndex, DynamicLayout dynamicLayout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1388,9 +1272,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendDynamicTab);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(dynamicLayout.tabIndex);
                         var nonCanceledChildren = dynamicLayout.RootNode.Children
@@ -1500,7 +1384,7 @@ namespace Networking
             }   
         }
         
-        internal static async void RequestTargetTrade(string targetCharName, string targetCharWorld)
+        internal static async void RequestTargetTrade(Character character, string targetCharName, string targetCharWorld)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1510,9 +1394,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTradeRequest);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteString(targetCharName);
                         buffer.WriteString(targetCharWorld);
 
@@ -1529,7 +1413,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SendTradeStatus(int tradeTabIndex, InventoryLayout layout, string targetName, string targetWorld, bool status, bool canceled)
+        internal static async void SendTradeStatus(Character character, int tradeTabIndex, InventoryLayout layout, string targetName, string targetWorld, bool status, bool canceled)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1539,7 +1423,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTradeStatus);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey); 
+                        buffer.WriteString(character.characterKey); 
                         buffer.WriteBool(status); // true if sender is ready, false if not
                         buffer.WriteBool(canceled); // true for cancel, false for not canceled
                         buffer.WriteInt(tradeTabIndex);
@@ -1578,7 +1462,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendInventorySelection(int index, int tabID)
+        internal static async void SendInventorySelection(Character character, int index, int tabID)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1588,9 +1472,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SInventorySelection);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(tabID);
                         buffer.WriteInt(index);
                         Plugin.PluginLog.Debug("Index=" + index);
@@ -1604,7 +1488,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendDeleteItem(int profileIndex, InventoryLayout layout, int slotIndex)
+        internal static async void SendDeleteItem(Character character, int profileIndex, InventoryLayout layout, int slotIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1614,9 +1498,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendItemDeletion);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(layout.tabIndex);
                         buffer.WriteInt(layout.id);
@@ -1631,7 +1515,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendTradeSessionTargetInventory(int tabIndex)
+        internal static async void SendTradeSessionTargetInventory(Character character, int tabIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1641,9 +1525,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTradeSessionTargetInventory);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(tabIndex);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -1655,7 +1539,7 @@ namespace Networking
             }
         }
 
-        internal static async void SubmitTreeLayout(int profileIndex, TreeLayout treeLayout)
+        internal static async void SubmitTreeLayout(Character character, int profileIndex, TreeLayout treeLayout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1665,9 +1549,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTreeLayout);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(treeLayout.tabIndex);
 
@@ -1749,7 +1633,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SubmitInventoryLayout(int profileIndex, InventoryLayout inventoryLayout)
+        internal static async void SubmitInventoryLayout(Character character, int profileIndex, InventoryLayout inventoryLayout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1759,9 +1643,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendInventoryLayout);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(inventoryLayout.tabIndex);
                         buffer.WriteInt(inventoryLayout.inventorySlotContents.Count);
@@ -1787,7 +1671,7 @@ namespace Networking
         }
 
 
-        internal static async void SendTabReorder(int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
+        internal static async void SendTabReorder(Character character, int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1797,9 +1681,9 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTabReorder);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
-                        buffer.WriteString(plugin.playername);
-                        buffer.WriteString(plugin.playerworld);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(character.characterName);
+                        buffer.WriteString(character.characterWorld);
                         buffer.WriteInt(profileIndex);
                         buffer.WriteInt(indexChanges.Count);
                         foreach (var (oldIdx, newIdx) in indexChanges)
@@ -1816,7 +1700,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void RequestCompassFromList(List<IPlayerCharacter> players)
+        internal static async void RequestCompassFromList(Character character, List<IPlayerCharacter> players)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1826,7 +1710,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendCompassRequest);
                         buffer.WriteString(plugin.accountTag);
-                        buffer.WriteString(plugin.character.characterKey);
+                        buffer.WriteString(character.characterKey);
                         buffer.WriteInt(players.Count);                      
                         for(int i =0; i < players.Count; i++)
                         {
@@ -1916,7 +1800,7 @@ using (var buffer = new ByteBuffer())
 {
 buffer.WriteInt((int)ClientPackets.CSendTreeData);
 buffer.WriteString(plugin.accountTag);
-buffer.WriteString(plugin.character.characterKey);
+buffer.WriteString(character.characterKey);
 buffer.WriteString(plugin.playername);
 buffer.WriteString(plugin.playerworld);
 buffer.WriteInt(profileIndex);

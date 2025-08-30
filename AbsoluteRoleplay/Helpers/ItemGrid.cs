@@ -146,7 +146,7 @@ namespace AbsoluteRP.Helpers
                                     }
                                     if (tradeChanged)
                                     {
-                                        DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
+                                        DataSender.SendTradeUpdate(Plugin.character, ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                                     }
                                 }
                                 DraggedItemSlot = null;
@@ -180,7 +180,7 @@ namespace AbsoluteRP.Helpers
                                 item.slot = firstEmpty;
                                 layout.inventorySlotContents[firstEmpty] = item;
                                 layout.tradeSlotContents.Remove(slotIndex);
-                                DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
+                                DataSender.SendTradeUpdate(Plugin.character, ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                             }
                         }
                         ImGui.EndPopup();
@@ -369,7 +369,7 @@ namespace AbsoluteRP.Helpers
                                 item.slot = firstEmpty;
                                 layout.tradeSlotContents[firstEmpty] = item;
                                 layout.inventorySlotContents.Remove(slotIndex);
-                                DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
+                                DataSender.SendTradeUpdate(Plugin.character, ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                             }
                         }
                         ImGui.EndPopup();
@@ -422,7 +422,7 @@ namespace AbsoluteRP.Helpers
                                             newItemList.Add(layout.inventorySlotContents[i]);
                                         }
                                     }
-                                    DataSender.SendItemOrder(ProfileWindow.profileIndex, layout, newItemList);
+                                    DataSender.SendItemOrder(Plugin.character, ProfileWindow.profileIndex, layout, newItemList);
                                 }
                             }
                             else if (DraggedSlotContents == layout.tradeSlotContents && layout.tradeSlotContents.ContainsKey(sourceSlotIndex))
@@ -446,7 +446,7 @@ namespace AbsoluteRP.Helpers
                                 }
                                 if (tradeChanged)
                                 {
-                                    DataSender.SendTradeUpdate(ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
+                                    DataSender.SendTradeUpdate(Plugin.character, ProfileWindow.profileIndex, targetPlayerName, targetPlayerWorld, layout, layout.tradeSlotContents.Values.ToList());
                                 }
                             }
 

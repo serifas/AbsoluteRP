@@ -278,7 +278,7 @@ namespace AbsoluteRP.Windows.Ect
         
         public void SendMessage(string input, bool announcement)
         {
-            DataSender.SendARPChatMessage(input, announcement);
+            DataSender.SendARPChatMessage(Plugin.character, input, announcement);
             messageInput = string.Empty;
         }
 

@@ -35,7 +35,7 @@ namespace AbsoluteRP.Windows.Profiles
                     if (reportInfo.Length > 15)
                     {
                         //report the currently viewed profile to the moderators
-                        DataSender.ReportProfile(Plugin.plugin.accountTag, reportCharacterName, reportCharacterWorld, reportInfo);
+                        DataSender.ReportProfile(Plugin.character, Plugin.plugin.accountTag, reportCharacterName, reportCharacterWorld, reportInfo);
                     }
                     else
                     {

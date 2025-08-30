@@ -56,7 +56,7 @@ namespace AbsoluteRP.Windows.Profiles
                                     TargetProfileWindow.characterWorld = profileList[i].PlayerWorld;
                                     TargetProfileWindow.RequestingProfile = true;
                                     TargetProfileWindow.ResetAllData();
-                                    DataSender.FetchProfile(false, -1, profileList[i].PlayerName, profileList[i].PlayerWorld, -1);
+                                    DataSender.FetchProfile(Plugin.character, false, -1, profileList[i].PlayerName, profileList[i].PlayerWorld, -1);
                                 }
 
                                 ImGui.SameLine();
@@ -65,7 +65,7 @@ namespace AbsoluteRP.Windows.Profiles
                                 {
                                     if (ImGui.Button("Remove##Removal" + i))
                                     {
-                                        DataSender.RemoveBookmarkedPlayer(profileList[i].PlayerName, profileList[i].profileIndex);
+                                        DataSender.RemoveBookmarkedPlayer(Plugin.character, profileList[i].PlayerName, profileList[i].profileIndex);
                                     }
                                 }
 

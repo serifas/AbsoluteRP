@@ -190,7 +190,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     }
 
                     //remove the image immediately once pressed
-                    DataSender.RemoveGalleryImage(ProfileWindow.profileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
+                    DataSender.RemoveGalleryImage(Plugin.character, ProfileWindow.profileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
