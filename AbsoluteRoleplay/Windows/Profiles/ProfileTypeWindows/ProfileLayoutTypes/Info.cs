@@ -1,4 +1,3 @@
-using AbsoluteRP.Windows.MainPanel.Views.Account;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using System;

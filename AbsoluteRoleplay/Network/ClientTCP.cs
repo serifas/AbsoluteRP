@@ -24,7 +24,7 @@ namespace Networking
         public static SslStream sslStream;
         private static byte[] recBuffer = new byte[8192];
         private static readonly string server = "jointest.infinite-roleplay.net";
-        private static readonly int port = 53922;
+        private static readonly int port = 53921;
         public static Plugin Plugin;
 
         // Ensure all access to recBuffer is on the same thread and always copy before use.
@@ -240,7 +240,6 @@ namespace Networking
                     Disconnect();
                     Plugin.CloseAllWindows();
                     Plugin.OpenMainPanel();
-                    MainPanel.login = MainPanel.CurrentElement();
                 }
             }
             catch (AuthenticationException authEx)

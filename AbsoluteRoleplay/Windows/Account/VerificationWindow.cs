@@ -38,7 +38,7 @@ namespace AbsoluteRP.Windows.Account
                     if (Plugin.plugin.IsOnline())
                     {
                         //submit our verification key for verification
-                        DataSender.SendVerification(Plugin.plugin.username.ToString(), verificationKey);
+                        DataSender.SendVerification(Plugin.plugin.accountTag.ToString(), verificationKey);
                     }
 
                 }

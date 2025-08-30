@@ -226,6 +226,7 @@ namespace AbsoluteRP
             Right,
             Bottom
         }
+
         public enum StatusMessages
         {
             //Login
@@ -237,11 +238,11 @@ namespace AbsoluteRP
             FORGOT_REQUEST_RECEIVED = 3,
             FORGOT_REQUEST_INCORRECT = 4,
             //Registration
-            REGISTRATION_DUPLICATE_EMAIL = 5,
-            REGISTRATION_DUPLICATE_USERNAME = 6,
+            REGISTRATION_DUPLICATE_TAG_NAME = 5,
+            CHARACTER_REGISTRATION_DUPLICATE_LODESTONE = 6,
             REGISTRATION_SUCCESSFUL = 15,
+            CHARACTER_REGISTRATION_LODESTONE_KEY = 7,
             //Password Change
-            PASSCHANGE_PASSWORD_CHANGED = 7,
             PASSCHANGE_INCORRECT_RESTORATION_KEY = 8,
             //Verification
             VERIFICATION_INCORRECT_KEY = 9,
@@ -266,7 +267,13 @@ namespace AbsoluteRP
             //Trade
             TRADE_CANCEL = 23,
             TRADE_ACCEPTED = 24,
+            //Lodestone Info
+            CHARACTER_REGISTRATION_VALID_LODESTONE = 25,
+            CHARACTER_REGISTRATIO_INVALID_LODESTONE = 26,
+            //no access
+
         }
+
         public enum BioFieldTypes
         {
             name = 0,

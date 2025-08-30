@@ -7,7 +7,6 @@ using System.Net.Http;
 using System.Numerics;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Colors;
-using AbsoluteRP.Windows.MainPanel.Views.Account;
 using Dalamud.Bindings.ImGui;
 namespace AbsoluteRP.Windows.Ect
 {

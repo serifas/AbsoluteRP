@@ -4,7 +4,6 @@ using Dalamud.Interface.Windowing;
 using Networking;
 using Dalamud.Utility;
 using Dalamud.Interface.Textures.TextureWraps;
-using AbsoluteRP.Windows.MainPanel.Views.Account;
 using AbsoluteRP.Windows.MainPanel.Views;
 using Dalamud.Interface.Utility.Raii;
 using AbsoluteRP.Helpers;
@@ -15,6 +14,9 @@ public class MainPanel : Window, IDisposable
 {
     //input field strings
     //window state toggles
+    public static string tagName = string.Empty;
+    private bool openTagPopup = false;
+    private string tempTagName = string.Empty;
     public static bool viewProfile, viewSystems, viewEvents, viewConnections, viewListings;
     public static bool login = true;
     public static bool forgot = false;
@@ -149,22 +151,59 @@ public class MainPanel : Window, IDisposable
             buttonHeight = ButtonSize.Y / 5f;
 
             centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
-            // can't ref a property, so use a local copy
-            if (login == true)
+            if (Plugin.plugin?.Configuration?.account != null &&
+                !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountKey) &&
+                !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountName))
             {
-                Login.LoadLogin();
+                Misc.SetTitle(Plugin.plugin, true, Plugin.plugin.Configuration.account.accountName, new Vector4(0, 1, 0, 0));
             }
-            if (forgot == true)
+            if(Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
             {
-                Forgot.LoadForgot(Plugin.plugin);
+                MainUI.LoadMainUI(Plugin.plugin);
             }
-            if (register == true)
+            else
             {
-                Register.LoadRegistration(Plugin.plugin);
+
+                if (ImGui.Button("Start Here!", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                {
+                    openTagPopup = true;
+                    ImGui.OpenPopup("Register User Tag");
+                }
+
             }
-            if (loggedIn == true)
+
+
+            // Popup logic
+            if (openTagPopup)
             {
-                LoggedIn.LoadLoggedIn(Plugin.plugin);
+                ImGui.SetNextWindowSize(new Vector2(350, 0), ImGuiCond.Always);
+                if (ImGui.BeginPopupModal("Register User Tag", ref openTagPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    ImGui.Text("Please specify a unique user tag");
+
+                    ImGui.InputText("User Tag", ref tempTagName, 25);
+
+
+                    using (ImRaii.Disabled(tempTagName == string.Empty))
+                    {
+
+                        if (ImGui.Button("Okay", new Vector2(120, 0)))
+                        {
+                            tagName = tempTagName;
+                            DataSender.CreateUserTag(tagName);
+                            ImGui.CloseCurrentPopup();
+                            openTagPopup = false;
+                        }
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                    {
+                        ImGui.CloseCurrentPopup();
+                        openTagPopup = false;
+                    }
+
+                    ImGui.EndPopup();
+                }
             }
 
             if (Plugin.plugin.Configuration.showKofi)
@@ -201,6 +240,11 @@ public class MainPanel : Window, IDisposable
                 var serverStatusPosY = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
             }
+            
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            {
+                ImGui.SetTooltip("Please set a user tag to access this feature.");
+            }
             ImGui.TextColored(serverStatusColor, serverStatus);
             ImGui.SameLine();
             if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
@@ -217,57 +261,14 @@ public class MainPanel : Window, IDisposable
             {
                 ImGui.TextWrapped(status);
             }
-            ImGui.SameLine();
-            if (loggedIn == true)
-            {
-                if (ImGui.Button("Logout", new Vector2(buttonWidth, buttonHeight / 2f)))
-                {
-                    Plugin.plugin.newConnection = false;
-                    Plugin.plugin.CloseAllWindows();
-                    Plugin.plugin.OpenMainPanel();
-                    login = CurrentElement();
-                    status = "Logged Out";
-                    statusColor = new Vector4(255, 0, 0, 255);
-                }
-            }
 
-        } catch (Exception e)
+
+        } 
+        catch (Exception e)
         {
             Plugin.PluginLog.Debug("MainPanel Draw Debug: " + e.Message);
             Plugin.PluginLog.Debug(e.StackTrace);
-
         }
-
-    }
-    public static bool CurrentElement()
-    {
-        login = false;
-        forgot = false;
-        register = false;
-        viewProfile = false;
-        viewSystems = false;
-        viewEvents = false;
-        viewListings = false;
-        viewConnections = false;
-        loggedIn = false;
-        return true;
-    }
-    public static void SaveLoginPreferences(string username, string password)
-    {
-        Plugin.plugin.Configuration.rememberInformation = Remember;
-        if (Plugin.plugin.Configuration.rememberInformation == true)
-        {
-            Plugin.plugin.Configuration.username = username;
-            Plugin.plugin.Configuration.password = password;
-        }
-        else
-        {
-            Plugin.plugin.Configuration.username = string.Empty;
-            Plugin.plugin.Configuration.password = string.Empty;
-        }
-        Plugin.plugin.username = username;
-        Plugin.plugin.password = password;
-        Plugin.plugin.Configuration.Save();
     }
     public void switchUI()
     {

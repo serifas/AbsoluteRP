@@ -34,7 +34,7 @@ namespace AbsoluteRP.Windows.Account
             Misc.SetTitle(Plugin.plugin, true, "Account Restoration", ImGuiColors.TankBlue);
             //set everything back
             //okay that's done.
-            ImGui.Text("We sent a restoration key to the email address provided. \nPlease enter the key with a new password below.");
+            ImGui.Text("We sent a restoration key to the email address provided. \nPlease enter the key with a new characterTag below.");
             ImGui.Spacing();
             //now for some simple toggles
             ImGui.InputText("Restoration Key", ref restorationKey, 10);
@@ -50,7 +50,7 @@ namespace AbsoluteRP.Windows.Account
                     {
                         if (Plugin.plugin.IsOnline())
                         {
-                            //send the key with the new password to restore the account to settings the user knows
+                            //send the key with the new characterTag to restore the account to settings the user knows
                             DataSender.SendRestoration(restorationEmail, restorationPass, restorationKey);
                         }
                     }

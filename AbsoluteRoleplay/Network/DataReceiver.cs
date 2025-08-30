@@ -7,7 +7,6 @@ using AbsoluteRP.Windows.Account;
 using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.Listings;
 using AbsoluteRP.Windows.MainPanel;
-using AbsoluteRP.Windows.MainPanel.Views.Account;
 using AbsoluteRP.Windows.Moderator;
 using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
@@ -89,7 +88,7 @@ namespace Networking
         ReceiveTradeStatus = 77,
         ReceiveTradeInventory = 78,
         ReceiveTreeLayout = 79,
-        RecConnectedPlayersInMap = 80
+        RecConnectedPlayersInMap = 80,
     }
     class DataReceiver
     {
@@ -335,7 +334,10 @@ namespace Networking
                     bool ban = buffer.ReadBool();
                     bool warn = buffer.ReadBool();
                     string message = buffer.ReadString();
-                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = rank, can_warn = warn };
+                    string message2 = buffer.ReadString();
+                    string characterName = buffer.ReadString();
+                    string characterWorld = buffer.ReadString();
+                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = (Rank)rank, can_warn = warn };
 
                     //Receive Status
                     if (status == (int)UI.StatusMessages.RECEIVE_SILENT)
@@ -377,19 +379,46 @@ namespace Networking
                     if (status == (int)UI.StatusMessages.REGISTRATION_SUCCESSFUL)
                     {
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
-                        MainPanel.status = "Registration Successful";
-                    }
-                    if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_USERNAME)
-                    {
-                        MainPanel.statusColor = new Vector4(255, 255, 0, 255);
-                        MainPanel.status = "Username already in use.";
+                        MainPanel.status = "Tag Creation Succeeded";
+                        Account account = new Account()
+                        {
+                            accountKey = message,
+                            accountName = message2
+                        };
+                        Plugin.plugin.Configuration.account = account;
+                        Plugin.plugin.Configuration.Save();
+                        
                     }
 
-                    if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_EMAIL)
+                    if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_TAG_NAME)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
-                        MainPanel.status = "Email already in use.";
+                        MainPanel.status = "Tag already in use.";
                     }
+                    if(status == (int)UI.StatusMessages.CHARACTER_REGISTRATION_VALID_LODESTONE)
+                    {
+                        Character character = new Character()
+                        {
+                            characterName = characterName,
+                            characterWorld = characterWorld,
+                            characterKey = message,
+                        };
+                        Plugin.plugin.Configuration.characters.Add(character);                       
+
+                        Plugin.plugin.Configuration.Save();
+
+                        ProfileWindow.VerificationSucceeded = true;
+                        Plugin.PluginLog.Error(ProfileWindow.VerificationSucceeded.ToString());
+                    }
+                    if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATIO_INVALID_LODESTONE)
+                    {
+                        ProfileWindow.VerificationSucceeded = false;
+                    }
+                    if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATION_LODESTONE_KEY)
+                    {
+                        ProfileWindow.lodeStoneKey = message;
+                    }
+
                     if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
                     {
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
@@ -412,11 +441,6 @@ namespace Networking
                         RestorationWindow.restorationCol = new Vector4(255, 0, 0, 255);
                         RestorationWindow.restorationStatus = "Incorrect Key.";
                     }
-                    if (status == (int)UI.StatusMessages.PASSCHANGE_PASSWORD_CHANGED)
-                    {
-                        RestorationWindow.restorationCol = new Vector4(0, 255, 0, 255);
-                        RestorationWindow.restorationStatus = "Password updated, you may close this window.";
-                    }
                     //Verification window
                     if (status == (int)UI.StatusMessages.VERIFICATION_KEY_VERIFIED)
                     {
@@ -424,7 +448,6 @@ namespace Networking
                         VerificationWindow.verificationStatus = "Account Verified! you may now log in.";
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Logged Out";
-                        MainPanel.login = true;
                         MainPanel.register = false;
 
                     }
@@ -454,10 +477,8 @@ namespace Networking
                     {
                         Plugin.plugin.loginAttempted = true;
                         Plugin.plugin.DisconnectAndLogOut();
-                        Plugin.plugin.username = string.Empty;
-                        Plugin.plugin.password = string.Empty;
-                        Plugin.plugin.Configuration.username = string.Empty;
-                        Plugin.plugin.Configuration.password = string.Empty;
+                        Plugin.plugin.accountTag = string.Empty;
+                        Plugin.plugin.character.characterKey = string.Empty;
                         Plugin.plugin.Configuration.Save();
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account suspended"; ;
@@ -2237,8 +2258,8 @@ namespace Networking
                             Plugin.PluginLog.Debug($"Received player data: {playerData.playername} from {playerData.worldname}");
                             PlayerInteractions.playerDataMap.Add(playerData);
                         }
-                        
-                     
+
+
 
                     }
                 }

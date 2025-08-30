@@ -63,6 +63,7 @@ namespace AbsoluteRP.Windows.Ect
        
         public override void Draw()
         {
+            /*
             try
             {
                 List<ARPChatGroups> channelTabs = Plugin.plugin.Configuration.ARPChatGroupMemberships;
@@ -270,7 +271,7 @@ namespace AbsoluteRP.Windows.Ect
             {
                 Plugin.PluginLog.Debug("ARPChatWindow Draw Debug: " + ex.Message);
             }
-           
+           */
         }
           
            

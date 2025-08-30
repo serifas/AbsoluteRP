@@ -1,5 +1,4 @@
 using AbsoluteRP.Windows.Ect;
-using AbsoluteRP.Windows.MainPanel.Views.Account;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;

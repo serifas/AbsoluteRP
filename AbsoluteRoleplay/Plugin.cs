@@ -34,6 +34,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Net.Http;
 using System.Threading.Tasks;
+using AbsoluteRP.Defines;
 
 namespace AbsoluteRP
 {
@@ -45,8 +46,8 @@ namespace AbsoluteRP
         public static IGameObject? LastMouseOverTarget;
         public float tooltipAlpha;
         public static Plugin plugin;
-        public string username = string.Empty;
-        public string password = string.Empty;
+        public string accountTag = string.Empty;
+        public Character character { get; set; } = null;
         public string playername = string.Empty;
         public bool connected = false;
         public string playerworld = string.Empty;
@@ -351,7 +352,6 @@ namespace AbsoluteRP
             MainPanel.status = "Logged Out";
             MainPanel.statusColor = new Vector4(255, 0, 0, 255);
             MainPanel.switchUI();
-            MainPanel.login = MainPanel.CurrentElement();
             loginAttempted = false;
             playername = string.Empty;
             playerworld = string.Empty;
@@ -414,7 +414,7 @@ namespace AbsoluteRP
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
             ConnectionsWindow.currentListing = 2;
-            entry.OnClick = _ => DataSender.RequestConnections(username, password, true);
+            entry.OnClick = _ => DataSender.RequestConnections();
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse);
             statusString.AddText("\uE070");
@@ -533,6 +533,8 @@ namespace AbsoluteRP
         }
 
         private bool avatarTextureSpawned = false;
+        internal string tagName;
+
         private void DrawUI()
         {
             try
@@ -716,22 +718,10 @@ namespace AbsoluteRP
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
             }
 
-            if (!loginAttempted)
+            if (IsOnline())
             {
-                if (IsOnline())
-                {
-                    PluginLog.Debug("Player is online, attempting to log in.");
-                    username = Configuration.username;
-                    password = Configuration.password;
-                    playername = ClientState.LocalPlayer.Name.ToString();
-                    playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
-                    if (username != string.Empty && password != string.Empty)
-                    {
-                        ToggleMainUI();
-                        DataSender.Login();
-                        loginAttempted = true;
-                    }
-                }
+                playername = ClientState.LocalPlayer.Name.ToString();
+                playerworld = ClientState.LocalPlayer.HomeWorld.Value.Name.ToString();
             }
 
             // Every 60 seconds, call FetchConnectedPlayers
