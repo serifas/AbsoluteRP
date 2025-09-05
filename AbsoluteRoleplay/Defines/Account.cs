@@ -6,10 +6,9 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Defines
 {
-
     public class Account
     {
-        public string accountName {  get; set; } = string.Empty;
+        public string accountName { get; set; } = string.Empty;
         public string accountKey { get; set; } = string.Empty;
         public RankPermissions permissions { get; set; }
     }
@@ -21,7 +20,7 @@ namespace AbsoluteRP.Defines
     }
     public class RankPermissions
     {
-        public Rank rank { get; set; }
+        public int rank { get; set; }
         public bool can_announce { get; set; }
         public bool can_strike { get; set; }
         public bool can_suspend { get; set; }
@@ -42,5 +41,21 @@ namespace AbsoluteRP.Defines
         Strike = 2,
         Suspended = 3,
         Ban = 4,
-    }  
+    }
+    public class ModDefines
+    {
+        public static (string, string)[] ModAccountActionVals =
+        {
+            ("None", "Take no action on account, used to just give a friendly heads up."),
+
+            ("Warn", "Send a warning, this does not issue a strike."),
+
+            ("Strike", "Submit a strike to this users account, after 3 strikes the user will be suspended"),
+
+            ("Suspend", "Suspend this user account, this action can be appealed."),
+
+            ("Ban", "Ban this user, this action is perminant and no appeal can be made."),
+        };
+    }
+  
 }

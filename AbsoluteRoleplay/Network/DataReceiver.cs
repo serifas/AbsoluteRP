@@ -3,7 +3,6 @@
 using AbsoluteRP;
 using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
-using AbsoluteRP.Windows.Account;
 using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.Listings;
 using AbsoluteRP.Windows.MainPanel;
@@ -88,7 +87,7 @@ namespace Networking
         ReceiveTradeStatus = 77,
         ReceiveTradeInventory = 78,
         ReceiveTreeLayout = 79,
-        RecConnectedPlayersInMap = 80,
+        RecConnectedPlayersInMap = 80
     }
     class DataReceiver
     {
@@ -318,7 +317,6 @@ namespace Networking
             }
         }
 
-
         public static void StatusMessage(byte[] data)
         {
             try
@@ -337,7 +335,7 @@ namespace Networking
                     string message2 = buffer.ReadString();
                     string characterName = buffer.ReadString();
                     string characterWorld = buffer.ReadString();
-                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = (Rank)rank, can_warn = warn };
+                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = rank, can_warn = warn };
 
                     //Receive Status
                     if (status == (int)UI.StatusMessages.RECEIVE_SILENT)
@@ -370,12 +368,6 @@ namespace Networking
                         Plugin.plugin.loginAttempted = true;
                         Plugin.plugin.loggedIn = true;
                     }
-                    if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
-                    {
-                        MainPanel.statusColor = new System.Numerics.Vector4(255, 0, 0, 255);
-                        MainPanel.status = "Incorrect login details";
-                        Plugin.plugin.loginAttempted = true;
-                    }
                     if (status == (int)UI.StatusMessages.REGISTRATION_SUCCESSFUL)
                     {
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
@@ -387,7 +379,7 @@ namespace Networking
                         };
                         Plugin.plugin.Configuration.account = account;
                         Plugin.plugin.Configuration.Save();
-                        
+
                     }
 
                     if (status == (int)UI.StatusMessages.REGISTRATION_DUPLICATE_TAG_NAME)
@@ -395,7 +387,7 @@ namespace Networking
                         MainPanel.statusColor = new Vector4(255, 255, 0, 255);
                         MainPanel.status = "Tag already in use.";
                     }
-                    if(status == (int)UI.StatusMessages.CHARACTER_REGISTRATION_VALID_LODESTONE)
+                    if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATION_VALID_LODESTONE)
                     {
                         Character character = new Character()
                         {
@@ -403,7 +395,7 @@ namespace Networking
                             characterWorld = characterWorld,
                             characterKey = message2,
                         };
-                        Plugin.plugin.Configuration.characters.Add(character);                       
+                        Plugin.plugin.Configuration.characters.Add(character);
 
                         Plugin.plugin.Configuration.Save();
 
@@ -418,13 +410,6 @@ namespace Networking
                     {
                         ProfileWindow.lodeStoneKey = message;
                     }
-
-                    if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
-                    {
-                        MainPanel.statusColor = new Vector4(255, 255, 0, 255);
-                        MainPanel.status = "Incorrect Account Info";
-                        MainPanel.loggedIn = false;
-                    }
                     if (status == (int)UI.StatusMessages.FORGOT_REQUEST_RECEIVED)
                     {
                         MainPanel.statusColor = new Vector4(0, 255, 0, 255);
@@ -436,26 +421,7 @@ namespace Networking
                         MainPanel.status = "There is no account with this email.";
                     }
                     //Restoration window
-                    if (status == (int)UI.StatusMessages.PASSCHANGE_INCORRECT_RESTORATION_KEY)
-                    {
-                        RestorationWindow.restorationCol = new Vector4(255, 0, 0, 255);
-                        RestorationWindow.restorationStatus = "Incorrect Key.";
-                    }
-                    //Verification window
-                    if (status == (int)UI.StatusMessages.VERIFICATION_KEY_VERIFIED)
-                    {
-                        VerificationWindow.verificationCol = new Vector4(0, 255, 0, 255);
-                        VerificationWindow.verificationStatus = "Account Verified! you may now log in.";
-                        MainPanel.statusColor = new Vector4(255, 0, 0, 255);
-                        MainPanel.status = "Logged Out";
-                        MainPanel.register = false;
-
-                    }
-                    if (status == (int)UI.StatusMessages.VERIFICATION_INCORRECT_KEY)
-                    {
-                        VerificationWindow.verificationCol = new Vector4(255, 0, 0, 255);
-                        VerificationWindow.verificationStatus = "Incorrect verification key.";
-                    }
+              
                     if (status == (int)UI.StatusMessages.REGISTRATION_INSUFFICIENT_DATA)
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
@@ -477,8 +443,6 @@ namespace Networking
                     {
                         Plugin.plugin.loginAttempted = true;
                         Plugin.plugin.DisconnectAndLogOut();
-                        Plugin.plugin.accountTag = string.Empty;
-                        Plugin.character.characterKey = string.Empty;
                         Plugin.plugin.Configuration.Save();
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account suspended"; ;
@@ -510,6 +474,8 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling StatusMessage message: {ex}");
             }
         }
+
+
 
 
         public static void ReceiveNoProfileGallery(byte[] data)
@@ -659,42 +625,7 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveNoAuthorization message: {ex}");
             }
         }
-        public static void ReceiveVerificationMessage(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    Plugin.plugin.OpenVerificationWindow();
-                    MainPanel.status = "Successfully Registered!";
-                    MainPanel.statusColor = new Vector4(0, 255, 0, 255);
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveVerificationMessage message: {ex}");
-            }
-        }
-        public static void ReceivePasswordModificationForm(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    string email = buffer.ReadString();
-                    RestorationWindow.restorationEmail = email;
-                    Plugin.plugin.OpenRestorationWindow();
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.PluginLog.Debug($"Debug handling ReceivePasswordModificationForm message: {ex}");
-            }
-        }
+      
 
 
         public static void ReceiveListingsByType(byte[] data)
@@ -1519,10 +1450,6 @@ namespace Networking
                         string tabName = buffer.ReadString();
                         int tabIndex = buffer.ReadInt();
                         int tabType = buffer.ReadInt();
-
-                      
-
-
                     }
                 }
             }
@@ -2258,8 +2185,8 @@ namespace Networking
                             Plugin.PluginLog.Debug($"Received player data: {playerData.playername} from {playerData.worldname}");
                             PlayerInteractions.playerDataMap.Add(playerData);
                         }
-
-
+                        
+                     
 
                     }
                 }
@@ -2379,6 +2306,7 @@ namespace Networking
                         fields = fields.Select(f => new field { index = f.index, name = f.name, description = f.description }).ToList(),
                     };
                     BioLoadStatus = 1;
+
                     CustomTab tab = new CustomTab
                     {
                         Name = tabName,

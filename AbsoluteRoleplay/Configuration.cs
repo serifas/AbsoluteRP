@@ -10,16 +10,18 @@ namespace AbsoluteRP;
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
-    public int uiScale { get; set; }
-    public int Version { get; set; } = 0;
-    public Version TOSVersion { get; set; } = new Version("0.0.0.0");
-    public bool AlwaysOpenDefaultImport { get; set; } = false;
     public Account account { get; set; } = new Account()
     {
         accountKey = string.Empty,
         accountName = string.Empty
     };
     public List<Character> characters { get; set; } = new List<Character>();
+    public int uiScale { get; set; }
+    public int Version { get; set; } = 0;
+    public Version TOSVersion { get; set; } = new Version("0.0.0.0");
+    public bool AlwaysOpenDefaultImport { get; set; } = false;
+    public string username { get; set; } = "";
+    public string password { get; set; } = "";
     public bool rememberInformation { get; set; }
 
     //Config options
@@ -51,14 +53,12 @@ public class Configuration : IPluginConfiguration
     public bool autoLogin { get; set; }
     public List<IconData> iconBookmarks { get; set; } = new List<IconData>();
     public List<ARPChatGroups> ARPChatGroupMemberships { get; set; } = new List<ARPChatGroups>();
-    public static List<Account> accounts = new List<Account>();
-
     public static string defaultDataPath = string.Empty;
     // the below exist just to make saving less cumbersome
     [NonSerialized]
     private IDalamudPluginInterface? PluginInterface;
-    //public bool showCompass { get; set; } = false;
-    //public bool showCompassInCombat { get; set; } = false;
+    public bool showCompass { get; set; } = false;
+    public bool showCompassInCombat { get; set; } = false;
     public bool AutobackupEnabled { get; set; } = true; 
     public string dataSavePath { get; set; }
     public float fontSize { get; set; } = 35;

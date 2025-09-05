@@ -1,6 +1,6 @@
+using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows;
-using AbsoluteRP.Windows.Account;
 using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.Listings;
 using AbsoluteRP.Windows.MainPanel;
@@ -30,24 +30,24 @@ using Networking;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Net.Http;
 using System.Threading.Tasks;
-using AbsoluteRP.Defines;
+using System.Xml.Linq;
 
 namespace AbsoluteRP
 {
     public partial class Plugin : IDalamudPlugin
     {
-        public static Character character { get; set; } = new();
         private bool windowsInitialized = false;
         private float fetchQuestsInRangeTimer = 0f;
         private int lastObjectTableCount = -1;
         public static IGameObject? LastMouseOverTarget;
         public float tooltipAlpha;
         public static Plugin plugin;
-        public string accountTag = string.Empty;
+        public string username = string.Empty;
+        public string password = string.Empty;
         public string playername = string.Empty;
         public bool connected = false;
         public string playerworld = string.Empty;
@@ -60,6 +60,7 @@ namespace AbsoluteRP
         private bool pendingFetchConnections = false;
         private ushort pendingTerritory = 0;
         private const string CommandName = "/arp";
+        public static Character character { get; set; } = null;
 
         public bool loginAttempted = false;
         private IDtrBarEntry? statusBarEntry;
@@ -92,8 +93,6 @@ namespace AbsoluteRP
         private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         public OptionsWindow? OptionsWindow { get; private set; }
         public NotesWindow? NotesWindow { get; private set; }
-        private VerificationWindow? VerificationWindow { get; set; }
-        private RestorationWindow? RestorationWindow { get; set; }
         private ModPanel? ModeratorPanel { get; set; }
         private ListingsWindow? ListingWindow { get; set; }
         public ARPTooltipWindow? TooltipWindow { get; private set; }
@@ -203,18 +202,17 @@ namespace AbsoluteRP
 
         public void OpenAndLoadProfileWindow(bool self, int index)
         {
-            Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == playername && x.characterWorld == playerworld);
             if (self)
             {
                 OpenProfileWindow();
-                DataSender.FetchProfiles(character);
+                DataSender.FetchProfiles(Plugin.character);
             }
             else
             {
                 TargetProfileWindow.RequestingProfile = true;
                 OpenTargetWindow();
             }
-            DataSender.FetchProfile(character, self, index, character.characterName, character.characterWorld, -1);
+            DataSender.FetchProfile(Plugin.character, self, index, plugin.playername, plugin.playerworld, -1);
         }
 
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
@@ -267,17 +265,8 @@ namespace AbsoluteRP
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(Plugin.character, false, -1, name, worldname, -1);
                 },
-            });   /*
-            args.AddMenuItem(new MenuItem
-            {
-                Name = "Trade ARP Items",
-                PrefixColor = 56,
-                Prefix = SeIconChar.Gil,
-                OnClicked = _ => {
-                    DataSender.RequestTargetTrade(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
-                },
-            });
-            */
+            });   
+            
         }
 
         private void ObjectContext(IMenuOpenedArgs args, uint objectId)
@@ -309,6 +298,15 @@ namespace AbsoluteRP
                     TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(Plugin.character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                },
+            });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Trade ARP Items",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedLetterT,
+                OnClicked = _ => {
+                    DataSender.RequestTargetTrade(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
         }
@@ -392,7 +390,7 @@ namespace AbsoluteRP
             if (IsOnline())
             {
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
-                DataSender.BookmarkPlayer(Plugin.character, targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
+                DataSender.BookmarkPlayer(character, targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
             }
         }
 
@@ -456,8 +454,6 @@ namespace AbsoluteRP
             ImportantNoticeWindow?.Dispose();
             TargetWindow?.Dispose();
             BookmarksWindow?.Dispose();
-            VerificationWindow?.Dispose();
-            RestorationWindow?.Dispose();
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ConnectionsWindow?.Dispose();
@@ -534,8 +530,6 @@ namespace AbsoluteRP
         }
 
         private bool avatarTextureSpawned = false;
-        internal string tagName;
-
         private void DrawUI()
         {
             try
@@ -544,7 +538,7 @@ namespace AbsoluteRP
 
 
                 // Draw compass overlay if enabled and player is present
-                /*if (Configuration != null
+                if (Configuration != null
                      && Configuration.showCompass
                      && IsOnline())
                  {
@@ -574,7 +568,7 @@ namespace AbsoluteRP
 
                      ImGui.End();
                  }
-                */
+                
             }
             catch (Exception ex)
             {
@@ -639,8 +633,6 @@ namespace AbsoluteRP
         public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
         public void OpenTargetWindow() => TargetWindow.IsOpen = true;
         public void OpenBookmarksWindow() => BookmarksWindow.IsOpen = true;
-        public void OpenVerificationWindow() => VerificationWindow.IsOpen = true;
-        public void OpenRestorationWindow() => RestorationWindow.IsOpen = true;
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
@@ -666,7 +658,6 @@ namespace AbsoluteRP
                 PluginLog.Debug("Debug updating status: " + ex.ToString());
             }
         }
-
         public void Update(IFramework framework)
         {
             if (needsAsyncInit)
@@ -674,6 +665,7 @@ namespace AbsoluteRP
                 needsAsyncInit = false;
                 _ = InitializeAsync();
             }
+
             if (!windowsInitialized && IsOnline())
             {
                 windowsInitialized = true;
@@ -686,10 +678,8 @@ namespace AbsoluteRP
                 BookmarksWindow = new BookmarksWindow();
                 ImportantNoticeWindow = new ImportantNotice();
                 TargetWindow = new TargetProfileWindow();
-                VerificationWindow = new VerificationWindow();
                 ModeratorPanel = new ModPanel();
                 ArpChatWindow = new ARPChatWindow(chatgui);
-                RestorationWindow = new RestorationWindow();
                 ReportWindow = new ReportWindow();
                 ConnectionsWindow = new ConnectionsWindow();
                 TooltipWindow = new ARPTooltipWindow();
@@ -704,9 +694,7 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(ImagePreview);
                 WindowSystem.AddWindow(BookmarksWindow);
                 WindowSystem.AddWindow(TargetWindow);
-                WindowSystem.AddWindow(VerificationWindow);
                 WindowSystem.AddWindow(ModeratorPanel);
-                WindowSystem.AddWindow(RestorationWindow);
                 WindowSystem.AddWindow(ReportWindow);
                 WindowSystem.AddWindow(ConnectionsWindow);
                 WindowSystem.AddWindow(TooltipWindow);
@@ -719,13 +707,16 @@ namespace AbsoluteRP
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
             }
 
-            if (IsOnline())
+            if (IsOnline() &&
+                (character == null
+                 || character.characterName != ClientState.LocalPlayer.Name.ToString()
+                 || character.characterWorld != ClientState.LocalPlayer.HomeWorld.Value.Name.ToString()))
             {
-                Character character = Plugin.plugin.Configuration?.characters?.FirstOrDefault(x => x?.characterName == ClientState.LocalPlayer.Name.ToString() && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
+                character = Plugin.plugin.Configuration?.characters?.FirstOrDefault(
+                    x => x?.characterName == ClientState.LocalPlayer.Name.ToString()
+                      && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
-
-            // Every 60 seconds, call FetchConnectedPlayers
-            /*if (Configuration.showCompass)
+            if (Configuration.showCompass)
             {
                 fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
                 if (fetchQuestsInRangeTimer >= 25f)
@@ -737,17 +728,12 @@ namespace AbsoluteRP
                         .Cast<IPlayerCharacter>()
                         .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
                         .ToList();
-                    DataSender.RequestCompassFromList(nearbyPlayers);
+                    DataSender.RequestCompassFromList(character, nearbyPlayers);
                 }
             }
-            */
-            if (firstopen == true && MainPanel.IsOpen == true)
-            {
-                firstopen = false;
-                MainPanel.IsOpen = false;
-            }
-
+            // var currentTarget can be null or not an IGameObject, so always check type before using ObjectKind
             var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
+
             if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
             {
                 lockedtarget = true;
@@ -756,15 +742,25 @@ namespace AbsoluteRP
             {
                 lockedtarget = false;
             }
+
             if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress)
             {
-                if (InCombatLock() || InDutyLock() || InPvpLock()) return;
+                if (InCombatLock() || InDutyLock() || InPvpLock())
+                    return;
 
                 WindowOperations.DrawTooltipInfo(gameObject);
 
                 lastTargetAddress = gameObject.Address;
             }
-            else if (currentTarget == null || currentTarget.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player && TooltipWindow.IsOpen)
+            else if (
+                TooltipWindow != null &&
+                (
+                    currentTarget == null ||
+                    (currentTarget is IGameObject obj &&
+                     obj.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player &&
+                     TooltipWindow.IsOpen)
+                )
+            )
             {
                 TooltipWindow.IsOpen = false;
                 lastTargetAddress = IntPtr.Zero;

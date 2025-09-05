@@ -63,7 +63,6 @@ namespace AbsoluteRP.Windows.Ect
        
         public override void Draw()
         {
-            /*
             try
             {
                 List<ARPChatGroups> channelTabs = Plugin.plugin.Configuration.ARPChatGroupMemberships;
@@ -148,7 +147,7 @@ namespace AbsoluteRP.Windows.Ect
                                                     {
                                                         if (ImGui.ImageButton(viewProfileImg.Handle, btnSize))
                                                         {
-                                                            DataSender.RequestTargetProfile(messages[i].authorProfileID);
+                                                            DataSender.RequestTargetProfile(Plugin.character, messages[i].authorProfileID);
                                                         }
                                                     }
                                                     if(bookmarkProfileImg != null && viewProfileImg.Handle != IntPtr.Zero)
@@ -156,7 +155,7 @@ namespace AbsoluteRP.Windows.Ect
 
                                                     if (ImGui.ImageButton(bookmarkProfileImg.Handle, btnSize))
                                                     {
-                                                        DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
+                                                        DataSender.BookmarkPlayer(Plugin.character, messages[i].name, messages[i].world);
                                                         }
                                                     }
                                                     ImGui.PopID();
@@ -198,7 +197,7 @@ namespace AbsoluteRP.Windows.Ect
                                                 {
                                                     if (ImGui.ImageButton(viewProfileImg.Handle, btnSize))
                                                     {
-                                                        DataSender.RequestTargetProfile(messages[i].authorProfileID);
+                                                        DataSender.RequestTargetProfile(Plugin.character, messages[i].authorProfileID);
                                                     }
 
                                                 }
@@ -206,7 +205,7 @@ namespace AbsoluteRP.Windows.Ect
                                                 {
                                                     if (ImGui.ImageButton(bookmarkProfileImg.Handle, btnSize))
                                                     {
-                                                        DataSender.BookmarkPlayer(messages[i].name, messages[i].world);
+                                                        DataSender.BookmarkPlayer(Plugin.character, messages[i].name, messages[i].world);
                                                     }
                                                 }
                                                 ImGui.PopID();
@@ -271,7 +270,7 @@ namespace AbsoluteRP.Windows.Ect
             {
                 Plugin.PluginLog.Debug("ARPChatWindow Draw Debug: " + ex.Message);
             }
-           */
+           
         }
           
            

@@ -226,7 +226,6 @@ namespace AbsoluteRP
             Right,
             Bottom
         }
-
         public enum StatusMessages
         {
             //Login

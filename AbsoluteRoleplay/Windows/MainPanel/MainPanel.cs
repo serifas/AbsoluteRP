@@ -97,10 +97,6 @@ public class MainPanel : Window, IDisposable
         if (listingsVenueImg != null) { listingsVenue = listingsVenueImg; }
         if (listingsPersonalImg != null) { listingsPersonal = listingsPersonalImg; }
 
-        if (Plugin.plugin.Configuration.account.accountKey != null)
-        {
-            DataSender.SendLogin();
-        }
 
     }
 
@@ -142,7 +138,7 @@ public class MainPanel : Window, IDisposable
         listingsVenue = null;
         WindowOperations.SafeDispose(listingsPersonal);
         listingsPersonal = null;
-        WindowOperations.SafeDispose(combatImage);  
+        WindowOperations.SafeDispose(combatImage);
         combatImage = null;
         WindowOperations.SafeDispose(statSystemImage);
         statSystemImage = null;
@@ -162,32 +158,44 @@ public class MainPanel : Window, IDisposable
                 !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountName))
             {
                 Misc.SetTitle(Plugin.plugin, true, Plugin.plugin.Configuration.account.accountName, new Vector4(0, 1, 0, 0));
+                using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                {
+                    if (ImGui.Button("Remove Account", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                    {
+                        DataSender.UnlinkAccount();
+                        Plugin.plugin.Configuration.account.accountName = string.Empty;
+                        Plugin.plugin.Configuration.account.accountKey = string.Empty;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("This will remove your account.\nYou will not loose your profiles if you create a new one.\nOnly do this if you wish to create a new account.");
+                }
             }
-            if(Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
+            if (Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
             {
                 MainUI.LoadMainUI(Plugin.plugin);
             }
             else
             {
 
-                if (ImGui.Button("Start Here!", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                if (ImGui.Button("Get Started!", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
                     openTagPopup = true;
-                    ImGui.OpenPopup("Register User Tag");
+                    ImGui.OpenPopup("Register Account");
                 }
 
             }
-
-
             // Popup logic
             if (openTagPopup)
             {
                 ImGui.SetNextWindowSize(new Vector2(350, 0), ImGuiCond.Always);
-                if (ImGui.BeginPopupModal("Register User Tag", ref openTagPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                if (ImGui.BeginPopupModal("Register Account", ref openTagPopup, ImGuiWindowFlags.AlwaysAutoResize))
                 {
-                    ImGui.Text("Please specify a unique user tag");
+                    ImGui.Text("Please specify a unique user name");
 
-                    ImGui.InputText("User Tag", ref tempTagName, 25);
+                    ImGui.InputText("User Name", ref tempTagName, 25);
 
 
                     using (ImRaii.Disabled(tempTagName == string.Empty))
@@ -211,7 +219,6 @@ public class MainPanel : Window, IDisposable
                     ImGui.EndPopup();
                 }
             }
-
             if (Plugin.plugin.Configuration.showKofi)
             {
                 var currentCursorY = ImGui.GetCursorPosY();
@@ -239,24 +246,33 @@ public class MainPanel : Window, IDisposable
                     Util.OpenLink("https://discord.gg/absolute-roleplay");
                 }
             }
-
-
             if (loggedIn == false && viewProfile == false && viewListings == false)
             {
                 var serverStatusPosY = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
             }
-            
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             {
                 ImGui.SetTooltip("Please set a user tag to access this feature.");
             }
             ImGui.TextColored(serverStatusColor, serverStatus);
             ImGui.SameLine();
-            if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+
+            if (!ClientTCP.Connected)
             {
-                ClientTCP.AttemptConnect();
-                Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+                {
+                    ClientTCP.AttemptConnect();
+                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                }
+            }
+            else
+            {
+                if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+                {
+                    ClientTCP.Disconnect();
+                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                }
             }
             if (loggedIn == false && viewProfile == false && viewListings == false)
             {
@@ -269,7 +285,7 @@ public class MainPanel : Window, IDisposable
             }
 
 
-        } 
+        }
         catch (Exception e)
         {
             Plugin.PluginLog.Debug("MainPanel Draw Debug: " + e.Message);

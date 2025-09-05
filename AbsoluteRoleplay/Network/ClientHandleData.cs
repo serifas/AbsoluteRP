@@ -32,8 +32,6 @@ namespace Networking
             packets.Add((int)ServerPackets.CProfileAlreadyReported, DataReceiver.RecProfileAlreadyReported);
             packets.Add((int)ServerPackets.SRecNoTargetProfile, DataReceiver.NoTargetProfile);
             packets.Add((int)ServerPackets.SSendNoAuthorization, DataReceiver.ReceiveNoAuthorization);
-            packets.Add((int)ServerPackets.SSendVerificationMessage, DataReceiver.ReceiveVerificationMessage);
-            packets.Add((int)ServerPackets.SSendPasswordModificationForm, DataReceiver.ReceivePasswordModificationForm);
             packets.Add((int)ServerPackets.ReceiveConnections, DataReceiver.ReceiveConnections);
             packets.Add((int)ServerPackets.ReceiveNewConnectionRequest, DataReceiver.ReceiveConnectionsRequest);
             packets.Add((int)ServerPackets.RecieveTargetTooltip, DataReceiver.ReceiveTargetTooltip);
