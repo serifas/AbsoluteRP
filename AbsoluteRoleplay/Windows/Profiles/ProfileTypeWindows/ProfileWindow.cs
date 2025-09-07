@@ -80,11 +80,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public static bool AddInputImageElement { get; private set; }
         public static bool editBackground { get; private set; }
         public static bool Sending { get; set; } = false;
+        public static bool VerificationFailed { get; internal set; } = false;
 
         public static bool editAvatar = false;
         private static int currentProfileType;
         public static string NewProfileTitle = string.Empty;
         public static bool Fetching = false;
+        public static bool checking;
 
         public ProfileWindow() : base(
        "PROFILE", ImGuiWindowFlags.None)
@@ -226,6 +228,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                 }
                                 if (VerificationSucceeded)
                                 {
+
                                     DataSender.FetchProfiles(character);
                                     DataSender.FetchProfile(Plugin.character, true, 0, Plugin.character.characterName, Plugin.character.characterWorld, -1);
                                 }
@@ -238,13 +241,24 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                             DataSender.SubmitLodestoneURL(LodeSUrl, Plugin.plugin.Configuration.account.accountKey, false);
                                         }
                                     }
-                                    if (ImGui.Button("Verify Lodestone"))
+                                    // ... inside your popup logic
+                                    using (ImRaii.Disabled(checking))
                                     {
-                                        if(LodeSUrl != string.Empty)
+                                        // Only allow pressing the button if not already checking
+                                        if (ImGui.Button("Verify Lodestone") && !checking)
                                         {
-                                            DataSender.CheckLodestoneEntry(LodeSUrl, false);
+                                            checking = true;
+                                            if (LodeSUrl != string.Empty)
+                                            {
+                                                DataSender.CheckLodestoneEntry(LodeSUrl, false);
+                                                // Set checking = false in your callback/response handler, not here!
+                                            }
                                         }
                                     }
+                                }
+                                if (VerificationFailed)
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), "Verification Failed");
                                 }
                             }
                             ImGui.SameLine();

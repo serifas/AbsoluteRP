@@ -400,10 +400,13 @@ namespace Networking
                         Plugin.plugin.Configuration.Save();
 
                         ProfileWindow.VerificationSucceeded = true;
+                        ProfileWindow.checking = false;
                     }
                     if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATIO_INVALID_LODESTONE)
                     {
+                        ProfileWindow.VerificationFailed = true;
                         ProfileWindow.VerificationSucceeded = false;
+                        ProfileWindow.checking = false;
                     }
                     if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATION_LODESTONE_KEY)
                     {
