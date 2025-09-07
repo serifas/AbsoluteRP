@@ -178,10 +178,7 @@ namespace AbsoluteRP.Windows.Profiles
                             }
                         }
                     }
-
-
                 }
-
             }
             catch (Exception ex)
             {

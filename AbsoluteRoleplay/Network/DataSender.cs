@@ -19,6 +19,7 @@ using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 namespace Networking
 {
@@ -102,13 +103,14 @@ namespace Networking
         SendLodestoneURL = 77,
         SendCheckLodestoneEntry = 78,
         UnlinkAccount = 79,
+        RestoreAccount = 80,
     }
     public class DataSender
     {
         public static int userID;
         public static Plugin plugin;
 
-        internal static async void CheckLodestoneEntry(string lodeSUrl)
+        internal static async void CheckLodestoneEntry(string lodeSUrl, bool restoration)
         {
             if (ClientTCP.IsConnected())
             {
@@ -119,6 +121,7 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.SendCheckLodestoneEntry);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
                         buffer.WriteString(lodeSUrl);
+                        buffer.WriteBool(restoration);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -147,7 +150,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SubmitLodestoneURL(string lodeSUrl, string account_tag)
+        internal static async void SubmitLodestoneURL(string lodeSUrl, string account_tag, bool restoration)
         {
             if (ClientTCP.IsConnected())
             {
@@ -158,6 +161,7 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.SendLodestoneURL);
                         buffer.WriteString(account_tag);
                         buffer.WriteString(lodeSUrl);
+                        buffer.WriteBool(restoration);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -350,13 +354,14 @@ namespace Networking
         }
         public static async void FetchProfile(Character character, bool self, int profileIndex, string targetName, string targetWorld, int profileID)
         {
-            Plugin.PluginLog.Error(targetName + " " + targetWorld + " " + profileIndex);
             if (ClientTCP.IsConnected())
             {
                 try
                 {
+
                     // Always reset loader tweens and counters before loading
                     ResetAllData();
+
 
                     if (!self)
                     {
@@ -366,6 +371,8 @@ namespace Networking
                         DataReceiver.loadedTargetGalleryImages = 0;
                         DataReceiver.TargetGalleryImagesToLoad = 0;
 
+
+                        //Reset target profile tabs
                         // Only proceed if the target window is in a default state
                         if (!TargetProfileWindow.IsDefault())
                             return;
@@ -377,6 +384,9 @@ namespace Networking
                         DataReceiver.tabsCount = 0;
                         DataReceiver.loadedGalleryImages = 0;
                         DataReceiver.GalleryImagesToLoad = 0;
+
+                        //Reset profile tabs
+
                     }
 
                     using (var buffer = new ByteBuffer())
@@ -575,31 +585,7 @@ namespace Networking
                 }
             }
         }
-        public static async void RequestTargetProfiles(Character character, string targetPlayerName, string targetPlayerWorld)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        BookmarksWindow.profileList.Clear();
-                        buffer.WriteInt((int)ClientPackets.RequestTargetProfileByCharacter);
-                        buffer.WriteString(plugin.Configuration.account.accountKey);
-                        buffer.WriteString(character.characterKey);
-                        buffer.WriteString(targetPlayerName);
-                        buffer.WriteString(targetPlayerWorld);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in SubmitProfileBio: " + ex.ToString());
-                }
-            }
-
-        }
+   
         public static async void RequestTargetProfile(Character character, int profileID)
         {
             if (ClientTCP.IsConnected())
@@ -1738,6 +1724,7 @@ namespace Networking
                 }
             }
         }
+        /*
         internal static async void RequestCompassFromList(Character character, List<IPlayerCharacter> players)
         {
             if (ClientTCP.IsConnected())
@@ -1764,6 +1751,8 @@ namespace Networking
                 }
             }
         }
+        */
+       
 
         /*
 public static async void SendTreeData(int profileIndex, TreeNode rootNode)

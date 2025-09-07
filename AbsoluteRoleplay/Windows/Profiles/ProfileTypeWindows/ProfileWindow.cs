@@ -205,9 +205,14 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                             if (lodeStoneKey == string.Empty)
                             {
+                                
                                 if (ImGui.Button("Submit", new Vector2(120, 0)))
-                                {
-                                    DataSender.SubmitLodestoneURL(LodeSUrl, Plugin.plugin.Configuration.account.accountKey);
+                                {       
+                                    if(LodeSUrl != string.Empty)
+                                    {
+                                        DataSender.SubmitLodestoneURL(LodeSUrl, Plugin.plugin.Configuration.account.accountKey, false);
+                                    }
+                                    
                                 }
                             }
                             if (lodeStoneKey != string.Empty)
@@ -226,9 +231,19 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                 }
                                 else
                                 {
+                                    if(ImGui.Button("Request New Key"))
+                                    {
+                                        if(LodeSUrl != string.Empty)
+                                        {
+                                            DataSender.SubmitLodestoneURL(LodeSUrl, Plugin.plugin.Configuration.account.accountKey, false);
+                                        }
+                                    }
                                     if (ImGui.Button("Verify Lodestone"))
                                     {
-                                        DataSender.CheckLodestoneEntry(LodeSUrl);
+                                        if(LodeSUrl != string.Empty)
+                                        {
+                                            DataSender.CheckLodestoneEntry(LodeSUrl, false);
+                                        }
                                     }
                                 }
                             }
@@ -242,109 +257,110 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             ImGui.EndPopup();
                         }
                     }
-                }
-                bool tabsLoading = DataReceiver.loadedTabsCount < DataReceiver.tabsCount;
-                bool galleryLoading = DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad;
-                if (tabsLoading || galleryLoading)
-                {
-                    if (tabsLoading)
-                        Misc.StartLoader(DataReceiver.loadedTabsCount, DataReceiver.tabsCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize(), "tabs");
-                    if (galleryLoading)
-                        Misc.StartLoader(DataReceiver.loadedGalleryImages, DataReceiver.GalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize(), "gallery");
-                    return;
-
-                }
-
-                // Block further UI until all tweens are finished
-                if ((tabsLoading && Misc.IsLoaderTweening("tabs")) ||
-                    (galleryLoading && Misc.IsLoaderTweening("gallery")))
-                {
-                    return;
-                }
-                if (Sending)
-                {
-                    Misc.SetTitle(Plugin.plugin, true, "Sending Data", new Vector4(1, 1, 0, 1));   
-                    return; // Skip drawing the rest of the window while sending data
-                }
-                if (Fetching)
-                {
-                    Misc.SetTitle(Plugin.plugin, true, "Fetching Data", new Vector4(1, 1, 0, 1));
-                    return; // Skip drawing the rest of the window while fetching data
-                }
-                else
-                {
-                    if (Locked)
+                }else{
+                    bool tabsLoading = DataReceiver.loadedTabsCount < DataReceiver.tabsCount;
+                    bool galleryLoading = DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad;
+                    if (tabsLoading || galleryLoading)
                     {
-                        this.Flags = ImGuiWindowFlags.NoMove;
+                        if (tabsLoading)
+                            Misc.StartLoader(DataReceiver.loadedTabsCount, DataReceiver.tabsCount, $"Loading Profile Tabs {DataReceiver.loadedTabsCount + 1}", ImGui.GetWindowSize(), "tabs");
+                        if (galleryLoading)
+                            Misc.StartLoader(DataReceiver.loadedGalleryImages, DataReceiver.GalleryImagesToLoad, $"Loading Gallery Images {DataReceiver.loadedGalleryImages + 1}", ImGui.GetWindowSize(), "gallery");
+                        return;
+
                     }
-                    else
+
+                    // Block further UI until all tweens are finished
+                    if ((tabsLoading && Misc.IsLoaderTweening("tabs")) ||
+                        (galleryLoading && Misc.IsLoaderTweening("gallery")))
                     {
-                        this.Flags = ImGuiWindowFlags.None;
-                    }
-                    DataReceiver.tabsCount = 0;
-                    DataReceiver.loadedTabsCount = 0;
-                    // Early out: show loader and skip all checks if still loading                  
-
-                    // Fallback initialization for static fields (runs only after loading is done)
-                    if (pictureTab == null)
-                        pictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-
-                    if (avatarHolder == null)
-                        avatarHolder = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
-
-                    if (currentAvatarImg == null)
-                        currentAvatarImg = pictureTab ?? avatarHolder;
-
-                    // Only proceed if all required fields are now initialized
-                    if (!CheckIfNull())
-                    {
-                        ImGui.Text("Profile window is still loading...");
                         return;
                     }
-
-                    if (Locked)
+                    if (Sending)
                     {
-                        this.Flags = ImGuiWindowFlags.NoMove;
+                        Misc.SetTitle(Plugin.plugin, true, "Sending Data", new Vector4(1, 1, 0, 1));   
+                        return; // Skip drawing the rest of the window while sending data
+                    }
+                    if (Fetching)
+                    {
+                        Misc.SetTitle(Plugin.plugin, true, "Fetching Data", new Vector4(1, 1, 0, 1));
+                        return; // Skip drawing the rest of the window while fetching data
                     }
                     else
                     {
-                        this.Flags = ImGuiWindowFlags.None;
-                    }
-
-                    if (Plugin.plugin.IsOnline())
-                    {
-                        _fileDialogManager.Draw();
-
-                        ImGui.SameLine();
-                        if (ImGui.Button("Add Profile"))
+                        if (Locked)
                         {
-                            showTypeCreation = true;
-                        }
-                        if (profiles.Count > 0 && ExistingProfile == true)
-                        {
-                            AddProfileSelection();
-                            ImGui.SameLine();
-                            if (ImGui.Button("Preview Profile"))
-                            {
-                                TargetProfileWindow.RequestingProfile = true;
-                                TargetProfileWindow.ResetAllData();
-                                Plugin.plugin.OpenTargetWindow();
-                                DataSender.FetchProfile(Plugin.character, false, CurrentProfile.index, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
-                            }
-                            DrawProfile();
-                        }
-                        if (profiles.Count <= 0)
-                        {
-                            ExistingProfile = false;
+                            this.Flags = ImGuiWindowFlags.NoMove;
                         }
                         else
                         {
-                            ExistingProfile = true;
+                            this.Flags = ImGuiWindowFlags.None;
                         }
-                        if (showTypeCreation == true)
+                        DataReceiver.tabsCount = 0;
+                        DataReceiver.loadedTabsCount = 0;
+                        // Early out: show loader and skip all checks if still loading                  
+
+                        // Fallback initialization for static fields (runs only after loading is done)
+                        if (pictureTab == null)
+                            pictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+
+                        if (avatarHolder == null)
+                            avatarHolder = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+
+                        if (currentAvatarImg == null)
+                            currentAvatarImg = pictureTab ?? avatarHolder;
+
+                        // Only proceed if all required fields are now initialized
+                        if (!CheckIfNull())
                         {
-                            ImGui.OpenPopup($"Profile Creation##{profiles.Count}");
-                            RenderProfileTypeCreation(profiles.Count);
+                            ImGui.Text("Profile window is still loading...");
+                            return;
+                        }
+
+                        if (Locked)
+                        {
+                            this.Flags = ImGuiWindowFlags.NoMove;
+                        }
+                        else
+                        {
+                            this.Flags = ImGuiWindowFlags.None;
+                        }
+
+                        if (Plugin.plugin.IsOnline())
+                        {
+                            _fileDialogManager.Draw();
+
+                            ImGui.SameLine();
+                            if (ImGui.Button("Add Profile"))
+                            {
+                                showTypeCreation = true;
+                            }
+                            if (profiles.Count > 0 && ExistingProfile == true)
+                            {
+                                AddProfileSelection();
+                                ImGui.SameLine();
+                                if (ImGui.Button("Preview Profile"))
+                                {
+                                    TargetProfileWindow.RequestingProfile = true;
+                                    TargetProfileWindow.ResetAllData();
+                                    Plugin.plugin.OpenTargetWindow();
+                                    DataSender.FetchProfile(Plugin.character, false, CurrentProfile.index, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                                }
+                                DrawProfile();
+                            }
+                            if (profiles.Count <= 0)
+                            {
+                                ExistingProfile = false;
+                            }
+                            else
+                            {
+                                ExistingProfile = true;
+                            }
+                            if (showTypeCreation == true)
+                            {
+                                ImGui.OpenPopup($"Profile Creation##{profiles.Count}");
+                                RenderProfileTypeCreation(profiles.Count);
+                            }
                         }
                     }
                 }

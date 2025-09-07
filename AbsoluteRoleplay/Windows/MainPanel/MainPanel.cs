@@ -26,7 +26,8 @@ public class MainPanel : Window, IDisposable
     public static int width = 0, height = 0;
     public static bool Remember = false;
     public bool AutoLogin = true;
-    public static float paddingX = 0;
+    public static float paddingX = 0; 
+    private bool openRemoveAccountPopup = false;
     public static float buttonWidth = 0;
     public static float buttonHeight = 0;
     //duh
@@ -45,8 +46,10 @@ public class MainPanel : Window, IDisposable
                                  combatImage, statSystemImage,
                                  reconnectImage;
     public static bool LoggedIN = false;
+    public static string lodeStoneKey = string.Empty;
     public static Vector2 ButtonSize = new Vector2();
     public static float centeredX = 0f;
+
     public MainPanel() : base(
         "ABSOLUTE ROLEPLAY",
         ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
@@ -154,23 +157,59 @@ public class MainPanel : Window, IDisposable
 
             centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
             if (Plugin.plugin?.Configuration?.account != null &&
-                !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountKey) &&
-                !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountName))
+              !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountKey) &&
+              !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountName))
             {
                 Misc.SetTitle(Plugin.plugin, true, Plugin.plugin.Configuration.account.accountName, new Vector4(0, 1, 0, 0));
                 using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                 {
                     if (ImGui.Button("Remove Account", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                     {
-                        DataSender.UnlinkAccount();
-                        Plugin.plugin.Configuration.account.accountName = string.Empty;
-                        Plugin.plugin.Configuration.account.accountKey = string.Empty;
-                        Plugin.plugin.Configuration.Save();
+                        openRemoveAccountPopup = true;
+                        ImGui.OpenPopup("Remove Account?");
                     }
                 }
-                if (ImGui.IsItemHovered())
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 {
-                    ImGui.SetTooltip("This will remove your account.\nYou will not loose your profiles if you create a new one.\nOnly do this if you wish to create a new account.");
+                    ImGui.SetTooltip("Hold Ctrl to enable");
+                }
+
+                // Remove Account Confirmation Popup
+                if (openRemoveAccountPopup)
+                {
+                    ImGui.SetNextWindowSize(new Vector2(350, 0), ImGuiCond.Always);
+                    if (ImGui.BeginPopupModal("Remove Account?", ref openRemoveAccountPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                    {
+                        ImGui.TextColored(new Vector4(1, 0.2f, 0.2f, 1), "Are you sure you want to remove this account?");
+                        ImGui.Spacing();
+                        using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                        {
+                            if (ImGui.Button("Confirm", new Vector2(120, 0)))
+                            {
+                                DataSender.UnlinkAccount();
+                                Plugin.plugin.Configuration.account.accountName = string.Empty;
+                                Plugin.plugin.Configuration.account.accountKey = string.Empty;
+                                Plugin.plugin.Configuration.characters.Remove(
+                                    Plugin.plugin.Configuration.characters.FirstOrDefault(
+                                        x => x.characterName == Plugin.character.characterName &&
+                                             x.characterWorld == Plugin.character.characterWorld));
+                                Plugin.plugin.Configuration.Save();
+                                openRemoveAccountPopup = false;
+                                ImGui.CloseCurrentPopup();
+                            }
+                        }
+                        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                        {
+                            ImGui.SetTooltip("Hold Ctrl to enable");
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                        {
+                            openRemoveAccountPopup = false;
+                            ImGui.CloseCurrentPopup();
+                        }
+                        ImGui.EndPopup();
+                    }
                 }
             }
             if (Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
@@ -185,7 +224,6 @@ public class MainPanel : Window, IDisposable
                     openTagPopup = true;
                     ImGui.OpenPopup("Register Account");
                 }
-
             }
             // Popup logic
             if (openTagPopup)
@@ -219,6 +257,8 @@ public class MainPanel : Window, IDisposable
                     ImGui.EndPopup();
                 }
             }
+
+         
             if (Plugin.plugin.Configuration.showKofi)
             {
                 var currentCursorY = ImGui.GetCursorPosY();
@@ -251,10 +291,8 @@ public class MainPanel : Window, IDisposable
                 var serverStatusPosY = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
             }
-            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            {
-                ImGui.SetTooltip("Please set a user tag to access this feature.");
-            }
+            float xpos = ImGui.GetCursorPosX();
+            ImGui.SetCursorPosX(xpos + 10);
             ImGui.TextColored(serverStatusColor, serverStatus);
             ImGui.SameLine();
 
@@ -279,12 +317,11 @@ public class MainPanel : Window, IDisposable
                 var statusPosY = ImGui.GetCursorPosY();
                 ImGui.SetCursorPos(new Vector2(centeredX, statusPosY));
             }
+            ImGui.SetCursorPosX(xpos + 10);
             using (ImRaii.PushColor(ImGuiCol.Text, statusColor))
             {
                 ImGui.TextWrapped(status);
             }
-
-
         }
         catch (Exception e)
         {

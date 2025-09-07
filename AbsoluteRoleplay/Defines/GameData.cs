@@ -60,22 +60,29 @@ namespace AbsoluteRP.Defines
         Crystal_Mateus,
         Crystal_Zalera,
         // Dynamis
+        Dynamis_Cuchulainn, //new
+        Dynamis_Golem, //new
         Dynamis_Halicarnassus,
+        Dynamis_Kraken, //new
         Dynamis_Maduin,
         Dynamis_Marilith,
+        Dynamis_Rafflesia, //new
         Dynamis_Seraph,
         // Chaos
         Chaos_Cerberus,
         Chaos_Louisoix,
         Chaos_Moogle,
         Chaos_Omega,
+        Chaos_Phantom, //new
         Chaos_Ragnarok,
         Chaos_Sagittarius,
         Chaos_Spriggan,
         // Light
+        Light_Alpha, //new
         Light_Lich,
         Light_Odin,
         Light_Phoenix,
+        Light_Raiden, // new
         Light_Shiva,
         Light_Twintania,
         Light_Zodiark,
@@ -88,7 +95,6 @@ namespace AbsoluteRP.Defines
         Elemental_Kujata,
         Elemental_Tonberry,
         Elemental_Typhon,
-        Elemental_Unicorn,
         // Gaia
         Gaia_Alexander,
         Gaia_Bahamut,
@@ -98,9 +104,6 @@ namespace AbsoluteRP.Defines
         Gaia_Ridill,
         Gaia_Tiamat,
         Gaia_Ultima,
-        Gaia_Valefor,
-        Gaia_Yojimbo,
-        Gaia_Zeromus,
         // Mana
         Mana_Anima,
         Mana_Asura,
@@ -109,7 +112,6 @@ namespace AbsoluteRP.Defines
         Mana_Ixion,
         Mana_Masamune,
         Mana_Pandemonium,
-        Mana_Shinryu,
         Mana_Titan,
         // Meteor
         Meteor_Belias,
@@ -118,6 +120,8 @@ namespace AbsoluteRP.Defines
         Meteor_Shinryu,
         Meteor_Unicorn,
         Meteor_Valefor,
+        Meteor_Yojimbo,
+        Meteor_Zeromus, //new
         // Materia
         Materia_Bismarck,
         Materia_Ravana,
@@ -207,45 +211,42 @@ namespace AbsoluteRP.Defines
             },
                 FFXIVDataCenter.Dynamis => new List<FFXIVWorld>
             {
-            FFXIVWorld.Dynamis_Halicarnassus, FFXIVWorld.Dynamis_Maduin, FFXIVWorld.Dynamis_Marilith, FFXIVWorld.Dynamis_Seraph
+            FFXIVWorld.Dynamis_Halicarnassus, FFXIVWorld.Dynamis_Maduin, FFXIVWorld.Dynamis_Marilith, FFXIVWorld.Dynamis_Seraph,
+            FFXIVWorld.Dynamis_Cuchulainn, FFXIVWorld.Dynamis_Golem, FFXIVWorld.Dynamis_Kraken, FFXIVWorld.Dynamis_Rafflesia
             },
                 FFXIVDataCenter.Chaos => new List<FFXIVWorld>
             {
             FFXIVWorld.Chaos_Cerberus, FFXIVWorld.Chaos_Louisoix, FFXIVWorld.Chaos_Moogle, FFXIVWorld.Chaos_Omega,
-            FFXIVWorld.Chaos_Ragnarok, FFXIVWorld.Chaos_Sagittarius, FFXIVWorld.Chaos_Spriggan
+            FFXIVWorld.Chaos_Ragnarok, FFXIVWorld.Chaos_Sagittarius, FFXIVWorld.Chaos_Spriggan, FFXIVWorld.Chaos_Phantom
             },
                 FFXIVDataCenter.Light => new List<FFXIVWorld>
             {
             FFXIVWorld.Light_Lich, FFXIVWorld.Light_Odin, FFXIVWorld.Light_Phoenix, FFXIVWorld.Light_Shiva,
-            FFXIVWorld.Light_Twintania, FFXIVWorld.Light_Zodiark
+            FFXIVWorld.Light_Twintania, FFXIVWorld.Light_Zodiark, FFXIVWorld.Light_Alpha, FFXIVWorld.Light_Raiden
             },
                 FFXIVDataCenter.Elemental => new List<FFXIVWorld>
             {
             FFXIVWorld.Elemental_Aegis, FFXIVWorld.Elemental_Atomos, FFXIVWorld.Elemental_Carbuncle, FFXIVWorld.Elemental_Garuda,
-            FFXIVWorld.Elemental_Gungnir, FFXIVWorld.Elemental_Kujata, FFXIVWorld.Elemental_Tonberry, FFXIVWorld.Elemental_Typhon,
-            FFXIVWorld.Elemental_Unicorn
+            FFXIVWorld.Elemental_Gungnir, FFXIVWorld.Elemental_Kujata, FFXIVWorld.Elemental_Tonberry, FFXIVWorld.Elemental_Typhon
             },
                 FFXIVDataCenter.Gaia => new List<FFXIVWorld>
             {
             FFXIVWorld.Gaia_Alexander, FFXIVWorld.Gaia_Bahamut, FFXIVWorld.Gaia_Durandal, FFXIVWorld.Gaia_Fenrir,
-            FFXIVWorld.Gaia_Ifrit, FFXIVWorld.Gaia_Ridill, FFXIVWorld.Gaia_Tiamat, FFXIVWorld.Gaia_Ultima,
-            FFXIVWorld.Gaia_Valefor, FFXIVWorld.Gaia_Yojimbo, FFXIVWorld.Gaia_Zeromus
+            FFXIVWorld.Gaia_Ifrit, FFXIVWorld.Gaia_Ridill, FFXIVWorld.Gaia_Tiamat, FFXIVWorld.Gaia_Ultima
             },
                 FFXIVDataCenter.Mana => new List<FFXIVWorld>
             {
             FFXIVWorld.Mana_Anima, FFXIVWorld.Mana_Asura, FFXIVWorld.Mana_Chocobo, FFXIVWorld.Mana_Hades,
-            FFXIVWorld.Mana_Ixion, FFXIVWorld.Mana_Masamune, FFXIVWorld.Mana_Pandemonium, FFXIVWorld.Mana_Shinryu,
-            FFXIVWorld.Mana_Titan
+            FFXIVWorld.Mana_Ixion, FFXIVWorld.Mana_Masamune, FFXIVWorld.Mana_Pandemonium, FFXIVWorld.Mana_Titan
             },
                 FFXIVDataCenter.Meteor => new List<FFXIVWorld>
             {
             FFXIVWorld.Meteor_Belias, FFXIVWorld.Meteor_Mandragora, FFXIVWorld.Meteor_Ramuh, FFXIVWorld.Meteor_Shinryu,
-            FFXIVWorld.Meteor_Unicorn, FFXIVWorld.Meteor_Valefor
+            FFXIVWorld.Meteor_Unicorn, FFXIVWorld.Meteor_Valefor, FFXIVWorld.Meteor_Yojimbo, FFXIVWorld.Meteor_Zeromus
             },
                 FFXIVDataCenter.Materia => new List<FFXIVWorld>
             {
-            FFXIVWorld.Materia_Bismarck, FFXIVWorld.Materia_Ravana, FFXIVWorld.Materia_Sephirot, FFXIVWorld.Materia_Sophia,
-            FFXIVWorld.Materia_Zurvan
+            FFXIVWorld.Materia_Bismarck, FFXIVWorld.Materia_Ravana, FFXIVWorld.Materia_Sephirot, FFXIVWorld.Materia_Sophia, FFXIVWorld.Materia_Zurvan
             },
                 _ => new List<FFXIVWorld>()
             };

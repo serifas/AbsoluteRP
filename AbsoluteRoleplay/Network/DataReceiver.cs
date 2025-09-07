@@ -400,7 +400,6 @@ namespace Networking
                         Plugin.plugin.Configuration.Save();
 
                         ProfileWindow.VerificationSucceeded = true;
-                        Plugin.PluginLog.Error(ProfileWindow.VerificationSucceeded.ToString());
                     }
                     if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATIO_INVALID_LODESTONE)
                     {
@@ -1420,13 +1419,16 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int tabCount = buffer.ReadInt();
                     bool self = buffer.ReadBool();
+
                     if (self)
                     {
                         tabsCount = tabCount;
+                        ProfileWindow.CurrentProfile.customTabs.Clear();
                     }
                     else
                     {
                         tabsTargetCount = tabCount;
+                        TargetProfileWindow.profileData.customTabs.Clear();
                     }
                 }
             }
@@ -1923,10 +1925,6 @@ namespace Networking
             catch (Exception ex)
             {
                 Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
-            }
-            finally
-            {
-                loadedTabsCount += 1;
             }
         }
 
