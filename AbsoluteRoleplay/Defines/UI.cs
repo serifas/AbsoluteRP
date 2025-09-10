@@ -1242,32 +1242,29 @@ namespace AbsoluteRP
         public int id { get; set; }
         public string name { get; set; }
     }
-    
+
     public class Listing
     {
-        public int id { get; set; }
-        public string name { get; set; }
-        public IDalamudTextureWrap avatar { get; set; } // Avatar for the listing, used in the gallery
-        public string description { get; set; }
-        public string rules { get; set; }
-        public int category { get; set; }
-        public int type { get; set; } // 0 = all, 1 = personals
-        public int focus { get; set; }
-        public int setting { get; set; }
-        public IDalamudTextureWrap banner { get; set; }
-        public int inclusion { get; set; }
-        public string startDate { get; set; }
-        public string endDate { get; set; }
-        public bool ARR { get; set; }
-        public bool HW { get; set; }
-        public bool SB { get; set; }
-        public bool SHB { get; set; }
-        public bool EW { get; set; }
-        public bool DT { get; set; }
+        public int id { get; set; } = 0;
+        public string name { get; set; } = string.Empty;
+        public IDalamudTextureWrap avatar { get; set; } = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+        public string description { get; set; } = string.Empty;
+        public string rules { get; set; } = string.Empty;
+        public int category { get; set; } = 0;
+        public int type { get; set; } = 0; // 0 = all, 1 = personals
+        public int focus { get; set; } = 0;
+        public int setting { get; set; } = 0;
+        public IDalamudTextureWrap banner { get; set; } = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+        public int inclusion { get; set; } = 0;
+        public string startDate { get; set; } = string.Empty;
+        public string endDate { get; set; } = string.Empty;
+        public bool ARR { get; set; } = false;
+        public bool HW { get; set; } = false;
+        public bool SB { get; set; } = false;
+        public bool SHB { get; set; } = false;
+        public bool EW { get; set; } = false;
+        public bool DT { get; set; } = false;
         public Vector4 color { get; set; } = new Vector4(1, 1, 1, 1); // Default white color
-
-
-
     }
 }
 

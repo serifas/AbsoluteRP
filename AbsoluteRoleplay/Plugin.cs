@@ -300,7 +300,7 @@ namespace AbsoluteRP
                     DataSender.FetchProfile(Plugin.character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
-            args.AddMenuItem(new MenuItem
+          /*  args.AddMenuItem(new MenuItem
             {
                 Name = "Trade ARP Items",
                 PrefixColor = 56,
@@ -308,7 +308,7 @@ namespace AbsoluteRP
                 OnClicked = _ => {
                     DataSender.RequestTargetTrade(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
-            });
+            });*/
         }
 
         private Version? cachedVersion = null;

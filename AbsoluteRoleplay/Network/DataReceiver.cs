@@ -401,6 +401,8 @@ namespace Networking
 
                         ProfileWindow.VerificationSucceeded = true;
                         ProfileWindow.checking = false;
+                        DataSender.FetchProfiles(character);
+                        DataSender.FetchProfile(character, true, 0, character.characterName, character.characterWorld, -1);
                     }
                     if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATIO_INVALID_LODESTONE)
                     {

@@ -23,7 +23,7 @@ namespace Networking
         public static TcpClient clientSocket;
         public static SslStream sslStream;
         private static byte[] recBuffer = new byte[8192];
-        private static readonly string server = "jointest.infinite-roleplay.net";
+        private static readonly string server = "join.absolute-roleplay.net";
         private static readonly int port = 53921;
         public static Plugin Plugin;
 
