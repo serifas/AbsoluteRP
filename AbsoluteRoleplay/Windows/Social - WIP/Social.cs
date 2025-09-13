@@ -89,8 +89,13 @@ namespace AbsoluteRP.Windows.Listings
                     }
                     DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                 }
+                if (listings.Count == 0)
+                {
+                    ImGui.TextUnformatted("No listings loaded.");
+                    return;
+                }
                 // Draw personal listings
-                using (ImRaii.Table("Personal Listings", 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
+                using (ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
                 {
                     ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
                     ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
@@ -167,7 +172,9 @@ namespace AbsoluteRP.Windows.Listings
             var regionNames = regions.ConvertAll(GameData.GetRegionName);
             int regionIdx = regions.IndexOf(selectedRegion);
             ImGui.PushItemWidth(ImGui.GetWindowSize().X / 5);
-            using (var regionCombo = ImRaii.Combo("Region", regionNames[regionIdx]))
+            string regionLabel = (regionNames.Count > 0 && regionIdx >= 0) ? regionNames[regionIdx] : "";
+
+            using (var regionCombo = ImRaii.Combo("Region", regionLabel))
             {
                 if (regionCombo)
                 {
@@ -191,8 +198,9 @@ namespace AbsoluteRP.Windows.Listings
             var dataCenters = GameData.GetDataCentersByRegion(selectedRegion);
             var dcNames = dataCenters.ConvertAll(GameData.GetDataCenterName);
             int dcIdx = dataCenters.IndexOf(selectedDataCenter);
+            string dcLabel = (dcNames.Count > 0 && dcIdx >= 0) ? dcNames[dcIdx] : "";
 
-            using (var dcCombo = ImRaii.Combo("Data Center", dcNames.Count > 0 && dcIdx >= 0 ? dcNames[dcIdx] : ""))
+            using (var dcCombo = ImRaii.Combo("Data Center", dcLabel))
             {
                 if (dcCombo)
                 {
@@ -219,6 +227,7 @@ namespace AbsoluteRP.Windows.Listings
                 return idx >= 0 ? name.Substring(idx + 1) : name;
             });
             int worldIdx = worldsList.IndexOf(selectedWorld);
+            string worldLabel = (worldNames.Count > 0 && worldIdx >= 0) ? worldNames[worldIdx] : "";
 
             using (var worldCombo = ImRaii.Combo("World", worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : ""))
             {
