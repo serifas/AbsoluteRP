@@ -188,9 +188,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     {
                         layout.images[j].index = j;
                     }
-
+                    Plugin.PluginLog.Error(i.ToString());
                     //remove the image immediately once pressed
-                    DataSender.RemoveGalleryImage(Plugin.character, ProfileWindow.profileIndex, plugin.playername, plugin.playerworld, i, galleryImageCount);
+                    DataSender.RemoveGalleryImage(Plugin.character, ProfileWindow.profileIndex, i, layout.tabIndex);
                 }
             }
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))

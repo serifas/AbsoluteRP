@@ -254,7 +254,7 @@ namespace Networking
                 }
             }
         }
-        public static async void RemoveGalleryImage(Character character, int profileIndex, string playername, string playerworld, int index, int imageCount)
+        public static async void RemoveGalleryImage(Character character, int profileIndex, int index, int tabIndex)
         {
             if (ClientTCP.IsConnected())
             {
@@ -266,12 +266,9 @@ namespace Networking
                         buffer.WriteInt(profileIndex);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
                         buffer.WriteString(character.characterKey);
-                        buffer.WriteString(playername);
-                        buffer.WriteString(playerworld);
-
                         buffer.WriteInt(index);
-                        buffer.WriteInt(imageCount);
-
+                        buffer.WriteInt(tabIndex);
+                        Plugin.PluginLog.Error(index.ToString());
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1724,7 +1721,7 @@ namespace Networking
                 }
             }
         }
-        /*
+
         internal static async void RequestCompassFromList(Character character, List<IPlayerCharacter> players)
         {
             if (ClientTCP.IsConnected())
@@ -1736,8 +1733,8 @@ namespace Networking
                         buffer.WriteInt((int)ClientPackets.SendCompassRequest);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
                         buffer.WriteString(character.characterKey);
-                        buffer.WriteInt(players.Count);                      
-                        for(int i =0; i < players.Count; i++)
+                        buffer.WriteInt(players.Count);
+                        for (int i = 0; i < players.Count; i++)
                         {
                             buffer.WriteString(players[i].Name.ToString());
                             buffer.WriteString(players[i].HomeWorld.Value.Name.ToString());
@@ -1751,7 +1748,6 @@ namespace Networking
                 }
             }
         }
-        */
        
 
         /*

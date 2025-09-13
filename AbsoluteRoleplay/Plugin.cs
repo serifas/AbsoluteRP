@@ -537,7 +537,7 @@ namespace AbsoluteRP
 
 
                 // Draw compass overlay if enabled and player is present
-                /*if (Configuration != null
+                if (Configuration != null
                      && Configuration.showCompass
                      && IsOnline())
                  {
@@ -568,7 +568,7 @@ namespace AbsoluteRP
                      ImGui.End();
                  }
                 
-            */
+            
             }
             catch (Exception ex)
             {
@@ -717,7 +717,7 @@ namespace AbsoluteRP
                     x => x?.characterName == ClientState.LocalPlayer.Name.ToString()
                       && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
-          /*  if (Configuration.showCompass)
+            if (Configuration.showCompass)
             {
                 fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
                 if (fetchQuestsInRangeTimer >= 25f)
@@ -731,7 +731,7 @@ namespace AbsoluteRP
                         .ToList();
                     DataSender.RequestCompassFromList(character, nearbyPlayers);
                 }
-            }*/
+            }
             // var currentTarget can be null or not an IGameObject, so always check type before using ObjectKind
             var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
 
