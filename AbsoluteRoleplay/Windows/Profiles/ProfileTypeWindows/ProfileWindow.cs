@@ -358,7 +358,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     TargetProfileWindow.RequestingProfile = true;
                                     TargetProfileWindow.ResetAllData();
                                     Plugin.plugin.OpenTargetWindow();
-                                    DataSender.FetchProfile(Plugin.character, false, CurrentProfile.index, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                                    DataSender.FetchProfile(Plugin.character, false, profileIndex, Plugin.character.characterName, Plugin.character.characterWorld, -1);
                                 }
                                 DrawProfile();
                             }
@@ -496,18 +496,25 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             {
                 if (ImGui.Button("Delete Profile"))
                 {
-                    DataSender.DeleteProfile(Plugin.character, profileIndex);
-                    profileIndex -= 1;
-                    if (profileIndex < 0)
+                    try
                     {
-                        profileIndex = 0;
+
+                        profileIndex -= 1;
+                        if (profileIndex < 0)
+                        {
+                            profileIndex = 0;
+                            ExistingProfile = false;
+                            DataSender.DeleteProfile(Plugin.character, profileIndex);
+                        }
                     }
-                    TargetProfileWindow.ResetAllData();
-                    DataSender.FetchProfiles(Plugin.character);
-                    DataSender.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
-                    if (profiles.Count == 0)
+                    catch (Exception ex)
                     {
-                        ExistingProfile = false;
+                        Plugin.PluginLog.Error("Could not delete profile properly", ex.Message);
+                    }
+                    finally
+                    {
+                        Plugin.plugin.CloseProfileWindow();
+                        Plugin.plugin.OpenAndLoadProfileWindow(true, profileIndex);
                     }
                 }
             }
@@ -1094,7 +1101,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     if (ImGui.Selectable(name + "##" + idx, idx == currentProfileType))
                     {
                         profileType = UI.ListingCategoryVals[idx];
-                        currentProfileType = idx;
+                        currentProfileType = idx + 1;
                     }
                     UIHelpers.SelectableHelpMarker(description);
                 }
