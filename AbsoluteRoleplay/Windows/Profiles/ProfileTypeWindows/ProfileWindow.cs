@@ -54,7 +54,8 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public static int profileIndex = 0;
         public static float inputWidth = 500;
         public static IDalamudTextureWrap currentAvatarImg;
-        public static List<ProfileData> profiles = new List<ProfileData>();
+        public static List<ProfileData> profiles = new List<ProfileData>(); 
+        private bool profileTypeCreationJustOpened = false;
         public static ProfileData CurrentProfile = new ProfileData();
         public (string, string) profileType = UI.ListingCategoryVals[(int)ProfileTypes.Personal];
         public (string, string, Type) layoutType = UI.LayoutTypeVals[(int)LayoutTypes.Relationship];
@@ -83,7 +84,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public static bool VerificationFailed { get; internal set; } = false;
 
         public static bool editAvatar = false;
-        private static int currentProfileType;
+        private static int currentProfileType = 5;
         public static string NewProfileTitle = string.Empty;
         public static bool Fetching = false;
         public static bool checking;
@@ -390,7 +391,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         }
         public static void CreateProfile()
         {
-            DataSender.CreateProfile(Plugin.character, NewProfileTitle, currentProfileType, profiles.Count);
+            DataSender.CreateProfile(Plugin.character, NewProfileTitle, currentProfileType + 1, profiles.Count);
             profileIndex = profiles.Count;
             Plugin.PluginLog.Debug(profileIndex.ToString());
             DataSender.FetchProfiles(Plugin.character);
@@ -401,6 +402,14 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         {
             try
             {
+                // Only set the default when the popup is first opened
+                if (showTypeCreation && !profileTypeCreationJustOpened)
+                {
+                    currentProfileType = 5;
+                    profileType = UI.ListingCategoryVals[currentProfileType];
+                    profileTypeCreationJustOpened = true;
+                }
+
                 if (showTypeCreation && ImGui.BeginPopupModal($"Profile Creation##{index}", ref showTypeCreation, ImGuiWindowFlags.AlwaysAutoResize))
                 {
                     ImGui.Text($"Profile Type:");
@@ -410,26 +419,31 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     ImGui.Text("Profile Title:");
                     ImGui.SameLine();
                     ImGui.InputText("##ProfileTitle", ref NewProfileTitle, 50);
-                    // Confirm button
+
                     if (ImGui.Button("Create"))
                     {
                         CreateProfile();
-                        showTypeCreation = false; // Close the popup
+                        showTypeCreation = false;
                         ImGui.CloseCurrentPopup();
                     }
 
                     ImGui.SameLine();
 
-                    // Cancel button
                     if (ImGui.Button("Cancel"))
                     {
-                        showTypeCreation = false; // Close the popup without deleting
+                        showTypeCreation = false;
                         ImGui.CloseCurrentPopup();
                     }
 
                     ImGui.EndPopup();
                 }
-            }catch(Exception ex)
+                else if (!showTypeCreation)
+                {
+                    // Reset the flag when the popup is closed
+                    profileTypeCreationJustOpened = false;
+                }
+            }
+            catch (Exception ex)
             {
                 Plugin.PluginLog.Debug("ProfileWindow RenderProfileTypeCreation Debug: " + ex.Message);
             }
@@ -498,13 +512,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 {
                     try
                     {
-
+                        DataSender.DeleteProfile(Plugin.character, profileIndex);
                         profileIndex -= 1;
                         if (profileIndex < 0)
                         {
                             profileIndex = 0;
                             ExistingProfile = false;
-                            DataSender.DeleteProfile(Plugin.character, profileIndex);
                         }
                     }
                     catch (Exception ex)
@@ -513,8 +526,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     }
                     finally
                     {
-                        Plugin.plugin.CloseProfileWindow();
-                        Plugin.plugin.OpenAndLoadProfileWindow(true, profileIndex);
+                        profiles.Clear();
+                        DataSender.FetchProfiles(Plugin.character);
+                        if(profileIndex > -1)
+                        {
+                            DataSender.FetchProfile(Plugin.character, true, profileIndex, Plugin.character.characterName, Plugin.character.characterWorld, -1);
+                        }
                     }
                 }
             }
@@ -1093,7 +1110,10 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         {
             try
             {
-                using var combo = ImRaii.Combo("##Profiles", profileType.Item1);
+                // Use the current index for the label
+                var currentLabel = UI.ListingCategoryVals[currentProfileType].Item1;
+
+                using var combo = ImRaii.Combo("##Profiles", currentLabel);
                 if (!combo)
                     return;
                 foreach (var ((name, description), idx) in UI.ListingCategoryVals.WithIndex())
@@ -1101,11 +1121,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     if (ImGui.Selectable(name + "##" + idx, idx == currentProfileType))
                     {
                         profileType = UI.ListingCategoryVals[idx];
-                        currentProfileType = idx + 1;
+                        currentProfileType = idx;
                     }
                     UIHelpers.SelectableHelpMarker(description);
                 }
-            }catch(Exception ex)
+            }
+            catch (Exception ex)
             {
                 Plugin.PluginLog.Debug("ProfileWindow DrawProfileTypeSelection Debug: " + ex.Message);
             }
