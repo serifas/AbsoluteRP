@@ -1,13 +1,14 @@
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.MainPanel.Views;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Utility.Raii;
+using Dalamud.Interface.Windowing;
+using Dalamud.Utility;
+using Networking;
 using System;
 using System.Numerics;
-using Dalamud.Interface.Windowing;
-using Networking;
-using Dalamud.Utility;
-using Dalamud.Interface.Textures.TextureWraps;
-using AbsoluteRP.Windows.MainPanel.Views;
-using Dalamud.Interface.Utility.Raii;
-using AbsoluteRP.Helpers;
-using Dalamud.Bindings.ImGui;
 namespace AbsoluteRP.Windows.MainPanel;
 
 public class MainPanel : Window, IDisposable
@@ -16,7 +17,10 @@ public class MainPanel : Window, IDisposable
     //window state toggles
     public static string tagName = string.Empty;
     private bool openTagPopup = false;
+    private bool showMainPanel = false; // Control main panel visibility
     private string tempTagName = string.Empty;
+    private int selectedNavIndex = 0;
+    private Func<bool>[] navButtons;
     public static bool viewProfile, viewSystems, viewEvents, viewConnections, viewListings;
     public static bool login = true;
     public static bool forgot = false;
@@ -37,122 +41,177 @@ public class MainPanel : Window, IDisposable
     public static string status = "";
     public static Vector4 statusColor = new Vector4(255, 255, 255, 255);
     //button images
-    public static IDalamudTextureWrap kofiBtnImg, discoBtn, patreonBtn, profileSectionImage, eventsSectionImage, systemsSectionImage, connectionsSectionImage,
-                                 //profiles
-                                 profileImage, npcImage, profileBookmarkImage, npcBookmarkImage,
-                                 //events and venues
-                                 listingsEvent, listingsCampaign, listingsFC, listingsGroup, listingsVenue, listingsPersonal,
-                                 //systems
-                                 combatImage, statSystemImage,
-                                 reconnectImage;
+ 
     public static bool LoggedIN = false;
     public static string lodeStoneKey = string.Empty;
     public static Vector2 ButtonSize = new Vector2();
     public static float centeredX = 0f;
 
     public MainPanel() : base(
-        "ABSOLUTE ROLEPLAY",
-        ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
-        ImGuiWindowFlags.NoScrollWithMouse)
+        "ABSOLUTE ROLEPLAY")
     {
-        SizeCondition = ImGuiCond.Always;
-        Remember = Plugin.plugin.Configuration.rememberInformation;
+
     }
     public override void OnOpen()
     {
-        var kofi = UI.UICommonImage(UI.CommonImageTypes.kofiBtn);
-        var discod = UI.UICommonImage(UI.CommonImageTypes.discordBtn);
-        var patreon = UI.UICommonImage(UI.CommonImageTypes.patreonBtn);
-        var profileSectionImg = UI.UICommonImage(UI.CommonImageTypes.profileSection);
-        var eventsImg = UI.UICommonImage(UI.CommonImageTypes.eventsSection);
-        var systemsImg = UI.UICommonImage(UI.CommonImageTypes.systemsSection);
-        var connectionsImg = UI.UICommonImage(UI.CommonImageTypes.connectionsSection);
-        var profileImg = UI.UICommonImage(UI.CommonImageTypes.profileCreateProfile);
-        var profileBookmarkImg = UI.UICommonImage(UI.CommonImageTypes.profileBookmarkProfile);
-        var npcImg = UI.UICommonImage(UI.CommonImageTypes.profileCreateNPC);
-        var npcBookmarkImg = UI.UICommonImage(UI.CommonImageTypes.profileBookmarkNPC);
-        var reconnectImg = UI.UICommonImage(UI.CommonImageTypes.reconnect);
-        //listings
-
-        var listingsEventImg = UI.UICommonImage(UI.CommonImageTypes.listingsEventBig);
-        var listingsCampaignImg = UI.UICommonImage(UI.CommonImageTypes.listingsCampaignBig);
-        var listingsFCImg = UI.UICommonImage(UI.CommonImageTypes.listingsFCBig);
-        var listingsGroupImg = UI.UICommonImage(UI.CommonImageTypes.listingsGroupBig);
-        var listingsVenueImg = UI.UICommonImage(UI.CommonImageTypes.listingsVenueBig);
-        var listingsPersonalImg = UI.UICommonImage(UI.CommonImageTypes.listingsPersonalBig);
-        if (kofi != null) { kofiBtnImg = kofi; }
-        if (discod != null) { discoBtn = discod; }
-        if (patreon != null) { patreonBtn = patreon; }
-        if (profileSectionImg != null) { profileSectionImage = profileSectionImg; }
-        if (eventsImg != null) { eventsSectionImage = eventsImg; }
-        if (systemsImg != null) { systemsSectionImage = systemsImg; }
-        if (connectionsImg != null) { connectionsSectionImage = connectionsImg; }
-        if (profileImg != null) { profileImage = profileImg; }
-        if (profileBookmarkImg != null) { profileBookmarkImage = profileBookmarkImg; }
-        if (npcImg != null) { npcImage = npcImg; }
-        if (npcBookmarkImg != null) { npcBookmarkImage = npcBookmarkImg; }
-        if (reconnectImg != null) { reconnectImage = reconnectImg; }
-        //listings
-        if (listingsEventImg != null) { listingsEvent = listingsEventImg; }
-        if (listingsCampaignImg != null) { listingsCampaign = listingsCampaignImg; }
-        if (listingsFCImg != null) { listingsFC = listingsFCImg; }
-        if (listingsGroupImg != null) { listingsGroup = listingsGroupImg; }
-        if (listingsVenueImg != null) { listingsVenue = listingsVenueImg; }
-        if (listingsPersonalImg != null) { listingsPersonal = listingsPersonalImg; }
-
-
     }
 
     public void Dispose()
     {
-        WindowOperations.SafeDispose(kofiBtnImg);
-        kofiBtnImg = null;
-        WindowOperations.SafeDispose(discoBtn);
-        discoBtn = null;
-        WindowOperations.SafeDispose(patreonBtn);
-        patreonBtn = null;
-        WindowOperations.SafeDispose(profileSectionImage);
-        profileSectionImage = null;
-        WindowOperations.SafeDispose(eventsSectionImage);
-        eventsSectionImage = null;
-        WindowOperations.SafeDispose(systemsSectionImage);
-        systemsSectionImage = null;
-        WindowOperations.SafeDispose(connectionsSectionImage);
-        connectionsSectionImage = null;
-        WindowOperations.SafeDispose(profileImage);
-        profileImage = null;
-        WindowOperations.SafeDispose(npcImage);
-        npcImage = null;
-        WindowOperations.SafeDispose(profileBookmarkImage);
-        profileBookmarkImage = null;
-        WindowOperations.SafeDispose(npcBookmarkImage);
-        npcBookmarkImage = null;
-        WindowOperations.SafeDispose(reconnectImage);
-        reconnectImage = null;
-        WindowOperations.SafeDispose(listingsEvent);
-        listingsEvent = null;
-        WindowOperations.SafeDispose(listingsCampaign);
-        listingsCampaign = null;
-        WindowOperations.SafeDispose(listingsFC);
-        listingsFC = null;
-        WindowOperations.SafeDispose(listingsGroup);
-        listingsGroup = null;
-        WindowOperations.SafeDispose(listingsVenue);
-        listingsVenue = null;
-        WindowOperations.SafeDispose(listingsPersonal);
-        listingsPersonal = null;
-        WindowOperations.SafeDispose(combatImage);
-        combatImage = null;
-        WindowOperations.SafeDispose(statSystemImage);
-        statSystemImage = null;
+     
     }
     public override void Draw()
     {
+        // Get MainPanel window position and size
+        Vector2 mainPanelPos = ImGui.GetWindowPos();
+        Vector2 mainPanelSize = ImGui.GetWindowSize();
+
+        // Draw your main panel content here
+        // ... (your tab/content logic) ...
+
+        // --- Navigation Panel (pinned outside, only covers buttons) ---
+        float headerHeight = 48f; // Height of your main panel's header/title bar
+        float buttonHeight = 50f; // Height of each navigation button
+        int buttonCount = 5;      // Number of navigation buttons
+
+        float navWidth = 70f;
+        float navHeight = buttonHeight * buttonCount * 1.2f;
+        DrawMainUI();
+        DrawExtraUI();
+        // Position navigation window to the left of MainPanel, just below the header
+        ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - navWidth, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(navWidth, navHeight), ImGuiCond.Always);
+        ImGui.Begin("##NavigationPanel", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar);
+
+        string[] navTooltips = new[]
+        {
+            "Profiles",
+            "Social",
+            "Systems",
+            "Quests",
+            "Events"
+        };
+        // Define actions for each button
+        Action[] navActions = new Action[]
+        {
+            () => { /* Profiles logic */ 
+                    if (Plugin.plugin.IsOnline())
+                    {
+                        Plugin.plugin.OpenAndLoadProfileWindow(true, ProfileWindow.profileIndex);
+                    } 
+            },
+            () => { /* Social logic */ 
+                        Plugin.plugin.OpenListingsWindow();
+            },
+            () => { /* Systems logic */ viewSystems = true; },
+            () => { /* Quests logic */ viewListings = true; },
+            () => { /* Events logic */ viewEvents = true; }
+        };
+        ImTextureID[] tabIcons = {
+        UI.UICommonImage(UI.CommonImageTypes.listingsPersonal).Handle,
+        UI.UICommonImage(UI.CommonImageTypes.listingsGroup).Handle,
+        UI.UICommonImage(UI.CommonImageTypes.listingsSystem).Handle,
+        UI.UICommonImage(UI.CommonImageTypes.listingsQuests).Handle,
+        UI.UICommonImage(UI.CommonImageTypes.listingsEvent).Handle,
+    };
+
+        navButtons = tabIcons.Select((icon, idx) =>
+            (Func<bool>)(() =>
+            {
+                bool pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
+                    icon,
+                    new Vector2(55, 50),
+                    navTooltips[idx]
+                );
+                if (pressed)
+                {
+                    selectedNavIndex = idx;
+                    navActions[idx]?.Invoke();
+                }
+                return pressed;
+            })
+        ).ToArray();
+        for (int i = 0; i < navButtons.Length; i++)
+        {
+            ImGui.PushID(i);
+            if (navButtons[i].Invoke())
+                selectedNavIndex = i;
+            ImGui.PopID();
+        }
+        ImGui.End();
+    }
+    public void HideMainPanel() => showMainPanel = false;
+    public void ShowMainPanel() => showMainPanel = true;
+    public void DrawExtraUI()
+    {
+
+        bool[] showBtn = new[]
+        {
+            Plugin.plugin.Configuration.showKofi,
+            Plugin.plugin.Configuration.showPatreon,
+            Plugin.plugin.Configuration.showDisc,
+        };
+
+        string[] navTooltips = new[]
+        {
+            "Support me on Ko-Fi",
+            "Support me on Patreon",
+            "Join the Discord"
+        };
+        // Define actions for each button
+        Action[] navActions = new Action[]
+        {
+            () => {  Util.OpenLink("https://ko-fi.com/absoluteroleplay");},
+            () => {  Util.OpenLink("https://patreon.com/AbsoluteRP"); },
+            () => {  Util.OpenLink("https://discord.gg/absolute-roleplay"); }
+        };
+        ImTextureID[] tabIcons = {
+        UI.UICommonImage(UI.CommonImageTypes.kofiBtn).Handle,
+        UI.UICommonImage(UI.CommonImageTypes.patreonBtn).Handle,
+        UI.UICommonImage(UI.CommonImageTypes.discordBtn).Handle
+    };
+
+        navButtons = tabIcons.Select((icon, idx) =>
+            (Func<bool>)(() =>
+            {
+                bool pressed = false;
+                if (showBtn[idx])
+                {
+                    pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
+                        icon,
+                        new Vector2(65, 65),
+                        navTooltips[idx]
+                    );
+                if (pressed)
+                {
+                    selectedNavIndex = idx;
+                    navActions[idx]?.Invoke();
+                }
+                ImGui.SameLine();
+                }
+
+                return pressed;
+            })
+        ).ToArray();
+        for (int i = 0; i < navButtons.Length; i++)
+        {
+            ImGui.PushID(i);
+            if (navButtons[i].Invoke())
+                selectedNavIndex = i;
+            ImGui.PopID();
+        }
+
+
+
+
+
+    }
+    public void DrawMainUI()
+    {
         try
         {
-            paddingX = ImGui.GetWindowSize().X / 12;
             ButtonSize = new Vector2(ImGui.GetIO().FontGlobalScale / 0.005f);
-            buttonWidth = ButtonSize.X / 2 - paddingX;
+            buttonWidth = ImGui.GetWindowSize().X / 2.4f;
             buttonHeight = ButtonSize.Y / 5f;
 
             centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
@@ -163,7 +222,7 @@ public class MainPanel : Window, IDisposable
                 Misc.SetTitle(Plugin.plugin, true, Plugin.plugin.Configuration.account.accountName, new Vector4(0, 1, 0, 0));
                 using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                 {
-                    if (ImGui.Button("Remove Account", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                    if (ImGui.Button("Remove Account", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
                     {
                         openRemoveAccountPopup = true;
                         ImGui.OpenPopup("Remove Account?");
@@ -258,39 +317,8 @@ public class MainPanel : Window, IDisposable
                 }
             }
 
-         
-            if (Plugin.plugin.Configuration.showKofi)
-            {
-                var currentCursorY = ImGui.GetCursorPosY();
-                ImGui.SetCursorPos(new Vector2(buttonWidth / 14, currentCursorY));
-                if (ImGui.ImageButton(kofiBtnImg.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
-                {
-                    Util.OpenLink("https://ko-fi.com/absoluteroleplay");
-                }
-            }
-            if (Plugin.plugin.Configuration.showPatreon == true)
-            {
-                var patreonPos = ImGui.GetCursorPosY();
-                ImGui.SetCursorPos(new Vector2(buttonWidth / 14, patreonPos));
-                if (ImGui.ImageButton(patreonBtn.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
-                {
-                    Util.OpenLink("https://patreon.com/AbsoluteRP");
-                }
-            }
-            if (Plugin.plugin.Configuration.showDisc == true)
-            {
-                var discPos = ImGui.GetCursorPosY();
-                ImGui.SetCursorPos(new Vector2(buttonWidth / 14, discPos));
-                if (ImGui.ImageButton(discoBtn.Handle, new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
-                {
-                    Util.OpenLink("https://discord.gg/absolute-roleplay");
-                }
-            }
-            if (loggedIn == false && viewProfile == false && viewListings == false)
-            {
-                var serverStatusPosY = ImGui.GetCursorPosY();
-                ImGui.SetCursorPos(new Vector2(centeredX, serverStatusPosY));
-            }
+
+
             float xpos = ImGui.GetCursorPosX();
             ImGui.SetCursorPosX(xpos + 10);
             ImGui.TextColored(serverStatusColor, serverStatus);
@@ -298,15 +326,16 @@ public class MainPanel : Window, IDisposable
 
             if (!ClientTCP.Connected)
             {
-                if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+                if (ImGui.ImageButton(UI.UICommonImage(UI.CommonImageTypes.reconnect).Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
                 {
                     ClientTCP.AttemptConnect();
                     Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                    DataSender.SendLogin();
                 }
             }
             else
             {
-                if (ImGui.ImageButton(reconnectImage.Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
+                if (ImGui.ImageButton(UI.UICommonImage(UI.CommonImageTypes.reconnect).Handle, new Vector2(buttonHeight / 2.5f, buttonHeight / 2.5f)))
                 {
                     ClientTCP.Disconnect();
                     Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
@@ -322,6 +351,7 @@ public class MainPanel : Window, IDisposable
             {
                 ImGui.TextWrapped(status);
             }
+
         }
         catch (Exception e)
         {
@@ -329,6 +359,7 @@ public class MainPanel : Window, IDisposable
             Plugin.PluginLog.Debug(e.StackTrace);
         }
     }
+    
     public void switchUI()
     {
         viewProfile = false;

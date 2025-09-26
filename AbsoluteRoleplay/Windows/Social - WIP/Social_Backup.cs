@@ -1,15 +1,13 @@
-﻿using AbsoluteRP.Defines;
+﻿/*using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
-using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
-using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Networking;
+using Dalamud.Bindings.ImGui;
 using System.Numerics;
-using System.Reflection;
+using Dalamud.Interface.Utility.Raii;
 
 namespace AbsoluteRP.Windows.Listings
 {
@@ -41,7 +39,7 @@ namespace AbsoluteRP.Windows.Listings
         public bool DrawListingCreation { get; private set; }
 
         public ListingsWindow() : base(
-       "SOCIAL", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+       "PUBLIC PROFILES", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
             {
@@ -58,125 +56,75 @@ namespace AbsoluteRP.Windows.Listings
         {
             try
             {
-                ImGui.BeginTabBar("Social");
-
-                if (ImGui.BeginTabItem("Social"))
+                DrawFFXIVLocationSelectors();
+                ImGui.InputText("Profile Name", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+                DrawListingCategorySelection();
+                DrawPageCountSelection();
+                using (ImRaii.Child($"ProfileNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
                 {
-
-                    ImGui.EndTabItem();
-                }
-
-                if (ImGui.BeginTabItem("Search"))
-                {
-                    //PUBLIC PROFILES
-                    #region PUBLIC PROFILE LISTINGS
-                    DrawFFXIVLocationSelectors();
-                    ImGui.Text("Profile Name");
-                    ImGui.SameLine();
-                    ImGui.InputText("##ProfileName", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
-                    DrawListingCategorySelection();
-                    DrawPageCountSelection();
-                    using (ImRaii.Child($"ProfileNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
+                    if (currentIndex > 1)
                     {
-                        if (currentIndex > 1)
+                        if (ImGui.Button("《 "))
                         {
-                            if (ImGui.Button("《 "))
-                            {
-                                currentIndex--;
-                                DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
-                            }
-                        }
-                        ImGui.SameLine();
-                        ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize($"{currentIndex}").X / 2);
-                        ImGui.TextUnformatted($"{currentIndex}");
-                        ImGui.SameLine();
-                        Misc.RenderAlignmentToRight(" 》");
-                        if (ImGui.Button(" 》"))
-                        {
-                            currentIndex++;
+                            currentIndex--;
                             DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                         }
                     }
-                    if (ImGui.Button("Search"))
+                    ImGui.SameLine();
+                    ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize($"{currentIndex}").X / 2);
+                    ImGui.TextUnformatted($"{currentIndex}");
+                    ImGui.SameLine();
+                    Misc.RenderAlignmentToRight(" 》");
+                    if (ImGui.Button(" 》"))
                     {
-                        if (profileSearchQuery == string.Empty)
-                        {
-                            profileSearchQuery = "ALL PROFILES";
-                        }
+                        currentIndex++;
                         DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                     }
-                    if (listings.Count == 0)
+                }
+                if (ImGui.Button("Search"))
+                {
+                    if (profileSearchQuery == string.Empty)
                     {
-                        ImGui.TextUnformatted("No listings loaded.");
-                        return;
+                        profileSearchQuery = "ALL PROFILES";
                     }
+                    DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
+                }
+                if (listings.Count == 0)
+                {
+                    ImGui.TextUnformatted("No listings loaded.");
+                    return;
+                }
+                // Draw personal listings
+                using (ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
+                {
+                    ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
+                    ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
 
-
-                    using var table = ImRaii.Table("Personal Listings", 1);
-                    if (table)
+                    foreach (var listing in listings.Where(l => l.type == type))
                     {
-                        Vector2 cellSize = ImGui.GetContentRegionAvail() / 4f; // 4 columns
-                        foreach (var listing in listings.Where(l => l.type == type))
+                        ImGui.TableNextRow();
+                        ImGui.TableSetColumnIndex(0);
+                        if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
                         {
-                            ImGui.TableNextColumn();
-                            float columnWidth = ImGui.GetColumnWidth();
-                            float imageWidth = 100f;
-                            float imageHeight = 100f;
-
-                            if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
-                            {
-                                // Center the image in the column
-                                float imageX = ImGui.GetCursorPosX() + (columnWidth - imageWidth) / 2f;
-                                ImGui.SetCursorPosX(imageX);
-                                ImGui.Image(listing.avatar.Handle, new Vector2(imageWidth, imageHeight));
-                           
-                                Misc.SetTitle(Plugin.plugin, true, listing.name, listing.color);
-                            }
+                            ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
+                        }
+                        ImGui.TextColored(listing.color, listing.name);
+                        ImGui.TableSetColumnIndex(1);
+                        if (ImGui.Button($"View##{listing.id}"))
+                        {
+                            Plugin.plugin.OpenTargetWindow();
+                            TargetProfileWindow.RequestingProfile = true;
+                            TargetProfileWindow.ResetAllData();
+                            DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
                         }
                     }
-                    #endregion
-                    ImGui.EndTabItem();
                 }
-                ImGui.EndTabBar();
             }
             catch (Exception ex)
             {
                 Plugin.PluginLog.Error("Error drawing listing window", ex.ToString());
             }
         }
-
-
-        public static void DrawSocialNavigation()
-        {
-           
-            // Draw personal listings
-            using (ImRaii.Table("Social", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
-            {
-                ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
-                ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
-
-                foreach (var listing in listings.Where(l => l.type == type))
-                {
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-                    if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
-                    {
-                        ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
-                    }
-                    ImGui.TextColored(listing.color, listing.name);
-                    ImGui.TableSetColumnIndex(1);
-                    if (ImGui.Button($"View##{listing.id}"))
-                    {
-                        Plugin.plugin.OpenTargetWindow();
-                        TargetProfileWindow.RequestingProfile = true;
-                        TargetProfileWindow.ResetAllData();
-                        DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
-                    }
-                }
-            }
-        }
-
-
         public static void DrawPageCountSelection()
         {
             using var combo = ImRaii.Combo("##PageCount", currentViewCount.ToString());
@@ -299,3 +247,4 @@ namespace AbsoluteRP.Windows.Listings
         }
     }
 }
+*/

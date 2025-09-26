@@ -300,7 +300,8 @@ namespace AbsoluteRP
                     DataSender.FetchProfile(Plugin.character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
-          /*  args.AddMenuItem(new MenuItem
+            /*
+            args.AddMenuItem(new MenuItem
             {
                 Name = "Trade ARP Items",
                 PrefixColor = 56,
@@ -332,11 +333,11 @@ namespace AbsoluteRP
             Connect();
             _ = UpdateStatusAsync();
             CheckConnectionsRequestStatus();
+            DataSender.SendLogin();
         }
 
         public void Connect()
         {
-
             if (!ClientTCP.IsConnected())
             {
                 ClientTCP.AttemptConnect();
@@ -706,6 +707,7 @@ namespace AbsoluteRP
 
                 LoadStatusBarEntry();
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
+                
             }
 
             if (IsOnline() &&

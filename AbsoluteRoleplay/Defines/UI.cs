@@ -56,13 +56,13 @@ namespace AbsoluteRP
         public bool isPrivate { get; set; }
         public bool isActive { get; set; }
         public bool hasAlignment { get; set; }  
-        public string Name { get; set; }
-        public string Race { get; set; }
-        public string Gender { get; set; }
-        public string Age { get; set; }
-        public string Height { get; set; }
-        public string Weight { get; set; }
-        public string AFG { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Race { get; set; } = string.Empty;
+        public string Gender { get; set; } = string.Empty;
+        public string Age { get; set; } = string.Empty;
+        public string Height { get; set; } = string.Empty;
+        public string Weight { get; set; } = string.Empty;
+        public string AFG { get; set; } = string.Empty;
         public int Alignment { get; set; }
         public int Personality_1 { get; set; }
         public int Personality_2 { get; set; }
@@ -407,7 +407,7 @@ namespace AbsoluteRP
             //events and venues
             eventEvents = 13,
             eventBookmarkEvent = 14,
-            //systems
+            //listingsSystem
             systemsCombatSystem = 15,
             systemSheetSystem = 16,
             //connections
@@ -451,6 +451,8 @@ namespace AbsoluteRP
             edit = 50,
             move_cancel = 51,
             backgroundHolder = 52,
+            listingsQuests = 53,
+            listingsSystem = 54,
         }
         public enum ListingCategory
         {
@@ -597,6 +599,8 @@ namespace AbsoluteRP
                         CommonImageTypes.listingsGroupBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result,
                         CommonImageTypes.listingsPersonalBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result,
                         CommonImageTypes.listingsVenueBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result,
+                        CommonImageTypes.listingsQuests => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/quests.png"))).Result,
+                        CommonImageTypes.listingsSystem => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/systems.png"))).Result,
                         CommonImageTypes.blank => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result,
                         CommonImageTypes.inventoryTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result,
                         CommonImageTypes.circleMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/circle.png"))).Result,

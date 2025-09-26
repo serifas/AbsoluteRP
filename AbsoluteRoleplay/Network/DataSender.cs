@@ -171,8 +171,6 @@ namespace Networking
                 }
             }
         }
-
-
         internal static async void UnlinkAccount()
         {
             if (ClientTCP.IsConnected())
@@ -183,6 +181,26 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.UnlinkAccount);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in CreateUserTag: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendLogin()
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CLogin);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);                        
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1415,9 +1433,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.SendTradeRequest);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
-                        buffer.WriteString(character.characterKey);
-                        
-                        
+                        buffer.WriteString(character.characterKey);                
                         buffer.WriteString(targetCharName);
                         buffer.WriteString(targetCharWorld);
 

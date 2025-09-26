@@ -90,7 +90,7 @@ namespace AbsoluteRP.Windows
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
-                /*
+                
                 if (ImGui.BeginTabItem("Compass"))
                 {
                     if (ImGui.Checkbox("Show Compass", ref showCompass))
@@ -107,7 +107,7 @@ namespace AbsoluteRP.Windows
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
-                */
+                
                 
                 if (ImGui.BeginTabItem("Data"))
                 {
