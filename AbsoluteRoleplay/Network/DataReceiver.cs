@@ -701,10 +701,10 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int connectionsCount = buffer.ReadInt();
-                    ConnectionsWindow.connetedProfileList.Clear();
-                    ConnectionsWindow.sentProfileRequests.Clear();
-                    ConnectionsWindow.receivedProfileRequests.Clear();
-                    ConnectionsWindow.blockedProfileRequests.Clear();
+                    Connections.connetedProfileList.Clear();
+                    Connections.sentProfileRequests.Clear();
+                    Connections.receivedProfileRequests.Clear();
+                    Connections.blockedProfileRequests.Clear();
                     for (int i = 0; i < connectionsCount; i++)
                     {
                         string requesterName = buffer.ReadString();
@@ -719,23 +719,23 @@ namespace Networking
                         {
                             if (status == (int)UI.ConnectionStatus.pending)
                             {
-                                ConnectionsWindow.receivedProfileRequests.Add(requester);
+                                Connections.receivedProfileRequests.Add(requester);
                             }
                             if (status == (int)UI.ConnectionStatus.accepted)
                             {
                                 PlayerData playerData = new PlayerData() { playername = requesterName, worldname = requesterWorld };
                                 PlayerInteractions.playerDataMap.Add(playerData);
-                                ConnectionsWindow.connetedProfileList.Add(requester);
+                                Connections.connetedProfileList.Add(requester);
                             }
                             if (status == (int)UI.ConnectionStatus.blocked)
                             {
-                                ConnectionsWindow.blockedProfileRequests.Add(requester);
+                                Connections.blockedProfileRequests.Add(requester);
                             }
                             if (status == (int)UI.ConnectionStatus.refused)
                             {
-                                if (ConnectionsWindow.receivedProfileRequests.Contains(requester))
+                                if (Connections.receivedProfileRequests.Contains(requester))
                                 {
-                                    ConnectionsWindow.receivedProfileRequests.Remove(requester);
+                                    Connections.receivedProfileRequests.Remove(requester);
                                 }
                             }
                         }
@@ -743,17 +743,17 @@ namespace Networking
                         {
                             if (status == (int)UI.ConnectionStatus.pending)
                             {
-                                ConnectionsWindow.sentProfileRequests.Add(receiver);
+                                Connections.sentProfileRequests.Add(receiver);
                             }
                             if (status == (int)UI.ConnectionStatus.accepted)
                             {
                                 PlayerData playerData = new PlayerData() { playername = receiverName, worldname = receiverWorld };
                                 PlayerInteractions.playerDataMap.Add(playerData);
-                                ConnectionsWindow.connetedProfileList.Add(receiver);
+                                Connections.connetedProfileList.Add(receiver);
                             }
                             if (status == (int)UI.ConnectionStatus.blocked)
                             {
-                                ConnectionsWindow.blockedProfileRequests.Add(receiver);
+                                Connections.blockedProfileRequests.Add(receiver);
                             }
                             if (status == (int)UI.ConnectionStatus.refused)
                             {
@@ -762,7 +762,7 @@ namespace Networking
                         }
                     }
 
-                    Plugin.plugin.OpenConnectionsWindow();
+                    Plugin.plugin.OpenListingsWindow();
                     Plugin.plugin.newConnection = false;
                     Plugin.plugin.CheckConnectionsRequestStatus();
 

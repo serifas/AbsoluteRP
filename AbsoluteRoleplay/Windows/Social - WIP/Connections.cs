@@ -8,7 +8,7 @@ using Networking;
 
 namespace AbsoluteRP.Windows.Profiles
 {
-    public class ConnectionsWindow : Window, IDisposable
+    public class Connections
     {
         public static List<Tuple<string, string>> receivedProfileRequests = new List<Tuple<string, string>>();
         public static List<Tuple<string, string>> sentProfileRequests = new List<Tuple<string, string>>();
@@ -19,16 +19,7 @@ namespace AbsoluteRP.Windows.Profiles
         public static string localPlayerWorld = "";
         public static int currentListing = 0;
         private IDalamudPluginInterface pg;
-        public ConnectionsWindow() : base(
-       "CONNECTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
-        {
-            SizeConstraints = new WindowSizeConstraints
-            {
-                MinimumSize = new Vector2(300, 300),
-                MaximumSize = new Vector2(950, 950)
-            };
-        }
-        public override void Draw()
+        public static void LoadConnectionsTab()
         {
             try
             {
@@ -185,7 +176,7 @@ namespace AbsoluteRP.Windows.Profiles
                 Plugin.PluginLog.Debug("ConnectionsWindow Draw Debug: " + ex.Message);
             }
         }
-        public void AddConnectionListingOptions()
+        public static void AddConnectionListingOptions()
         {
             var (text, desc) = UI.ConnectionListingVals[currentListing];
             using var combo = ImRaii.Combo("##Connetions", text);
@@ -199,10 +190,6 @@ namespace AbsoluteRP.Windows.Profiles
 
                 UIHelpers.SelectableHelpMarker(newDesc);
             }
-        }
-        public void Dispose()
-        {
-
         }
     }
 }

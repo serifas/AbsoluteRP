@@ -48,8 +48,22 @@ public class MainPanel : Window, IDisposable
     public static float centeredX = 0f;
 
     public MainPanel() : base(
-        "ABSOLUTE ROLEPLAY")
+        "ABSOLUTE ROLEPLAY", ImGuiWindowFlags.NoResize)
     {
+
+        // --- Navigation Panel (pinned outside, only covers buttons) ---
+        float headerHeight = 48f; // Height of your main panel's header/title bar
+        float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
+        int buttonCount = 5;      // Number of navigation buttons
+
+        float navHeight = buttonSize * buttonCount * 1.05f;
+        Vector2 Size = new Vector2(navHeight / 1.8f, navHeight * 1.02f);
+        SizeConstraints = new WindowSizeConstraints
+        {
+
+            MinimumSize = Size,
+            MaximumSize = Size
+        };
 
     }
     public override void OnOpen()
@@ -62,6 +76,13 @@ public class MainPanel : Window, IDisposable
     }
     public override void Draw()
     {
+
+        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            ImGui.SetWindowFocus("ABSOLUTE ROLEPLAY");
+            ImGui.SetWindowFocus("##NavigationPanel");
+        }
+
         // Get MainPanel window position and size
         Vector2 mainPanelPos = ImGui.GetWindowPos();
         Vector2 mainPanelSize = ImGui.GetWindowSize();
@@ -71,16 +92,15 @@ public class MainPanel : Window, IDisposable
 
         // --- Navigation Panel (pinned outside, only covers buttons) ---
         float headerHeight = 48f; // Height of your main panel's header/title bar
-        float buttonHeight = 50f; // Height of each navigation button
+        float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
         int buttonCount = 5;      // Number of navigation buttons
 
-        float navWidth = 70f;
-        float navHeight = buttonHeight * buttonCount * 1.2f;
+        float navHeight = buttonSize * buttonCount * 1.2f;
         DrawMainUI();
         DrawExtraUI();
         // Position navigation window to the left of MainPanel, just below the header
-        ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - navWidth, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(navWidth, navHeight), ImGuiCond.Always);
+        ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.2f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.2f, navHeight), ImGuiCond.Always);
         ImGui.Begin("##NavigationPanel", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar);
 
         string[] navTooltips = new[]
@@ -101,7 +121,7 @@ public class MainPanel : Window, IDisposable
                     } 
             },
             () => { /* Social logic */ 
-                        Plugin.plugin.OpenListingsWindow();
+                DataSender.RequestConnections(Plugin.character);
             },
             () => { /* Systems logic */ viewSystems = true; },
             () => { /* Quests logic */ viewListings = true; },
@@ -120,7 +140,7 @@ public class MainPanel : Window, IDisposable
             {
                 bool pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
                     icon,
-                    new Vector2(55, 50),
+                    new Vector2(buttonSize, buttonSize),
                     navTooltips[idx]
                 );
                 if (pressed)
@@ -145,6 +165,7 @@ public class MainPanel : Window, IDisposable
     public void DrawExtraUI()
     {
 
+        float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
         bool[] showBtn = new[]
         {
             Plugin.plugin.Configuration.showKofi,
@@ -162,7 +183,7 @@ public class MainPanel : Window, IDisposable
         Action[] navActions = new Action[]
         {
             () => {  Util.OpenLink("https://ko-fi.com/absoluteroleplay");},
-            () => {  Util.OpenLink("https://patreon.com/AbsoluteRP"); },
+            () => {  Util.OpenLink("https://patreon.com/AbsoluteRolelay"); },
             () => {  Util.OpenLink("https://discord.gg/absolute-roleplay"); }
         };
         ImTextureID[] tabIcons = {
@@ -177,9 +198,10 @@ public class MainPanel : Window, IDisposable
                 bool pressed = false;
                 if (showBtn[idx])
                 {
+                    ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - buttonSize * 1.2f);
                     pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
                         icon,
-                        new Vector2(65, 65),
+                        new Vector2(buttonSize, buttonSize),
                         navTooltips[idx]
                     );
                 if (pressed)

@@ -106,7 +106,6 @@ namespace AbsoluteRP
         private ImagePreview? ImagePreview { get; set; }
         private TOS? TermsWindow { get; set; }
         private TradeWindow? TradeWindow { get; set; }
-        private ConnectionsWindow? ConnectionsWindow { get; set; }
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -412,7 +411,7 @@ namespace AbsoluteRP
             var entry = dtrBar.Get("AbsoluteConnection");
             connectionsBarEntry = entry;
             connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
-            ConnectionsWindow.currentListing = 2;
+            Connections.currentListing = 2;
             entry.OnClick = _ => DataSender.RequestConnections(Plugin.character);
             SeStringBuilder statusString = new SeStringBuilder();
             statusString.AddUiGlow((ushort)pulse);
@@ -456,7 +455,6 @@ namespace AbsoluteRP
             BookmarksWindow?.Dispose();
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
-            ConnectionsWindow?.Dispose();
             ListingWindow?.Dispose();
             ModeratorPanel?.Dispose();
             Misc.Jupiter?.Dispose();
@@ -636,7 +634,6 @@ namespace AbsoluteRP
         public void OpenBookmarksWindow() => BookmarksWindow.IsOpen = true;
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
-        public void OpenConnectionsWindow() => ConnectionsWindow.IsOpen = true;
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
@@ -682,7 +679,6 @@ namespace AbsoluteRP
                 ModeratorPanel = new ModPanel();
                 ArpChatWindow = new ARPChatWindow(chatgui);
                 ReportWindow = new ReportWindow();
-                ConnectionsWindow = new ConnectionsWindow();
                 TooltipWindow = new ARPTooltipWindow();
                 NotesWindow = new NotesWindow();
                 ListingWindow = new ListingsWindow();
@@ -697,7 +693,6 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(TargetWindow);
                 WindowSystem.AddWindow(ModeratorPanel);
                 WindowSystem.AddWindow(ReportWindow);
-                WindowSystem.AddWindow(ConnectionsWindow);
                 WindowSystem.AddWindow(TooltipWindow);
                 WindowSystem.AddWindow(NotesWindow);
                 WindowSystem.AddWindow(ListingWindow);

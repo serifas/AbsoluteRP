@@ -1,6 +1,7 @@
 ﻿using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Ect;
+using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.ImGuiFileDialog;
@@ -60,9 +61,9 @@ namespace AbsoluteRP.Windows.Listings
             {
                 ImGui.BeginTabBar("Social");
 
-                if (ImGui.BeginTabItem("Social"))
+                if (ImGui.BeginTabItem("Connections"))
                 {
-
+                    Connections.LoadConnectionsTab();
                     ImGui.EndTabItem();
                 }
 
@@ -112,25 +113,27 @@ namespace AbsoluteRP.Windows.Listings
                     }
 
 
-                    using var table = ImRaii.Table("Personal Listings", 1);
-                    if (table)
+                    using (ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
                     {
-                        Vector2 cellSize = ImGui.GetContentRegionAvail() / 4f; // 4 columns
+                        ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
+                        ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
+
                         foreach (var listing in listings.Where(l => l.type == type))
                         {
-                            ImGui.TableNextColumn();
-                            float columnWidth = ImGui.GetColumnWidth();
-                            float imageWidth = 100f;
-                            float imageHeight = 100f;
-
+                            ImGui.TableNextRow();
+                            ImGui.TableSetColumnIndex(0);
                             if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
                             {
-                                // Center the image in the column
-                                float imageX = ImGui.GetCursorPosX() + (columnWidth - imageWidth) / 2f;
-                                ImGui.SetCursorPosX(imageX);
-                                ImGui.Image(listing.avatar.Handle, new Vector2(imageWidth, imageHeight));
-                           
-                                Misc.SetTitle(Plugin.plugin, true, listing.name, listing.color);
+                                ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
+                            }
+                            ImGui.TextColored(listing.color, listing.name);
+                            ImGui.TableSetColumnIndex(1);
+                            if (ImGui.Button($"View##{listing.id}"))
+                            {
+                                Plugin.plugin.OpenTargetWindow();
+                                TargetProfileWindow.RequestingProfile = true;
+                                TargetProfileWindow.ResetAllData();
+                                DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
                             }
                         }
                     }
