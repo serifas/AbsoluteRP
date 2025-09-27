@@ -130,7 +130,7 @@ namespace Networking
         {
             try
             {
-                BookmarksWindow.profileList.Clear();
+                Bookmarks.profileList.Clear();
                 using (var buffer = new ByteBuffer())
                 {
                     buffer.WriteBytes(data);
@@ -143,10 +143,9 @@ namespace Networking
                         string playerName = buffer.ReadString();
                         string playerWorld = buffer.ReadString();
                         Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
-                        BookmarksWindow.profileList.Add(bookmark);
+                        Bookmarks.profileList.Add(bookmark);
                     }
                     Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
-                    Plugin.plugin.OpenBookmarksWindow();
                     // Handle the message as needed
                 }
             }
@@ -282,7 +281,7 @@ namespace Networking
                     TargetGalleryLoadStatus = 0;
                     TargetNotesLoadStatus = 0;
                     TargetProfileWindow.addNotes = false;
-                    BookmarksWindow.DisableBookmarkSelection = false;
+                    Bookmarks.DisableBookmarkSelection = false;
                     ReportWindow.reportStatus = "";
 
                     Plugin.plugin.OpenTargetWindow();
@@ -656,7 +655,7 @@ namespace Networking
                         string endDate = buffer.ReadString();
                         //  IDalamudTextureWrap banner = Imaging.DownloadImage(bannerURL, i);
                         //  Listing listing = new Listing(name, description, rules, category, type, focus, setting, banner, inclusion, startDate, endDate);
-                        //   ListingsWindow.listings.Add(listing);
+                        //   SocialWindow.listings.Add(listing);
                     }
                     ListingsLoadStatus = 1;
                 }
@@ -1322,7 +1321,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
-                    ListingsWindow.listings.Clear();
+                    SocialWindow.listings.Clear();
                     for (int i = 0; i < listingCount; i++)
                     {
                         int profileID = buffer.ReadInt();
@@ -1362,7 +1361,7 @@ namespace Networking
                         if (avatar == null)
                             continue;
 
-                        ListingsWindow.listings.Add(
+                        SocialWindow.listings.Add(
                             new Listing
                             {
                                 type = 6,

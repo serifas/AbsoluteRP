@@ -9,21 +9,12 @@ using AbsoluteRP.Helpers;
 
 namespace AbsoluteRP.Windows.Profiles
 {
-    public class BookmarksWindow : Window, IDisposable
+    public class Bookmarks
     {
         public static bool DisableBookmarkSelection = false;
         internal static List<Bookmark> profileList = new List<Bookmark>();
 
-        public BookmarksWindow() : base(
-       "PROFILE LIST", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
-        {
-            SizeConstraints = new WindowSizeConstraints
-            {
-                MinimumSize = new Vector2(300, 300),
-                MaximumSize = new Vector2(800, 800)
-            };
-        }
-        public override void Draw()
+        public static void DrawBookmarksUI()
         {
             try
             {
@@ -34,8 +25,6 @@ namespace AbsoluteRP.Windows.Profiles
                 Vector2 childSize = new Vector2(childWidth, childHeight);
                 // Start grouping for Bookmarks section
                 ImGui.BeginGroup();
-                ImGui.Text("Bookmarks");
-
                 using (var profileTable = ImRaii.Child("Profiles", childSize, true))
                 {
                     if (profileTable)
@@ -92,10 +81,6 @@ namespace AbsoluteRP.Windows.Profiles
 
 
 
-        public void Dispose()
-        {
-
-        }
     }
     public class Bookmark
     {

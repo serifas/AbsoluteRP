@@ -451,7 +451,7 @@ namespace Networking
         }
 
 
-        public static async void BookmarkPlayer(Character character, string playerName, string playerWorld)
+        public static async void BookmarkPlayer(Character character, string playerName, string playerWorld, int profileID)
         {
             if (ClientTCP.IsConnected())
             {
@@ -464,6 +464,7 @@ namespace Networking
                         buffer.WriteString(character.characterKey);
                         buffer.WriteString(playerName);
                         buffer.WriteString(playerWorld);
+                        buffer.WriteInt(profileID);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -480,7 +481,7 @@ namespace Networking
             {
                 try
                 {
-                    BookmarksWindow.profileList.Clear();
+                    Bookmarks.profileList.Clear();
                     using (var buffer = new ByteBuffer())
                     {
                         buffer.WriteInt((int)ClientPackets.CSendRemovePlayerBookmark);

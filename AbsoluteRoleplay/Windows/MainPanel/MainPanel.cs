@@ -68,6 +68,7 @@ public class MainPanel : Window, IDisposable
     }
     public override void OnOpen()
     {
+        DataSender.SendLogin();
     }
 
     public void Dispose()
@@ -77,12 +78,13 @@ public class MainPanel : Window, IDisposable
     public override void Draw()
     {
 
-        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        // Only set focus if NO popup is open
+        if (!openTagPopup && !openRemoveAccountPopup &&
+            ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
             ImGui.SetWindowFocus("ABSOLUTE ROLEPLAY");
             ImGui.SetWindowFocus("##NavigationPanel");
         }
-
         // Get MainPanel window position and size
         Vector2 mainPanelPos = ImGui.GetWindowPos();
         Vector2 mainPanelSize = ImGui.GetWindowSize();

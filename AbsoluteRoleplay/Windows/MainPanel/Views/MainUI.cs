@@ -14,15 +14,7 @@ namespace AbsoluteRP.Windows.MainPanel.Views
         {
             var buttonWidth = MainPanel.buttonWidth;
             var buttonHeight = MainPanel.buttonHeight;          
-            if (ImGui.Button("Bookmarks", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
-            {
-                if (pluginInstance.IsOnline())
-                {
-                    DataSender.RequestBookmarks(Plugin.character);
-                    pluginInstance.OpenBookmarksWindow();
-                }
-
-            }
+         
             using (ImRaii.Disabled(true))
             {
                 if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))

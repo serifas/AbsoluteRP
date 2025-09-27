@@ -155,7 +155,7 @@ namespace AbsoluteRP.Windows.Ect
 
                                                     if (ImGui.ImageButton(bookmarkProfileImg.Handle, btnSize))
                                                     {
-                                                        DataSender.BookmarkPlayer(Plugin.character, messages[i].name, messages[i].world);
+                                                        DataSender.BookmarkPlayer(Plugin.character, messages[i].name, messages[i].world, -1);
                                                         }
                                                     }
                                                     ImGui.PopID();
@@ -205,7 +205,7 @@ namespace AbsoluteRP.Windows.Ect
                                                 {
                                                     if (ImGui.ImageButton(bookmarkProfileImg.Handle, btnSize))
                                                     {
-                                                        DataSender.BookmarkPlayer(Plugin.character, messages[i].name, messages[i].world);
+                                                        DataSender.BookmarkPlayer(Plugin.character, messages[i].name, messages[i].world, -1);
                                                     }
                                                 }
                                                 ImGui.PopID();

@@ -1,128 +1,107 @@
-﻿/*using AbsoluteRP.Defines;
+﻿using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Listings;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
-using Dalamud.Interface.ImGuiFileDialog;
-using Dalamud.Interface.Textures.TextureWraps;
-using Dalamud.Interface.Windowing;
-using Networking;
 using Dalamud.Bindings.ImGui;
-using System.Numerics;
 using Dalamud.Interface.Utility.Raii;
+using Networking;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace AbsoluteRP.Windows.Listings
+namespace AbsoluteRP.Windows.Social___WIP
 {
-    internal class ListingsWindow : Window, IDisposable
+    internal class Search
     {
-        public static Configuration configuration;
-        public static Vector2 buttonScale;
-        public static List<Listing> listings = new List<Listing>();
-        public static string loading; //loading status string for loading the profile gallery mainly
-        public static float percentage = 0f; //loading base value
-        public static int loaderInd = 0;
-        private FileDialogManager _fileDialogManager; //for banners only at the moment
-        public static IDalamudTextureWrap banner;
-        public static byte[] bannerBytes;
+        public static string worldSearchQuery = "";
+        public static string profileSearchQuery = "";
+        private static int currentViewCount = 10;
+        private static int currentIndex = 1; //current index for the listings
+        private static FFXIVRegion selectedRegion = FFXIVRegion.NorthAmerica;
+        private static FFXIVDataCenter selectedDataCenter = FFXIVDataCenter.Aether;
+        private static FFXIVWorld selectedWorld = FFXIVWorld.Aether_Adamantoise;
         public static int currentType = 0;
         public static string searchQuery = string.Empty; //search query for listings
         public static int type = 6; //0 = all, 1 = personals
-        private string worldSearchQuery = "";
-        private string profileSearchQuery = "";
         public static int currentCategory = 0;
         public static int profileViewCount = 10; //default profile view count
-        private static int currentViewCount = 10;
-        private static int currentIndex = 1; //current index for the listings
-        private FFXIVRegion selectedRegion = FFXIVRegion.NorthAmerica;
-        private FFXIVDataCenter selectedDataCenter = FFXIVDataCenter.Aether;
-        private FFXIVWorld selectedWorld = FFXIVWorld.Aether_Adamantoise;
-
-
-        public bool DrawListingCreation { get; private set; }
-
-        public ListingsWindow() : base(
-       "PUBLIC PROFILES", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        public static void LoadSearch()
         {
-            SizeConstraints = new WindowSizeConstraints
+            DrawFFXIVLocationSelectors();
+            ImGui.Text("Profile Name");
+            ImGui.SameLine();
+            ImGui.InputText("##ProfileName", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+            DrawListingCategorySelection();
+            DrawPageCountSelection();
+            using (ImRaii.Child($"ProfileNavigation", new System.Numerics.Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
             {
-
-                MinimumSize = new Vector2(200, 400),
-                MaximumSize = new Vector2(1000, 1000)
-            };
-
-            configuration = Plugin.plugin.Configuration;
-            worldSearchQuery = "Adamantoise";
-            _fileDialogManager = new FileDialogManager();
-        }
-        public override void Draw()
-        {
-            try
-            {
-                DrawFFXIVLocationSelectors();
-                ImGui.InputText("Profile Name", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
-                DrawListingCategorySelection();
-                DrawPageCountSelection();
-                using (ImRaii.Child($"ProfileNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
+                if (currentIndex > 1)
                 {
-                    if (currentIndex > 1)
+                    if (ImGui.Button("《 "))
                     {
-                        if (ImGui.Button("《 "))
-                        {
-                            currentIndex--;
-                            DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
-                        }
-                    }
-                    ImGui.SameLine();
-                    ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize($"{currentIndex}").X / 2);
-                    ImGui.TextUnformatted($"{currentIndex}");
-                    ImGui.SameLine();
-                    Misc.RenderAlignmentToRight(" 》");
-                    if (ImGui.Button(" 》"))
-                    {
-                        currentIndex++;
+                        currentIndex--;
                         DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                     }
                 }
-                if (ImGui.Button("Search"))
+                ImGui.SameLine();
+                ImGui.SetCursorPosX(ImGui.GetWindowSize().X / 2 - ImGui.CalcTextSize($"{currentIndex}").X / 2);
+                ImGui.TextUnformatted($"{currentIndex}");
+                ImGui.SameLine();
+                Misc.RenderAlignmentToRight(" 》");
+                if (ImGui.Button(" 》"))
                 {
-                    if (profileSearchQuery == string.Empty)
-                    {
-                        profileSearchQuery = "ALL PROFILES";
-                    }
+                    currentIndex++;
                     DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                 }
-                if (listings.Count == 0)
-                {
-                    ImGui.TextUnformatted("No listings loaded.");
-                    return;
-                }
-                // Draw personal listings
-                using (ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
-                {
-                    ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
-                    ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
-
-                    foreach (var listing in listings.Where(l => l.type == type))
-                    {
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
-                        if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
-                        {
-                            ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
-                        }
-                        ImGui.TextColored(listing.color, listing.name);
-                        ImGui.TableSetColumnIndex(1);
-                        if (ImGui.Button($"View##{listing.id}"))
-                        {
-                            Plugin.plugin.OpenTargetWindow();
-                            TargetProfileWindow.RequestingProfile = true;
-                            TargetProfileWindow.ResetAllData();
-                            DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
-                        }
-                    }
-                }
             }
-            catch (Exception ex)
+            if (ImGui.Button("Search"))
             {
-                Plugin.PluginLog.Error("Error drawing listing window", ex.ToString());
+                if (profileSearchQuery == string.Empty)
+                {
+                    profileSearchQuery = "ALL PROFILES";
+                }
+                DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
+            }
+            if (SocialWindow.listings.Count == 0)
+            {
+                ImGui.TextUnformatted("No listings loaded.");
+                return;
+            }
+
+
+            using (ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
+            {
+                ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
+                ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
+
+                foreach (var listing in SocialWindow.listings.Where(l => l.type == type))
+                {
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
+                    {
+                        ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
+                    }
+                    ImGui.TextColored(listing.color, listing.name);
+
+                    if (ImGui.Button($"View##{listing.id}"))
+                    {
+                        Plugin.plugin.OpenTargetWindow();
+                        TargetProfileWindow.RequestingProfile = true;
+                        TargetProfileWindow.ResetAllData();
+                        DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button($"Bookmark##{listing.id}"))
+                    {
+                        DataSender.BookmarkPlayer(Plugin.character, string.Empty, string.Empty, listing.id);
+                    }
+                    ImGui.TableSetColumnIndex(1);
+                    //description here
+                }
             }
         }
         public static void DrawPageCountSelection()
@@ -143,6 +122,8 @@ namespace AbsoluteRP.Windows.Listings
             if (ImGui.Selectable("100", profileViewCount == currentViewCount))
                 currentViewCount = 100;
         }
+
+
         public static void DrawListingCategorySelection()
         {
             var (text, desc) = UI.ListingCategorySearchVals[currentCategory];
@@ -156,16 +137,7 @@ namespace AbsoluteRP.Windows.Listings
                 UIHelpers.SelectableHelpMarker(newDesc);
             }
         }
-
-        public void Dispose()
-        {
-            foreach (Listing listing in listings)
-            {
-                WindowOperations.SafeDispose(listing.avatar);
-                listing.avatar = null;
-            }
-        }
-        private void DrawFFXIVLocationSelectors()
+        public static void DrawFFXIVLocationSelectors()
         {
             // Region Combo
             var regions = GameData.GetAllRegions();
@@ -247,4 +219,3 @@ namespace AbsoluteRP.Windows.Listings
         }
     }
 }
-*/

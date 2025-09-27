@@ -94,13 +94,12 @@ namespace AbsoluteRP
         public OptionsWindow? OptionsWindow { get; private set; }
         public NotesWindow? NotesWindow { get; private set; }
         private ModPanel? ModeratorPanel { get; set; }
-        private ListingsWindow? ListingWindow { get; set; }
+        private SocialWindow? ListingWindow { get; set; }
         public ARPTooltipWindow? TooltipWindow { get; private set; }
         private ReportWindow? ReportWindow { get; set; }
         private MainPanel? MainPanel { get; set; }
         private ImportantNotice? ImportantNoticeWindow { get; set; }
         private ProfileWindow? ProfileWindow { get; set; }
-        private BookmarksWindow? BookmarksWindow { get; set; }
         private ARPChatWindow? ArpChatWindow { get; set; }
         private TargetProfileWindow? TargetWindow { get; set; }
         private ImagePreview? ImagePreview { get; set; }
@@ -248,7 +247,7 @@ namespace AbsoluteRP
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(Plugin.character, name, worldname);
+                    DataSender.BookmarkPlayer(Plugin.character, name, worldname, -1);
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -282,7 +281,7 @@ namespace AbsoluteRP
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(Plugin.character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                    DataSender.BookmarkPlayer(Plugin.character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -389,7 +388,7 @@ namespace AbsoluteRP
             if (IsOnline())
             {
                 var targetPlayer = TargetManager.Target as IPlayerCharacter;
-                DataSender.BookmarkPlayer(character, targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString());
+                DataSender.BookmarkPlayer(character, targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString(), -1);
             }
         }
 
@@ -452,7 +451,6 @@ namespace AbsoluteRP
             NotesWindow?.Dispose();
             ImportantNoticeWindow?.Dispose();
             TargetWindow?.Dispose();
-            BookmarksWindow?.Dispose();
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
             ListingWindow?.Dispose();
@@ -631,7 +629,6 @@ namespace AbsoluteRP
         public void OpenProfileWindow() => ProfileWindow.IsOpen = true;
         public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
         public void OpenTargetWindow() => TargetWindow.IsOpen = true;
-        public void OpenBookmarksWindow() => BookmarksWindow.IsOpen = true;
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
@@ -673,7 +670,6 @@ namespace AbsoluteRP
                 TermsWindow = new TOS();
                 ProfileWindow = new ProfileWindow();
                 ImagePreview = new ImagePreview();
-                BookmarksWindow = new BookmarksWindow();
                 ImportantNoticeWindow = new ImportantNotice();
                 TargetWindow = new TargetProfileWindow();
                 ModeratorPanel = new ModPanel();
@@ -681,7 +677,7 @@ namespace AbsoluteRP
                 ReportWindow = new ReportWindow();
                 TooltipWindow = new ARPTooltipWindow();
                 NotesWindow = new NotesWindow();
-                ListingWindow = new ListingsWindow();
+                ListingWindow = new SocialWindow();
                 TradeWindow = new TradeWindow();
 
                 WindowSystem.AddWindow(OptionsWindow);
@@ -689,7 +685,6 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(TermsWindow);
                 WindowSystem.AddWindow(ProfileWindow);
                 WindowSystem.AddWindow(ImagePreview);
-                WindowSystem.AddWindow(BookmarksWindow);
                 WindowSystem.AddWindow(TargetWindow);
                 WindowSystem.AddWindow(ModeratorPanel);
                 WindowSystem.AddWindow(ReportWindow);
