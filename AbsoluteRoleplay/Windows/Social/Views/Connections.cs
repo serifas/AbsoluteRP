@@ -6,7 +6,7 @@ using Dalamud.Plugin;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
 
-namespace AbsoluteRP.Windows.Profiles
+namespace AbsoluteRP.Windows.Social.Views
 {
     public class Connections
     {
@@ -19,7 +19,7 @@ namespace AbsoluteRP.Windows.Profiles
         public static string localPlayerWorld = "";
         public static int currentListing = 0;
         private IDalamudPluginInterface pg;
-        public static void LoadConnectionsTab()
+        public static void LoadConnectionsUI()
         {
             try
             {

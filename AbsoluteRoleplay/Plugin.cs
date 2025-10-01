@@ -4,10 +4,10 @@ using AbsoluteRP.Windows;
 using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.Listings;
 using AbsoluteRP.Windows.MainPanel;
-using AbsoluteRP.Windows.MainPanel.Views;
 using AbsoluteRP.Windows.Moderator;
 using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Social.Views;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
@@ -346,8 +346,6 @@ namespace AbsoluteRP
         {
             connectionsBarEntry = null;
             statusBarEntry = null;
-            MainPanel.status = "Logged Out";
-            MainPanel.statusColor = new Vector4(255, 0, 0, 255);
             MainPanel.switchUI();
             loginAttempted = false;
             playername = string.Empty;
@@ -709,19 +707,23 @@ namespace AbsoluteRP
                     x => x?.characterName == ClientState.LocalPlayer.Name.ToString()
                       && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
-            if (Configuration.showCompass)
+            if (IsOnline())
             {
-                fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
-                if (fetchQuestsInRangeTimer >= 25f)
+
+                if (Configuration.showCompass)
                 {
-                    fetchQuestsInRangeTimer = 0f;
-                    var localPlayer = ClientState.LocalPlayer;
-                    List<IPlayerCharacter> nearbyPlayers = ObjectTable
-                        .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
-                        .Cast<IPlayerCharacter>()
-                        .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
-                        .ToList();
-                    DataSender.RequestCompassFromList(character, nearbyPlayers);
+                    fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+                    if (fetchQuestsInRangeTimer >= 25f)
+                    {
+                        fetchQuestsInRangeTimer = 0f;
+                        var localPlayer = ClientState.LocalPlayer;
+                        List<IPlayerCharacter> nearbyPlayers = ObjectTable
+                            .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
+                            .Cast<IPlayerCharacter>()
+                            .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
+                            .ToList();
+                        DataSender.RequestCompassFromList(character, nearbyPlayers);
+                    }
                 }
             }
             // var currentTarget can be null or not an IGameObject, so always check type before using ObjectKind

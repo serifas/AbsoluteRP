@@ -10,6 +10,7 @@ using AbsoluteRP.Windows.Moderator;
 using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using AbsoluteRP.Windows.Social.Views;
 using Dalamud.Interface.Textures.TextureWraps;
 using FFXIVClientStructs.FFXIV.Common.Math;
 

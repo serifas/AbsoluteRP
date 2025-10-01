@@ -1,9 +1,8 @@
 ﻿using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Ect;
-using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
-using AbsoluteRP.Windows.Social___WIP;
+using AbsoluteRP.Windows.Social.Views;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -60,7 +59,7 @@ namespace AbsoluteRP.Windows.Listings
 
                 if (ImGui.BeginTabItem("Connections"))
                 {
-                    Connections.LoadConnectionsTab();
+                    Connections.LoadConnectionsUI();
                     ImGui.EndTabItem();
                 }
                 if (ImGui.BeginTabItem("Bookmarks"))

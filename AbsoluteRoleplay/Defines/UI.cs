@@ -31,6 +31,15 @@ using static System.Net.Mime.MediaTypeNames;
 namespace AbsoluteRP
 {
 
+    public class Navigation
+    {
+        public string[] names { get; set; } = new string[0];
+        public Action[] actions { get; set; } = new Action[0];
+        public ImTextureID[] textureIDs { get; set; } = new ImTextureID[0];
+        public bool[] show { get; set; } = new bool[0];
+
+    }
+
 
     public class IconData 
     { 

@@ -12,7 +12,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AbsoluteRP.Windows.Social___WIP
+namespace AbsoluteRP.Windows.Social.Views
 {
     internal class Search
     {
@@ -36,7 +36,7 @@ namespace AbsoluteRP.Windows.Social___WIP
             ImGui.InputText("##ProfileName", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
             DrawListingCategorySelection();
             DrawPageCountSelection();
-            using (ImRaii.Child($"ProfileNavigation", new System.Numerics.Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
+            using (ImRaii.Child($"ProfileNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
             {
                 if (currentIndex > 1)
                 {
@@ -81,7 +81,7 @@ namespace AbsoluteRP.Windows.Social___WIP
                 {
                     ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
-                    if (listing.avatar.Handle != null && listing.avatar.Handle != IntPtr.Zero)
+                    if (listing.avatar.Handle != null && listing.avatar.Handle != nint.Zero)
                     {
                         ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
                     }
@@ -144,7 +144,7 @@ namespace AbsoluteRP.Windows.Social___WIP
             var regionNames = regions.ConvertAll(GameData.GetRegionName);
             int regionIdx = regions.IndexOf(selectedRegion);
             ImGui.PushItemWidth(ImGui.GetWindowSize().X / 5);
-            string regionLabel = (regionNames.Count > 0 && regionIdx >= 0) ? regionNames[regionIdx] : "";
+            string regionLabel = regionNames.Count > 0 && regionIdx >= 0 ? regionNames[regionIdx] : "";
 
             using (var regionCombo = ImRaii.Combo("Region", regionLabel))
             {
@@ -170,7 +170,7 @@ namespace AbsoluteRP.Windows.Social___WIP
             var dataCenters = GameData.GetDataCentersByRegion(selectedRegion);
             var dcNames = dataCenters.ConvertAll(GameData.GetDataCenterName);
             int dcIdx = dataCenters.IndexOf(selectedDataCenter);
-            string dcLabel = (dcNames.Count > 0 && dcIdx >= 0) ? dcNames[dcIdx] : "";
+            string dcLabel = dcNames.Count > 0 && dcIdx >= 0 ? dcNames[dcIdx] : "";
 
             using (var dcCombo = ImRaii.Combo("Data Center", dcLabel))
             {
@@ -199,7 +199,7 @@ namespace AbsoluteRP.Windows.Social___WIP
                 return idx >= 0 ? name.Substring(idx + 1) : name;
             });
             int worldIdx = worldsList.IndexOf(selectedWorld);
-            string worldLabel = (worldNames.Count > 0 && worldIdx >= 0) ? worldNames[worldIdx] : "";
+            string worldLabel = worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : "";
 
             using (var worldCombo = ImRaii.Combo("World", worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : ""))
             {

@@ -1,5 +1,5 @@
 using AbsoluteRP.Helpers;
-using AbsoluteRP.Windows.MainPanel.Views;
+using AbsoluteRP.Windows.NavLayouts;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -34,6 +34,8 @@ public class MainPanel : Window, IDisposable
     private bool openRemoveAccountPopup = false;
     public static float buttonWidth = 0;
     public static float buttonHeight = 0;
+    public static int navigationIndex = 0;
+    public static int extraNavIndex = 0;
     //duh
     //server status label stuff
     public static string serverStatus = "Connection Status...";
@@ -99,136 +101,16 @@ public class MainPanel : Window, IDisposable
 
         float navHeight = buttonSize * buttonCount * 1.2f;
         DrawMainUI();
-        DrawExtraUI();
+
+        Navigation extraNav = NavigationLayouts.ExtraNavigation();
+        UIHelpers.DrawExtraNav(extraNav, ref extraNavIndex);
         // Position navigation window to the left of MainPanel, just below the header
         ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.2f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.2f, navHeight), ImGuiCond.Always);
-        ImGui.Begin("##NavigationPanel", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar);
-
-        string[] navTooltips = new[]
-        {
-            "Profiles",
-            "Social",
-            "Systems",
-            "Quests",
-            "Events"
-        };
-        // Define actions for each button
-        Action[] navActions = new Action[]
-        {
-            () => { /* Profiles logic */ 
-                    if (Plugin.plugin.IsOnline())
-                    {
-                        Plugin.plugin.OpenAndLoadProfileWindow(true, ProfileWindow.profileIndex);
-                    } 
-            },
-            () => { /* Social logic */ 
-                DataSender.RequestConnections(Plugin.character);
-            },
-            () => { /* Systems logic */ viewSystems = true; },
-            () => { /* Quests logic */ viewListings = true; },
-            () => { /* Events logic */ viewEvents = true; }
-        };
-        ImTextureID[] tabIcons = {
-        UI.UICommonImage(UI.CommonImageTypes.listingsPersonal).Handle,
-        UI.UICommonImage(UI.CommonImageTypes.listingsGroup).Handle,
-        UI.UICommonImage(UI.CommonImageTypes.listingsSystem).Handle,
-        UI.UICommonImage(UI.CommonImageTypes.listingsQuests).Handle,
-        UI.UICommonImage(UI.CommonImageTypes.listingsEvent).Handle,
-    };
-
-        navButtons = tabIcons.Select((icon, idx) =>
-            (Func<bool>)(() =>
-            {
-                bool pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
-                    icon,
-                    new Vector2(buttonSize, buttonSize),
-                    navTooltips[idx]
-                );
-                if (pressed)
-                {
-                    selectedNavIndex = idx;
-                    navActions[idx]?.Invoke();
-                }
-                return pressed;
-            })
-        ).ToArray();
-        for (int i = 0; i < navButtons.Length; i++)
-        {
-            ImGui.PushID(i);
-            if (navButtons[i].Invoke())
-                selectedNavIndex = i;
-            ImGui.PopID();
-        }
-        ImGui.End();
-    }
-    public void HideMainPanel() => showMainPanel = false;
-    public void ShowMainPanel() => showMainPanel = true;
-    public void DrawExtraUI()
-    {
-
-        float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
-        bool[] showBtn = new[]
-        {
-            Plugin.plugin.Configuration.showKofi,
-            Plugin.plugin.Configuration.showPatreon,
-            Plugin.plugin.Configuration.showDisc,
-        };
-
-        string[] navTooltips = new[]
-        {
-            "Support me on Ko-Fi",
-            "Support me on Patreon",
-            "Join the Discord"
-        };
-        // Define actions for each button
-        Action[] navActions = new Action[]
-        {
-            () => {  Util.OpenLink("https://ko-fi.com/absoluteroleplay");},
-            () => {  Util.OpenLink("https://patreon.com/AbsoluteRolelay"); },
-            () => {  Util.OpenLink("https://discord.gg/absolute-roleplay"); }
-        };
-        ImTextureID[] tabIcons = {
-        UI.UICommonImage(UI.CommonImageTypes.kofiBtn).Handle,
-        UI.UICommonImage(UI.CommonImageTypes.patreonBtn).Handle,
-        UI.UICommonImage(UI.CommonImageTypes.discordBtn).Handle
-    };
-
-        navButtons = tabIcons.Select((icon, idx) =>
-            (Func<bool>)(() =>
-            {
-                bool pressed = false;
-                if (showBtn[idx])
-                {
-                    ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - buttonSize * 1.2f);
-                    pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
-                        icon,
-                        new Vector2(buttonSize, buttonSize),
-                        navTooltips[idx]
-                    );
-                if (pressed)
-                {
-                    selectedNavIndex = idx;
-                    navActions[idx]?.Invoke();
-                }
-                ImGui.SameLine();
-                }
-
-                return pressed;
-            })
-        ).ToArray();
-        for (int i = 0; i < navButtons.Length; i++)
-        {
-            ImGui.PushID(i);
-            if (navButtons[i].Invoke())
-                selectedNavIndex = i;
-            ImGui.PopID();
-        }
-
-
-
-
-
+    
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
+        Navigation nav = NavigationLayouts.MainUINavigation();
+        UIHelpers.DrawSideNavigation("MainPanelNavigation", ref navigationIndex, flags, nav);
     }
     public void DrawMainUI()
     {
@@ -297,11 +179,21 @@ public class MainPanel : Window, IDisposable
             }
             if (Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
             {
-                MainUI.LoadMainUI(Plugin.plugin);
+                using (ImRaii.Disabled(true))
+                {
+                    if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                    {
+                        Plugin.plugin.ToggleChatWindow();
+                    }
+                }
+
+                if (ImGui.Button("Options", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                {
+                    Plugin.plugin.OpenOptionsWindow();
+                }
             }
             else
             {
-
                 if (ImGui.Button("Get Started!", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
                 {
                     openTagPopup = true;
@@ -315,9 +207,7 @@ public class MainPanel : Window, IDisposable
                 if (ImGui.BeginPopupModal("Register Account", ref openTagPopup, ImGuiWindowFlags.AlwaysAutoResize))
                 {
                     ImGui.Text("Please specify a unique user name");
-
                     ImGui.InputText("User Name", ref tempTagName, 25);
-
 
                     using (ImRaii.Disabled(tempTagName == string.Empty))
                     {

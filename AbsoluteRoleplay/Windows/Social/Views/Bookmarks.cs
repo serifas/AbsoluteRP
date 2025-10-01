@@ -6,8 +6,9 @@ using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles;
 
-namespace AbsoluteRP.Windows.Profiles
+namespace AbsoluteRP.Windows.Social.Views
 {
     public class Bookmarks
     {
@@ -20,7 +21,7 @@ namespace AbsoluteRP.Windows.Profiles
             {
                 Vector2 windowSize = ImGui.GetWindowSize();
                 float padding = 10f; // Padding between the two columns
-                float childWidth = (windowSize.X - padding * 3); // Divide width between two children with padding
+                float childWidth = windowSize.X - padding * 3; // Divide width between two children with padding
                 float childHeight = windowSize.Y - 80; // Subtract space for top text
                 Vector2 childSize = new Vector2(childWidth, childHeight);
                 // Start grouping for Bookmarks section

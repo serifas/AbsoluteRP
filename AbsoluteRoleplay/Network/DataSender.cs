@@ -4,6 +4,7 @@ using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Moderator;
 using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Social.Views;
 using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Hooking;
 using Dalamud.Interface.Textures.TextureWraps;

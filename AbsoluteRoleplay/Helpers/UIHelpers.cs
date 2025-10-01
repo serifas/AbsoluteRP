@@ -1,5 +1,8 @@
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
+using Lumina.Excel.Sheets;
+using Networking;
 using System;
 using System.Collections.Generic;
 using System.Collections.Generic;
@@ -10,6 +13,8 @@ using System.Text;
 using System.Threading.Tasks;
 namespace AbsoluteRP.Helpers
 {
+
+
 
     public static class UIHelpers
     {
@@ -42,7 +47,85 @@ namespace AbsoluteRP.Helpers
                 ImGui.EndTooltip();
             }
         }
+        public static void DrawExtraNav(Navigation navigation, ref int selectedNavIndex)
+        {
+            Func<bool>[] navButtons;
+            float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
+            int pressedIndex = -1;
+            navButtons = navigation.textureIDs.Select((icon, idx) =>
+               (Func<bool>)(() =>
+               {
+                   bool pressed = false;
+                   if (navigation.show[idx])
+                   {
+                       ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - buttonSize * 1.2f);
+                       pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
+                           icon,
+                           new Vector2(buttonSize, buttonSize),
+                           navigation.names[idx]
+                       );
+                       if (pressed)
+                       {
+                           pressedIndex = idx;
+                           navigation.actions[idx]?.Invoke();
+                       }
+                       ImGui.SameLine();
+                   }
+
+                   return pressed;
+               })
+           ).ToArray();
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                ImGui.PushID(i);
+                if (navButtons[i].Invoke())
+                    selectedNavIndex = i;
+                ImGui.PopID();
+            }
+            if (pressedIndex != -1)
+                selectedNavIndex = pressedIndex;
+        }
+        public static void DrawSideNavigation(string uniqueID, ref int selectedNavIndex, ImGuiWindowFlags flags, Navigation navigation)
+        {
+            ImGui.Begin(uniqueID, flags);
+
+
+            Func<bool>[] navButtons;
+            int pressedIndex = -1;
+
+            float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
+
+            navButtons = navigation.textureIDs.Select((icon, idx) =>
+                (Func<bool>)(() =>
+                {
+                    bool pressed = AbsoluteRP.Helpers.CustomLayouts.TransparentImageButton(
+                        icon,
+                        new Vector2(buttonSize, buttonSize),
+                        navigation.names[idx]
+                    );
+                    if (pressed)
+                    {
+                        pressedIndex = idx;
+                        navigation.actions[idx]?.Invoke();
+                    }
+                    return pressed;
+                })
+            ).ToArray();
+            for (int i = 0; i < navButtons.Length; i++)
+            {
+                ImGui.PushID(i);
+                if (navButtons[i].Invoke())
+                    selectedNavIndex = i;
+                ImGui.PopID();
+            }
+
+            if (pressedIndex != -1)
+                selectedNavIndex = pressedIndex;
+            ImGui.End();
+        }
     }
+    
+
     public static class EnumerableExtensions
     {
         public static IEnumerable<(T item, int index)> WithIndex<T>(this IEnumerable<T> source)
@@ -54,4 +137,5 @@ namespace AbsoluteRP.Helpers
             }
         }
     }
+    
 }
