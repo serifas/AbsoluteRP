@@ -267,7 +267,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             }
             if(ImGui.IsItemHovered())
             {
-                ImGui.SetTooltip("Set this bio as the tooltip of the profile.\nOnly one profile can be set as a tooltip at a time.");
+                ImGui.SetTooltip("Set this bio as the tooltip of the tooltipData.\nOnly one tooltipData can be set as a tooltip at a time.");
             }
            /* ImGui.SameLine();
             bool viewable = layout.viewable;
@@ -280,6 +280,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
             }
            */
+
             if (ImGui.CollapsingHeader("Basic Info", ImGuiTreeNodeFlags.None))
             {
                 string name = layout.name;
@@ -288,10 +289,11 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 string age = layout.age;
                 string height = layout.height;
                 string weight = layout.weight;
+
                 ImGui.Text("NAME:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##name_bio{index}", "Character Name (The name or nickname of the character you are currently playing as)", ref name, 100)) { layout.name = name; }
-
+              
                 ImGui.Text("RACE:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##race_bio{index}", "The IC Race of your character", ref race, 100)) { layout.race = race; }
@@ -417,58 +419,101 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
         }
         public static void LoadCustomTraits(Plugin plugin, BioLayout layout, trait personality)
         {
-            string name = personality.name;
-            string description = personality.description;
-            float iconHeight = ImGui.GetIO().FontGlobalScale * personality.icon.icon.Height;
-            float iconWidth = ImGui.GetIO().FontGlobalScale * personality.icon.icon.Width;
-            if(personality.icon.icon.Handle == IntPtr.Zero)
+            try
             {
-                personality.icon.icon = UICommonImage(CommonImageTypes.blank);
-            }
-            ImGui.Image(personality.icon.icon.Handle, new Vector2(iconWidth, iconHeight));
-            ImGui.SameLine();
-            if (ImGui.Button($"Set Icon##{personality.index}"))
-            {
-                foreach (trait p in layout.traits)
+                if (personality == null)
                 {
-                    p.modifying = false;
-                }
-                personality.modifying = true;
-            }
-            ImGui.SameLine();
-            if (ImGui.Button($"Remove##RemovePersonality{personality.index}"))
-            {
-                layout.traits.RemoveAll(p => p.index == personality.index);
-            }
-            if (ImGui.InputText($"##Name{personality.index}", ref name, 75))
-            {
-                personality.name = name;
-            }
-            if (ImGui.InputTextMultiline($"##Description{personality.index}", ref description, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 20)))
-            {
-                personality.description = description;
-            }
-            bool displayIconSelection = personality.modifying;
-            if (displayIconSelection)
-            {
-
-                if (!WindowOperations.iconsLoaded)
-                {
-                    WindowOperations.LoadStatusIconsLazy(plugin); // Load a small batch of icons
-                }
-                ImGui.Begin($"Icons", ref displayIconSelection, ImGuiWindowFlags.None);
-                if (firstLoad)
-                {
-                    firstLoad = false;
-                    ImGui.SetWindowSize(new Vector2(500, 650));
-                    ImGui.SetWindowPos(new Vector2(ImGui.GetMainViewport().Size.X / 2 - 250, ImGui.GetMainViewport().Size.Y / 2 - 350));
+                    Plugin.PluginLog?.Debug("LoadCustomTraits: trait is null, skipping.");
+                    return;
                 }
 
-                WindowOperations.RenderStatusIcons(plugin, personality.icon, personality);
-                ImGui.End();
+                // Ensure icon element exists
+                if (personality.icon == null)
+                {
+                    personality.icon = new IconElement { iconID = 0, icon = UICommonImage(CommonImageTypes.blank) };
+                }
 
+                // Ensure the IDalamudTextureWrap exists
+                if (personality.icon.icon == null || personality.icon.icon.Handle == IntPtr.Zero)
+                {
+                    // Try to set a sane fallback texture
+                    var fallback = UICommonImage(CommonImageTypes.blank);
+                    if (fallback != null)
+                        personality.icon.icon = fallback;
+                    else
+                        Plugin.PluginLog?.Debug("LoadCustomTraits: fallback UICommonImage returned null.");
+                }
+
+                string name = personality.name ?? string.Empty;
+                string description = personality.description ?? string.Empty;
+
+                // Safe width/height calculation using a fallback size if texture missing
+                float fontScale = ImGui.GetIO().FontGlobalScale;
+                var tex = personality.icon.icon;
+                float iconHeight = fontScale * (tex?.Height ?? 24);
+                float iconWidth = fontScale * (tex?.Width ?? 24);
+
+                if (tex != null && tex.Handle != IntPtr.Zero)
+                {
+                    try { ImGui.Image(tex.Handle, new Vector2(iconWidth, iconHeight)); } catch (Exception ex) { Plugin.PluginLog?.Debug($"LoadCustomTraits: Image draw failed: {ex.Message}"); }
+                }
+                else
+                {
+                    ImGui.TextColored(new Vector4(1, 0, 0, 1), "Icon missing");
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button($"Set Icon##{personality.index}"))
+                {
+                    foreach (trait p in layout.traits)
+                    {
+                        p.modifying = false;
+                    }
+                    personality.modifying = true;
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button($"Remove##RemovePersonality{personality.index}"))
+                {
+                    layout.traits.RemoveAll(p => p.index == personality.index);
+                    return;
+                }
+
+                if (ImGui.InputText($"##Name{personality.index}", ref name, 75))
+                {
+                    personality.name = name;
+                }
+                if (ImGui.InputTextMultiline($"##Description{personality.index}", ref description, 500, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 20)))
+                {
+                    personality.description = description;
+                }
+
+                bool displayIconSelection = personality.modifying;
+                if (displayIconSelection)
+                {
+                    if (!WindowOperations.iconsLoaded)
+                    {
+                        WindowOperations.LoadStatusIconsLazy(plugin); // Load a small batch of icons
+                    }
+
+                    ImGui.Begin($"Icons", ref displayIconSelection, ImGuiWindowFlags.None);
+                    if (firstLoad)
+                    {
+                        firstLoad = false;
+                        ImGui.SetWindowSize(new Vector2(500, 650));
+                        ImGui.SetWindowPos(new Vector2(ImGui.GetMainViewport().Size.X / 2 - 250, ImGui.GetMainViewport().Size.Y / 2 - 350));
+                    }
+
+                    WindowOperations.RenderStatusIcons(plugin, personality.icon, personality);
+                    ImGui.End();
+                }
+
+                personality.modifying = displayIconSelection;
             }
-            personality.modifying = displayIconSelection;
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"LoadCustomTraits: unexpected exception: {ex}");
+            }
         }
         public static void AddPersonalitySelection_1(BioLayout layout)
         {

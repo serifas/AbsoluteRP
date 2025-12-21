@@ -90,7 +90,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 byte[] baseImageBytes = new byte[0];
                 if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } imagePath })
                 {
-                    baseImageBytes = Misc.ImageToByteArray(Path.Combine(imagePath, "UI/common/profiles/galleries/picturetab.png"));
+                    baseImageBytes = Misc.ImageToByteArray(Path.Combine(imagePath, "UI/profiles/galleries/picturetab.png"));
                 }
                 layout.images.Add(new ProfileGalleryImage()
                 {

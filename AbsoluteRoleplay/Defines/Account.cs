@@ -20,12 +20,15 @@ namespace AbsoluteRP.Defines
     }
     public class RankPermissions
     {
+
         public int rank { get; set; }
         public bool can_announce { get; set; }
+        internal bool can_warn { get; set; }
         public bool can_strike { get; set; }
         public bool can_suspend { get; set; }
         public bool can_ban { get; set; }
-        public bool can_warn { get; set; }
+        public bool can_promote { get; set; }
+
     }
     public enum Rank
     {

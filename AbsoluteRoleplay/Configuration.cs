@@ -58,10 +58,18 @@ public class Configuration : IPluginConfiguration
     [NonSerialized]
     private IDalamudPluginInterface? PluginInterface;
     public bool showCompass { get; set; } = false;
+    internal bool showCompassInPvP { get; set; } = false;
+    internal bool showCompassInDuty { get; set; } = false;
     public bool showCompassInCombat { get; set; } = false;
     public bool AutobackupEnabled { get; set; } = true; 
     public string dataSavePath { get; set; }
-    public float fontSize { get; set; } = 35;
+    public float fontSize { get; set; } = 35; 
+    public float CompassPosX { get; set; } = 0f;
+    public float CompassPosY { get; set; } = 0f;
+
+  
+
+    public Dictionary<ulong, (string, uint)> IdentifyAs = new();
 
     public void Initialize(IDalamudPluginInterface pluginInterface)
     {

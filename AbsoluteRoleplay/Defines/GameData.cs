@@ -1,8 +1,36 @@
+﻿using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Interface.Colors;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Numerics;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace AbsoluteRP.Defines
 {
+    public class LocationCondition
+    {
+        public uint TerritoryType;
+
+        public bool ShouldSerializeWorld() => ShouldSerializeWard();
+        public bool ShouldSerializeWard() => Plugin.DataManager.GetExcelSheet<TerritoryType>().GetRowOrDefault(TerritoryType)?.TerritoryIntendedUse.RowId is 13 or 14;
+        public bool ShouldSerializePlot() => Ward != null && ShouldSerializeWard();
+        public bool ShouldSerializeRoom() => Plot != null && ShouldSerializePlot() && TerritoryType is 384 or 385 or 376 or 652 or 983 or 608 or 609 or 610 or 655 or 999; // Private Chambers & Apartments
+        public bool IsApartment() => TerritoryType is 537 or 574 or 575 or 608 or 609 or 610 or 654 or 655 or 985 or 999;
+
+
+        public uint? World;
+        public int? Ward;
+        public int? Plot;
+        public int? Room;
+    }
     internal enum FFXIVRegion
     {
         NorthAmerica,
@@ -10,7 +38,27 @@ namespace AbsoluteRP.Defines
         Japan,
         Oceania
     }
+ 
+    public enum TitleConditionType
+    {
+        None,
 
+        [Description("Class / Job")]
+        ClassJob,
+
+        [Description("Role")]
+        JobRole,
+
+        [Description("Gear Set")]
+        GearSet,
+
+        [Description("Original Title")]
+        Title,
+
+        [Description("Location")]
+        Location,
+    }
+  
     internal enum FFXIVDataCenter
     {
         // North America

@@ -28,7 +28,7 @@ namespace AbsoluteRP.Windows.Profiles
         }
         public override void Draw()
         {
-            if (Plugin.plugin.IsOnline())
+            if (Plugin.IsOnline())
             {
                 Misc.SetTitle(Plugin.plugin, true, "Personal Notes", ImGuiColors.TankBlue);
 
@@ -41,7 +41,7 @@ namespace AbsoluteRP.Windows.Profiles
                 );
                 if (ImGui.Button("Add Notes"))
                 {
-                    if (Plugin.plugin.IsOnline())
+                    if (Plugin.IsOnline())
                     {
                         DataSender.AddProfileNotes(Plugin.character, characterIndex, profileNotes);
                     }

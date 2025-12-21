@@ -11,26 +11,17 @@ namespace AbsoluteRP.Windows.Ect
     {
         public static bool isAdmin;
         public Configuration config;
-        public static ProfileData profile;
+        public static TooltipData tooltipData;
         public string msg;
         public Vector2 windowPos;
         public bool openedProfile = false;
         public bool openedTargetProfile = false;
-        public static IDalamudTextureWrap alignmentImg;
-        public static IDalamudTextureWrap personality_1Img;
-        public static IDalamudTextureWrap personality_2Img;
-        public static IDalamudTextureWrap personality_3Img;
-        public static IDalamudTextureWrap AlignmentImg;
 
         internal static bool hasAlignment = false;
         internal static bool showPersonality1 = false;
         internal static bool showPersonality2 = false;
         internal static bool showPersonality3 = false;
         internal static bool showPersonalities = false;
-
-        public static List<field> fields = new List<field>();
-        public static List<descriptor> descriptors = new List<descriptor>();
-        public static List<trait> personalities = new List<trait>();    
         public ARPTooltipWindow() : base(
        "TOOLTIP", ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoNav
                                               | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse |
@@ -51,17 +42,60 @@ namespace AbsoluteRP.Windows.Ect
         {
             try
             {
-                if (profile.title != string.Empty && profile.title != "New Profile") Misc.SetTitle(Plugin.plugin, false, profile.title, profile.titleColor);
-                if (config.tooltip_showAvatar) ImGui.Image(profile.avatar.Handle, new Vector2(100, 100));
-                if (config.tooltip_showName && profile.Name != string.Empty) ImGui.Text("NAME: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Name, 400);
-                if (config.tooltip_showRace && profile.Race != string.Empty) ImGui.Text($"RACE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Race, 400);
-                if (config.tooltip_showGender && profile.Gender != string.Empty) ImGui.Text($"GENDER: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Gender, 400);
-                if (config.tooltip_showAge && profile.Age != string.Empty) ImGui.Text($"AGE: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Age, 400);
-                if (config.tooltip_showHeight && profile.Height != string.Empty) ImGui.Text($"HEIGHT:  "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Height, 400);
-                if (config.tooltip_showWeight && profile.Weight != string.Empty) ImGui.Text($"WEIGHT: "); ImGui.SameLine(); Misc.RenderHtmlColoredTextInline(profile.Weight, 400);
-                if (config.tooltip_ShowCustomDescriptors && descriptors != null)
+                if (tooltipData == null) return;
+
+                if (!string.IsNullOrEmpty(tooltipData.title) && tooltipData.title != "New Profile")
+                    Misc.SetTitle(Plugin.plugin, false, tooltipData.title, tooltipData.titleColor);
+
+                if (config.tooltip_showAvatar && tooltipData.avatar != null)
                 {
-                    foreach (descriptor descriptor in descriptors)
+                    ImGui.Image(tooltipData.avatar.Handle, new Vector2(100, 100));
+                }
+
+                if (config.tooltip_showName && !string.IsNullOrEmpty(tooltipData.Name))
+                {
+                    ImGui.Text("NAME: ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(tooltipData.Name, 400);
+                }
+
+                if (config.tooltip_showRace && !string.IsNullOrEmpty(tooltipData.Race))
+                {
+                    ImGui.Text("RACE: ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(tooltipData.Race, 400);
+                }
+
+                if (config.tooltip_showGender && !string.IsNullOrEmpty(tooltipData.Gender))
+                {
+                    ImGui.Text("GENDER: ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(tooltipData.Gender, 400);
+                }
+
+                if (config.tooltip_showAge && !string.IsNullOrEmpty(tooltipData.Age))
+                {
+                    ImGui.Text("AGE: ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(tooltipData.Age, 400);
+                }
+
+                if (config.tooltip_showHeight && !string.IsNullOrEmpty(tooltipData.Height))
+                {
+                    ImGui.Text("HEIGHT: ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(tooltipData.Height, 400);
+                }
+
+                if (config.tooltip_showWeight && !string.IsNullOrEmpty(tooltipData.Weight))
+                {
+                    ImGui.Text("WEIGHT: ");
+                    ImGui.SameLine();
+                    Misc.RenderHtmlColoredTextInline(tooltipData.Weight, 400);
+                }
+                if (config.tooltip_ShowCustomDescriptors && tooltipData.descriptors != null)
+                {
+                    foreach (descriptor descriptor in tooltipData.descriptors)
                     {
                         ImGui.Spacing();
                         ImGui.Text(descriptor.name?.ToUpper() + ": ");
@@ -72,12 +106,12 @@ namespace AbsoluteRP.Windows.Ect
 
                 if (config.tooltip_showAlignment)
                 {
-                    if (hasAlignment && AlignmentImg != null)
+                    if (hasAlignment && tooltipData.alignmentImg != null)
                     {
                         ImGui.Text("ALIGNMENT:");
-                        ImGui.Image(AlignmentImg.Handle, new Vector2(32, 32));
+                        ImGui.Image(tooltipData.alignmentImg.Handle, new Vector2(32, 32));
                         ImGui.SameLine();
-                        Misc.RenderHtmlColoredTextInline(UI.AlignmentName(profile.Alignment), 400);
+                        Misc.RenderHtmlColoredTextInline(UI.AlignmentName(tooltipData.Alignment), 400);
                     }
                 }
 
@@ -86,28 +120,28 @@ namespace AbsoluteRP.Windows.Ect
                     if (showPersonalities)
                     {
                         ImGui.Text("TRAITS:");
-                        if (showPersonality1 && personality_1Img != null)
+                        if (showPersonality1 && tooltipData.personality_1Img != null)
                         {
-                            ImGui.Image(personality_1Img.Handle, new Vector2(32, 42));
+                            ImGui.Image(tooltipData.personality_1Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_1), 400);
+                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(tooltipData.Personality_1), 400);
                         }
-                        if (showPersonality2 && personality_2Img != null)
+                        if (showPersonality2 && tooltipData.personality_2Img != null)
                         {
-                            ImGui.Image(personality_2Img.Handle, new Vector2(32, 42));
+                            ImGui.Image(tooltipData.personality_2Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_2), 400);
+                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(tooltipData.Personality_2), 400);
                         }
-                        if (showPersonality3 && personality_3Img != null)
+                        if (showPersonality3 && tooltipData.personality_3Img != null)
                         {
-                            ImGui.Image(personality_3Img.Handle, new Vector2(32, 42));
+                            ImGui.Image(tooltipData.personality_3Img.Handle, new Vector2(32, 42));
                             ImGui.SameLine();
-                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(profile.Personality_3), 400);
+                            Misc.RenderHtmlColoredTextInline(UI.PersonalityNames(tooltipData.Personality_3), 400);
                         }
                     }
-                    if (config.tooltip_showCustomTraits && personalities != null)
+                    if (config.tooltip_showCustomTraits && tooltipData.personalities != null)
                     {
-                        foreach (trait personality in personalities)
+                        foreach (trait personality in tooltipData.personalities)
                         {
                             if (personality?.icon?.icon != null)
                                 ImGui.Image(personality.icon.icon.Handle, new Vector2(32, 42));
@@ -124,12 +158,6 @@ namespace AbsoluteRP.Windows.Ect
                         ImGui.SetWindowPos(windowPos);
                     }
                 }
-                else
-                {
-                    var operations = new WindowOperations();
-                    var position = operations.CalculateTooltipPos();
-                    ImGui.SetWindowPos(position);
-                }
             }
             catch (Exception ex)
             {
@@ -143,15 +171,15 @@ namespace AbsoluteRP.Windows.Ect
         {
             try
             {
-                WindowOperations.SafeDispose(alignmentImg);
-                alignmentImg = null;
-                WindowOperations.SafeDispose(personality_1Img);
-                personality_1Img = null;
-                WindowOperations.SafeDispose(personality_2Img);
-                personality_2Img = null;
-                WindowOperations.SafeDispose(personality_3Img);
-                personality_3Img = null;
-                foreach (trait personality in personalities)
+                WindowOperations.SafeDispose(tooltipData.alignmentImg);
+                tooltipData.alignmentImg = null;
+                WindowOperations.SafeDispose(tooltipData.personality_1Img);
+                tooltipData.personality_1Img = null;
+                WindowOperations.SafeDispose(tooltipData.personality_2Img);
+                tooltipData.personality_2Img = null;
+                WindowOperations.SafeDispose(tooltipData.personality_3Img);
+                tooltipData.personality_3Img = null;
+                foreach (trait personality in tooltipData.personalities)
                 {
                     WindowOperations.SafeDispose(personality.icon.icon);
                     personality.icon.icon = null;

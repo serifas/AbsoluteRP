@@ -90,7 +90,6 @@ namespace AbsoluteRP.Windows.Ect
                         }
                         if (selectedTab == 0) // ARP Channel
                         {
-                            // Create a table with 2 columns
                             using (var table = ImRaii.Table("ChatTable", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerV))
                             {
                                 if (table != null)

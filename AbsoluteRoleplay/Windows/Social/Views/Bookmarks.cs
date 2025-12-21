@@ -7,6 +7,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Profiles;
+using Dalamud.Interface.Textures.TextureWraps;
 
 namespace AbsoluteRP.Windows.Social.Views
 {
@@ -30,7 +31,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 {
                     if (profileTable)
                     {
-                        if (Plugin.plugin.IsOnline())
+                        if (Plugin.IsOnline())
                         {
                             for (var i = 0; i < profileList.Count; i++)
                             {
@@ -89,5 +90,6 @@ namespace AbsoluteRP.Windows.Social.Views
         public string ProfileName { get; set; }
         public string PlayerName { get; set; }
         public string PlayerWorld { get; set; }
+        public IDalamudTextureWrap avatar {  get; set; }
     }
 }

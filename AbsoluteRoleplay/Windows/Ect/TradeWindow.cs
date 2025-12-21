@@ -44,7 +44,7 @@ namespace AbsoluteRP.Windows.Profiles
         }
         public override void Draw()
         {
-            if (!Plugin.plugin.IsOnline())
+            if (!Plugin.IsOnline())
                 return;
 
             Vector2 windowSize = ImGui.GetWindowSize();
@@ -63,7 +63,7 @@ namespace AbsoluteRP.Windows.Profiles
             }
             AddTabSelection(false);
             float centeredX = (ImGui.GetWindowSize().X - ImGui.CalcTextSize("Confirm Trade").X) / 2.5f;
-            if (Misc.DrawCenteredButton(centeredX, new Vector2(150, 30), "Confirm Trade"))
+            if (Misc.DrawCenteredButton( "Confirm Trade"))
             {
                 if(inventoryLayout.tradeSlotContents.Count > 0)
                 {
@@ -76,7 +76,7 @@ namespace AbsoluteRP.Windows.Profiles
                 }
             }
             ImGui.SameLine();
-            if (Misc.DrawCenteredButton(centeredX + 160, new Vector2(150, 30), "Cancel Trade"))
+            if (Misc.DrawCenteredButton("Cancel Trade"))
             {
                 DataSender.SendTradeStatus(Plugin.character, -1, inventoryLayout, tradeTargetName, tradeTargetWorld, false, true);
             }

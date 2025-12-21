@@ -66,7 +66,7 @@ namespace Networking
             Buff.AddRange(BitConverter.GetBytes(input));
             buffUpdated = true;
         }
-     
+
         public void WriteFloat(float input)
         {
             Buff.AddRange(BitConverter.GetBytes(input));
@@ -79,6 +79,8 @@ namespace Networking
         }
         public void WriteString(string input)
         {
+            // Defensive: treat null as empty string to avoid Encoding.GetBytes throwing ArgumentNullException
+            if (input == null) input = string.Empty;
             byte[] stringBytes = Encoding.UTF8.GetBytes(input);
             Buff.AddRange(BitConverter.GetBytes(stringBytes.Length)); // Store length first
             Buff.AddRange(stringBytes); // Store UTF-8 encoded string

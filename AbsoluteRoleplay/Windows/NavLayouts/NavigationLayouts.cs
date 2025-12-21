@@ -1,5 +1,8 @@
-﻿using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Listings;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Social.Views;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Utility;
 using Networking;
 using System;
@@ -19,23 +22,31 @@ namespace AbsoluteRP.Windows.NavLayouts
             {
             "Profiles",
             "Social",
-            "Systems",
-            "Quests",
-            "Events"
+            "Systems - WIP",
+            "Quests - WIP",
+            "Events - WIP"
             };
             // Define actions for each button
             navigation.actions = new Action[]
-            {
+            { 
                 () => { /* Profiles logic */ 
-                        if (Plugin.plugin.IsOnline())
-                        {
-                            Plugin.plugin.OpenAndLoadProfileWindow(true, ProfileWindow.profileIndex);
-                        }
+                    if (Plugin.IsOnline())
+                    {
+                        Plugin.plugin.OpenAndLoadProfileWindow(true, ProfileWindow.profileIndex);
+                    }
                 },
                 () => { /* Social logic */ 
-                    DataSender.RequestConnections(Plugin.character);
+                    if (Plugin.IsOnline())
+                    {
+                        Plugin.plugin.OpenSocialWindow();
+                    }
                 },
-                () => { /* Systems logic */  },
+                () => {
+                    if (Plugin.IsOnline())
+                    {
+                       // Plugin.plugin.ToggleSystemsWindow();
+                    }
+                },
                 () => { /* Quests logic */ },
                 () => { /* Events logic */ }
                 };
@@ -48,6 +59,39 @@ namespace AbsoluteRP.Windows.NavLayouts
             };
             return navigation;
         }
+
+        public static Navigation GroupsNavigation(List<Group> groups)
+        {
+            Navigation navigation = new Navigation();
+
+            List<string> groupnames = new List<string>();
+            List<Action> actions = new List<Action>();
+            List<ImTextureID> logos = new List<ImTextureID>();
+
+            foreach (Group group in groups)
+            {
+                groupnames.Add(group.name);
+                logos.Add(group.logo.Handle);
+                actions.Add(() => { /* Profiles logic */
+                    if (Plugin.IsOnline())
+                    {
+                        Groups.openGroupCreation = false;
+                        Groups.LoadGroup(group);
+                        Groups.manageGroup = false;
+                    }
+                });
+            }
+
+            navigation.names = groupnames.ToArray();
+            // Define actions for each button
+            navigation.actions = actions.ToArray();
+
+            navigation.textureIDs = logos.ToArray();
+            return navigation;
+        }
+
+
+
         public static Navigation ExtraNavigation()
         {
             Navigation navigation = new Navigation();
@@ -79,6 +123,74 @@ namespace AbsoluteRP.Windows.NavLayouts
             };
 
            
+            return navigation;
+        }
+
+        public static Navigation SystemNavigation()
+        {
+
+            Navigation navigation = new Navigation();
+            navigation.names = new[]
+            {
+            "Stats",
+            "Skills",
+            "Combat",
+            "Rules"
+            };
+            // Define actions for each button
+            navigation.actions = new Action[]
+            {
+                () => {
+                    if(SystemsWindow.systemData.Count > 0) {
+                        SystemsWindow.drawStatLayout = true;    
+                    }
+                   
+                },
+                () => {/* skills logic*/    },
+                () => { /* combat logic */ },
+                () => { /* rules logic */ }
+                };
+            navigation.textureIDs = new ImTextureID[]{
+                UI.UICommonImage(UI.CommonImageTypes.systems_stats).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.systems_skills).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.systems_combat).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.systems_rules).Handle,
+            };
+            return navigation;
+        }
+        public static Navigation SocialNavigation()
+        {
+
+            Navigation navigation = new Navigation();
+            navigation.names = new[]
+            {
+            "Connections",
+            "Bookmarks",
+            "Groups - WIP",
+            "Search"
+            };
+            // Define actions for each button
+            navigation.actions = new Action[]
+            {
+                () => {
+                    SocialWindow.view = SocialWindow.connections;
+                },
+                () => {
+                    SocialWindow.view = SocialWindow.bookmarks;
+                },
+                () => {
+                    //SocialWindow.view = SocialWindow.groups;
+                },
+                () => {
+                    SocialWindow.view = SocialWindow.search;
+                }
+                };
+            navigation.textureIDs = new ImTextureID[]{
+                UI.UICommonImage(UI.CommonImageTypes.socialConnections).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.socialBookmarks).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.socialGroups).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.socialSearch).Handle,
+            };
             return navigation;
         }
     }

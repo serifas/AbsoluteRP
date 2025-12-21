@@ -10,9 +10,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
     //changed
     public class Inventory
     {
-        public static string loading; //loading status string for loading the profile gallery mainly
+        public static string loading; //loading status string for loading the tooltipData gallery mainly
         public static float percentage = 0f; //loading base value
-        public static SortedList<InvTabItem, bool> TabOpen = new SortedList<InvTabItem, bool>(); //what part of the profile we have open
+        public static SortedList<InvTabItem, bool> TabOpen = new SortedList<InvTabItem, bool>(); //what part of the tooltipData we have open
         public static bool ExistingProfile = false;
         public static float loaderInd = -1; //used for the gallery loading bar
         public static bool activeProfile;
@@ -22,7 +22,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
         {
             try
             {
-                if (Plugin.plugin.IsOnline())
+                if (Plugin.IsOnline())
                 {
                     //if we have loaded all
                     //the data received from the server and we are logged in game

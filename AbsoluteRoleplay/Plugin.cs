@@ -1,4 +1,3 @@
-using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows;
 using AbsoluteRP.Windows.Ect;
@@ -8,7 +7,6 @@ using AbsoluteRP.Windows.Moderator;
 using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRP.Windows.Social.Views;
-using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -18,23 +16,25 @@ using Dalamud.Game.Gui.ContextMenu;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Hooking;
 using Dalamud.Interface;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Dalamud.Utility;
+using Dalamud.Utility.Signatures;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Lumina;
+using FFXIVClientStructs.FFXIV.Component.GUI;
 using Networking;
-using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
-using System.Xml.Linq;
+using System.Text;
 
 namespace AbsoluteRP
 {
@@ -60,7 +60,7 @@ namespace AbsoluteRP
         private bool pendingFetchConnections = false;
         private ushort pendingTerritory = 0;
         private const string CommandName = "/arp";
-        public static Character character { get; set; } = null;
+        public static Defines.Character character { get; set; } = null;
 
         public bool loginAttempted = false;
         private IDtrBarEntry? statusBarEntry;
@@ -70,6 +70,8 @@ namespace AbsoluteRP
         internal static float timer = 0f;
         public static UiBuilder builder;
         public static IGameGui GameGUI;
+        public static HashSet<string> viewedPlayers = new HashSet<string>();
+        
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
@@ -83,6 +85,16 @@ namespace AbsoluteRP
         [PluginService] internal static IChatGui chatgui { get; private set; } = null;
         [PluginService] internal static IDtrBar dtrBar { get; private set; } = null!;
         [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
+        [PluginService] public static ICommandManager Commands { get; private set; } = null!;
+        [PluginService] public static IDataManager Data { get; private set; } = null!;
+        [PluginService] public static IObjectTable Objects { get; private set; } = null!;
+        [PluginService] public static ITargetManager Targets { get; private set; } = null!;
+        [PluginService] public static IGameConfig GameConfig { get; private set; } = null!;
+        [PluginService] public static IGameInteropProvider HookProvider { get; private set; } = null!;
+        [PluginService] public static IPluginLog Log { get; private set; } = null!;
+        [PluginService] public static IGameGui GameGui { get; private set; } = null!;
+        [PluginService] public static IChatGui Chat { get; private set; } = null!;
+        [PluginService] public static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -94,7 +106,7 @@ namespace AbsoluteRP
         public OptionsWindow? OptionsWindow { get; private set; }
         public NotesWindow? NotesWindow { get; private set; }
         private ModPanel? ModeratorPanel { get; set; }
-        private SocialWindow? ListingWindow { get; set; }
+        private SocialWindow? SocialWindow { get; set; }
         public ARPTooltipWindow? TooltipWindow { get; private set; }
         private ReportWindow? ReportWindow { get; set; }
         private MainPanel? MainPanel { get; set; }
@@ -105,6 +117,7 @@ namespace AbsoluteRP
         private ImagePreview? ImagePreview { get; set; }
         private TOS? TermsWindow { get; set; }
         private TradeWindow? TradeWindow { get; set; }
+        private SystemsWindow? SystemsWindow { get; set; }
 
         public float BlinkInterval = 0.5f;
         public bool newConnection;
@@ -114,6 +127,7 @@ namespace AbsoluteRP
         public static Dictionary<int, IDalamudTextureWrap> staticTextures = new Dictionary<int, IDalamudTextureWrap>();
 
         private bool needsAsyncInit = true;
+        private string displayName = string.Empty;
 
         public Plugin()
         {
@@ -129,7 +143,6 @@ namespace AbsoluteRP
             {
                 HelpMessage = "opens the plugin window."
             });
-
             Configuration.Initialize(PluginInterface);
 
             if (string.IsNullOrEmpty(Configuration.dataSavePath))
@@ -147,10 +160,48 @@ namespace AbsoluteRP
             ClientState.Login += LoadConnection;
             ClientState.TerritoryChanged += FetchConnectionsInMap;
             Framework.Update += Update;
-
+            Plugin.HookProvider.InitializeFromAttributes(this);
             needsAsyncInit = true;
-        }
 
+
+            LoadConnection();
+            
+        }
+        public static List<IPlayerCharacter> VisiblePlayers()
+        {
+            var localPlayer = ClientState.LocalPlayer;
+            List<IPlayerCharacter> nearbyPlayers = ObjectTable
+                .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
+                .Cast<IPlayerCharacter>()
+                .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
+                .ToList();
+            return nearbyPlayers;
+        }
+        public static string GetNameForPlate(
+     string originalName,
+int objectIndex,
+ulong localContentId,
+IDictionary<ulong, (string, uint)> identifyAs,
+string? altCode = null)
+        {
+            string? overrideName = null;
+
+
+            if (objectIndex == 0 && identifyAs.TryGetValue(localContentId, out var identifyAsTuple))
+            {
+                overrideName = identifyAsTuple.Item1;
+                return overrideName;
+            }
+            else
+            {
+                return originalName;
+            }
+        }
+     
+
+
+
+        
         private async Task InitializeAsync()
         {
             cachedVersion = await GetOnlineVersionAsync();
@@ -331,7 +382,6 @@ namespace AbsoluteRP
             Connect();
             _ = UpdateStatusAsync();
             CheckConnectionsRequestStatus();
-            DataSender.SendLogin();
         }
 
         public void Connect()
@@ -451,9 +501,10 @@ namespace AbsoluteRP
             TargetWindow?.Dispose();
             TooltipWindow?.Dispose();
             ReportWindow?.Dispose();
-            ListingWindow?.Dispose();
+            SocialWindow?.Dispose();
             ModeratorPanel?.Dispose();
-            Misc.Jupiter?.Dispose();
+            SystemsWindow?.Dispose();
+            Misc.Jupiter?.Dispose(); 
             foreach (IDalamudTextureWrap texture in UI.commonImageWraps.Values)
             {
                 texture.Dispose();
@@ -498,22 +549,19 @@ namespace AbsoluteRP
             }
         }
 
-        public bool IsOnline()
+        public static bool IsOnline()
         {
             if (ClientState == null || ObjectTable == null)
                 return false;
 
             try
             {
-                if (ClientState.IsLoggedIn)
+                var localPlayer = ClientState.LocalPlayer;
+                if (localPlayer != null)
                 {
-                    var localPlayer = ClientState.LocalPlayer;
-                    if (localPlayer != null)
-                    {
-                        playername = localPlayer.Name.ToString();
-                        playerworld = localPlayer.HomeWorld.Value.Name.ToString() ?? string.Empty;
-                        return true;
-                    }
+                    plugin.playername = localPlayer.Name.ToString();
+                    plugin.playerworld = localPlayer.HomeWorld.Value.Name.ToString() ?? string.Empty;
+                    return true;
                 }
             }
             catch (Exception ex)
@@ -524,53 +572,20 @@ namespace AbsoluteRP
         }
 
         private bool avatarTextureSpawned = false;
+
         private void DrawUI()
         {
             try
             {
                 WindowSystem.Draw();
 
-
-                // Draw compass overlay if enabled and player is present
-                if (Configuration != null
-                     && Configuration.showCompass
-                     && IsOnline())
-                 {
-                     var viewport = ImGui.GetMainViewport(); // Only get this here, never store as static/field
-
-                     ImGui.SetNextWindowBgAlpha(0.0f);
-                     ImGui.SetNextWindowPos(new Vector2(0, 0), ImGuiCond.Always);
-
-                     ImGui.Begin("##CompassOverlay",
-                         ImGuiWindowFlags.NoTitleBar
-                         | ImGuiWindowFlags.NoResize
-                         | ImGuiWindowFlags.NoMove
-                         | ImGuiWindowFlags.NoScrollbar
-                         | ImGuiWindowFlags.NoScrollWithMouse
-                         | ImGuiWindowFlags.NoInputs
-                         | ImGuiWindowFlags.NoSavedSettings
-                         | ImGuiWindowFlags.NoFocusOnAppearing);
-
-                     PlayerInteractions.DrawDynamicCompass(
-                         viewport.WorkSize.X / 2,
-                         300,
-                         400,
-                         40,
-                         ClientState.LocalPlayer.Rotation
-                     );
-
-
-                     ImGui.End();
-                 }
-                
-            
+                PlayerInteractions.DrawCompass();
             }
             catch (Exception ex)
             {
                 PluginLog.Debug($"Exception in DrawUI: {ex}");
             }
         }
-
         public async Task LoadWindow(Window window, bool Toggle)
         {
             if (!ClientTCP.IsConnected())
@@ -632,11 +647,12 @@ namespace AbsoluteRP
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
-        public void OpenListingsWindow() => ListingWindow.IsOpen = true;
+        public void OpenSocialWindow() => SocialWindow.IsOpen = true;
         public void ToggleChatWindow() => ArpChatWindow.IsOpen = true;
         public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
         public void OpenTradeWindow() => TradeWindow.IsOpen = true;
         public void CloseTradeWindow() => TradeWindow.IsOpen = false;
+        public void ToggleSystemsWindow() => SystemsWindow.Toggle();
 
         internal async Task UpdateStatusAsync()
         {
@@ -651,14 +667,14 @@ namespace AbsoluteRP
                 PluginLog.Debug("Debug updating status: " + ex.ToString());
             }
         }
+   
         public void Update(IFramework framework)
         {
             if (needsAsyncInit)
             {
                 needsAsyncInit = false;
                 _ = InitializeAsync();
-            }
-
+            }   
             if (!windowsInitialized && IsOnline())
             {
                 windowsInitialized = true;
@@ -675,8 +691,9 @@ namespace AbsoluteRP
                 ReportWindow = new ReportWindow();
                 TooltipWindow = new ARPTooltipWindow();
                 NotesWindow = new NotesWindow();
-                ListingWindow = new SocialWindow();
+                SocialWindow = new SocialWindow();
                 TradeWindow = new TradeWindow();
+                SystemsWindow = new SystemsWindow();
 
                 WindowSystem.AddWindow(OptionsWindow);
                 WindowSystem.AddWindow(MainPanel);
@@ -688,10 +705,11 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(ReportWindow);
                 WindowSystem.AddWindow(TooltipWindow);
                 WindowSystem.AddWindow(NotesWindow);
-                WindowSystem.AddWindow(ListingWindow);
+                WindowSystem.AddWindow(SocialWindow);
                 WindowSystem.AddWindow(ArpChatWindow);
                 WindowSystem.AddWindow(ImportantNoticeWindow);
                 WindowSystem.AddWindow(TradeWindow);
+                WindowSystem.AddWindow(SystemsWindow);
 
                 LoadStatusBarEntry();
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
@@ -707,25 +725,63 @@ namespace AbsoluteRP
                     x => x?.characterName == ClientState.LocalPlayer.Name.ToString()
                       && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
+
             if (IsOnline())
             {
-
-                if (Configuration.showCompass)
+                fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+                if (fetchQuestsInRangeTimer >= 10f)
                 {
-                    fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
-                    if (fetchQuestsInRangeTimer >= 25f)
+                    if(MainPanel.loggedIn == false)
                     {
-                        fetchQuestsInRangeTimer = 0f;
-                        var localPlayer = ClientState.LocalPlayer;
-                        List<IPlayerCharacter> nearbyPlayers = ObjectTable
-                            .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
-                            .Cast<IPlayerCharacter>()
-                            .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
-                            .ToList();
-                        DataSender.RequestCompassFromList(character, nearbyPlayers);
+                        DataSender.SendLogin();
                     }
-                }
+                    else
+                    {
+                        fetchQuestsInRangeTimer = 0f;         
+                        DataSender.RequestCompassFromList(character, VisiblePlayers());
+                        var visible = VisiblePlayers();
+                        // Replace the visible-players handling inside Update(...) with this improved block
+                        fetchQuestsInRangeTimer = 0f;
+
+                        var playersInRange = VisiblePlayers();
+                        DataSender.RequestCompassFromList(character, playersInRange);
+
+                        // Build stable keys for current players and prune viewedPlayers of those who left
+                        var currentKeys = new HashSet<string>(playersInRange.Select(p => $"{p.Name}@{p.HomeWorld.Value.Name}"));
+                        viewedPlayers.RemoveWhere(k => !currentKeys.Contains(k));
+
+                        foreach (var player in playersInRange)
+                        {
+                            try
+                            {
+                                var playerKey = $"{player.Name}@{player.HomeWorld.Value.Name}";
+
+                                if (viewedPlayers.Contains(playerKey))
+                                    continue;
+
+                                if (character == null)
+                                {
+                                    PluginLog.Debug("SendCompassBroadcast skipped: local character is null.");
+                                    continue;
+                                }
+                                if (!ClientTCP.IsConnected())
+                                {
+                                    PluginLog.Debug("SendCompass skipped: not connected to server.");
+                                    continue;
+                                }
+                              
+                                // Mark seen and send broadcast only for this newly-seen player (single-item list)
+                                viewedPlayers.Add(playerKey);
+                            }
+                            catch (Exception ex)
+                            {
+                                PluginLog.Debug($"Error handling visible player in Update: {ex}");
+                            }
+                        }
+                    }
+                }               
             }
+
             // var currentTarget can be null or not an IGameObject, so always check type before using ObjectKind
             var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
 
@@ -740,7 +796,7 @@ namespace AbsoluteRP
 
             if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress)
             {
-                if (InCombatLock() || InDutyLock() || InPvpLock())
+                if (InTooltipCombatLock() || InTooltipDutyLock() || InTooltipPvpLock())
                     return;
 
                 WindowOperations.DrawTooltipInfo(gameObject);
@@ -762,7 +818,7 @@ namespace AbsoluteRP
             }
         }
 
-        public bool InDutyLock()
+        public bool InTooltipDutyLock()
         {
             if (Condition[ConditionFlag.BoundByDuty] && Configuration.tooltip_DutyDisabled == true)
             {
@@ -773,7 +829,7 @@ namespace AbsoluteRP
                 return false;
             }
         }
-        public bool InCombatLock()
+        public bool InTooltipCombatLock()
         {
             if (Condition[ConditionFlag.InCombat] && Configuration.tooltip_HideInCombat == true)
             {
@@ -784,7 +840,7 @@ namespace AbsoluteRP
                 return false;
             }
         }
-        public bool InPvpLock()
+        public bool InTooltipPvpLock()
         {
             if (ClientState.IsPvP && Configuration.tooltip_PvPDisabled == true)
             {
@@ -795,5 +851,21 @@ namespace AbsoluteRP
                 return false;
             }
         }
+        public static bool InCompassCombatLock()
+        {
+            return Condition[ConditionFlag.InCombat] && Plugin.plugin.Configuration.showCompassInCombat == false;
+        }
+        public bool IsCompassPvpLock()
+        {
+            // Disable compass in PvP if showCompassInPvP is false
+            return ClientState.IsPvP && Configuration.showCompassInPvP == false;
+        }
+
+        public bool IsCompassDutyLock()
+        {
+            // Disable compass in Duty if showCompassInDuty is false
+            return Condition[ConditionFlag.BoundByDuty] && Configuration.showCompassInDuty == false;
+        }
+
     }
 }

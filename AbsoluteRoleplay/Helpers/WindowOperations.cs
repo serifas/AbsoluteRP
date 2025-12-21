@@ -67,22 +67,7 @@ namespace AbsoluteRP.Helpers
                 }
             }
         }
-        public Vector2 CalculateTooltipPos()
-        {
-            var viewport = ImGui.GetMainViewport();
-            float screenWidth = viewport.WorkSize.X;
-            float screenHeight = viewport.WorkSize.Y;
-
-            float positionX = Plugin.plugin.Configuration.hPos;
-            float positionY = Plugin.plugin.Configuration.vPos;
-
-            if (positionX > screenWidth - ImGui.GetWindowSize().X)
-                positionX = screenWidth - ImGui.GetWindowSize().X;
-            if (positionY > screenHeight - ImGui.GetWindowSize().Y)
-                positionY = screenHeight - ImGui.GetWindowSize().Y;
-
-            return new Vector2(positionX, positionY);
-        }
+    
         public static void BuildCategoryIconIdLists()
         {
             itemIconIds.Clear();
@@ -728,15 +713,55 @@ namespace AbsoluteRP.Helpers
                 }
 
                 var icon = Plugin.DataManager.GameData.GetIcon((uint)iconID);
-                if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                if (icon == null || string.IsNullOrEmpty(icon.FilePath))
                 {
-                    var texture = await LoadTextureAsync(icon.FilePath);
-                    if (texture != null && texture.Handle != IntPtr.Zero)
-                    {
-                        loadedTextures[iconID] = texture;
-                        return texture;
-                    }
+                    Plugin.PluginLog.Debug($"RenderIconAsync: icon metadata missing for id={iconID}");
+                    return UI.UICommonImage(UI.CommonImageTypes.blank);
                 }
+
+                // Ensure texture creation runs on the game's framework/main thread.
+                var tcs = new TaskCompletionSource<IDalamudTextureWrap>(TaskCreationOptions.RunContinuationsAsynchronously);
+                try
+                {
+                    // Schedule synchronous creation on the framework thread
+                    Plugin.Framework.RunOnFrameworkThread(() =>
+                    {
+                        try
+                        {
+                            var texFile = Plugin.DataManager.GetFile<TexFile>(icon.FilePath);
+                            if (texFile == null)
+                            {
+                                Plugin.PluginLog.Debug($"RenderIconAsync: TexFile not found for path: {icon.FilePath} (id={iconID})");
+                                tcs.SetResult(UI.UICommonImage(UI.CommonImageTypes.blank));
+                                return;
+                            }
+
+                            var tex = Plugin.TextureProvider.CreateFromTexFile(texFile);
+                            tcs.SetResult(tex ?? UI.UICommonImage(UI.CommonImageTypes.blank));
+                        }
+                        catch (Exception exInner)
+                        {
+                            Plugin.PluginLog.Debug($"RenderIconAsync: exception creating texture on framework thread for id={iconID}: {exInner}");
+                            tcs.SetResult(UI.UICommonImage(UI.CommonImageTypes.blank));
+                        }
+                    });
+                }
+                catch (Exception exSchedule)
+                {
+                    Plugin.PluginLog.Debug($"RenderIconAsync: scheduling texture creation failed for id={iconID}: {exSchedule}");
+                    return UI.UICommonImage(UI.CommonImageTypes.blank);
+                }
+
+                var texture = await tcs.Task.ConfigureAwait(false);
+
+                if (texture != null && texture.Handle != IntPtr.Zero)
+                {
+                    loadedTextures[iconID] = texture;
+                    Plugin.PluginLog.Debug($"RenderIconAsync: loaded texture for id={iconID}");
+                    return texture;
+                }
+
+                Plugin.PluginLog.Debug($"RenderIconAsync: texture load returned null/invalid for id={iconID}");
             }
             catch (Exception ex)
             {

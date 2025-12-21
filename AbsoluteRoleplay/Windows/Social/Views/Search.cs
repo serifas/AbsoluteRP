@@ -27,7 +27,14 @@ namespace AbsoluteRP.Windows.Social.Views
         public static string searchQuery = string.Empty; //search query for listings
         public static int type = 6; //0 = all, 1 = personals
         public static int currentCategory = 0;
-        public static int profileViewCount = 10; //default profile view count
+        public static int profileViewCount = 10; //default tooltipData view count
+
+        public static bool WorldComboOpen { get; private set; }
+        public static bool DataCenterComboOpen { get; private set; }
+        public static bool RegionComboOpen { get; private set; }
+        public static bool CategoryComboOpen { get; private set; }
+        public static bool PageCountComboOpen { get; private set; }
+
         public static void LoadSearch()
         {
             DrawFFXIVLocationSelectors();
@@ -107,6 +114,7 @@ namespace AbsoluteRP.Windows.Social.Views
         public static void DrawPageCountSelection()
         {
             using var combo = ImRaii.Combo("##PageCount", currentViewCount.ToString());
+            PageCountComboOpen = ImGui.IsPopupOpen("##PageCount");
             if (!combo)
                 return;
 
@@ -128,6 +136,7 @@ namespace AbsoluteRP.Windows.Social.Views
         {
             var (text, desc) = UI.ListingCategorySearchVals[currentCategory];
             using var combo = ImRaii.Combo("##Category", text);
+            CategoryComboOpen = ImGui.IsPopupOpen("##Category");
             if (!combo)
                 return;
             foreach (var ((newText, newDesc), idx) in UI.ListingCategorySearchVals.WithIndex())
@@ -148,6 +157,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
             using (var regionCombo = ImRaii.Combo("Region", regionLabel))
             {
+                RegionComboOpen = ImGui.IsPopupOpen("Region");
                 if (regionCombo)
                 {
                     for (int i = 0; i < regionNames.Count; i++)
@@ -174,6 +184,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
             using (var dcCombo = ImRaii.Combo("Data Center", dcLabel))
             {
+                DataCenterComboOpen = ImGui.IsPopupOpen("Data Center");
                 if (dcCombo)
                 {
                     for (int i = 0; i < dcNames.Count; i++)
@@ -203,6 +214,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
             using (var worldCombo = ImRaii.Combo("World", worldNames.Count > 0 && worldIdx >= 0 ? worldNames[worldIdx] : ""))
             {
+                WorldComboOpen = ImGui.IsPopupOpen("World");
                 if (worldCombo)
                 {
                     for (int i = 0; i < worldNames.Count; i++)

@@ -22,6 +22,8 @@ namespace AbsoluteRP.Windows
         public static bool ChangeDataPath = false;
         private bool showCompass;
         private bool showCompassInCombat;
+        private bool showCompassInDuty;
+        private bool showCompassInPvP;
 
         public OptionsWindow() : base("OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -90,25 +92,41 @@ namespace AbsoluteRP.Windows
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
-                
+
                 if (ImGui.BeginTabItem("Compass"))
                 {
+                    showCompass = Plugin.plugin.Configuration.showCompass;
                     if (ImGui.Checkbox("Show Compass", ref showCompass))
                     {
                         Plugin.plugin.Configuration.showCompass = showCompass;
                         Plugin.plugin.Configuration.Save();
                     }
+                    showCompassInCombat = Plugin.plugin.Configuration.showCompassInCombat;
                     if (ImGui.Checkbox("Show Compass in Combat", ref showCompassInCombat))
                     {
                         Plugin.plugin.Configuration.showCompassInCombat = showCompassInCombat;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                    showCompassInDuty = Plugin.plugin.Configuration.showCompassInDuty;
+                    if (ImGui.Checkbox("Show Compass in Duty", ref showCompassInDuty))
+                    {
+                        Plugin.plugin.Configuration.showCompassInDuty = showCompassInDuty;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                    showCompassInPvP = Plugin.plugin.Configuration.showCompassInPvP;
+                    if (ImGui.Checkbox("Show Compass in PvP", ref showCompassInPvP))
+                    {
+                        Plugin.plugin.Configuration.showCompassInPvP = showCompassInPvP;
                         Plugin.plugin.Configuration.Save();
                     }
 
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }
-                
-                
+
+
+
+
                 if (ImGui.BeginTabItem("Data"))
                 {
                     bool autoBackup = Plugin.plugin.Configuration.AutobackupEnabled;
@@ -140,7 +158,7 @@ namespace AbsoluteRP.Windows
                     if (ImGui.CollapsingHeader("Behavior"))
                     {
                         var movable = Configuration.tooltip_draggable;
-                        if (ImGui.Checkbox("Draggable", ref movable))
+                        if (ImGui.Checkbox("Draggable (Follows cursor)", ref movable))
                         {
                             Configuration.tooltip_draggable = movable;
                             Configuration.Save();
@@ -152,7 +170,6 @@ namespace AbsoluteRP.Windows
                             Configuration.Save();
                         }
 
-                        DrawTooltipPositionSliders();
                     }
                     if (ImGui.CollapsingHeader("Display"))
                     {
@@ -264,27 +281,7 @@ namespace AbsoluteRP.Windows
         {
 
         }
-        public void DrawTooltipPositionSliders()
-        {
-            var hPos = Configuration.hPos;
-            var vPos = Configuration.vPos;
-
-            var viewport = ImGui.GetMainViewport();
-            float maxHVal = viewport.WorkSize.X - 100;
-            float maxVVal = viewport.WorkSize.Y - 100;
-
-            ImGui.Text("Static position: (Only works if draggable is disabled)");
-            if (ImGui.SliderFloat("Horizontal Position", ref hPos, 0, maxHVal))
-            {
-                Configuration.hPos = hPos;
-                Configuration.Save();
-            }
-            if (ImGui.SliderFloat("Vertical Position", ref vPos, 0, maxVVal))
-            {
-                Configuration.vPos = vPos;
-                Configuration.Save();
-            }
-        }
+      
     }
 
 }

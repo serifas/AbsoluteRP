@@ -19,11 +19,15 @@ namespace AbsoluteRP.Windows.Social.Views
         public static string localPlayerWorld = "";
         public static int currentListing = 0;
         private IDalamudPluginInterface pg;
+
+        // Flags to indicate combo state for the current frame
+        public static bool ConnectionComboOpen { get; private set; }
+
         public static void LoadConnectionsUI()
         {
             try
             {
-               
+
                 AddConnectionListingOptions();
                 Vector2 windowSize = ImGui.GetWindowSize();
                 var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
@@ -180,6 +184,10 @@ namespace AbsoluteRP.Windows.Social.Views
         {
             var (text, desc) = UI.ConnectionListingVals[currentListing];
             using var combo = ImRaii.Combo("##Connetions", text);
+
+            // Use IsPopupOpen to detect the combo's popup being open. This is reliable even if the combo variable is false.
+            ConnectionComboOpen = ImGui.IsPopupOpen("##Connetions");
+
             if (!combo)
                 return;
 

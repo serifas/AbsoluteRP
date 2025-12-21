@@ -36,7 +36,7 @@ namespace AbsoluteRP.Windows.Moderator
         {
             try
             {
-                if (Plugin.plugin.IsOnline())
+                if (Plugin.IsOnline())
                 {
                     Misc.SetTitle(Plugin.plugin, true, "Moderator Panel", ImGuiColors.TankBlue);
                     DrawActionSelection();
@@ -58,7 +58,7 @@ namespace AbsoluteRP.Windows.Moderator
                     }
                     Vector2 Size = ImGui.CalcTextSize("Submit");
                     float centeredX = (ImGui.GetWindowSize().X - Size.X) / 2.0f;
-                    if (Misc.DrawCenteredButton(centeredX, new Vector2(Size.X + 2, Size.Y), "Submit"))
+                    if (Misc.DrawCenteredButton("Submit"))
                     {
                         submitted = true;
                     }

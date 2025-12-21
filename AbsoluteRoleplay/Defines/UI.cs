@@ -30,7 +30,85 @@ using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
 namespace AbsoluteRP
 {
-
+    public class Group
+    {
+        public int groupID { get; set; }
+        public string name { get; set; } = string.Empty;
+        public IDalamudTextureWrap logo { get; set; } = UI.UICommonImage(CommonImageTypes.blank);
+        public IDalamudTextureWrap background { get; set; } = UI.UICommonImage(CommonImageTypes.blank);
+        public byte[] logoBytes { get; set; }
+        public byte[] backgroundBytes { get; set; }
+        public bool openInvite { get; set; }
+        public bool visible { get; set; }
+        public string description { get; set; }
+        public List<GroupRank> ranks { get; set; }
+        public List<GroupMember> members { get; set; }
+        public List<GroupBans> bans { get; set; }
+        public ApplicationForm application { get; set; }
+        public ProfileData ProfileData { get; set; }
+        public ProfileData OwnerProfile { get; set; }
+        public List<GroupCategory> categories { get; set; }
+    }
+    public class GroupCategory
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public IDalamudTextureWrap icon { get; set; }
+        public List<GroupMember> AllowedMembers { get; set; }
+        public List<GroupRank> AllowedRanks { get; set; }
+    }
+    public class GroupRank
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public List<RankPermissions> permissions { get; set; }
+    }
+    public class GroupMember
+    {
+        public int id { get; set; }
+        public int profileID { get; set; }
+        public bool owner { get; set; }
+        public string name { get; set; }
+        public string note { get; set; }
+        public GroupRank rank { get; set; }
+    }
+    public class GroupBans
+    {
+        public int memberID { get; set; }
+        public int profileID { get; set; }
+        public string lodestoneURL { get; set; }
+    }
+    public class ApplicationForm
+    {
+        public int id { get; set; }
+        public string name { get; set; }
+        public List<ApplicationSection> sections { get; set; }
+    }
+    public class ApplicationSection
+    {
+        public int index { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public List<Inputs> inputs { get; set; }
+    }
+    public class Inputs
+    {
+        public int index { get; set; }
+        public int type { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+    }
+    public class GroupChannel
+    {
+        public int id { get; set; }
+        public int index { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public List<GroupMember> AllowedMembers { get; set; }
+        public List<GroupRank> AllowedRanks { get; set; }
+    }
     public class Navigation
     {
         public string[] names { get; set; } = new string[0];
@@ -39,7 +117,20 @@ namespace AbsoluteRP
         public bool[] show { get; set; } = new bool[0];
 
     }
+    public class SystemData
+    {
+        public string name { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public SortedList<int, StatData> StatsData { get; set; } = new SortedList<int, StatData>();
 
+    }
+    public class StatData
+    {
+        public string name { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public Vector4 color { get; set; } = Vector4.Zero;
+        public int statValue { get; set; } = 0;
+    }
 
     public class IconData 
     { 
@@ -48,40 +139,49 @@ namespace AbsoluteRP
         public string category { get; set; } = string.Empty;
         public IDalamudTextureWrap icon { get; set; } = null;
     }
-
-    public class ProfileData
+    public class TooltipData
     {
-        public int index {  get; set; }
-        public IDalamudTextureWrap avatar;
-        public IDalamudTextureWrap background;
-        internal bool showPersonalities { get; set; }
-        internal bool showPersonality1 { get; set; }
-        internal bool showPersonality2 { get; set; }
-        internal bool showPersonality3 { get; set; }
-        internal bool showPersonality { get; set; }
-
-        public string title { get; set; }
-        public Vector4 titleColor { get; set; }
-        public bool isPrivate { get; set; }
-        public bool isActive { get; set; }
-        public bool hasAlignment { get; set; }  
+        public string title { get; set; } = string.Empty;
+        public Vector4 titleColor {  get; set; } = new Vector4(1,1,1,1);
+        public IDalamudTextureWrap avatar { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Race { get; set; } = string.Empty;
         public string Gender { get; set; } = string.Empty;
         public string Age { get; set; } = string.Empty;
         public string Height { get; set; } = string.Empty;
         public string Weight { get; set; } = string.Empty;
-        public string AFG { get; set; } = string.Empty;
-        public int Alignment { get; set; }
-        public int Personality_1 { get; set; }
-        public int Personality_2 { get; set; }
-        public int Personality_3 { get; set; }
-        public List<HookValues> InfoLayouts { get; set; } = new List<HookValues>();
-        public List<ProfileGalleryImage> GalleryLayouts { get; set; } = new List<ProfileGalleryImage>();
-        public Story StoryLayouts { get; set; }
-        public List<field> fields { get; set; } = new List<field>();
-        public List<descriptor> descriptors { get; set; } = new List<descriptor>();
-        public List<trait> traits { get; set; } = new List<trait>();
+        public int Alignment { get; set; } = 0;
+        public int Personality_1 { get; set; } = 0;
+        public int Personality_2 { get; set; } = 0;
+        public int Personality_3 { get; set; } = 0;
+        public  List<field> fields = new List<field>();
+        public  List<descriptor> descriptors = new List<descriptor>();
+        public  List<trait> personalities = new List<trait>();
+        public IDalamudTextureWrap alignmentImg { get; set; }
+        public IDalamudTextureWrap personality_1Img { get; set; }
+        public IDalamudTextureWrap personality_2Img { get; set; }
+        public IDalamudTextureWrap personality_3Img { get; set; }
+    }
+    public class ProfileData
+    {
+        public int index {  get; set; }
+        public IDalamudTextureWrap avatar;
+        public IDalamudTextureWrap background;
+        public bool SHOW_ON_COMPASS { get; set; } = false;
+        public bool NSFW { get; set; } = false;
+        public bool TRIGGERING { get; set; } = false;
+        public bool SpoilerARR { get; set; } = false;
+        public bool SpoilerHW { get; set; } = false;
+        public bool SpoilerSB { get; set; } = false;
+        public bool SpoilerSHB { get; set; } = false;
+        public bool SpoilerEW { get; set; } = false;
+        public bool SpoilerDT { get; set; } = false;
+        public byte[] avatarBytes { get; set; } = new byte[0];
+        public byte[] backgroundBytes { get; set; } = new byte[0];
+        public string title { get; set; }
+        public Vector4 titleColor { get; set; }
+        public bool isPrivate { get; set; }
+        public bool isActive { get; set; }
         public List<CustomTab> customTabs { get; set; } = new List<CustomTab>();
        
         public string OOC { get; set; }
@@ -196,7 +296,7 @@ namespace AbsoluteRP
         public bool trigger = false;
         public IDalamudTextureWrap image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
         public IDalamudTextureWrap thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-        public byte[] imageBytes = Misc.ImageToByteArray(Path.Combine(Plugin.PluginInterface.AssemblyLocation.Directory.FullName, "UI/common/profiles/galleries/picturetab.png"));
+        public byte[] imageBytes = Misc.ImageToByteArray(Path.Combine(Plugin.PluginInterface.AssemblyLocation.Directory.FullName, "UI/profiles/galleries/picturetab.png"));
     }
 
 
@@ -302,21 +402,21 @@ namespace AbsoluteRP
             "You can use this to link to your Discord, Ko-Fi, Patreon, or any other site you wish to link to solong as they to not contain jumpscares or illigal / triggering content.\n\n" +
 
             "IMAGE: \n <img>https://urlhere</img>\n" +
-            "You can use this to link to an image url you wish to display in your profile solong as it abides by the Rules and ToS.\n\n" +
+            "You can use this to link to an image url you wish to display in your tooltipData solong as it abides by the Rules and ToS.\n\n" +
 
             "COLOR: \n <color hex=FF0000>Red Text</color>\n" +
-            "You can use this to color text in your profile. The hex value can be any valid hex color code.\n\n" +
+            "You can use this to color text in your tooltipData. The hex value can be any valid hex color code.\n\n" +
 
             "TABLE: \n <table>content or columns here</table> \n" +
             "COLUMNS: \n <column>some content here</column> \n" +
-            "You can use this to create a table in your profile. The table can contain columns to align content side by side and so on.\n" +
+            "You can use this to create a table in your tooltipData. The table can contain columns to align content side by side and so on.\n" +
             "The columns tag is used to define the number of columns in the table.\n There is currently no row support.\n\n"+
             
             "NAVIGATION: \n <nav>content here</nav> \n" +
-            "You can use this to create a navigation bar in your profile. The navigation bar can contain page tags to set the pages content to navigate.\n" +
+            "You can use this to create a navigation bar in your tooltipData. The navigation bar can contain page tags to set the pages content to navigate.\n" +
 
             "PAGE: \n <page>content here</page> \n" +
-            "You can use this to create a page in your profile. The page can contain any content including tags. (Must be placed within nav tags) \n\n" +
+            "You can use this to create a page in your tooltipData. The page can contain any content including tags. (Must be placed within nav tags) \n\n" +
 
             "<<Although most these features are not very suited for some fields they are still enabled. Get creative! ♥>>"
             ;
@@ -462,6 +562,16 @@ namespace AbsoluteRP
             backgroundHolder = 52,
             listingsQuests = 53,
             listingsSystem = 54,
+            systems_stats = 55,
+            systems_skills = 56,
+            systems_combat = 57,
+            systems_rules = 58,
+            socialBookmarks = 59,
+            socialConnections = 60,
+            socialGroups = 61,
+            socialSearch = 62,
+            create = 63,
+            socialGroupSettings = 64,
         }
         public enum ListingCategory
         {
@@ -540,9 +650,9 @@ namespace AbsoluteRP
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
             {
-                if (File.Exists(Path.Combine(path, "UI/common/profiles/avatar_holder.png")))
+                if (File.Exists(Path.Combine(path, "UI/profiles/avatar_holder.png")))
                 {
-                    return Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"));
+                    return Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/avatar_holder.png"));
                 }
             }
             return null;
@@ -551,7 +661,7 @@ namespace AbsoluteRP
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
             {
-                var fullPath = Path.Combine(path, "UI/common/profiles/background_holder.png");
+                var fullPath = Path.Combine(path, "UI/profiles/background_holder.png");
                 if (!File.Exists(fullPath))
                 {
                     Plugin.PluginLog.Debug($"[baseImageBytes] File does not exist: {fullPath}");
@@ -574,56 +684,57 @@ namespace AbsoluteRP
                 {
                     wrap = imageType switch
                     {
-                        CommonImageTypes.discordBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/disc_btn.png"))).Result,
-                        CommonImageTypes.kofiBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/kofi_btn.png"))).Result,
-                        CommonImageTypes.patreonBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/patreon_btn.png"))).Result,
-                        CommonImageTypes.blankPictureTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/picturetab.png"))).Result,
-                        CommonImageTypes.NSFW => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw.png"))).Result,
-                        CommonImageTypes.NSFWTRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/nsfw_trigger.png"))).Result,
-                        CommonImageTypes.TRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/galleries/trigger.png"))).Result,
-                        CommonImageTypes.avatarHolder => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/avatar_holder.png"))).Result,
-                        CommonImageTypes.backgroundHolder => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/background_holder.png"))).Result,
-                        CommonImageTypes.profileSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_profiles.png"))).Result,
-                        CommonImageTypes.systemsSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_systems.png"))).Result,
-                        CommonImageTypes.eventsSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_events.png"))).Result,
-                        CommonImageTypes.connectionsSection => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/section_connections.png"))).Result,
-                        CommonImageTypes.profileCreateProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_create.png"))).Result,
-                        CommonImageTypes.profileCreateNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_create.png"))).Result,
-                        CommonImageTypes.profileBookmarkProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/profile_bookmarks.png"))).Result,
-                        CommonImageTypes.profileBookmarkNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/npc_bookmarks.png"))).Result,
-                        CommonImageTypes.targetConnections => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/assign_connection.png"))).Result,
-                        CommonImageTypes.targetBookmark => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/bookmark.png"))).Result,
-                        CommonImageTypes.targetGroupInvite => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/group_invite.png"))).Result,
-                        CommonImageTypes.targetViewProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/targets/profile_view.png"))).Result,
-                        CommonImageTypes.reconnect => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/connect.png"))).Result,
-                        CommonImageTypes.listingsCampaign => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign.png"))).Result,
-                        CommonImageTypes.listingsEvent => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event.png"))).Result,
-                        CommonImageTypes.listingsFC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc.png"))).Result,
-                        CommonImageTypes.listingsGroup => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group.png"))).Result,
-                        CommonImageTypes.listingsPersonal => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal.png"))).Result,
-                        CommonImageTypes.listingsVenue => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue.png"))).Result,
-                        CommonImageTypes.listingsCampaignBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/campaign_big.png"))).Result,
-                        CommonImageTypes.listingsEventBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/event_big.png"))).Result,
-                        CommonImageTypes.listingsFCBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/fc_big.png"))).Result,
-                        CommonImageTypes.listingsGroupBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/group_big.png"))).Result,
-                        CommonImageTypes.listingsPersonalBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/personal_big.png"))).Result,
-                        CommonImageTypes.listingsVenueBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/venue_big.png"))).Result,
-                        CommonImageTypes.listingsQuests => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/quests.png"))).Result,
-                        CommonImageTypes.listingsSystem => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/listings/systems.png"))).Result,
-                        CommonImageTypes.blank => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/blank.png"))).Result,
-                        CommonImageTypes.inventoryTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/invTab.png"))).Result,
-                        CommonImageTypes.circleMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/circle.png"))).Result,
-                        CommonImageTypes.starMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/star.png"))).Result,
-                        CommonImageTypes.heartMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/masks/heart.png"))).Result,
-                        CommonImageTypes.pin => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/pin.png"))).Result,
-                        CommonImageTypes.unpin => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/unpin.png"))).Result,
-                        CommonImageTypes.display => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/display.png"))).Result,
-                        CommonImageTypes.hide => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/hide.png"))).Result,
-                        CommonImageTypes.dock => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/dock.png"))).Result,
-                        CommonImageTypes.undock => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/undock.png"))).Result,
-                        CommonImageTypes.edit => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/edit.png"))).Result,
-                        CommonImageTypes.move => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move.png"))).Result,
-                        CommonImageTypes.move_cancel => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/dynamic/move_cancel.png"))).Result,
+                        CommonImageTypes.create => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/general/create.png"))).Result,
+                        CommonImageTypes.discordBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/disc_btn.png"))).Result,
+                        CommonImageTypes.kofiBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/kofi_btn.png"))).Result,
+                        CommonImageTypes.patreonBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/patreon_btn.png"))).Result,
+                        CommonImageTypes.blankPictureTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/picturetab.png"))).Result,
+                        CommonImageTypes.NSFW => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/nsfw.png"))).Result,
+                        CommonImageTypes.NSFWTRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/nsfw_trigger.png"))).Result,
+                        CommonImageTypes.TRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/trigger.png"))).Result,
+                        CommonImageTypes.avatarHolder => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/avatar_holder.png"))).Result,
+                        CommonImageTypes.backgroundHolder => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/background_holder.png"))).Result,
+                        CommonImageTypes.profileCreateProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/profile_create.png"))).Result,
+                        CommonImageTypes.profileCreateNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/npc_create.png"))).Result,
+                        CommonImageTypes.profileBookmarkProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/profile_bookmarks.png"))).Result,
+                        CommonImageTypes.profileBookmarkNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/npc_bookmarks.png"))).Result,
+                        CommonImageTypes.reconnect => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/connect.png"))).Result,
+                        CommonImageTypes.listingsCampaign => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/campaign.png"))).Result,
+                        CommonImageTypes.listingsEvent => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/event.png"))).Result,
+                        CommonImageTypes.listingsGroup => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/group.png"))).Result,
+                        CommonImageTypes.listingsPersonal => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/personal.png"))).Result,
+                        CommonImageTypes.listingsVenue => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/venue.png"))).Result,
+                        CommonImageTypes.listingsCampaignBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/campaign_big.png"))).Result,
+                        CommonImageTypes.listingsEventBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/event_big.png"))).Result,
+                        CommonImageTypes.listingsFCBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/fc_big.png"))).Result,
+                        CommonImageTypes.listingsGroupBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/group_big.png"))).Result,
+                        CommonImageTypes.listingsPersonalBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/personal_big.png"))).Result,
+                        CommonImageTypes.listingsVenueBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/venue_big.png"))).Result,
+                        CommonImageTypes.listingsQuests => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/quests.png"))).Result,
+                        CommonImageTypes.listingsSystem => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems.png"))).Result,
+                        CommonImageTypes.blank => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/blank.png"))).Result,
+                        CommonImageTypes.inventoryTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/invTab.png"))).Result,
+                        CommonImageTypes.circleMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/masks/circle.png"))).Result,
+                        CommonImageTypes.starMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/masks/star.png"))).Result,
+                        CommonImageTypes.heartMask => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/masks/heart.png"))).Result,
+                        CommonImageTypes.pin => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/pin.png"))).Result,
+                        CommonImageTypes.unpin => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/unpin.png"))).Result,
+                        CommonImageTypes.display => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/display.png"))).Result,
+                        CommonImageTypes.hide => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/hide.png"))).Result,
+                        CommonImageTypes.dock => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/dock.png"))).Result,
+                        CommonImageTypes.undock => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/undock.png"))).Result,
+                        CommonImageTypes.edit => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/edit.png"))).Result,
+                        CommonImageTypes.move => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/move.png"))).Result,
+                        CommonImageTypes.move_cancel => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/dynamic/move_cancel.png"))).Result,
+                        CommonImageTypes.systems_stats => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems/systems_stats.png"))).Result,
+                        CommonImageTypes.systems_skills => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems/systems_skills.png"))).Result,
+                        CommonImageTypes.systems_combat => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems/systems_combat.png"))).Result,
+                        CommonImageTypes.systems_rules => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems/systems_rules.png"))).Result,
+                        CommonImageTypes.socialBookmarks => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/social/bookmark.png"))).Result,
+                        CommonImageTypes.socialConnections => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/social/connections.png"))).Result,
+                        CommonImageTypes.socialGroups => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/social/groups.png"))).Result,
+                        CommonImageTypes.socialSearch => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/social/search.png"))).Result,
+                        CommonImageTypes.socialGroupSettings => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/social/groups/settings.png"))).Result,
                         _ => null
                     };
                     if (wrap != null)
@@ -721,16 +832,16 @@ namespace AbsoluteRP
                 {
                     wrap = (UI.Alignments)id switch
                     {
-                        UI.Alignments.LawfulGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_good.png"))).Result,
-                        UI.Alignments.NeutralGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/neutral_good.png"))).Result,
-                        UI.Alignments.ChaoticGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_good.png"))).Result,
-                        UI.Alignments.LawfulNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_neutral.png"))).Result,
-                        UI.Alignments.TrueNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/true_neutral.png"))).Result,
-                        UI.Alignments.ChaoticNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_neutral.png"))).Result,
-                        UI.Alignments.LawfulEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/lawful_evil.png"))).Result,
-                        UI.Alignments.NeutralEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/neutral_evil.png"))).Result,
-                        UI.Alignments.ChaoticEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/alignments/chaotic_evil.png"))).Result,
-                        UI.Alignments.None => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/none.png"))).Result,
+                        UI.Alignments.LawfulGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/lawful_good.png"))).Result,
+                        UI.Alignments.NeutralGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/neutral_good.png"))).Result,
+                        UI.Alignments.ChaoticGood => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/chaotic_good.png"))).Result,
+                        UI.Alignments.LawfulNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/lawful_neutral.png"))).Result,
+                        UI.Alignments.TrueNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/true_neutral.png"))).Result,
+                        UI.Alignments.ChaoticNeutral => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/chaotic_neutral.png"))).Result,
+                        UI.Alignments.LawfulEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/lawful_evil.png"))).Result,
+                        UI.Alignments.NeutralEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/neutral_evil.png"))).Result,
+                        UI.Alignments.ChaoticEvil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/alignments/chaotic_evil.png"))).Result,
+                        UI.Alignments.None => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/none.png"))).Result,
                         _ => null
                     };
                     if (wrap != null)
@@ -748,33 +859,33 @@ namespace AbsoluteRP
                 {
                     wrap = (UI.Personalities)id switch
                     {
-                        UI.Personalities.Abrasive => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/abrasive.png"))).Result,
-                        UI.Personalities.AbsentMinded => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/absentminded.png"))).Result,
-                        UI.Personalities.Aggressive => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/aggressive.png"))).Result,
-                        UI.Personalities.Artistic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/artistic.png"))).Result,
-                        UI.Personalities.Cautious => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/cautious.png"))).Result,
-                        UI.Personalities.Charming => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/charming.png"))).Result,
-                        UI.Personalities.Compassionate => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/compassionate.png"))).Result,
-                        UI.Personalities.Daredevil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/daredevil.png"))).Result,
-                        UI.Personalities.Dishonest => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/dishonest.png"))).Result,
-                        UI.Personalities.Dutiful => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/dutiful.png"))).Result,
-                        UI.Personalities.Easygoing => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/easygoing.png"))).Result,
-                        UI.Personalities.Eccentric => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/eccentric.png"))).Result,
-                        UI.Personalities.Honest => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/honest.png"))).Result,
-                        UI.Personalities.Knowledgable => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/knowledgable.png"))).Result,
-                        UI.Personalities.Optimistic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/optimistic.png"))).Result,
-                        UI.Personalities.Polite => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/polite.png"))).Result,
-                        UI.Personalities.Relentless => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/relentless.png"))).Result,
-                        UI.Personalities.Resentful => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/resentful.png"))).Result,
-                        UI.Personalities.Reserved => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/reserved.png"))).Result,
-                        UI.Personalities.Romantic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/romantic.png"))).Result,
-                        UI.Personalities.Spiritual => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/spiritual.png"))).Result,
-                        UI.Personalities.Superior => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/superior.png"))).Result,
-                        UI.Personalities.Tormented => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tormented.png"))).Result,
-                        UI.Personalities.Tough => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/tough.png"))).Result,
-                        UI.Personalities.Wild => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/wild.png"))).Result,
-                        UI.Personalities.Worldly => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result,
-                        UI.Personalities.None => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/common/profiles/personalities/worldly.png"))).Result,
+                        UI.Personalities.Abrasive => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/abrasive.png"))).Result,
+                        UI.Personalities.AbsentMinded => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/absentminded.png"))).Result,
+                        UI.Personalities.Aggressive => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/aggressive.png"))).Result,
+                        UI.Personalities.Artistic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/artistic.png"))).Result,
+                        UI.Personalities.Cautious => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/cautious.png"))).Result,
+                        UI.Personalities.Charming => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/charming.png"))).Result,
+                        UI.Personalities.Compassionate => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/compassionate.png"))).Result,
+                        UI.Personalities.Daredevil => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/daredevil.png"))).Result,
+                        UI.Personalities.Dishonest => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/dishonest.png"))).Result,
+                        UI.Personalities.Dutiful => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/dutiful.png"))).Result,
+                        UI.Personalities.Easygoing => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/easygoing.png"))).Result,
+                        UI.Personalities.Eccentric => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/eccentric.png"))).Result,
+                        UI.Personalities.Honest => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/honest.png"))).Result,
+                        UI.Personalities.Knowledgable => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/knowledgable.png"))).Result,
+                        UI.Personalities.Optimistic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/optimistic.png"))).Result,
+                        UI.Personalities.Polite => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/polite.png"))).Result,
+                        UI.Personalities.Relentless => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/relentless.png"))).Result,
+                        UI.Personalities.Resentful => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/resentful.png"))).Result,
+                        UI.Personalities.Reserved => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/reserved.png"))).Result,
+                        UI.Personalities.Romantic => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/romantic.png"))).Result,
+                        UI.Personalities.Spiritual => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/spiritual.png"))).Result,
+                        UI.Personalities.Superior => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/superior.png"))).Result,
+                        UI.Personalities.Tormented => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/tormented.png"))).Result,
+                        UI.Personalities.Tough => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/tough.png"))).Result,
+                        UI.Personalities.Wild => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/wild.png"))).Result,
+                        UI.Personalities.Worldly => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/worldly.png"))).Result,
+                        UI.Personalities.None => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/personalities/worldly.png"))).Result,
                         _ => null
                     };
                     if (wrap != null)
@@ -1055,27 +1166,11 @@ namespace AbsoluteRP
 
             ("Sent",    "Sent requests to view private profiles"),
 
-            ("Received",    "Received requests to see your profile"),
+            ("Received",    "Received requests to see your tooltipData"),
 
-            ("Blocked",  "Blocked requests to see your current profile"),
+            ("Blocked",  "Blocked requests to see your current tooltipData"),
         };
 
-
-        public static readonly (int, string, IDalamudTextureWrap)[] ListingNavigationVals =
-        {
-            ((int)ListingCategory.Event, "Events", UICommonImage(CommonImageTypes.listingsEvent)),
-
-            ((int)ListingCategory.Campaign, "Campaigns", UICommonImage(CommonImageTypes.listingsCampaign)),
-
-            ((int)ListingCategory.Venue, "Venues", UICommonImage(CommonImageTypes.listingsVenue)),
-
-            ((int)ListingCategory.Group, "Groups", UICommonImage(CommonImageTypes.listingsGroup)),
-
-            ((int)ListingCategory.FC, "FCs", UICommonImage(CommonImageTypes.listingsFC)),
-
-            ((int)ListingCategory.Personal, "Personals", UICommonImage(CommonImageTypes.listingsPersonal)),
-
-        };
         public static readonly (string, string)[] ListingCategoryVals =
         {
 

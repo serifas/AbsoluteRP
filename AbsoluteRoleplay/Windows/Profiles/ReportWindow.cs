@@ -24,7 +24,7 @@ namespace AbsoluteRP.Windows.Profiles
         }
         public override void Draw()
         {
-            if (Plugin.plugin.IsOnline())
+            if (Plugin.IsOnline())
             {
                 ImGui.TextColored(new Vector4(100, 0, 0, 100), reportStatus);
                 ImGui.Text("Reason for report");
@@ -34,7 +34,7 @@ namespace AbsoluteRP.Windows.Profiles
                 {
                     if (reportInfo.Length > 15)
                     {
-                        //report the currently viewed profile to the moderators
+                        //report the currently viewed tooltipData to the moderators
                         DataSender.ReportProfile(Plugin.character, Plugin.plugin.username, reportCharacterName, reportCharacterWorld, reportInfo);
                     }
                     else

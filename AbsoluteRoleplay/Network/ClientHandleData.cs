@@ -26,7 +26,6 @@ namespace Networking
             packets.Add((int)ServerPackets.SRecExistingProfile, DataReceiver.ExistingProfile);
             packets.Add((int)ServerPackets.SSendNoProfileNotes, DataReceiver.NoProfileNotes);
             packets.Add((int)ServerPackets.SSendProfileNotes, DataReceiver.RecProfileNotes);
-            packets.Add((int)ServerPackets.SRecNoProfileGallery, DataReceiver.ReceiveNoProfileGallery);
             packets.Add((int)ServerPackets.SRecBookmarks, DataReceiver.RecBookmarks);
             packets.Add((int)ServerPackets.CProfileReportedSuccessfully, DataReceiver.RecProfileReportedSuccessfully);
             packets.Add((int)ServerPackets.CProfileAlreadyReported, DataReceiver.RecProfileAlreadyReported);
@@ -56,6 +55,9 @@ namespace Networking
             packets.Add((int)ServerPackets.ReceiveTradeInventory, DataReceiver.ReceiveTradeInventory);
             packets.Add((int)ServerPackets.ReceiveTreeLayout, DataReceiver.ReceiveTreeLayout);
             packets.Add((int)ServerPackets.RecConnectedPlayersInMap, DataReceiver.ReceiveConnectedPlayersInMap);
+            packets.Add((int)ServerPackets.ReceiveGroup, DataReceiver.ReceiveGroup);
+            packets.Add((int)ServerPackets.ReceiveGroupMemberships, DataReceiver.ReceiveGroupMemberships);
+
 
             //simple message back from server, simply for verification that the user is connected
         }

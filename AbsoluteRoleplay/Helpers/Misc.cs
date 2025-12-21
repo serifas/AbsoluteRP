@@ -1,5 +1,6 @@
-﻿using AbsoluteRP.Helpers;
+using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Social.Views.SubViews;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ImGuiFileDialog;
@@ -1132,7 +1133,36 @@ namespace AbsoluteRP
                 }
             }
         }
-    
+        public static void DrawCenteredImage(IDalamudTextureWrap texture, Vector2 size, bool useFullWindowWidth = true)
+        {
+            if (texture == null || texture.Handle == IntPtr.Zero)
+            {
+                ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), "[Image missing]");
+                return;
+            }
+
+            // Determine available width to center within
+            float availWidth;
+            if (useFullWindowWidth)
+            {
+                var windowSize = ImGui.GetWindowSize();
+                var padding = ImGui.GetStyle().WindowPadding;
+                availWidth = Math.Max(0f, windowSize.X - padding.X * 2f);
+                // Cursor X for window content starts at WindowPadding.X
+                float contentStartX = padding.X;
+                float centeredX = contentStartX + Math.Max(0f, (availWidth - size.X) / 2f);
+                ImGui.SetCursorPosX(centeredX);
+            }
+            else
+            {
+                // Center within remaining content region from current cursor
+                availWidth = ImGui.GetContentRegionAvail().X;
+                float centeredX = ImGui.GetCursorPosX() + Math.Max(0f, (availWidth - size.X) / 2f);
+                ImGui.SetCursorPosX(centeredX);
+            }
+
+            ImGui.Image(texture.Handle, size);
+        }
         public static void SetCenter(Plugin plugin, string name)
         {
          
@@ -1200,13 +1230,13 @@ namespace AbsoluteRP
                 var imageBytes = File.ReadAllBytes(image);
                 if (avatar == true)
                 {
-                    ProfileWindow.avatarBytes = imageBytes;
-                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes( ProfileWindow.avatarBytes, 100,100)).Result;
+                    ProfileWindow.CurrentProfile.avatarBytes = imageBytes;
+                    ProfileWindow.currentAvatarImg = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes( ProfileWindow.CurrentProfile.avatarBytes, 100,100)).Result;
                 }
                 else if(background == true)
                 {
-                    ProfileWindow.backgroundBytes = imageBytes;
-                    ProfileWindow.backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(ProfileWindow.backgroundBytes, 1000, 1500)).Result;
+                    ProfileWindow.CurrentProfile.backgroundBytes = imageBytes;
+                    ProfileWindow.backgroundImage = Plugin.TextureProvider.CreateFromImageAsync(Imaging.ScaleImageBytes(ProfileWindow.CurrentProfile.backgroundBytes, 1000, 1500)).Result;
                 }
                 else
                 {
@@ -1217,15 +1247,97 @@ namespace AbsoluteRP
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
 
         }
-      
-        public static bool DrawCenteredButton(float center, Vector2 size, string label)
+        public static void EditGroupImage(Plugin plugin, FileDialogManager _fileDialogManager, Group group, bool logo, bool background, int imageIndex)
         {
+            _fileDialogManager.OpenFileDialog("Select Image", "Image{.png,.jpg}", (s, f) =>
+            {
+                try
+                {
+                    if (!s)
+                        return;
+
+                    var imagePath = f?.FirstOrDefault()?.ToString();
+                    if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+                    {
+                        Plugin.PluginLog.Debug($"EditGroupImage: invalid path '{imagePath}'");
+                        return;
+                    }
+
+                    var image = Path.GetFullPath(imagePath);
+                    var imageBytes = File.ReadAllBytes(image);
+
+                    if (logo == true)
+                    {
+                        var scaledLogo = Imaging.ScaleImageBytes(imageBytes, 100, 100);
+                        var logoTex = Plugin.TextureProvider.CreateFromImageAsync(scaledLogo).Result;
+                        if (group != null)
+                        {
+                            // Use the selected bytes directly for scaling/texture creation (avoid referencing GroupCreation.group before assigning)
+                            group.logoBytes = imageBytes;
+                            group.logo = logoTex;
+                        }
+                        // Only update GroupCreation.group if it exists (some flows don't create it)
+                        if (group != null)
+                        {
+                            group.logoBytes = imageBytes;
+                            group.logo = logoTex;
+                        }
+                    }
+                    else if (background == true)
+                    {
+                        // Create background texture and assign safely
+                        var scaledBg = Imaging.ScaleImageBytes(imageBytes, 1000, 1500);
+                        var bgTex = Plugin.TextureProvider.CreateFromImageAsync(scaledBg).Result;
+
+                        if (group != null)
+                        {
+                            group.backgroundBytes = imageBytes;
+                            group.background = bgTex;
+                        }
+
+                        if (group != null)
+                        {
+                            group.backgroundBytes = imageBytes;
+                            group.background = bgTex;
+                        }
+                    }
+                   
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Error("EditGroupImage callback error: " + ex);
+                }
+            }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
+        }
+        public static bool DrawCenteredButton(string label)
+        {
+            var style = ImGui.GetStyle();
+
+            // Determine available area start X and width (prefer the current content region if constrained)
+            float regionAvail = ImGui.GetContentRegionAvail().X;
+            float areaStartX = ImGui.GetCursorPosX();
+
+            if (regionAvail <= 0f || regionAvail > ImGui.GetWindowSize().X - style.WindowPadding.X * 2f)
+            {
+                // Use full content width inside window (respect window padding)
+                areaStartX = style.WindowPadding.X;
+                regionAvail = Math.Max(0f, ImGui.GetWindowSize().X - style.WindowPadding.X * 2f);
+            }
+
+            // Compute "natural" button width from text size + frame padding
+            var textSize = ImGui.CalcTextSize(label);
+            float buttonWidth = textSize.X + style.FramePadding.X * 2f;
+            // Optionally clamp button width so it doesn't exceed available region
+            buttonWidth = Math.Min(buttonWidth, regionAvail);
+
+            // Compute centered X and set cursor
+            float centeredX = areaStartX + Math.Max(0f, (regionAvail - buttonWidth) / 2f);
             var currentCursorY = ImGui.GetCursorPosY();
-            ImGui.SetCursorPos(new Vector2(center, currentCursorY));
-            ImGui.PushItemWidth(size.X);
-            var button = DrawButton(label);
-            ImGui.PopItemWidth();
-            return button;
+            ImGui.SetCursorPos(new System.Numerics.Vector2(centeredX, currentCursorY));
+
+            // Draw button with calculated width (keep default height)
+            bool clicked = ImGui.Button(label, new System.Numerics.Vector2(buttonWidth, 0f));
+            return clicked;
         }
         public static bool DrawButton(string label)
         {
@@ -1282,10 +1394,154 @@ namespace AbsoluteRP
                 }
             }
         }
+        public static void DrawCenteredWrappedText(string text, bool useFullWindowWidth = true, bool centerVertically = false, float? leftWrapOffset = null)
+        {
+            if (string.IsNullOrEmpty(text))
+                return;
 
+            var style = ImGui.GetStyle();
+            var windowSize = ImGui.GetWindowSize();
 
+            // Full content area (window padding respected)
+            float contentStartX = style.WindowPadding.X;
+            float contentStartY = style.WindowPadding.Y;
+            float contentWidth = Math.Max(0f, windowSize.X - style.WindowPadding.X * 2f);
+            float contentHeight = Math.Max(0f, windowSize.Y - style.WindowPadding.Y * 2f);
+
+            // Current content region available (for table columns, groups, etc.)
+            float regionStartX = ImGui.GetCursorPosX();
+            float regionAvail = ImGui.GetContentRegionAvail().X;
+
+            // Decide which area to use for centering/wrapping.
+            // If we're inside a constrained content region (e.g. table column), prefer that width.
+            bool insideConstrainedRegion = regionAvail > 0f && regionAvail < contentWidth - 1f;
+
+            float availForCenter;
+            float cursorXBase;
+            if (insideConstrainedRegion)
+            {
+                availForCenter = regionAvail;
+                cursorXBase = regionStartX;
+            }
+            else if (useFullWindowWidth)
+            {
+                availForCenter = contentWidth;
+                cursorXBase = contentStartX;
+            }
+            else
+            {
+                availForCenter = regionAvail;
+                cursorXBase = regionStartX;
+            }
+
+            // leftWrapOffset controls how early to wrap (max line width). It reduces wrapWidth but does NOT shift the centered block.
+            float wrapWidth = availForCenter;
+            if (leftWrapOffset.HasValue && leftWrapOffset.Value > 0f)
+                wrapWidth = Math.Min(availForCenter, leftWrapOffset.Value);
+
+            // Get logically wrapped lines using existing helper.
+            var wrapped = WrapTextToFit(text, wrapWidth);
+            var lines = wrapped.Replace("\r\n", "\n").Split('\n');
+
+            // Measure lines
+            var lineWidths = new float[lines.Length];
+            var lineHeights = new float[lines.Length];
+            float totalHeight = 0f;
+            float itemSpacingY = style.ItemSpacing.Y;
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var l = lines[i] ?? string.Empty;
+                var sz = ImGui.CalcTextSize(l, true, -1);
+                if (string.IsNullOrEmpty(l))
+                    sz.Y = ImGui.GetFontSize();
+                lineWidths[i] = sz.X;
+                lineHeights[i] = sz.Y;
+                totalHeight += sz.Y;
+            }
+
+            if (lines.Length > 1)
+                totalHeight += itemSpacingY * (lines.Length - 1);
+
+            // Vertical start (optional)
+            float startY = centerVertically ? (contentStartY + Math.Max(0f, (contentHeight - totalHeight) / 2f)) : ImGui.GetCursorPosY();
+
+            // Render each wrapped line centered inside the chosen centering area (availForCenter).
+            float curY = startY;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                float lineW = lineWidths[i];
+                float x = cursorXBase + Math.Max(0f, (availForCenter - lineW) / 2f);
+
+                ImGui.SetCursorPos(new System.Numerics.Vector2(x, curY));
+                ImGui.TextUnformatted(lines[i] ?? string.Empty);
+
+                curY += lineHeights[i];
+                if (i < lines.Length - 1)
+                    curY += itemSpacingY;
+            }
+
+            // Move cursor after block
+            ImGui.SetCursorPosY(curY);
+        }
+        public static void DrawCenteredMultilineText(string text, bool useFullWindowWidth = true, bool centerVertically = false)
+        {
+            if (string.IsNullOrEmpty(text))
+                return;
+
+            // Normalize line endings and split
+            var lines = text.Replace("\r\n", "\n").Split('\n');
+
+            var style = ImGui.GetStyle();
+            var windowSize = ImGui.GetWindowSize();
+
+            // Content area (inside window padding)
+            var contentStartX = style.WindowPadding.X;
+            var contentStartY = style.WindowPadding.Y;
+            var contentWidth = Math.Max(0f, windowSize.X - style.WindowPadding.X * 2f);
+            var contentHeight = Math.Max(0f, windowSize.Y - style.WindowPadding.Y * 2f);
+
+            // Measure each line and total height
+            float maxLineWidth = 0f;
+            float totalHeight = 0f;
+            float lineSpacing = style.ItemSpacing.Y;
+            var lineHeights = new List<float>(lines.Length);
+
+            foreach (var line in lines)
+            {
+                var sz = ImGui.CalcTextSize(line);
+                maxLineWidth = Math.Max(maxLineWidth, sz.X);
+                lineHeights.Add(sz.Y);
+                totalHeight += sz.Y;
+            }
+
+            if (lines.Length > 1)
+                totalHeight += lineSpacing * (lines.Length - 1);
+
+            // Compute start positions
+            float startX;
+            if (useFullWindowWidth)
+                startX = contentStartX + Math.Max(0f, (contentWidth - maxLineWidth) / 2f);
+            else
+                startX = ImGui.GetCursorPosX() + Math.Max(0f, (ImGui.GetContentRegionAvail().X - maxLineWidth) / 2f);
+
+            float startY = centerVertically
+                ? contentStartY + Math.Max(0f, (contentHeight - totalHeight) / 2f)
+                : ImGui.GetCursorPosY();
+
+            // Ensure cursor Y is at startY and draw each line centered
+            ImGui.SetCursorPos(new System.Numerics.Vector2(startX, startY));
+            for (int i = 0; i < lines.Length; i++)
+            {
+                ImGui.SetCursorPosX(startX);
+                ImGui.TextUnformatted(lines[i]);
+                // advance Y manually if needed (TextUnformatted already advanced it); adjust for explicit spacing
+                if (i < lines.Length - 1)
+                    ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (lineSpacing - 0.0f));
+            }
+        }
         //sets a title at the center of the window and resets the font back to default afterwards
-        public static void SetTitle(Plugin plugin, bool center, string title, Vector4 borderColor)
+        public static void SetTitle(Plugin plugin, bool center, string title, Vector4 borderColor, float offset = 0f)
         {
             Jupiter = Plugin.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Jupiter, 35));
 
@@ -1301,7 +1557,7 @@ namespace AbsoluteRP
                 var windowSize = ImGui.GetWindowSize();
 
                 // Set the cursor position to center the button horizontally
-                float xPos = (windowSize.X - size.X - 15) / 2; // Center horizontally
+                float xPos = (windowSize.X - size.X - 15) / 2 + offset; // Center horizontally
                 ImGui.SetCursorPosX(xPos);
             }
             UIHelpers.DrawTextButton(title, Vector2.Zero, 0);
@@ -1390,7 +1646,7 @@ namespace AbsoluteRP
             {
                 // ... existing code ...
 
-                // Reset loader tweens for target profile loading
+                // Reset loader tweens for target tooltipData loading
                 Misc.ResetLoaderTween("tabs");
                 Misc.ResetLoaderTween("gallery");
             }

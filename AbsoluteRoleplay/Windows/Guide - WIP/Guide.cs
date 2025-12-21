@@ -41,7 +41,7 @@ namespace AbsoluteRP.Windows.Ect
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug("TOS Draw Debug: " + ex.Message);
+                Plugin.PluginLog.Debug("Guide Draw Debug: " + ex.Message);
             }
         }
         public void Dispose()

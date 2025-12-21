@@ -30,7 +30,7 @@ public class MainPanel : Window, IDisposable
     public static int width = 0, height = 0;
     public static bool Remember = false;
     public bool AutoLogin = true;
-    public static float paddingX = 0; 
+    public static float paddingX = 0;
     private bool openRemoveAccountPopup = false;
     public static float buttonWidth = 0;
     public static float buttonHeight = 0;
@@ -43,14 +43,14 @@ public class MainPanel : Window, IDisposable
     public static string status = "";
     public static Vector4 statusColor = new Vector4(255, 255, 255, 255);
     //button images
- 
+
     public static bool LoggedIN = false;
     public static string lodeStoneKey = string.Empty;
     public static Vector2 ButtonSize = new Vector2();
     public static float centeredX = 0f;
 
     public MainPanel() : base(
-        "ABSOLUTE ROLEPLAY", ImGuiWindowFlags.NoResize)
+        "ABSOLUTE ROLEPLAY")
     {
 
         // --- Navigation Panel (pinned outside, only covers buttons) ---
@@ -60,12 +60,7 @@ public class MainPanel : Window, IDisposable
 
         float navHeight = buttonSize * buttonCount * 1.05f;
         Vector2 Size = new Vector2(navHeight / 1.8f, navHeight * 1.02f);
-        SizeConstraints = new WindowSizeConstraints
-        {
 
-            MinimumSize = Size,
-            MaximumSize = Size
-        };
 
     }
     public override void OnOpen()
@@ -75,18 +70,27 @@ public class MainPanel : Window, IDisposable
 
     public void Dispose()
     {
-     
+
     }
     public override void Draw()
     {
-
-        // Only set focus if NO popup is open
-        if (!openTagPopup && !openRemoveAccountPopup &&
-            ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows)
+            && ImGui.IsMouseClicked(ImGuiMouseButton.Left)
+            && !ImGui.IsAnyItemActive()
+            && !openRemoveAccountPopup
+            && !openTagPopup)
         {
+            ImGui.SetWindowFocus("MainPanelNavigation");
             ImGui.SetWindowFocus("ABSOLUTE ROLEPLAY");
-            ImGui.SetWindowFocus("##NavigationPanel");
         }
+
+        // Diagnostic check before we attempt to request focus.
+        var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows);
+        var clicked = ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+        var anyActive = ImGui.IsAnyItemActive();
+        var alreadyFocused = ImGui.IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows);
+
+        var focusRequested = hovered && clicked && !anyActive && !alreadyFocused;
         // Get MainPanel window position and size
         Vector2 mainPanelPos = ImGui.GetWindowPos();
         Vector2 mainPanelSize = ImGui.GetWindowSize();
@@ -107,10 +111,10 @@ public class MainPanel : Window, IDisposable
         // Position navigation window to the left of MainPanel, just below the header
         ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.2f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
         ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.2f, navHeight), ImGuiCond.Always);
-    
+
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
         Navigation nav = NavigationLayouts.MainUINavigation();
-        UIHelpers.DrawSideNavigation("MainPanelNavigation", ref navigationIndex, flags, nav);
+        UIHelpers.DrawSideNavigation("ABSOLUTE ROLEPLAY", "MainPanelNavigation", ref navigationIndex, flags, nav, focusRequested);
     }
     public void DrawMainUI()
     {
@@ -121,6 +125,9 @@ public class MainPanel : Window, IDisposable
             buttonHeight = ButtonSize.Y / 5f;
 
             centeredX = (ImGui.GetWindowSize().X - ButtonSize.X) / 2.0f;
+
+
+
             if (Plugin.plugin?.Configuration?.account != null &&
               !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountKey) &&
               !string.IsNullOrEmpty(Plugin.plugin.Configuration.account.accountName))
@@ -273,7 +280,7 @@ public class MainPanel : Window, IDisposable
             Plugin.PluginLog.Debug(e.StackTrace);
         }
     }
-    
+
     public void switchUI()
     {
         viewProfile = false;

@@ -38,19 +38,36 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             };
         }
 
-        private static void EnsureProfileData()
+        private static void EnsureProfileData(ProfileData data = null)
         {
+            if (data != null)
+            {
+                profileData = data;
+            }
             if (profileData == null)
                 profileData = new ProfileData();
             if (profileData.customTabs == null)
                 profileData.customTabs = new List<CustomTab>();
         }
 
+        public static void LoadProfile(ProfileData data)
+        {
+            EnsureData(data);
+            DrawProfile(data);
+        }
+
+
         public override void OnOpen()
+        {
+            EnsureData();
+        }
+
+
+        public static void EnsureData(ProfileData data = null)
         {
             try
             {
-                EnsureProfileData();
+                EnsureProfileData(data);
             }
             catch (Exception ex)
             {
@@ -58,16 +75,25 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             }
         }
 
-
         public override void Draw()
+        {
+            DrawProfile();
+        }
+
+
+        public static void DrawProfile(ProfileData data = null)
         {
 
             try
             {
+                if (data != null)
+                {
+                    profileData = data;
+                }
                 if (!ExistingProfile)
                 {
                     RequestingProfile = false;
-                    ImGui.Text("This player either does not have an active profile or has not granted you permission to view it.");
+                    ImGui.Text("This player either does not have an active tooltipData or has not granted you permission to view it.");
                     if (ImGui.Button("Request Access"))
                     {
                         DataSender.SendProfileAccessUpdate(Plugin.character, Plugin.plugin.username, Plugin.plugin.playername, Plugin.plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
@@ -95,7 +121,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                     EnsureProfileData();
 
-                    // Loader: Wait for all tabs and gallery images to load before drawing profile
+                    // Loader: Wait for all tabs and gallery images to load before drawing tooltipData
 
                     bool tabsLoading = DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount;
                     bool galleryLoading = DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad;
@@ -128,7 +154,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             if (ImGui.BeginPopupModal("WARNING", ref warning, ImGuiWindowFlags.AlwaysAutoResize))
                             {
                                 ImGui.Text(warningMessage ?? "Warning");
-                                ImGui.TextColored(new Vector4(1, 0, 0, 1), "Do you agree to view the profile anyway?");
+                                ImGui.TextColored(new Vector4(1, 0, 0, 1), "Do you agree to view the tooltipData anyway?");
                                 if (ImGui.Button("Agree"))
                                 {
                                     warning = false;
@@ -137,7 +163,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                 ImGui.SameLine();
                                 if (ImGui.Button("Go back"))
                                 {
-                                    IsOpen = false;
                                     warning = false;
                                     ImGui.CloseCurrentPopup();
                                 }
@@ -229,7 +254,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     // Controls
                     ImGui.Text("Controls");
                     if (ImGui.Button("Notes")) { addNotes = true; }
-                    if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this profile."); }
+                    if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this Profile."); }
 
                     ImGui.SameLine();
                     Misc.RenderAlignmentToRight("Report");
@@ -242,7 +267,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     }
                     if (ImGui.IsItemHovered())
                     {
-                        ImGui.SetTooltip("Report this profile for inappropriate use.\n(Repeat false reports may result in your account being banned.)");
+                        ImGui.SetTooltip("Report this tooltipData for inappropriate use.\n(Repeat false reports may result in your account being banned.)");
                     }
 
                     // Tabs
@@ -308,7 +333,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     else
                     {
                         Plugin.PluginLog.Debug("[TargetProfileWindow] No custom tabs to render.");
-                        ImGui.TextColored(new Vector4(1, 0, 0, 1), "No profile data available for this profile.");
+                        ImGui.TextColored(new Vector4(1, 0, 0, 1), "No data available for this profile.");
                     }
 
                     // Layout selection warning
@@ -357,7 +382,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             catch (Exception ex)
             {
                 Plugin.PluginLog.Debug("TargetWindow Draw Debug: " + ex.Message);
-                loading = "An Debug occurred while loading the profile data.";
+                loading = "An Debug occurred while loading the tooltipData data.";
                 currentInd = 0;
                 max = 1;
             }
@@ -445,22 +470,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     titleColor = new Vector4(1, 1, 1, 1),
                     isPrivate = false,
                     isActive = false,
-                    Name = string.Empty,
-                    Race = string.Empty,
-                    Gender = string.Empty,
-                    Age = string.Empty,
-                    Height = string.Empty,
-                    Weight = string.Empty,
-                    AFG = string.Empty,
-                    Alignment = 0,
-                    Personality_1 = 0,
-                    Personality_2 = 0,
-                    Personality_3 = 0,
-                    StoryLayouts = null,
-                    fields = new List<field>(),
-                    descriptors = new List<descriptor>(),
-                    traits = new List<trait>(),
-                    OOC = string.Empty,
                     customTabs = new List<CustomTab>()
                 };
 
@@ -494,22 +503,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 pd.titleColor == new Vector4(1, 1, 1, 1) &&
                 pd.isPrivate == false &&
                 pd.isActive == false &&
-                pd.Name == string.Empty &&
-                pd.Race == string.Empty &&
-                pd.Gender == string.Empty &&
-                pd.Age == string.Empty &&
-                pd.Height == string.Empty &&
-                pd.Weight == string.Empty &&
-                pd.AFG == string.Empty &&
-                pd.Alignment == 0 &&
-                pd.Personality_1 == 0 &&
-                pd.Personality_2 == 0 &&
-                pd.Personality_3 == 0 &&
-                pd.StoryLayouts == null &&
-                pd.fields != null && pd.fields.Count == 0 &&
-                pd.descriptors != null && pd.descriptors.Count == 0 &&
-                pd.traits != null && pd.traits.Count == 0 &&
-                pd.OOC == string.Empty &&
                 pd.customTabs != null && pd.customTabs.Count == 0;
 
             bool otherDefaults =
@@ -528,7 +521,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         }
         public void Dispose()
         {
-            
+
             if (profileData != null)
             {
                 WindowOperations.SafeDispose(profileData.background);
@@ -611,12 +604,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 profileLayouts?.Clear();
                 currentLayout = null;
 
-                // Reset profile data
+                // Reset tooltipData data
                 profileData = new ProfileData();
                 if (profileData.customTabs == null)
                     profileData.customTabs = new List<CustomTab>();
             }
-           
+
         }
     }
 }
