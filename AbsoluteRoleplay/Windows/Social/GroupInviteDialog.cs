@@ -6,7 +6,6 @@ using Networking;
 using System;
 using System.Linq;
 using System.Numerics;
-using AbsoluteRP.Windows.Social.Views.Groups.GroupManager;
 
 namespace AbsoluteRP.Windows.Social
 {

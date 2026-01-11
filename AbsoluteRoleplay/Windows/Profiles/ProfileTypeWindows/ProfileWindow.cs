@@ -1,7 +1,6 @@
 using AbsoluteRP.Backups;
 using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
-using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.ClientState.Objects.SubKinds;
