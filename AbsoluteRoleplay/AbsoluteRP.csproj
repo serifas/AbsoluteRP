@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project Sdk="Dalamud.NET.Sdk/14.0.0">
+<Project Sdk="Dalamud.NET.Sdk/14.0.1">
     <PropertyGroup>
         <Authors>Lynie</Authors>
-        <Version>0.0.2.29</Version>
+        <Version>0.0.3.0</Version>
         <Description>An all around Roleplay Plugin.</Description>
         <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
         <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
