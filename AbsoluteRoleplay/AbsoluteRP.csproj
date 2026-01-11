@@ -53,6 +53,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <PackageReference Update="DalamudPackager" Version="14.0.1" />
       <PackageReference Update="DotNet.ReproducibleBuilds" Version="1.2.39" />
     </ItemGroup>
 </Project>
