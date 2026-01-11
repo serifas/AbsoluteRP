@@ -6,10 +6,11 @@
         <Description>An all around Roleplay Plugin.</Description>
         <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
         <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
-        <IsPackable>true</IsPackable>
+        <IsPackable>false</IsPackable>
         <TargetFramework>net10.0-windows</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Platforms>x64</Platforms>
+        <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -45,15 +46,10 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="C:\Users\Lynn\Desktop\ARP-New\AbsoluteRoleplay\UI\move.png" />
-    </ItemGroup>
-
-    <ItemGroup>
       <None Include="UI\social\groups\Settings.png" />
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Update="DalamudPackager" Version="14.0.1" />
       <PackageReference Update="DotNet.ReproducibleBuilds" Version="1.2.39" />
     </ItemGroup>
 </Project>
