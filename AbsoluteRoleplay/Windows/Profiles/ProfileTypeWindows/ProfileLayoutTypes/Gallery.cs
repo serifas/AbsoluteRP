@@ -188,7 +188,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     {
                         layout.images[j].index = j;
                     }
-                    Plugin.PluginLog.Error(i.ToString());
+                    Plugin.PluginLog.Debug(i.ToString());
                     //remove the image immediately once pressed
                     DataSender.RemoveGalleryImage(Plugin.character, ProfileWindow.profileIndex, i, layout.tabIndex);
                 }

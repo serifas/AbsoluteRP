@@ -23,7 +23,8 @@ using System.Xml.Linq;
 using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 namespace Networking
-{
+{  // Add type aliases at the top of the namespace to resolve ambiguity
+
     public enum ClientPackets
     {
         SendUserTagCreation = 1,
@@ -104,9 +105,95 @@ namespace Networking
         SendLodestoneURL = 77,
         SendCheckLodestoneEntry = 78,
         UnlinkAccount = 79,
+        SetFauxNameStatus = 80,
         SetCompassStatus = 81,
         SaveGroup = 83,
         FetchGroups = 84,
+        SendGroupChatMessage = 85,
+        FetchGroupChatMessages = 86,
+        UpdateChatReadStatus = 87,
+        FetchGroupCategories = 88,
+        SaveGroupCategories = 89,
+        SaveGroupRosterFields = 90,
+        FetchGroupRosterFields = 91,
+        SaveMemberMetadata = 92,
+        FetchMemberMetadata = 93,
+        SaveMemberFieldValues = 94,
+        FetchMemberFieldValues = 95,
+        DeleteGroupChatMessage = 96,
+        EditGroupChatMessage = 97,
+        SendGroupInvite = 98,
+        FetchGroupInvites = 99,
+        RespondToGroupInvite = 100,
+        CancelGroupInvite = 101,
+        FetchGroupMembers = 102,
+        SaveForumStructure = 103,
+        FetchForumStructure = 104,
+        SaveForumPermissions = 105,
+        FetchForumPermissions = 106,
+        ViewInviteeProfile = 107,
+        FetchGroupRanks = 108,
+        SaveGroupRank = 109,
+        DeleteGroupRank = 110,
+        UpdateRankHierarchies = 111,
+        AssignMemberRank = 112,
+        RemoveMemberRank = 113,
+        KickGroupMember = 114,
+        BanGroupMember = 115,
+        DeleteGroup = 116,
+        LeaveGroup = 117,
+        TransferGroupOwnership = 118,
+        FetchGroupMemberAvatar = 119,
+        RenameCategory = 120,
+        DeleteCategory = 121,
+        RenameChannel = 122,
+        DeleteChannel = 123,
+        MoveChannel = 124,
+        ReorderChannel = 125,
+        CreateCategory = 126,
+        CreateChannel = 127,
+        LikeProfile = 128,
+        FetchLikesRemaining = 129,
+        FetchProfileLikeCounts = 130,
+        FetchProfileLikes = 131,
+        CreateChannelWithPermissions = 132,
+        RemoveSpecificMemberRank = 133,
+        PinGroupChatMessage = 134,
+        FetchPinnedMessages = 135,
+        LockChannel = 136,
+        UnbanGroupMember = 137,
+        ReorderCategory = 138,
+        // Rules Channel & Self-Assign Roles
+        SaveGroupRules = 139,
+        AgreeToGroupRules = 140,
+        FetchGroupRules = 141,
+        CreateSelfAssignRole = 142,
+        UpdateSelfAssignRole = 143,
+        DeleteSelfAssignRole = 144,
+        FetchSelfAssignRoles = 145,
+        AssignSelfRole = 146,
+        UnassignSelfRole = 147,
+        SaveRoleChannelPermissions = 148,
+        FetchMemberSelfRoles = 149,
+        UpdateChannelWithPermissions = 150,
+        CreateRoleSection = 151,
+        DeleteRoleSection = 152,
+        FetchRoleSections = 153,
+        FetchGroupBans = 154,
+        RequestJoinGroup = 155,
+        FetchGroupInfo = 156,
+        FetchProfileInfo = 157,
+        // Form Channel
+        CreateFormField = 158,
+        UpdateFormField = 159,
+        DeleteFormField = 160,
+        FetchFormFields = 161,
+        SubmitForm = 162,
+        FetchFormSubmissions = 163,
+        DeleteFormSubmission = 164,
+        UpdateFormChannelSettings = 165,
+        // Group Search
+        SearchPublicGroups = 166,
     }
     public class DataSender
     {
@@ -207,7 +294,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CLogin);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
-                        buffer.WriteString("0.2.24");
+                        buffer.WriteString("0.2.25");
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -293,7 +380,7 @@ namespace Networking
                         buffer.WriteString(character.characterKey);
                         buffer.WriteInt(index);
                         buffer.WriteInt(tabIndex);
-                        Plugin.PluginLog.Error(index.ToString());
+                        Plugin.PluginLog.Debug(index.ToString());
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -784,7 +871,7 @@ namespace Networking
         }
 
 
-    
+
         internal static async void SendRequestPlayerTooltip(Character character, string playerName, string playerWorld)
         {
             if (ClientTCP.IsConnected())
@@ -1751,7 +1838,7 @@ namespace Networking
                 }
             }
         }
-    
+   
         internal static async void SetCompassStatus(Character character, bool status, int profileIndex)
         {
             if (ClientTCP.IsConnected())
@@ -1775,7 +1862,28 @@ namespace Networking
             }
         }
 
-    
+        internal static async void SetFauxNameStatus(Character character, bool status, int profileIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SetFauxNameStatus);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteBool(status);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SetFauxNameStatus: " + ex.ToString());
+                }
+            }
+        }
         internal static async void SetGroupValues(Character character, Group group, bool update, int leaderProfileIndex, int groupProfileIndex)
         {
             if (group == null) return;
@@ -1783,7 +1891,6 @@ namespace Networking
 
             try
             {
-                Plugin.PluginLog.Error(group.groupID.ToString() + "= the id");
                 using (var buffer = new ByteBuffer())
                 {
                     buffer.WriteInt((int)ClientPackets.SaveGroup);
@@ -1951,5 +2058,2082 @@ buffer.WriteFloat(emptyElement.color.Z);
 buffer.WriteFloat(emptyElement.color.W);
 }
 }*/
+
+        #region Group Chat & Roster Methods
+
+        internal static async void SendGroupChatMessage(Character character, int groupID, int channelID, string messageContent)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendGroupChatMessage);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteString(messageContent);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendGroupChatMessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupChatMessages(Character character, int groupID, int channelID, int limit = 50, int offset = 0)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupChatMessages);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteInt(limit);
+                        buffer.WriteInt(offset);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupChatMessages: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void EditGroupChatMessage(Character character, int messageID, string newContent)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.EditGroupChatMessage);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(messageID);
+                        buffer.WriteString(newContent);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[EditGroupChatMessage] Sent edit request for message {messageID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in EditGroupChatMessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteGroupChatMessage(Character character, int messageID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.DeleteGroupChatMessage);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(messageID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[DeleteGroupChatMessage] Sent delete request for message {messageID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in DeleteGroupChatMessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void PinGroupChatMessage(Character character, int messageID, bool pin)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.PinGroupChatMessage);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(messageID);
+                        buffer.WriteBool(pin);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[PinGroupChatMessage] Sent {(pin ? "pin" : "unpin")} request for message {messageID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in PinGroupChatMessage: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchPinnedMessages(Character character, int groupID, int channelID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchPinnedMessages);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[FetchPinnedMessages] Sent request for group {groupID} channel {channelID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in FetchPinnedMessages: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void LockChannel(Character character, int groupID, int channelID, bool isLocked)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.LockChannel);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteBool(isLocked);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[LockChannel] Sent {(isLocked ? "lock" : "unlock")} request for channel {channelID} in group {groupID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in LockChannel: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void UpdateChatReadStatus(Character character, int channelID, int lastReadMessageID, long timestamp)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.UpdateChatReadStatus);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteInt(lastReadMessageID);
+                        buffer.WriteLong(timestamp);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UpdateChatReadStatus: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveGroupCategories(Character character, int groupID, List<GroupCategory> categories)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveGroupCategories);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categories.Count);
+                        foreach (var category in categories)
+                        {
+                            buffer.WriteInt(category.id);
+                            buffer.WriteInt(category.sortOrder);
+                            buffer.WriteString(category.name ?? string.Empty);
+                            buffer.WriteString(category.description ?? string.Empty);
+                            buffer.WriteBool(category.collapsed);
+
+                            // Channels
+                            int channelCount = category.channels?.Count ?? 0;
+                            buffer.WriteInt(channelCount);
+                            if (category.channels != null)
+                            {
+                                foreach (var channel in category.channels)
+                                {
+                                    buffer.WriteInt(channel.id);
+                                    buffer.WriteInt(channel.index);
+                                    buffer.WriteString(channel.name ?? string.Empty);
+                                    buffer.WriteString(channel.description ?? string.Empty);
+                                    buffer.WriteInt(channel.categoryID);
+                                    buffer.WriteInt(channel.channelType);
+                                    buffer.WriteBool(channel.everyoneCanView);
+                                    buffer.WriteBool(channel.everyoneCanPost);
+                                }
+                            }
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveGroupCategories: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupCategories(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupCategories);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupCategories: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveGroupRosterFields(Character character, int groupID, List<GroupRosterField> fields)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveGroupRosterFields);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(fields.Count);
+                        foreach (var field in fields)
+                        {
+                            buffer.WriteInt(field.id);
+                            buffer.WriteInt(field.sortOrder);
+                            buffer.WriteString(field.name);
+                            buffer.WriteInt(field.fieldType);
+                            buffer.WriteBool(field.required);
+                            buffer.WriteString(field.dropdownOptions ?? string.Empty);
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveGroupRosterFields: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupRosterFields(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupRosterFields);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupRosterFields: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveMemberMetadata(Character character, int memberID, GroupMemberMetadata metadata)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveMemberMetadata);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteLong(metadata.joinDate);
+                        buffer.WriteLong(metadata.lastActive);
+                        buffer.WriteString(metadata.customTitle ?? string.Empty);
+                        buffer.WriteString(metadata.statusMessage ?? string.Empty);
+                        buffer.WriteString(metadata.nicknameColor ?? "#FFFFFF");
+                        buffer.WriteBool(metadata.isOnline);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveMemberMetadata: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchMemberMetadata(Character character, int memberID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchMemberMetadata);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(memberID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchMemberMetadata: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveMemberFieldValues(Character character, int memberID, List<GroupMemberFieldValue> fieldValues)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveMemberFieldValues);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteInt(fieldValues.Count);
+                        foreach (var fv in fieldValues)
+                        {
+                            buffer.WriteInt(fv.fieldID);
+                            buffer.WriteString(fv.fieldValue ?? string.Empty);
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveMemberFieldValues: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchMemberFieldValues(Character character, int memberID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchMemberFieldValues);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(memberID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchMemberFieldValues: " + ex.ToString());
+                }
+            }
+        }
+
+        #endregion
+
+        #region Group Invites & Forum
+
+
+        internal static async void SendGroupInvite(Character character, int groupID, string inviteeName, string inviteeWorld, string message)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendGroupInvite);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteString(inviteeName ?? string.Empty);
+                        buffer.WriteString(inviteeWorld ?? string.Empty);
+                        buffer.WriteString(message ?? string.Empty);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendGroupInvite: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveForumStructure(Character character, int groupID, List<GroupForumCategory> categories)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveForumStructure);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categories.Count);
+
+                        foreach (var category in categories)
+                        {
+                            buffer.WriteInt(category.id);
+                            buffer.WriteInt(category.parentCategoryID);
+                            buffer.WriteInt(category.categoryIndex);
+                            buffer.WriteString(category.name ?? string.Empty);
+                            buffer.WriteString(category.description ?? string.Empty);
+                            buffer.WriteString(category.icon ?? string.Empty);
+                            buffer.WriteBool(category.collapsed);
+                            buffer.WriteByte((byte)category.categoryType);
+                            buffer.WriteInt(category.sortOrder);
+
+                            // Channels
+                            int channelCount = category.channels?.Count ?? 0;
+                            buffer.WriteInt(channelCount);
+                            if (category.channels != null)
+                            {
+                                foreach (var channel in category.channels)
+                                {
+                                    buffer.WriteInt(channel.id);
+                                    buffer.WriteInt(channel.parentChannelID);
+                                    buffer.WriteInt(channel.channelIndex);
+                                    buffer.WriteString(channel.name ?? string.Empty);
+                                    buffer.WriteString(channel.description ?? string.Empty);
+                                    buffer.WriteByte((byte)channel.channelType);
+                                    buffer.WriteBool(channel.isLocked);
+                                    buffer.WriteBool(channel.isNSFW);
+                                    buffer.WriteInt(channel.sortOrder);
+
+                                    // Subchannels
+                                    int subchannelCount = channel.subChannels?.Count ?? 0;
+                                    buffer.WriteInt(subchannelCount);
+                                    if (channel.subChannels != null)
+                                    {
+                                        foreach (var subchannel in channel.subChannels)
+                                        {
+                                            buffer.WriteInt(subchannel.id);
+                                            buffer.WriteInt(subchannel.channelIndex);
+                                            buffer.WriteString(subchannel.name ?? string.Empty);
+                                            buffer.WriteString(subchannel.description ?? string.Empty);
+                                            buffer.WriteByte((byte)subchannel.channelType);
+                                            buffer.WriteBool(subchannel.isLocked);
+                                            buffer.WriteBool(subchannel.isNSFW);
+                                            buffer.WriteInt(subchannel.sortOrder);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveForumStructure: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveForumPermissions(Character character, int groupID, List<GroupForumChannelPermission> permissions)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveForumPermissions);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(permissions.Count);
+
+                        foreach (var perm in permissions)
+                        {
+                            buffer.WriteInt(perm.channelID);
+                            buffer.WriteInt(perm.rankID);
+                            buffer.WriteInt(perm.userID);
+                            buffer.WriteBool(perm.canView);
+                            buffer.WriteBool(perm.canPost);
+                            buffer.WriteBool(perm.canReply);
+                            buffer.WriteBool(perm.canCreateThreads);
+                            buffer.WriteBool(perm.canEditOwn);
+                            buffer.WriteBool(perm.canDeleteOwn);
+                            buffer.WriteBool(perm.canManage);
+                            buffer.WriteBool(perm.canPin);
+                            buffer.WriteBool(perm.canLock);
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveForumPermissions: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupInvites(Character character, bool fetchSentInvites = false, int groupID = -1)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupInvites);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteBool(fetchSentInvites);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupInvites: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void RespondToGroupInvite(Character character, int inviteID, bool accept)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RespondToGroupInvite);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(inviteID);
+                        buffer.WriteBool(accept);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in RespondToGroupInvite: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void CancelGroupInvite(Character character, int inviteID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CancelGroupInvite);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(inviteID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in CancelGroupInvite: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void RequestJoinGroup(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RequestJoinGroup);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in RequestJoinGroup: " + ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fetches basic group info (name, logo URL) for displaying in embeds.
+        /// </summary>
+        internal static async void FetchGroupInfo(int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupInfo);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupInfo: " + ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fetches basic profile info (name, avatar URL) for displaying in embeds.
+        /// </summary>
+        internal static async void FetchProfileInfo(int profileID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchProfileInfo);
+                        buffer.WriteInt(profileID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchProfileInfo: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupMembers(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupMembers);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupMembers: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchForumStructure(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchForumStructure);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchForumStructure: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchForumPermissions(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchForumPermissions);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchForumPermissions: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void ViewInviteeProfile(Character character, int profileID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.ViewInviteeProfile);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(profileID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in ViewInviteeProfile: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupRanks(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupRanks);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupRanks: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SaveGroupRank(Character character, GroupRank rank)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveGroupRank);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(rank.id);
+                        buffer.WriteInt(rank.groupID);
+                        buffer.WriteString(rank.name);
+                        buffer.WriteString(rank.description ?? string.Empty);
+                        buffer.WriteInt(rank.hierarchy);
+                        buffer.WriteBool(rank.isDefaultMember);
+
+                        // Member Permissions
+                        buffer.WriteBool(rank.permissions.canInvite);
+                        buffer.WriteBool(rank.permissions.canKick);
+                        buffer.WriteBool(rank.permissions.canBan);
+                        buffer.WriteBool(rank.permissions.canPromote);
+                        buffer.WriteBool(rank.permissions.canDemote);
+
+                        // Message Permissions
+                        buffer.WriteBool(rank.permissions.canCreateAnnouncement);
+                        buffer.WriteBool(rank.permissions.canReadMessages);
+                        buffer.WriteBool(rank.permissions.canSendMessages);
+                        buffer.WriteBool(rank.permissions.canDeleteOthersMessages);
+                        buffer.WriteBool(rank.permissions.canPinMessages);
+
+                        // Category Permissions
+                        buffer.WriteBool(rank.permissions.canCreateCategory);
+                        buffer.WriteBool(rank.permissions.canEditCategory);
+                        buffer.WriteBool(rank.permissions.canDeleteCategory);
+                        buffer.WriteBool(rank.permissions.canLockCategory);
+
+                        // Forum Permissions
+                        buffer.WriteBool(rank.permissions.canCreateForum);
+                        buffer.WriteBool(rank.permissions.canEditForum);
+                        buffer.WriteBool(rank.permissions.canDeleteForum);
+                        buffer.WriteBool(rank.permissions.canLockForum);
+                        buffer.WriteBool(rank.permissions.canMuteForum);
+
+                        // Rank Management Permissions
+                        buffer.WriteBool(rank.permissions.canManageRanks);
+                        buffer.WriteBool(rank.permissions.canCreateRanks);
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveGroupRank: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteGroupRank(Character character, int rankID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.DeleteGroupRank);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(rankID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in DeleteGroupRank: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void UpdateRankHierarchies(Character character, int groupID, Dictionary<int, int> rankHierarchies)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.UpdateRankHierarchies);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(rankHierarchies.Count);
+
+                        foreach (var kvp in rankHierarchies)
+                        {
+                            buffer.WriteInt(kvp.Key);   // rankID
+                            buffer.WriteInt(kvp.Value); // new hierarchy value
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UpdateRankHierarchies: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void AssignMemberRank(Character character, int memberID, int rankID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.AssignMemberRank);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteInt(rankID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in AssignMemberRank: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void RemoveMemberRank(Character character, int memberID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RemoveMemberRank);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in RemoveMemberRank: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void RemoveSpecificMemberRank(Character character, int memberID, int rankID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RemoveSpecificMemberRank);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteInt(rankID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in RemoveSpecificMemberRank: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void KickGroupMember(Character character, int memberID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.KickGroupMember);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in KickGroupMember: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void BanGroupMember(Character character, int memberID, int userID, int profileID, string lodestoneURL, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.BanGroupMember);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(memberID);
+                        buffer.WriteInt(userID);
+                        buffer.WriteInt(profileID);
+                        buffer.WriteString(lodestoneURL ?? string.Empty);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in BanGroupMember: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void UnbanGroupMember(Character character, int banID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.UnbanGroupMember);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(banID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UnbanGroupMember: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteGroup(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    Plugin.PluginLog.Info($"[DeleteGroup] Sending delete request for group {groupID}");
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.DeleteGroup);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[DeleteGroup] Delete request sent for group {groupID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in DeleteGroup: " + ex.ToString());
+                }
+            }
+            else
+            {
+                Plugin.PluginLog.Warning($"[DeleteGroup] Not connected to server, cannot delete group {groupID}");
+            }
+        }
+
+        internal static async void RenameCategory(Character character, int groupID, int categoryID, string newName)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RenameCategory);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categoryID);
+                        buffer.WriteString(newName);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in RenameCategory: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteCategory(Character character, int groupID, int categoryID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.DeleteCategory);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categoryID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in DeleteCategory: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void ReorderCategory(Character character, int groupID, int categoryID, int newIndex)
+        {
+            Plugin.PluginLog.Information($"[DataSender.ReorderCategory] Called with groupID={groupID}, categoryID={categoryID}, newIndex={newIndex}, connected={ClientTCP.IsConnected()}");
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.ReorderCategory);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categoryID);
+                        buffer.WriteInt(newIndex);
+                        Plugin.PluginLog.Information($"[DataSender.ReorderCategory] Sending packet {(int)ClientPackets.ReorderCategory}");
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Information($"[DataSender.ReorderCategory] Packet sent successfully");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in ReorderCategory: " + ex.ToString());
+                }
+            }
+            else
+            {
+                Plugin.PluginLog.Warning("[DataSender.ReorderCategory] Not connected to server!");
+            }
+        }
+
+        internal static async void RenameChannel(Character character, int groupID, int channelID, string newName)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RenameChannel);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteString(newName);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in RenameChannel: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void DeleteChannel(Character character, int groupID, int channelID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.DeleteChannel);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in DeleteChannel: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void MoveChannel(Character character, int groupID, int channelID, int newCategoryID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.MoveChannel);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteInt(newCategoryID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in MoveChannel: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void ReorderChannel(Character character, int groupID, int channelID, int newIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.ReorderChannel);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteInt(newIndex);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in ReorderChannel: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void CreateCategory(Character character, int groupID, string name, string description = "")
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CreateCategory);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteString(name);
+                        buffer.WriteString(description);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in CreateCategory: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void CreateChannel(Character character, int groupID, int categoryID, string name, string description = "", int channelType = 0)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CreateChannel);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categoryID);
+                        buffer.WriteString(name);
+                        buffer.WriteString(description);
+                        buffer.WriteInt(channelType);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in CreateChannel: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void CreateChannelWithPermissions(Character character, int groupID, int categoryID, string name, string description, int channelType, bool isNsfw, bool everyoneCanView, bool everyoneCanPost, List<GroupsData.ChannelPermissionEntry> memberPermissions, List<GroupsData.ChannelPermissionEntry> rankPermissions, List<GroupsData.ChannelPermissionEntry> rolePermissions = null)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CreateChannelWithPermissions);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(categoryID);
+                        buffer.WriteString(name);
+                        buffer.WriteString(description ?? "");
+                        buffer.WriteInt(channelType);
+                        buffer.WriteBool(isNsfw);
+                        buffer.WriteBool(everyoneCanView);
+                        buffer.WriteBool(everyoneCanPost);
+
+                        // Write member permissions with individual canView/canPost flags
+                        buffer.WriteInt(memberPermissions?.Count ?? 0);
+                        if (memberPermissions != null)
+                        {
+                            foreach (var perm in memberPermissions)
+                            {
+                                buffer.WriteInt(perm.id);
+                                buffer.WriteBool(perm.canView);
+                                buffer.WriteBool(perm.canPost);
+                            }
+                        }
+
+                        // Write rank permissions with individual canView/canPost flags
+                        buffer.WriteInt(rankPermissions?.Count ?? 0);
+                        if (rankPermissions != null)
+                        {
+                            foreach (var perm in rankPermissions)
+                            {
+                                buffer.WriteInt(perm.id);
+                                buffer.WriteBool(perm.canView);
+                                buffer.WriteBool(perm.canPost);
+                            }
+                        }
+
+                        // Write self-assign role permissions
+                        buffer.WriteInt(rolePermissions?.Count ?? 0);
+                        if (rolePermissions != null)
+                        {
+                            foreach (var perm in rolePermissions)
+                            {
+                                buffer.WriteInt(perm.id);
+                                buffer.WriteBool(perm.canView);
+                                buffer.WriteBool(perm.canPost);
+                            }
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in CreateChannelWithPermissions: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void UpdateChannelWithPermissions(Character character, int groupID, int channelID, string name, string description, int channelType, bool isNsfw, bool everyoneCanView, bool everyoneCanPost, List<GroupsData.ChannelPermissionEntry> memberPermissions, List<GroupsData.ChannelPermissionEntry> rankPermissions, List<GroupsData.ChannelPermissionEntry> rolePermissions = null)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.UpdateChannelWithPermissions);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(channelID);
+                        buffer.WriteString(name);
+                        buffer.WriteString(description ?? "");
+                        buffer.WriteInt(channelType);
+                        buffer.WriteBool(isNsfw);
+                        buffer.WriteBool(everyoneCanView);
+                        buffer.WriteBool(everyoneCanPost);
+
+                        // Write member permissions with individual canView/canPost flags
+                        buffer.WriteInt(memberPermissions?.Count ?? 0);
+                        if (memberPermissions != null)
+                        {
+                            foreach (var perm in memberPermissions)
+                            {
+                                buffer.WriteInt(perm.id);
+                                buffer.WriteBool(perm.canView);
+                                buffer.WriteBool(perm.canPost);
+                            }
+                        }
+
+                        // Write rank permissions with individual canView/canPost flags
+                        buffer.WriteInt(rankPermissions?.Count ?? 0);
+                        if (rankPermissions != null)
+                        {
+                            foreach (var perm in rankPermissions)
+                            {
+                                buffer.WriteInt(perm.id);
+                                buffer.WriteBool(perm.canView);
+                                buffer.WriteBool(perm.canPost);
+                            }
+                        }
+
+                        // Write self-assign role permissions
+                        buffer.WriteInt(rolePermissions?.Count ?? 0);
+                        if (rolePermissions != null)
+                        {
+                            foreach (var perm in rolePermissions)
+                            {
+                                buffer.WriteInt(perm.id);
+                                buffer.WriteBool(perm.canView);
+                                buffer.WriteBool(perm.canPost);
+                            }
+                        }
+
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Error in UpdateChannelWithPermissions: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void LeaveGroup(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.LeaveGroup);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in LeaveGroup: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void TransferGroupOwnership(Character character, int groupID, int newOwnerMemberID, int newOwnerUserID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.TransferGroupOwnership);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(newOwnerMemberID);
+                        buffer.WriteInt(newOwnerUserID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in TransferGroupOwnership: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void FetchGroupMemberAvatar(Character character, int groupID, int userID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchGroupMemberAvatar);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteInt(userID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                        Plugin.PluginLog.Info($"[FetchGroupMemberAvatar] Requested avatar for user {userID} in group {groupID}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchGroupMemberAvatar: " + ex.ToString());
+                }
+            }
+        }
+
+        #endregion
+
+        #region Profile Likes
+
+        public static async void LikeProfile(Character character, int profileID, string comment, int likeCount)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.LikeProfile);
+                buffer.WriteString(character.characterName);
+                buffer.WriteString(character.characterWorld);
+                buffer.WriteInt(profileID);
+                buffer.WriteString(comment ?? string.Empty);
+                buffer.WriteInt(likeCount);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"LikeProfile error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchLikesRemaining(Character character)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchLikesRemaining);
+                buffer.WriteString(character.characterName);
+                buffer.WriteString(character.characterWorld);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchLikesRemaining error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchProfileLikeCounts(Character character)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchProfileLikeCounts);
+                buffer.WriteString(character.characterName);
+                buffer.WriteString(character.characterWorld);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchProfileLikeCounts error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchProfileLikes(int profileID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchProfileLikes);
+                buffer.WriteInt(profileID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchProfileLikes error: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Rules Channel & Self-Assign Roles
+
+        public static async void SaveGroupRules(Character character, int groupID, string rulesContent)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.SaveGroupRules);
+                buffer.WriteString($"{character.characterName}@{character.characterWorld}");
+                buffer.WriteInt(groupID);
+                buffer.WriteString(rulesContent ?? "");
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"SaveGroupRules error: {ex.Message}");
+            }
+        }
+
+        public static async void AgreeToGroupRules(Character character, int groupID, int rulesVersion)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.AgreeToGroupRules);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(rulesVersion);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"AgreeToGroupRules error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchGroupRules(Character character, int groupID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchGroupRules);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchGroupRules error: {ex.Message}");
+            }
+        }
+
+        public static async void CreateSelfAssignRole(Character character, int groupID, string name, string color, string description, int sectionID = 0)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.CreateSelfAssignRole);
+                buffer.WriteString($"{character.characterName}@{character.characterWorld}");
+                buffer.WriteInt(groupID);
+                buffer.WriteString(name);
+                buffer.WriteString(color ?? "#FFFFFF");
+                buffer.WriteString(description ?? "");
+                buffer.WriteInt(sectionID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"CreateSelfAssignRole error: {ex.Message}");
+            }
+        }
+
+        public static async void UpdateSelfAssignRole(Character character, int groupID, int roleID, string name, string color, string description, int sectionID = 0)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.UpdateSelfAssignRole);
+                buffer.WriteString($"{character.characterName}@{character.characterWorld}");
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(roleID);
+                buffer.WriteString(name);
+                buffer.WriteString(color ?? "#FFFFFF");
+                buffer.WriteString(description ?? "");
+                buffer.WriteInt(sectionID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"UpdateSelfAssignRole error: {ex.Message}");
+            }
+        }
+
+        public static async void DeleteSelfAssignRole(Character character, int groupID, int roleID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.DeleteSelfAssignRole);
+                buffer.WriteString($"{character.characterName}@{character.characterWorld}");
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(roleID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"DeleteSelfAssignRole error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchSelfAssignRoles(Character character, int groupID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchSelfAssignRoles);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchSelfAssignRoles error: {ex.Message}");
+            }
+        }
+
+        public static async void AssignSelfRole(Character character, int groupID, int roleID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.AssignSelfRole);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(roleID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"AssignSelfRole error: {ex.Message}");
+            }
+        }
+
+        public static async void UnassignSelfRole(Character character, int groupID, int roleID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.UnassignSelfRole);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(roleID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"UnassignSelfRole error: {ex.Message}");
+            }
+        }
+
+        public static async void SaveRoleChannelPermissions(Character character, int groupID, int roleID, List<GroupChannelRolePermission> permissions)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.SaveRoleChannelPermissions);
+                buffer.WriteString($"{character.characterName}@{character.characterWorld}");
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(roleID);
+                buffer.WriteInt(permissions?.Count ?? 0);
+
+                if (permissions != null)
+                {
+                    foreach (var perm in permissions)
+                    {
+                        buffer.WriteInt(perm.channelID);
+                        buffer.WriteBool(perm.canView);
+                        buffer.WriteBool(perm.canPost);
+                    }
+                }
+
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"SaveRoleChannelPermissions error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchMemberSelfRoles(Character character, int groupID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchMemberSelfRoles);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchMemberSelfRoles error: {ex.Message}");
+            }
+        }
+
+        public static async void CreateRoleSection(Character character, int groupID, string name)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.CreateRoleSection);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                buffer.WriteString(name);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"CreateRoleSection error: {ex.Message}");
+            }
+        }
+
+        public static async void DeleteRoleSection(Character character, int groupID, int sectionID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.DeleteRoleSection);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                buffer.WriteInt(sectionID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"DeleteRoleSection error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchRoleSections(Character character, int groupID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchRoleSections);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchRoleSections error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchGroupBans(Character character, int groupID)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchGroupBans);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(groupID);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchGroupBans error: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Form Channel
+
+        public static async void CreateFormField(Character character, int channelId, string title, int fieldType, bool isOptional, int sortOrder)
+        {
+            try
+            {
+                Plugin.PluginLog.Info($"[CreateFormField] Sending: channelId={channelId}, title='{title}', fieldType={fieldType}, isOptional={isOptional}, sortOrder={sortOrder}");
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.CreateFormField);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(channelId);
+                buffer.WriteString(title);
+                buffer.WriteInt(fieldType);
+                buffer.WriteBool(isOptional);
+                buffer.WriteInt(sortOrder);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+                Plugin.PluginLog.Info($"[CreateFormField] Packet sent successfully");
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"CreateFormField error: {ex.Message}");
+            }
+        }
+
+        public static async void UpdateFormField(Character character, int fieldId, string title, int fieldType, bool isOptional, int sortOrder)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.UpdateFormField);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(fieldId);
+                buffer.WriteString(title);
+                buffer.WriteInt(fieldType);
+                buffer.WriteBool(isOptional);
+                buffer.WriteInt(sortOrder);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"UpdateFormField error: {ex.Message}");
+            }
+        }
+
+        public static async void DeleteFormField(Character character, int fieldId)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.DeleteFormField);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(fieldId);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"DeleteFormField error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchFormFields(Character character, int channelId)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchFormFields);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(channelId);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchFormFields error: {ex.Message}");
+            }
+        }
+
+        public static async void SubmitForm(Character character, int channelId, int profileId, string profileName, List<(int fieldId, string value)> fieldValues)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.SubmitForm);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(channelId);
+                buffer.WriteInt(profileId);
+                buffer.WriteString(profileName ?? "");
+                buffer.WriteInt(fieldValues?.Count ?? 0);
+                if (fieldValues != null)
+                {
+                    foreach (var (fieldId, value) in fieldValues)
+                    {
+                        buffer.WriteInt(fieldId);
+                        buffer.WriteString(value ?? "");
+                    }
+                }
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"SubmitForm error: {ex.Message}");
+            }
+        }
+
+        public static async void FetchFormSubmissions(Character character, int channelId)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.FetchFormSubmissions);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(channelId);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"FetchFormSubmissions error: {ex.Message}");
+            }
+        }
+
+        public static async void DeleteFormSubmission(Character character, int submissionId)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.DeleteFormSubmission);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(submissionId);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"DeleteFormSubmission error: {ex.Message}");
+            }
+        }
+
+        public static async void UpdateFormChannelSettings(Character character, int channelId, bool allowFormatTags)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.UpdateFormChannelSettings);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(channelId);
+                buffer.WriteBool(allowFormatTags);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"UpdateFormChannelSettings error: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Group Search
+
+        public static async void SearchPublicGroups(Character character, string searchQuery)
+        {
+            try
+            {
+                DataReceiver.groupSearchInProgress = true;
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.SearchPublicGroups);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteString(searchQuery ?? "");
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+                buffer.Dispose();
+            }
+            catch (Exception ex)
+            {
+                DataReceiver.groupSearchInProgress = false;
+                Plugin.PluginLog.Error($"SearchPublicGroups error: {ex.Message}");
+            }
+        }
+
+        #endregion
     }
 }

@@ -7,6 +7,7 @@ using AbsoluteRP.Windows.Moderator;
 using AbsoluteRP.Windows.Profiles;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRP.Windows.Social.Views;
+using AbsoluteRP.Windows.Social.Views.Groups;
 using Dalamud.Game.ClientState.Conditions;
 using Dalamud.Game.ClientState.Objects;
 using Dalamud.Game.ClientState.Objects.SubKinds;
@@ -66,12 +67,17 @@ namespace AbsoluteRP
         private IDtrBarEntry? statusBarEntry;
         private IDtrBarEntry? connectionsBarEntry;
         private IDtrBarEntry? chatBarEntry;
+        private IDtrBarEntry? groupInviteBarEntry;
         public static bool BarAdded = false;
         internal static float timer = 0f;
         public static UiBuilder builder;
         public static IGameGui GameGUI;
         public static HashSet<string> viewedPlayers = new HashSet<string>();
-        
+
+
+    
+    
+
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
@@ -95,6 +101,7 @@ namespace AbsoluteRP
         [PluginService] public static IGameGui GameGui { get; private set; } = null!;
         [PluginService] public static IChatGui Chat { get; private set; } = null!;
         [PluginService] public static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+        [PluginService] public static INamePlateGui NamePlateGui { get; private set; } = null!;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -118,9 +125,12 @@ namespace AbsoluteRP
         private TOS? TermsWindow { get; set; }
         private TradeWindow? TradeWindow { get; set; }
         private SystemsWindow? SystemsWindow { get; set; }
+        public static GroupInviteNotification? groupInviteNotification { get; set; }
+        private ViewLikesWindow? ViewLikesWindow { get; set; }
+        private LikeDetailsWindow? LikeDetailsWindow { get; set; }
 
         public float BlinkInterval = 0.5f;
-        public bool newConnection;
+        public bool newConnection = false;
         private bool isWindowOpen;
         public static bool tooltipShown;
 
@@ -177,31 +187,10 @@ namespace AbsoluteRP
                 .ToList();
             return nearbyPlayers;
         }
-        public static string GetNameForPlate(
-     string originalName,
-int objectIndex,
-ulong localContentId,
-IDictionary<ulong, (string, uint)> identifyAs,
-string? altCode = null)
-        {
-            string? overrideName = null;
+
+       
 
 
-            if (objectIndex == 0 && identifyAs.TryGetValue(localContentId, out var identifyAsTuple))
-            {
-                overrideName = identifyAsTuple.Item1;
-                return overrideName;
-            }
-            else
-            {
-                return originalName;
-            }
-        }
-     
-
-
-
-        
         private async Task InitializeAsync()
         {
             cachedVersion = await GetOnlineVersionAsync();
@@ -296,7 +285,7 @@ string? altCode = null)
             {
                 Name = "Bookmark Absolute RP Profile",
                 PrefixColor = 56,
-                Prefix = SeIconChar.BoxedPlus,
+                Prefix = SeIconChar.BoxedLetterB,
                 OnClicked = _ => {
                     DataSender.BookmarkPlayer(Plugin.character, name, worldname, -1);
                 },
@@ -314,8 +303,18 @@ string? altCode = null)
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(Plugin.character, false, -1, name, worldname, -1);
                 },
-            });   
-            
+            });
+
+
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Invite to Group",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedPlus,
+                OnClicked = _ => {
+                    GroupInviteDialog.Open(name, worldname);
+                },
+            });
         }
 
         private void ObjectContext(IMenuOpenedArgs args, uint objectId)
@@ -330,7 +329,7 @@ string? altCode = null)
             {
                 Name = "Bookmark ARP Profile",
                 PrefixColor = 56,
-                Prefix = SeIconChar.BoxedPlus,
+                Prefix = SeIconChar.BoxedLetterB,
                 OnClicked = _ => {
                     DataSender.BookmarkPlayer(Plugin.character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
@@ -347,6 +346,15 @@ string? altCode = null)
                     TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
                     DataSender.FetchProfile(Plugin.character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                },
+            });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Invite to Group",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedPlus,
+                OnClicked = _ => {
+                    GroupInviteDialog.Open(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
             /*
@@ -381,7 +389,9 @@ string? altCode = null)
             ClientHandleData.InitializePackets();
             Connect();
             _ = UpdateStatusAsync();
-            CheckConnectionsRequestStatus();
+            // Note: Don't call CheckConnectionsRequestStatus() here
+            // The status bar will be updated by ReceiveConnectionsRequest when
+            // the server sends a pending connection request notification
         }
 
         public void Connect()
@@ -400,6 +410,7 @@ string? altCode = null)
             loginAttempted = false;
             playername = string.Empty;
             playerworld = string.Empty;
+            newConnection = false; // Reset connection request flag on logout
         }
 
         private void OnLogout(int type, int code)
@@ -472,7 +483,47 @@ string? altCode = null)
         {
             if (connectionsBarEntry != null)
             {
-                connectionsBarEntry?.Remove();
+                connectionsBarEntry.Remove();
+                connectionsBarEntry = null;
+            }
+        }
+
+        public void LoadGroupInviteBarEntry(float deltaTime)
+        {
+            int inviteCount = GroupInviteNotification.GetPendingInviteCount();
+
+            if (inviteCount > 0)
+            {
+                timer += deltaTime;
+                float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0;
+
+                var entry = dtrBar.Get("AbsoluteGroupInvite");
+                groupInviteBarEntry = entry;
+                groupInviteBarEntry.Tooltip = $"Absolute Roleplay - {inviteCount} pending group invite{(inviteCount > 1 ? "s" : "")}";
+                entry.OnClick = _ => GroupInviteNotification.ShowNextInvite();
+                SeStringBuilder statusString = new SeStringBuilder();
+                statusString.AddUiGlow((ushort)pulse);
+                statusString.AddText("\uE06F"); // Group/users icon
+                if (inviteCount > 1)
+                {
+                    statusString.AddText($" {inviteCount}");
+                }
+                statusString.AddUiGlow(0);
+                SeString str = statusString.BuiltString;
+                groupInviteBarEntry.Text = str;
+            }
+            else
+            {
+                UnloadGroupInviteBar();
+            }
+        }
+
+        public void UnloadGroupInviteBar()
+        {
+            if (groupInviteBarEntry != null)
+            {
+                groupInviteBarEntry?.Remove();
+                groupInviteBarEntry = null;
             }
         }
 
@@ -483,6 +534,8 @@ string? altCode = null)
             statusBarEntry = null;
             connectionsBarEntry?.Remove();
             connectionsBarEntry = null;
+            groupInviteBarEntry?.Remove();
+            groupInviteBarEntry = null;
             CommandManager.RemoveHandler(CommandName);
             ContextMenu.OnMenuOpened -= OnMenuOpened;
             PluginInterface.UiBuilder.Draw -= DrawUI;
@@ -533,6 +586,13 @@ string? altCode = null)
             }
         }
 
+        public void CheckGroupInviteStatus()
+        {
+            TimeSpan deltaTimeSpan = Framework.UpdateDelta;
+            float deltaTime = (float)deltaTimeSpan.TotalSeconds;
+            LoadGroupInviteBarEntry(deltaTime);
+        }
+
         private void OnCommand(string command, string args)
         {
             ToggleMainUI();
@@ -580,6 +640,12 @@ string? altCode = null)
                 WindowSystem.Draw();
 
                 PlayerInteractions.DrawCompass();
+
+                // Draw group invite dialog
+                GroupInviteDialog.Draw();
+
+                // Update DTR bar entries
+                CheckGroupInviteStatus();
             }
             catch (Exception ex)
             {
@@ -629,11 +695,13 @@ string? altCode = null)
         public void ToggleMainUI()
         {
             _ = LoadWindow(MainPanel, true);
+            DataSender.FetchProfiles(Plugin.character);
         }
 
         public void OpenMainPanel()
         {
             _ = LoadWindow(MainPanel, false);
+            DataSender.FetchProfiles(Plugin.character);
         }
 
         public void OpenTermsWindow() => TermsWindow.IsOpen = true;
@@ -653,6 +721,12 @@ string? altCode = null)
         public void OpenTradeWindow() => TradeWindow.IsOpen = true;
         public void CloseTradeWindow() => TradeWindow.IsOpen = false;
         public void ToggleSystemsWindow() => SystemsWindow.Toggle();
+        public void ToggleViewLikesWindow() => ViewLikesWindow.Toggle();
+        public void OpenLikeDetailsWindow(ProfileData profile)
+        {
+            LikeDetailsWindow.SetProfile(profile);
+            LikeDetailsWindow.IsOpen = true;
+        }
 
         internal async Task UpdateStatusAsync()
         {
@@ -694,6 +768,9 @@ string? altCode = null)
                 SocialWindow = new SocialWindow();
                 TradeWindow = new TradeWindow();
                 SystemsWindow = new SystemsWindow();
+                groupInviteNotification = new GroupInviteNotification();
+                ViewLikesWindow = new ViewLikesWindow(this);
+                LikeDetailsWindow = new LikeDetailsWindow();
 
                 WindowSystem.AddWindow(OptionsWindow);
                 WindowSystem.AddWindow(MainPanel);
@@ -710,6 +787,9 @@ string? altCode = null)
                 WindowSystem.AddWindow(ImportantNoticeWindow);
                 WindowSystem.AddWindow(TradeWindow);
                 WindowSystem.AddWindow(SystemsWindow);
+                WindowSystem.AddWindow(groupInviteNotification);
+                WindowSystem.AddWindow(ViewLikesWindow);
+                WindowSystem.AddWindow(LikeDetailsWindow);
 
                 LoadStatusBarEntry();
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
@@ -759,17 +839,17 @@ string? altCode = null)
                                 if (viewedPlayers.Contains(playerKey))
                                     continue;
 
+                                // Preconditions: we must have a valid local character, connection and a configured faux name
                                 if (character == null)
                                 {
-                                    PluginLog.Debug("SendCompassBroadcast skipped: local character is null.");
                                     continue;
                                 }
                                 if (!ClientTCP.IsConnected())
                                 {
-                                    PluginLog.Debug("SendCompass skipped: not connected to server.");
                                     continue;
                                 }
                               
+
                                 // Mark seen and send broadcast only for this newly-seen player (single-item list)
                                 viewedPlayers.Add(playerKey);
                             }
@@ -865,6 +945,21 @@ string? altCode = null)
         {
             // Disable compass in Duty if showCompassInDuty is false
             return Condition[ConditionFlag.BoundByDuty] && Configuration.showCompassInDuty == false;
+        }
+        public bool InNameCombatLock()
+        {
+            return Condition[ConditionFlag.InCombat] && Configuration.displayFauxNamesInCombat == false;
+        }
+        public bool InNamePvPLock()
+        {
+            // Disable compass in PvP if showCompassInPvP is false
+            return ClientState.IsPvP && Configuration.displayFauxNamesInPvP == false;
+        }
+
+        public bool InNameDutyLock()
+        {
+            // Disable compass in Duty if showCompassInDuty is false
+            return Condition[ConditionFlag.BoundByDuty] && Configuration.displayFauxnamesInDuty == false;
         }
 
     }

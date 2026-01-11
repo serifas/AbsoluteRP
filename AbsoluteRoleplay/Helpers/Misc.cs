@@ -40,9 +40,13 @@ namespace AbsoluteRP
 
         private static Dictionary<string, IDalamudTextureWrap> _imageCache = new();
         private static HashSet<string> _imagesLoading = new();
+        private static readonly object _imageCacheLock = new object();
         private static string previousInputText = "";
         private static float previousBoxWidth = 0f;
         private static string cachedWrappedText = ""; // Buffer for displaying wrapped text
+        private static HashSet<string> _revealedNsfwSections = new(); // Track which NSFW sections have been revealed
+        private static int _nsfwCounter = 0; // Counter for generating unique NSFW section IDs
+        private static string _currentNsfwSessionId = ""; // Session ID to scope NSFW reveal states
         public static IFontHandle Jupiter;
         public static float _modVersionWidth;
         public static int loaderIndex = 0;
@@ -180,16 +184,35 @@ namespace AbsoluteRP
                             RenderParsedLayout(colChild, wrapWidth, wrapHeight, url, image, color);
                         break;
                     case "img":
-                        if (image && _imageCache.TryGetValue(child.Content, out var texture) && texture != null && texture.Handle != IntPtr.Zero)
+                        if (image)
                         {
-                            Vector2 imgSize = new Vector2(texture.Width, texture.Height);
-                            imgSize.X = Math.Max(imgSize.X, minImageSize);
-                            imgSize.Y = Math.Max(imgSize.Y, minImageSize);
-                            ImGui.Image(texture.Handle, imgSize);
-                        }
-                        else
-                        {
-                            ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image or image failed!]");
+                            bool imgRendered = false;
+                            IDalamudTextureWrap texture = null;
+                            try
+                            {
+                                lock (_imageCacheLock)
+                                {
+                                    _imageCache.TryGetValue(child.Content, out texture);
+                                }
+                                if (texture != null)
+                                {
+                                    var handle = texture.Handle;
+                                    if (handle != default)
+                                    {
+                                        Vector2 imgSize = new Vector2(texture.Width, texture.Height);
+                                        imgSize.X = Math.Max(imgSize.X, minImageSize);
+                                        imgSize.Y = Math.Max(imgSize.Y, minImageSize);
+                                        ImGui.Image(handle, imgSize);
+                                        imgRendered = true;
+                                    }
+                                }
+                            }
+                            catch (ObjectDisposedException) { }
+
+                            if (!imgRendered)
+                            {
+                                ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image or image failed!]");
+                            }
                         }
                         break;
                     case "color":
@@ -248,7 +271,7 @@ namespace AbsoluteRP
             }
         }
 
-        public static void RenderHtmlElements(string text, bool url, bool image, bool color, bool isLimited, Vector2? overrideWrapSize = null, bool disableWordWrap = false)
+        public static void RenderHtmlElements(string text, bool url, bool image, bool color, bool isLimited, Vector2? overrideWrapSize = null, bool disableWordWrap = false, bool limitImageWidth = false)
         {
             Vector2 wrapSize = overrideWrapSize ?? (ImGui.GetWindowSize() - new Vector2(50, 0));
             float wrapWidth = wrapSize.X;
@@ -267,7 +290,7 @@ namespace AbsoluteRP
                 {
                     string beforeNav = text.Substring(lastIndex, navMatch.Index - lastIndex);
                     if (!string.IsNullOrWhiteSpace(beforeNav))
-                        RenderHtmlElementsNoSameline(beforeNav, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
+                        RenderHtmlElementsNoSameline(beforeNav, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap, limitImageWidth);
                 }
 
                 string navId = navMatch.Groups[2].Success && !string.IsNullOrWhiteSpace(navMatch.Groups[2].Value)
@@ -325,7 +348,7 @@ namespace AbsoluteRP
                 // Render current page content
                 if (pageContents.Count > currentPage)
                 {
-                    RenderHtmlElementsNoSameline(pageContents[currentPage], url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
+                    RenderHtmlElementsNoSameline(pageContents[currentPage], url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap, limitImageWidth);
                 }
 
                 lastIndex = navMatch.Index + navMatch.Length;
@@ -337,7 +360,7 @@ namespace AbsoluteRP
             {
                 string afterNav = text.Substring(lastIndex);
                 if (!string.IsNullOrWhiteSpace(afterNav))
-                    RenderHtmlElementsNoSameline(afterNav, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap);
+                    RenderHtmlElementsNoSameline(afterNav, url, image, color, wrapWidth, wrapHeight, isLimited, true, disableWordWrap, limitImageWidth);
             }
         }
         private static bool TryParseHexColor(string hex, out Vector4 color)
@@ -487,7 +510,7 @@ namespace AbsoluteRP
         // No changes needed for RenderHtmlElementsNoSameline and RenderHtmlElementsNoTable unless you want to support nested tabs/pages inside tables or other elements.
         // If you do, you can add similar tab/page parsing logic to those functions as well.
 
-        private static void RenderHtmlElementsNoSameline(string text, bool url, bool image, bool color, float wrapWidth, float wrapHeight, bool isFirstSegment, bool isLimited, bool disableWordWrap)
+        private static void RenderHtmlElementsNoSameline(string text, bool url, bool image, bool color, float wrapWidth, float wrapHeight, bool isFirstSegment, bool isLimited, bool disableWordWrap, bool limitImageWidth = false)
         {
             var tableRegex = new Regex(@"<table>(.*?)</table>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
@@ -496,7 +519,7 @@ namespace AbsoluteRP
 
             if (tableMatches.Count == 0)
             {
-                RenderHtmlElementsNoTable(text, url, image, color, wrapWidth, wrapHeight, isLimited, isFirstSegment, disableWordWrap);
+                RenderHtmlElementsNoTable(text, url, image, color, wrapWidth, wrapHeight, isLimited, isFirstSegment, disableWordWrap, limitImageWidth);
                 return;
             }
 
@@ -507,7 +530,7 @@ namespace AbsoluteRP
                 if (tableStart > lastIndex)
                 {
                     string beforeTable = text.Substring(lastIndex, tableStart - lastIndex);
-                    RenderHtmlElementsNoTable(beforeTable, url, image, color, wrapWidth, wrapHeight, isLimited, firstTable, disableWordWrap);
+                    RenderHtmlElementsNoTable(beforeTable, url, image, color, wrapWidth, wrapHeight, isLimited, firstTable, disableWordWrap, limitImageWidth);
                     firstTable = false;
                 }
 
@@ -547,11 +570,11 @@ namespace AbsoluteRP
                         ImGui.TableSetColumnIndex(col);
 
                         var colText = columns[col].content;
-                        var tooltip = columns[col].tooltip; 
+                        var tooltip = columns[col].tooltip;
                         ImGui.BeginGroup();
                         float columnWidth = wrapWidth / columnCount;
                         // Use NoSameline to allow nested tags (including <scale>, <img>, etc.)
-                        RenderHtmlElementsNoSameline(colText, url, image, color, columnWidth, wrapHeight, isLimited, true, disableWordWrap);
+                        RenderHtmlElementsNoSameline(colText, url, image, color, columnWidth, wrapHeight, isLimited, true, disableWordWrap, limitImageWidth);
                         ImGui.EndGroup();
                         if (!string.IsNullOrEmpty(tooltip) && ImGui.IsItemHovered())
                         {
@@ -569,7 +592,7 @@ namespace AbsoluteRP
             if (lastIndex < text.Length)
             {
                 string afterTable = text.Substring(lastIndex);
-                RenderHtmlElementsNoTable(afterTable, url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap);
+                RenderHtmlElementsNoTable(afterTable, url, image, color, wrapWidth, wrapHeight, isLimited, false, disableWordWrap, limitImageWidth);
             }
         }
         private static void RenderHtmlElementsNoTable(
@@ -581,7 +604,8 @@ namespace AbsoluteRP
             float wrapHeight,
             bool isFirstSegment,
             bool isLimited,
-            bool disableWordWrap)
+            bool disableWordWrap,
+            bool limitImageWidth = false)
         {
       
             var scaleBlockRegex = new Regex(@"<scale\s*=\s*""([\d\.]+)""\s*>(.*?)</scale>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
@@ -592,6 +616,7 @@ namespace AbsoluteRP
             var boldRegex = new Regex(@"<b>(.*?)</b>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var italicRegex = new Regex(@"<i>(.*?)</i>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var underlineRegex = new Regex(@"<u>(.*?)</u>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var nsfwRegex = new Regex(@"<nsfw>(.*?)</nsfw>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
 
             var segments = new List<(string type, string content, float scale, string colorHex, string url)>();
             int idx = 0;
@@ -615,6 +640,7 @@ namespace AbsoluteRP
                 var boldMatch = boldRegex.Match(text, idx);
                 var italicMatch = italicRegex.Match(text, idx);
                 var underlineMatch = underlineRegex.Match(text, idx);
+                var nsfwMatch = nsfwRegex.Match(text, idx);
 
                 // Find the earliest tag
                 int nextTagIdx = text.Length;
@@ -628,6 +654,7 @@ namespace AbsoluteRP
                 if (boldMatch.Success && boldMatch.Index < nextTagIdx) { nextTagIdx = boldMatch.Index; nextType = "bold"; nextMatch = boldMatch; }
                 if (italicMatch.Success && italicMatch.Index < nextTagIdx) { nextTagIdx = italicMatch.Index; nextType = "italic"; nextMatch = italicMatch; }
                 if (underlineMatch.Success && underlineMatch.Index < nextTagIdx) { nextTagIdx = underlineMatch.Index; nextType = "underline"; nextMatch = underlineMatch; }
+                if (nsfwMatch.Success && nsfwMatch.Index < nextTagIdx) { nextTagIdx = nsfwMatch.Index; nextType = "nsfw"; nextMatch = nsfwMatch; }
 
                 // Add only the text before the tag
                 if (nextTagIdx > idx)
@@ -658,6 +685,7 @@ namespace AbsoluteRP
                         var boldMatch2 = boldRegex.Match(scaleContent, scaleIdx);
                         var italicMatch2 = italicRegex.Match(scaleContent, scaleIdx);
                         var underlineMatch2 = underlineRegex.Match(scaleContent, scaleIdx);
+                        var nsfwMatch2 = nsfwRegex.Match(scaleContent, scaleIdx);
 
                         int nextTagIdx2 = scaleContent.Length;
                         string nextType2 = null;
@@ -669,6 +697,7 @@ namespace AbsoluteRP
                         if (boldMatch2.Success && boldMatch2.Index < nextTagIdx2) { nextTagIdx2 = boldMatch2.Index; nextType2 = "bold"; nextMatch2 = boldMatch2; }
                         if (italicMatch2.Success && italicMatch2.Index < nextTagIdx2) { nextTagIdx2 = italicMatch2.Index; nextType2 = "italic"; nextMatch2 = italicMatch2; }
                         if (underlineMatch2.Success && underlineMatch2.Index < nextTagIdx2) { nextTagIdx2 = underlineMatch2.Index; nextType2 = "underline"; nextMatch2 = underlineMatch2; }
+                        if (nsfwMatch2.Success && nsfwMatch2.Index < nextTagIdx2) { nextTagIdx2 = nsfwMatch2.Index; nextType2 = "nsfw"; nextMatch2 = nsfwMatch2; }
 
                         if (nextTagIdx2 > scaleIdx)
                         {
@@ -720,6 +749,13 @@ namespace AbsoluteRP
                             segments.Add(("underline", nextMatch2.Groups[1].Value, scale, null, null));
                             scaleIdx = nextMatch2.Index + nextMatch2.Length;
                         }
+                        else if (nextType2 == "nsfw")
+                        {
+                            string nsfwContent2 = nextMatch2.Groups[1].Value;
+                            string nsfwId2 = $"nsfw_{_currentNsfwSessionId}_{nsfwContent2.GetHashCode()}_{scaleIdx}";
+                            segments.Add(("nsfw", nsfwContent2, scale, nsfwId2, null));
+                            scaleIdx = nextMatch2.Index + nextMatch2.Length;
+                        }
                     }
                     idx = nextMatch.Index + nextMatch.Length;
                 }
@@ -762,6 +798,14 @@ namespace AbsoluteRP
                     segments.Add(("underline", nextMatch.Groups[1].Value, 1.0f, null, null));
                     idx = nextMatch.Index + nextMatch.Length;
                 }
+                else if (nextType == "nsfw")
+                {
+                    // Store the NSFW content with a unique ID based on content hash, position, and session
+                    string nsfwContent = nextMatch.Groups[1].Value;
+                    string nsfwId = $"nsfw_{_currentNsfwSessionId}_{nsfwContent.GetHashCode()}_{nextMatch.Index}";
+                    segments.Add(("nsfw", nsfwContent, 1.0f, nsfwId, null));
+                    idx = nextMatch.Index + nextMatch.Length;
+                }
             }
 
             string pendingTooltip = null;
@@ -775,11 +819,28 @@ namespace AbsoluteRP
                     string imgUrl = seg.content;
                     float imageScale = seg.scale < 0.01f ? 0.01f : seg.scale;
 
-                    if (_imageCache.TryGetValue(imgUrl, out var texture) &&
-                        texture != null &&
-                        texture.Handle != IntPtr.Zero &&
-                        texture.Width > 0 &&
-                        texture.Height > 0)
+                    // Try to get cached texture safely with thread synchronization
+                    IDalamudTextureWrap texture = null;
+                    bool textureValid = false;
+                    bool isLoading = false;
+                    try
+                    {
+                        lock (_imageCacheLock)
+                        {
+                            if (_imageCache.TryGetValue(imgUrl, out texture) && texture != null)
+                            {
+                                var handle = texture.Handle;
+                                textureValid = handle != default && texture.Width > 0 && texture.Height > 0;
+                            }
+                            isLoading = _imagesLoading.Contains(imgUrl);
+                        }
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        textureValid = false;
+                    }
+
+                    if (textureValid && texture != null)
                     {
                         Vector2 imgSize = new Vector2(texture.Width, texture.Height) * imageScale;
 
@@ -805,6 +866,19 @@ namespace AbsoluteRP
                                 imgSize *= finalScale;
                             }
                         }
+                        else if (limitImageWidth)
+                        {
+                            // Limit image width to 65% of chat window width and height to 50%
+                            float maxWidth = wrapWidth * 0.65f;
+                            float maxHeight = wrapHeight * 0.5f;
+                            if (imgSize.X > 0 && imgSize.Y > 0)
+                            {
+                                float widthScale = imgSize.X > maxWidth ? maxWidth / imgSize.X : 1.0f;
+                                float heightScale = imgSize.Y > maxHeight ? maxHeight / imgSize.Y : 1.0f;
+                                float finalScale = Math.Min(widthScale, heightScale);
+                                imgSize *= finalScale;
+                            }
+                        }
                         else
                         {
                             float maxWidth = wrapWidth;
@@ -821,7 +895,35 @@ namespace AbsoluteRP
 
                         if (imgSize.X > 0 && imgSize.Y > 0)
                         {
-                            ImGui.Image(texture.Handle, imgSize);
+                            try
+                            {
+                                var handle = texture.Handle;
+                                if (handle != default)
+                                {
+                                    ImGui.Image(handle, imgSize);
+
+                                    // Check if image should be clickable for preview
+                                    // Only allow preview if limitImageWidth is true (chat context)
+                                    // and if the image is not inside a hidden nsfw section
+                                    if (limitImageWidth && ImGui.IsItemHovered())
+                                    {
+                                        ImGui.SetTooltip("Click to preview full image");
+                                        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                                        {
+                                            // Open image preview window
+                                            Windows.Ect.ImagePreview.PreviewImage = texture;
+                                            Windows.Ect.ImagePreview.width = texture.Width;
+                                            Windows.Ect.ImagePreview.height = texture.Height;
+                                            Windows.Ect.ImagePreview.WindowOpen = true;
+                                            Plugin.plugin.OpenImagePreview();
+                                        }
+                                    }
+                                }
+                            }
+                            catch (ObjectDisposedException)
+                            {
+                                // Texture was disposed, skip rendering
+                            }
                         }
                         else
                         {
@@ -830,39 +932,63 @@ namespace AbsoluteRP
                     }
                     else
                     {
-                        if (!_imagesLoading.Contains(imgUrl))
+                        if (!isLoading)
                         {
-                            _imagesLoading.Add(imgUrl);
-                            // Use async void for fire-and-forget image loading
-                            async void LoadImageAsync(string url)
+                            lock (_imageCacheLock)
                             {
-                                try
+                                // Double-check after acquiring lock
+                                if (!_imagesLoading.Contains(imgUrl))
                                 {
-                                    using (var webClient = new System.Net.WebClient())
+                                    _imagesLoading.Add(imgUrl);
+                                }
+                                else
+                                {
+                                    isLoading = true;
+                                }
+                            }
+
+                            if (!isLoading)
+                            {
+                                // Use async void for fire-and-forget image loading
+                                async void LoadImageAsync(string url)
+                                {
+                                    try
                                     {
-                                        var imageBytes = await webClient.DownloadDataTaskAsync(url);
-                                        var tex = await Plugin.TextureProvider.CreateFromImageAsync(imageBytes);
-                                        if (tex != null && tex.Handle != IntPtr.Zero &&
-                                            tex.Width > 0 && tex.Height > 0)
+                                        using (var webClient = new System.Net.WebClient())
                                         {
-                                            _imageCache[url] = tex;
+                                            var imageBytes = await webClient.DownloadDataTaskAsync(url);
+                                            var tex = await Plugin.TextureProvider.CreateFromImageAsync(imageBytes);
+                                            lock (_imageCacheLock)
+                                            {
+                                                if (tex != null && tex.Handle != default &&
+                                                    tex.Width > 0 && tex.Height > 0)
+                                                {
+                                                    _imageCache[url] = tex;
+                                                }
+                                                else
+                                                {
+                                                    _imageCache[url] = null;
+                                                }
+                                            }
                                         }
-                                        else
+                                    }
+                                    catch
+                                    {
+                                        lock (_imageCacheLock)
                                         {
                                             _imageCache[url] = null;
                                         }
                                     }
+                                    finally
+                                    {
+                                        lock (_imageCacheLock)
+                                        {
+                                            _imagesLoading.Remove(url);
+                                        }
+                                    }
                                 }
-                                catch
-                                {
-                                    _imageCache[url] = null;
-                                }
-                                finally
-                                {
-                                    _imagesLoading.Remove(url);
-                                }
+                                LoadImageAsync(imgUrl);
                             }
-                            LoadImageAsync(imgUrl);
                         }
                         ImGui.TextColored(new Vector4(1, 1, 0, 1), "[Loading image or image failed!]");
                     }
@@ -974,8 +1100,179 @@ namespace AbsoluteRP
                     pendingTooltip = seg.content;
                     continue;
                 }
+
+                // NSFW spoiler content
+                if (seg.type == "nsfw")
+                {
+                    string nsfwId = seg.colorHex; // We stored the unique ID in colorHex field
+                    bool isRevealed = _revealedNsfwSections.Contains(nsfwId);
+
+                    if (isRevealed)
+                    {
+                        // Content is revealed - render it normally by recursively calling RenderHtmlElementsNoTable
+                        RenderHtmlElementsNoTable(seg.content, url, image, color, wrapWidth, wrapHeight, isFirstSegment, isLimited, disableWordWrap, limitImageWidth);
+                    }
+                    else
+                    {
+                        // Content is hidden - render with blur/spoiler effect
+                        ImGui.PushID(nsfwId);
+
+                        // Calculate approximate size of the hidden content
+                        Vector2 contentSize = CalculateNsfwContentSize(seg.content, wrapWidth, image);
+
+                        // Ensure minimum size
+                        contentSize.X = Math.Max(contentSize.X, 100f);
+                        contentSize.Y = Math.Max(contentSize.Y, 24f);
+
+                        // Get cursor position for drawing
+                        Vector2 cursorPos = ImGui.GetCursorScreenPos();
+
+                        // Create an invisible button for click detection
+                        bool clicked = ImGui.InvisibleButton($"##nsfw_reveal_{nsfwId}", contentSize);
+
+                        // Draw the spoiler overlay
+                        var drawList = ImGui.GetWindowDrawList();
+                        Vector2 rectMin = cursorPos;
+                        Vector2 rectMax = new Vector2(cursorPos.X + contentSize.X, cursorPos.Y + contentSize.Y);
+
+                        // Dark background with pattern
+                        drawList.AddRectFilled(rectMin, rectMax, ImGui.GetColorU32(new Vector4(0.15f, 0.15f, 0.15f, 0.95f)));
+
+                        // Add diagonal lines pattern to simulate blur/hidden effect
+                        uint lineColor = ImGui.GetColorU32(new Vector4(0.25f, 0.25f, 0.25f, 0.8f));
+                        float lineSpacing = 8f;
+                        for (float offset = 0; offset < contentSize.X + contentSize.Y; offset += lineSpacing)
+                        {
+                            Vector2 start = new Vector2(
+                                Math.Max(rectMin.X, rectMin.X + offset - contentSize.Y),
+                                Math.Min(rectMax.Y, rectMin.Y + offset)
+                            );
+                            Vector2 end = new Vector2(
+                                Math.Min(rectMax.X, rectMin.X + offset),
+                                Math.Max(rectMin.Y, rectMin.Y + offset - contentSize.X)
+                            );
+                            if (start.X < rectMax.X && end.Y < rectMax.Y)
+                                drawList.AddLine(start, end, lineColor, 1.0f);
+                        }
+
+                        // Border
+                        drawList.AddRect(rectMin, rectMax, ImGui.GetColorU32(new Vector4(0.5f, 0.3f, 0.3f, 1f)), 4f, ImDrawFlags.None, 2f);
+
+                        // Center text "NSFW - Click to reveal"
+                        string spoilerText = "NSFW - Click to reveal";
+                        Vector2 textSize = ImGui.CalcTextSize(spoilerText);
+                        Vector2 textPos = new Vector2(
+                            rectMin.X + (contentSize.X - textSize.X) / 2f,
+                            rectMin.Y + (contentSize.Y - textSize.Y) / 2f
+                        );
+                        drawList.AddText(textPos, ImGui.GetColorU32(new Vector4(0.8f, 0.5f, 0.5f, 1f)), spoilerText);
+
+                        // Handle click to reveal
+                        if (clicked)
+                        {
+                            _revealedNsfwSections.Add(nsfwId);
+                        }
+
+                        // Tooltip on hover
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip("Click to reveal hidden content");
+                        }
+
+                        ImGui.PopID();
+                    }
+                    continue;
+                }
             }
         }
+
+        /// <summary>
+        /// Calculates the approximate size of NSFW content for the spoiler overlay
+        /// </summary>
+        private static Vector2 CalculateNsfwContentSize(string content, float wrapWidth, bool checkImages)
+        {
+            float totalHeight = 0f;
+            float maxWidth = 0f;
+
+            // Check for images in the content
+            var imgRegex = new Regex(@"<(img|image)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            var imgMatches = imgRegex.Matches(content);
+
+            foreach (Match imgMatch in imgMatches)
+            {
+                string imgUrl = imgMatch.Groups[2].Value.Trim();
+                IDalamudTextureWrap texture = null;
+                lock (_imageCacheLock)
+                {
+                    _imageCache.TryGetValue(imgUrl, out texture);
+                }
+                if (texture != null)
+                {
+                    try
+                    {
+                        // Use actual image size (scaled to fit)
+                        float imgWidth = Math.Min(texture.Width, wrapWidth);
+                        float imgHeight = texture.Height * (imgWidth / texture.Width);
+                        totalHeight += imgHeight + 4f; // Add spacing
+                        maxWidth = Math.Max(maxWidth, imgWidth);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Texture was disposed, use default size
+                        totalHeight += 150f;
+                        maxWidth = Math.Max(maxWidth, 200f);
+                    }
+                }
+                else
+                {
+                    // Default image placeholder size
+                    totalHeight += 150f;
+                    maxWidth = Math.Max(maxWidth, 200f);
+                }
+            }
+
+            // Strip HTML tags to get plain text for measurement
+            string plainText = Regex.Replace(content, @"<[^>]+>", "");
+            if (!string.IsNullOrWhiteSpace(plainText))
+            {
+                string wrapped = WrapTextToFit(plainText, wrapWidth);
+                var lines = wrapped.Split('\n');
+                float lineHeight = ImGui.GetTextLineHeightWithSpacing();
+                totalHeight += lines.Length * lineHeight;
+                foreach (var line in lines)
+                {
+                    maxWidth = Math.Max(maxWidth, ImGui.CalcTextSize(line).X);
+                }
+            }
+
+            // Clamp to reasonable bounds
+            maxWidth = Math.Min(maxWidth, wrapWidth);
+            totalHeight = Math.Min(totalHeight, 600f);
+
+            return new Vector2(maxWidth, totalHeight);
+        }
+
+        /// <summary>
+        /// Resets all revealed NSFW sections (call when switching profiles/views)
+        /// </summary>
+        public static void ResetNsfwRevealStates()
+        {
+            _revealedNsfwSections.Clear();
+        }
+
+        /// <summary>
+        /// Sets a new NSFW session ID. Call this when loading new content (profile, chat messages, etc.)
+        /// to ensure NSFW content is re-spoilered on refresh.
+        /// </summary>
+        public static void SetNsfwSession(string sessionId)
+        {
+            if (_currentNsfwSessionId != sessionId)
+            {
+                _currentNsfwSessionId = sessionId;
+                _revealedNsfwSections.Clear();
+            }
+        }
+
         public static void RenderUrlModalPopup()
         {
             if (LoadUrl && !showUrlPopup && !string.IsNullOrEmpty(UrlToLoad))
@@ -1135,33 +1432,47 @@ namespace AbsoluteRP
         }
         public static void DrawCenteredImage(IDalamudTextureWrap texture, Vector2 size, bool useFullWindowWidth = true)
         {
-            if (texture == null || texture.Handle == IntPtr.Zero)
+            if (texture == null)
             {
                 ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), "[Image missing]");
                 return;
             }
 
-            // Determine available width to center within
-            float availWidth;
-            if (useFullWindowWidth)
+            try
             {
-                var windowSize = ImGui.GetWindowSize();
-                var padding = ImGui.GetStyle().WindowPadding;
-                availWidth = Math.Max(0f, windowSize.X - padding.X * 2f);
-                // Cursor X for window content starts at WindowPadding.X
-                float contentStartX = padding.X;
-                float centeredX = contentStartX + Math.Max(0f, (availWidth - size.X) / 2f);
-                ImGui.SetCursorPosX(centeredX);
-            }
-            else
-            {
-                // Center within remaining content region from current cursor
-                availWidth = ImGui.GetContentRegionAvail().X;
-                float centeredX = ImGui.GetCursorPosX() + Math.Max(0f, (availWidth - size.X) / 2f);
-                ImGui.SetCursorPosX(centeredX);
-            }
+                var handle = texture.Handle;
+                if (handle == default)
+                {
+                    ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), "[Image missing]");
+                    return;
+                }
 
-            ImGui.Image(texture.Handle, size);
+                // Determine available width to center within
+                float availWidth;
+                if (useFullWindowWidth)
+                {
+                    var windowSize = ImGui.GetWindowSize();
+                    var padding = ImGui.GetStyle().WindowPadding;
+                    availWidth = Math.Max(0f, windowSize.X - padding.X * 2f);
+                    // Cursor X for window content starts at WindowPadding.X
+                    float contentStartX = padding.X;
+                    float centeredX = contentStartX + Math.Max(0f, (availWidth - size.X) / 2f);
+                    ImGui.SetCursorPosX(centeredX);
+                }
+                else
+                {
+                    // Center within remaining content region from current cursor
+                    availWidth = ImGui.GetContentRegionAvail().X;
+                    float centeredX = ImGui.GetCursorPosX() + Math.Max(0f, (availWidth - size.X) / 2f);
+                    ImGui.SetCursorPosX(centeredX);
+                }
+
+                ImGui.Image(handle, size);
+            }
+            catch (ObjectDisposedException)
+            {
+                ImGui.TextColored(new Vector4(1f, 1f, 0f, 1f), "[Image disposed]");
+            }
         }
         public static void SetCenter(Plugin plugin, string name)
         {
@@ -1305,7 +1616,7 @@ namespace AbsoluteRP
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Error("EditGroupImage callback error: " + ex);
+                    Plugin.PluginLog.Debug("EditGroupImage callback error: " + ex);
                 }
             }, 0, null, plugin.Configuration.AlwaysOpenDefaultImport);
         }
@@ -1789,8 +2100,22 @@ namespace AbsoluteRP
                         {
                             string imgUrl = imgMatch.Groups[2].Value.Trim();
                             Vector2 imgSize = new Vector2(100, 100); // Default
-                            if (_imageCache.TryGetValue(imgUrl, out var texture) && texture != null)
-                                imgSize = new Vector2(texture.Width, texture.Height);
+                            IDalamudTextureWrap texture = null;
+                            lock (_imageCacheLock)
+                            {
+                                _imageCache.TryGetValue(imgUrl, out texture);
+                            }
+                            if (texture != null)
+                            {
+                                try
+                                {
+                                    imgSize = new Vector2(texture.Width, texture.Height);
+                                }
+                                catch (ObjectDisposedException)
+                                {
+                                    // Texture was disposed, use default size
+                                }
+                            }
                             imgSize *= parentScale;
                             lineSize.X += imgSize.X;
                             lineSize.Y = Math.Max(lineSize.Y, imgSize.Y);

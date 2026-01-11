@@ -28,6 +28,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         private bool openVerifyPopup;
         public static string lodeStoneKey = string.Empty;
         public static bool lodeStoneKeyVerified;
+        public static bool setFauxName = false;
         public static bool VerificationSucceeded { get; set; } = false;
         public static string LodeSUrl;
         public static string loading; 
@@ -444,9 +445,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         }
         public void DrawProfile()
         {
-            var displayName = Plugin.plugin.Configuration.IdentifyAs.TryGetValue(Plugin.ClientState.LocalContentId, out var identifyAs)
-            ? identifyAs.Item1
-            : Plugin.ClientState.LocalPlayer?.Name.TextValue ?? string.Empty;
+           
             if (profiles == null || profiles.Count == 0 || profileIndex < 0 || profileIndex >= profiles.Count)
             {
                 Plugin.PluginLog.Debug("DrawProfile: Profiles not loaded or profileIndex out of range.");
@@ -538,7 +537,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     }
                     catch (Exception ex)
                     {
-                        Plugin.PluginLog.Error("Could not delete profile properly", ex.Message);
+                        Plugin.PluginLog.Debug("Could not delete profile properly", ex.Message);
                     }
                     finally
                     {

@@ -30,6 +30,7 @@ namespace Networking
             packets.Add((int)ServerPackets.CProfileReportedSuccessfully, DataReceiver.RecProfileReportedSuccessfully);
             packets.Add((int)ServerPackets.CProfileAlreadyReported, DataReceiver.RecProfileAlreadyReported);
             packets.Add((int)ServerPackets.SRecNoTargetProfile, DataReceiver.NoTargetProfile);
+            packets.Add((int)ServerPackets.SRecTargetProfile, DataReceiver.HandleTargetProfilePacket);
             packets.Add((int)ServerPackets.SSendNoAuthorization, DataReceiver.ReceiveNoAuthorization);
             packets.Add((int)ServerPackets.ReceiveConnections, DataReceiver.ReceiveConnections);
             packets.Add((int)ServerPackets.ReceiveNewConnectionRequest, DataReceiver.ReceiveConnectionsRequest);
@@ -57,7 +58,54 @@ namespace Networking
             packets.Add((int)ServerPackets.RecConnectedPlayersInMap, DataReceiver.ReceiveConnectedPlayersInMap);
             packets.Add((int)ServerPackets.ReceiveGroup, DataReceiver.ReceiveGroup);
             packets.Add((int)ServerPackets.ReceiveGroupMemberships, DataReceiver.ReceiveGroupMemberships);
+            packets.Add((int)ServerPackets.SendGroupRanks, DataReceiver.HandleGroupRanks);
+            packets.Add((int)ServerPackets.SendRankOperationResult, DataReceiver.HandleRankOperationResult);
+            packets.Add((int)ServerPackets.SendGroupMembers, DataReceiver.HandleGroupMembers);
+            packets.Add((int)ServerPackets.SendGroupCategories, DataReceiver.HandleFetchGroupCategories);
+            packets.Add((int)ServerPackets.SendGroupChatMessages, DataReceiver.HandleSendGroupChatMessage);
+            packets.Add((int)ServerPackets.SendGroupChatMessageBroadcast, DataReceiver.HandleGroupChatMessageBroadcast);
+            packets.Add((int)ServerPackets.SendGroupMemberAvatar, DataReceiver.HandleGroupMemberAvatar);
+            packets.Add((int)ServerPackets.SendGroupRosterFields, DataReceiver.HandleFetchGroupRosterFields);
+            packets.Add((int)ServerPackets.SendMemberMetadata, DataReceiver.HandleFetchMemberMetadata);
+            packets.Add((int)ServerPackets.SendMemberFieldValues, DataReceiver.HandleFetchMemberFieldValues);
+            packets.Add((int)ServerPackets.SendChatMessageDeleted, DataReceiver.HandleDeleteGroupChatMessage);
+            packets.Add((int)ServerPackets.SendChatMessageEdited, DataReceiver.HandleEditGroupChatMessage);
+            packets.Add((int)ServerPackets.SendGroupInvites, DataReceiver.HandleGroupInvites);
+            packets.Add((int)ServerPackets.SendGroupInviteResult, DataReceiver.HandleGroupInviteResult);
+            packets.Add((int)ServerPackets.SendForumStructure, DataReceiver.HandleForumStructure);
+            packets.Add((int)ServerPackets.SendForumPermissions, DataReceiver.HandleForumPermissions);
+            packets.Add((int)ServerPackets.SendInviteNotification, DataReceiver.HandleInviteNotification);
+            packets.Add((int)ServerPackets.SendInviteeProfile, DataReceiver.HandleInviteeProfile);
+            packets.Add((int)ServerPackets.SendLikesRemaining, DataReceiver.HandleLikesRemainingPacket);
+            packets.Add((int)ServerPackets.SendLikeResult, DataReceiver.HandleLikeResultPacket);
+            packets.Add((int)ServerPackets.SendProfileLikeCounts, DataReceiver.HandleProfileLikeCountsPacket);
+            packets.Add((int)ServerPackets.SendProfileLikes, DataReceiver.HandleProfileLikesPacket);
+            packets.Add((int)ServerPackets.SendPinnedMessages, DataReceiver.HandlePinnedMessages);
+            packets.Add((int)ServerPackets.SendMessagePinResult, DataReceiver.HandleMessagePinResult);
+            packets.Add((int)ServerPackets.SendMessagePinUpdate, DataReceiver.HandleMessagePinUpdate);
+            packets.Add((int)ServerPackets.SendChannelLockUpdate, DataReceiver.HandleChannelLockUpdate);
 
+            // Rules Channel & Self-Assign Roles
+            packets.Add((int)ServerPackets.SendGroupRulesResponse, DataReceiver.HandleGroupRulesResponse);
+            packets.Add((int)ServerPackets.SendRulesAgreementResponse, DataReceiver.HandleRulesAgreementResponse);
+            packets.Add((int)ServerPackets.SendGroupRules, DataReceiver.HandleGroupRules);
+            packets.Add((int)ServerPackets.SendSelfAssignRoleResponse, DataReceiver.HandleSelfAssignRoleResponse);
+            packets.Add((int)ServerPackets.SendSelfAssignRoles, DataReceiver.HandleSelfAssignRoles);
+            packets.Add((int)ServerPackets.SendSelfRoleAssignmentResponse, DataReceiver.HandleSelfRoleAssignmentResponse);
+            packets.Add((int)ServerPackets.SendRoleChannelPermissionsResponse, DataReceiver.HandleRoleChannelPermissionsResponse);
+            packets.Add((int)ServerPackets.SendMemberSelfRoles, DataReceiver.HandleMemberSelfRoles);
+            packets.Add((int)ServerPackets.SendCreateChannelError, DataReceiver.HandleCreateChannelError);
+            packets.Add((int)ServerPackets.SendRoleSections, DataReceiver.HandleRoleSections);
+            packets.Add((int)ServerPackets.SendGroupBans, DataReceiver.HandleGroupBans);
+            packets.Add((int)ServerPackets.SendMemberRemovedFromGroup, DataReceiver.HandleMemberRemovedFromGroup);
+            packets.Add((int)ServerPackets.SendGroupInfo, DataReceiver.HandleGroupInfo);
+            packets.Add((int)ServerPackets.SendProfileInfoEmbed, DataReceiver.HandleProfileInfoEmbed);
+            // Form Channel
+            packets.Add((int)ServerPackets.SendFormFields, DataReceiver.HandleFormFields);
+            packets.Add((int)ServerPackets.SendFormSubmissions, DataReceiver.HandleFormSubmissions);
+            packets.Add((int)ServerPackets.SendFormSubmitResult, DataReceiver.HandleFormSubmitResult);
+            // Group Search
+            packets.Add((int)ServerPackets.SendPublicGroupSearchResults, DataReceiver.HandlePublicGroupSearchResults);
 
             //simple message back from server, simply for verification that the user is connected
         }

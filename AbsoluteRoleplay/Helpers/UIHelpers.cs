@@ -156,10 +156,12 @@ namespace AbsoluteRP.Helpers
 
             return points;
         }
-        public static void DrawInlineNavigation(Navigation navigation, ref int selectedNavIndex, bool horizontal = false, float? buttonSizeOverride = null)
+        public static int DrawInlineNavigation(Navigation navigation, ref int selectedNavIndex, bool horizontal = false, float? buttonSizeOverride = null, bool trackRightClick = false)
         {
+            int rightClickedIndex = -1;
+
             if (navigation == null || navigation.textureIDs == null)
-                return;
+                return rightClickedIndex;
 
             float buttonSize = buttonSizeOverride ?? ImGui.GetIO().FontGlobalScale * 45f;
             int pressedIndex = -1;
@@ -173,8 +175,43 @@ namespace AbsoluteRP.Helpers
 
                 ImGui.PushID(i);
 
+                // Save position before drawing button for badge overlay
+                var buttonPos = ImGui.GetCursorScreenPos();
+
                 var label = (navigation.names != null && i < navigation.names.Length) ? navigation.names[i] : null;
                 bool pressed = CustomLayouts.TransparentImageButton(navigation.textureIDs[i], new Vector2(buttonSize, buttonSize), label);
+
+                // Track right-click
+                if (trackRightClick && ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                {
+                    rightClickedIndex = i;
+                }
+
+                // Draw badge if present
+                if (navigation.badges != null && i < navigation.badges.Length && navigation.badges[i] > 0)
+                {
+                    var drawList = ImGui.GetWindowDrawList();
+                    int badgeCount = navigation.badges[i];
+                    string badgeText = badgeCount > 99 ? "99+" : badgeCount.ToString();
+
+                    // Calculate badge position (top-right corner of button)
+                    float badgeRadius = buttonSize * 0.22f;
+                    var badgeCenter = new Vector2(buttonPos.X + buttonSize - badgeRadius * 0.8f, buttonPos.Y + badgeRadius * 0.8f);
+
+                    // Draw red circle background
+                    drawList.AddCircleFilled(badgeCenter, badgeRadius, ImGui.ColorConvertFloat4ToU32(new Vector4(0.9f, 0.2f, 0.2f, 1f)));
+
+                    // Draw badge text
+                    var textSize = ImGui.CalcTextSize(badgeText);
+                    float fontSize = badgeRadius * 1.2f;
+                    float scale = fontSize / textSize.Y;
+                    var textPos = new Vector2(badgeCenter.X - textSize.X * scale * 0.5f, badgeCenter.Y - textSize.Y * scale * 0.5f);
+
+                    // Use smaller font scale for the badge
+                    ImGui.SetWindowFontScale(scale);
+                    drawList.AddText(textPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 1f)), badgeText);
+                    ImGui.SetWindowFontScale(1f);
+                }
 
                 if (pressed)
                 {
@@ -182,7 +219,7 @@ namespace AbsoluteRP.Helpers
                     // invoke action if present
                     if (navigation.actions != null && i < navigation.actions.Length)
                         navigation.actions[i]?.Invoke();
-                        
+
                     selectedNavIndex = i;
                 }
 
@@ -206,6 +243,8 @@ namespace AbsoluteRP.Helpers
 
             if (pressedIndex != -1)
                 selectedNavIndex = pressedIndex;
+
+            return rightClickedIndex;
         }
         // DrawSideNavigation: added requestFocus parameter and apply focus immediately after Begin.
         public static void DrawSideNavigation(string uniqueParentID, string uniqueID, ref int selectedNavIndex, ImGuiWindowFlags flags, Navigation navigation)

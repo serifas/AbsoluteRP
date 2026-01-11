@@ -38,8 +38,24 @@ namespace AbsoluteRP.Helpers
 
         public static bool wasDraggingCompass = false;
         public static List<PlayerData> playerDataMap = new List<PlayerData>();
-  
+        public static void SetFauxNameForPlayer(string name, string world, string fauxName)
+        {
+            var normalizedName = name.Trim();
+            var normalizedWorld = world.Trim();
 
+            var playerData = playerDataMap.FirstOrDefault(p =>
+                string.Equals(p.playername?.Trim(), normalizedName, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(p.worldname?.Trim(), normalizedWorld, StringComparison.OrdinalIgnoreCase));
+
+            if (playerData != null)
+            {
+                playerData.fauxName = fauxName;
+                playerData.fauxStatus = !string.IsNullOrEmpty(fauxName);
+            }
+        }
+
+        // This method should be added to PlayerInteractions
+   
         public static PlayerData? GetConnectedPlayer(string playername, string playerworld)
         {
             // Use LINQ to find the first matching player in the list
@@ -313,6 +329,8 @@ public class PlayerData
     public string worldname { get; set; }
     public string profileName { get; set; }
     public bool customName { get; set; }
+    public string fauxName { get; set; }
+    public bool fauxStatus { get; set; }
 }
 
 

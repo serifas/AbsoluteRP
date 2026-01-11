@@ -1,3 +1,4 @@
+using AbsoluteRP.Caching;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
@@ -26,8 +27,14 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public static bool ExistingProfile = false;
         public static bool showUrlPopup;
         private static bool allow;
+        public static string playername;
+        public static string playerworld;
         public static bool LoadUrl { get; set; }
         public static string UrlToLoad { get; set; }
+        private static bool fetchedLikes = false;
+        private static bool showLikeCommentDialog = false;
+        private static string likeCommentBuffer = string.Empty;
+        private static int likeCountInput = 1;
 
         public TargetProfileWindow() : base("TARGET")
         {
@@ -48,12 +55,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 profileData = new ProfileData();
             if (profileData.customTabs == null)
                 profileData.customTabs = new List<CustomTab>();
-        }
-
-        public static void LoadProfile(ProfileData data)
-        {
-            EnsureData(data);
-            DrawProfile(data);
         }
 
 
@@ -77,6 +78,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
         public override void Draw()
         {
+            // Draw like button at top right if viewing someone else's profile
+           
+
             DrawProfile();
         }
 
@@ -212,6 +216,90 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             Plugin.PluginLog.Debug($"[TargetProfileWindow] Failed to draw background image: {ex.Message}");
                         }
                     }
+                    //Draw Like Controls
+                    if (ExistingProfile && profileData != null && Plugin.plugin != null && Plugin.plugin.Configuration != null && Plugin.plugin.Configuration.account != null)
+                    {
+                        if (profileData.accountID != Plugin.plugin.Configuration.account.userID)
+                        {
+                            // Fetch likes remaining once when window opens
+                            if (!fetchedLikes && Plugin.character != null)
+                            {
+                                DataSender.FetchLikesRemaining(Plugin.character);
+                                fetchedLikes = true;
+                            }
+
+                            // Draw heart button with remaining count in upper right
+                            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0.2f, 0.2f, 1f));
+                            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1f, 0.3f, 0.3f, 1f));
+                            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0.1f, 0.1f, 1f));
+
+                            if (ImGui.Button($"♥ ({DataReceiver.likesRemaining})##likeBtn"))
+                            {
+                                showLikeCommentDialog = true;
+                            }
+
+                            ImGui.PopStyleColor(3);
+
+                            if (ImGui.IsItemHovered())
+                            {
+                                ImGui.SetTooltip("Like this profile");
+                            }
+                        }
+                    }
+
+                    // Comment dialog
+                    if (showLikeCommentDialog)
+                    {
+                        ImGui.SetNextWindowSize(new Vector2(400, 320), ImGuiCond.FirstUseEver);
+                        if (ImGui.Begin("Like Profile##likeDialog", ref showLikeCommentDialog, ImGuiWindowFlags.NoCollapse))
+                        {
+                            ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), $"Liking: {profileData.title}");
+                            ImGui.Separator();
+                            ImGui.Spacing();
+
+                            // Like count input with validation
+                            ImGui.Text("Number of likes to send:");
+                            ImGui.SetNextItemWidth(200);
+                            if (ImGui.InputInt("##likeCount", ref likeCountInput))
+                            {
+                                // Clamp to valid range (1 to remaining likes)
+                                if (likeCountInput < 1) likeCountInput = 1;
+                                if (likeCountInput > DataReceiver.likesRemaining) likeCountInput = DataReceiver.likesRemaining;
+                            }
+                            ImGui.SameLine();
+                            ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"(Max: {DataReceiver.likesRemaining})");
+
+                            ImGui.Spacing();
+
+                            ImGui.Text("Leave an optional comment:");
+                            ImGui.InputTextMultiline("##likeComment", ref likeCommentBuffer, 500, new Vector2(380, 100));
+
+                            ImGui.Spacing();
+
+                            if (ImGui.Button($"Send {likeCountInput} Like(s)", new Vector2(150, 30)))
+                            {
+                                if (Plugin.character != null && profileData != null && likeCountInput > 0)
+                                {
+                                    DataSender.LikeProfile(Plugin.character, profileData.id, likeCommentBuffer, likeCountInput);
+                                    likeCommentBuffer = string.Empty;
+                                    likeCountInput = 1;
+                                    showLikeCommentDialog = false;
+                                }
+                            }
+
+                            ImGui.SameLine();
+
+                            if (ImGui.Button("Cancel", new Vector2(120, 30)))
+                            {
+                                likeCommentBuffer = string.Empty;
+                                likeCountInput = 1;
+                                showLikeCommentDialog = false;
+                            }
+
+                            ImGui.End();
+                        }
+                    }
+
 
                     // Draw avatar if valid
                     if (profileData.avatar != null && profileData.avatar.Handle != IntPtr.Zero)
@@ -269,7 +357,19 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     {
                         ImGui.SetTooltip("Report this tooltipData for inappropriate use.\n(Repeat false reports may result in your account being banned.)");
                     }
+                    if (!string.IsNullOrEmpty(DataReceiver.likeResultMessage))
+                    {
+                        ImGui.TextColored(
+                            DataReceiver.likeResultSuccess ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0, 0, 1),
+                            DataReceiver.likeResultMessage
+                        );
 
+                        // Clear message after 5 seconds (simple timer based on frame count)
+                        if (ImGui.GetFrameCount() % 300 == 0)
+                        {
+                            DataReceiver.likeResultMessage = string.Empty;
+                        }
+                    }
                     // Tabs
                     if (profileData.customTabs != null && profileData.customTabs.Count > 0)
                     {
@@ -485,6 +585,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 firstDraw = true;
                 warning = false;
                 warningMessage = string.Empty;
+
+                // Reset NSFW spoiler states when loading a new profile
+                Misc.ResetNsfwRevealStates();
             }
             catch (Exception ex)
             {

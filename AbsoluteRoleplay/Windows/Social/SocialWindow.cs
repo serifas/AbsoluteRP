@@ -59,6 +59,7 @@ namespace AbsoluteRP.Windows.Listings
                 DataSender.RequestConnections(Plugin.character);
                 DataSender.FetchProfiles(Plugin.character);
                 DataSender.FetchGroups(Plugin.character);
+                DataSender.FetchGroupInvites(Plugin.character);
             }
         }
 
@@ -92,7 +93,7 @@ namespace AbsoluteRP.Windows.Listings
                 }
                 if (view == groups)
                 {
-                    Groups.LoadGroupList();
+                    GroupsData.LoadGroupList();
                 }
 
                 // Move focus decision after the UI has been drawn so per-item flags are up-to-date.
@@ -117,15 +118,29 @@ namespace AbsoluteRP.Windows.Listings
                 // Use the focus-aware DrawSideNavigation and check whether focus succeeded.
                 UIHelpers.DrawSideNavigation("SOCIAL", "SocialNavigation", ref navIndex, flags, nav, focusRequested);
 
+                // Process any pending texture disposals at the end of the frame
+                // This ensures textures are only disposed when not actively being rendered
+                GroupsData.ProcessPendingDisposals();
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Error("Error drawing social window", ex.ToString());
+                Plugin.PluginLog.Debug($"Error drawing social window: {ex.Message}");
+                Plugin.PluginLog.Debug($"Stack trace: {ex.StackTrace}");
             }
+        }
+
+        public override void OnClose()
+        {
+            // Clean up group resources when window is closed
+            GroupsData.ResetState();
+            base.OnClose();
         }
 
         public void Dispose()
         {
+            // Clean up group resources
+            GroupsData.ResetState();
+
             foreach (Listing listing in listings)
             {
                 WindowOperations.SafeDispose(listing.avatar);

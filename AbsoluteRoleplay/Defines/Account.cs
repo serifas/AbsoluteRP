@@ -8,6 +8,7 @@ namespace AbsoluteRP.Defines
 {
     public class Account
     {
+        public int userID { get; set; }
         public string accountName { get; set; } = string.Empty;
         public string accountKey { get; set; } = string.Empty;
         public RankPermissions permissions { get; set; }

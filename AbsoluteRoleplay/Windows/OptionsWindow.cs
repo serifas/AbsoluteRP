@@ -24,6 +24,10 @@ namespace AbsoluteRP.Windows
         private bool showCompassInCombat;
         private bool showCompassInDuty;
         private bool showCompassInPvP;
+        private bool showFauxNames;
+        private bool showFauxNamesInCombat;
+        private bool showFauxNamesInDuty;
+        private bool showFauxNamesInPvP;
 
         public OptionsWindow() : base("OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -127,6 +131,7 @@ namespace AbsoluteRP.Windows
 
 
 
+                
                 if (ImGui.BeginTabItem("Data"))
                 {
                     bool autoBackup = Plugin.plugin.Configuration.AutobackupEnabled;

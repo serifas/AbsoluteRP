@@ -62,14 +62,16 @@ public class Configuration : IPluginConfiguration
     internal bool showCompassInDuty { get; set; } = false;
     public bool showCompassInCombat { get; set; } = false;
     public bool AutobackupEnabled { get; set; } = true; 
+    public bool displayFauxNamesInCombat { get; set; } = false;
+    public bool displayFauxNamesInPvP { get; set; } = false;
+    public bool displayFauxnamesInDuty { get; set; } = false;
     public string dataSavePath { get; set; }
     public float fontSize { get; set; } = 35; 
     public float CompassPosX { get; set; } = 0f;
     public float CompassPosY { get; set; } = 0f;
 
-  
-
-    public Dictionary<ulong, (string, uint)> IdentifyAs = new();
+    // NSFW channel agreements - persisted so users don't have to agree every session
+    public HashSet<int> agreedNsfwChannelIds { get; set; } = new HashSet<int>();
 
     public void Initialize(IDalamudPluginInterface pluginInterface)
     {

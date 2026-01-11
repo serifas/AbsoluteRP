@@ -1,1098 +1,637 @@
-﻿using AbsoluteRP.Defines;
-using AbsoluteRP.Helpers;
-using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
-using Dalamud.Interface.Textures.TextureWraps;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
+using System.Numerics;
+using System.Security.Cryptography;
+using AbsoluteRP;
 
 namespace AbsoluteRP.Caching
 {
-    internal class ProfilesCache
+    public static class ProfilesCache
     {
-        const string ProfilesFolderName = "Profiles";
-        const string IndexFileName = "profiles_index.json";
-
-        public static List<ProfileData> personalProfiles = new List<ProfileData>();
-        public static List<ProfileData> targetProfiles = new List<ProfileData>();
-
-        public static void CacheProfile(bool personal, ProfileData profile, Account account = null)
+        private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
-            try
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters =
             {
-                // Replace any existing cached tooltipData with same server index so we don't accumulate stale entries
-                if (personal)
-                {
-                    try { personalProfiles.RemoveAll(p => p.index == profile.index); } catch { }
-                    personalProfiles.Add(profile);
-                }
-                else
-                {
-                    try { targetProfiles.RemoveAll(p => p.index == profile.index); } catch { }
-                    targetProfiles.Add(profile);
-                }
+                new Vector4Converter()
+            }
+        };
 
-                SaveCachedProfile(personal, profile, account);
-            }
-            catch (Exception ex)
+        private static string GetCacheDirectory()
+        {
+            var basePath = Plugin.PluginInterface?.AssemblyLocation?.Directory?.FullName;
+            if (string.IsNullOrEmpty(basePath))
             {
-                try { Plugin.PluginLog.Error($"ProfilesCache.CacheProfile failed: {ex}"); } catch { }
+                Plugin.PluginLog?.Debug("[ProfilesCache] Could not determine assembly path.");
+                return null;
             }
+
+            var cacheDir = Path.Combine(basePath, "cache", "profiles");
+            Directory.CreateDirectory(cacheDir);
+            return cacheDir;
         }
-        private static string ResolveBasePath()
+
+        private static string SanitizeFileNameSegment(string input)
         {
-            // 1) Prefer the plugin-specific config directory provided by Dalamud
-            try
-            {
-                var pluginConfigDir = Plugin.PluginInterface?.GetPluginConfigDirectory();
-                if (!string.IsNullOrWhiteSpace(pluginConfigDir))
-                {
-                    try
-                    {
-                        // Ensure plugin config directory exists
-                        Directory.CreateDirectory(pluginConfigDir);
-
-                        // Use an ARPData subfolder inside the plugin config directory
-                        var arpDataPath = Path.Combine(pluginConfigDir, "ARPData");
-                        Directory.CreateDirectory(arpDataPath);
-
-                        try { Plugin.PluginLog.Error($"ProfilesCache: ResolveBasePath -> '{arpDataPath}' (GetPluginConfigDirectory)"); } catch { }
-                        return arpDataPath;
-                    }
-                    catch (Exception ex)
-                    {
-                        try { Plugin.PluginLog.Error($"ProfilesCache: Failed creating ARPData in plugin config dir '{pluginConfigDir}': {ex}"); } catch { }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                try { Plugin.PluginLog.Error($"ProfilesCache: GetPluginConfigDirectory() check failed: {ex}"); } catch { }
-            }
-
-            // 2) Fallback to assembly directory ARPData (existing behavior)
-            try
-            {
-                if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })
-                {
-                    var pluginDataPath = Path.Combine(path, "ARPData");
-                    try { Directory.CreateDirectory(pluginDataPath); } catch { }
-                    try { Plugin.PluginLog.Error($"ProfilesCache: ResolveBasePath -> '{pluginDataPath}' (assembly dir)"); } catch { }
-                    return pluginDataPath;
-                }
-            }
-            catch (Exception ex)
-            {
-                try { Plugin.PluginLog.Error($"ProfilesCache: ResolveBasePath assembly path check failed: {ex}"); } catch { }
-            }
-
-            // 3) Configured path (if set)
-            try
-            {
-                var configured = Plugin.plugin?.Configuration?.dataSavePath;
-                if (!string.IsNullOrWhiteSpace(configured))
-                {
-                    try { Directory.CreateDirectory(configured); } catch { }
-                    try { Plugin.PluginLog.Error($"ProfilesCache: ResolveBasePath -> '{configured}' (configured)"); } catch { }
-                    return configured;
-                }
-            }
-            catch (Exception ex)
-            {
-                try { Plugin.PluginLog.Error($"ProfilesCache: ResolveBasePath configured path attempt failed: {ex}"); } catch { }
-            }
-
-            // 4) Final fallback
-            var fallback = Path.Combine(AppContext.BaseDirectory ?? ".", "ARPProfileData");
-            try { Directory.CreateDirectory(fallback); } catch { }
-            try { Plugin.PluginLog.Error($"ProfilesCache: ResolveBasePath -> '{fallback}' (fallback)"); } catch { }
-            return fallback;
-        }
-        private static string SanitizeFileName(string input)
-        {
-            if (string.IsNullOrEmpty(input)) return string.Empty;
+            if (string.IsNullOrWhiteSpace(input)) return "unknown";
             var invalid = Path.GetInvalidFileNameChars();
             var sb = new StringBuilder(input.Length);
             foreach (var c in input)
             {
-                if (Array.IndexOf(invalid, c) >= 0) sb.Append('_'); else sb.Append(c);
+                if (invalid.Contains(c)) sb.Append('_');
+                else if (char.IsWhiteSpace(c)) sb.Append('_');
+                else sb.Append(c);
             }
-            var s = sb.ToString().Trim();
-            if (s.Length > 100) s = s.Substring(0, 100);
-            return s;
+            // collapse repeated underscores
+            var result = sb.ToString();
+            while (result.Contains("__")) result = result.Replace("__", "_");
+            return result;
         }
-        public static void PersistAllPersonalProfiles(Account account = null)
+
+        /// <summary>
+        /// Save a ProfileData instance to a JSON cache file.
+        /// By default writes the legacy filename pattern:
+        ///   profile_{index}.json or profile_{timestamp}.json
+        /// If playerName and playerWorld are provided the file will additionally be written
+        /// with the player segments included so it can be loaded by name/world:
+        ///   profile_{index}_{playerName}_{playerWorld}.json
+        ///   profile_{playerName}_{playerWorld}_{timestamp}.json
+        /// </summary>
+        public static bool SaveProfileCache(ProfileData profile, string playerName = null, string playerWorld = null)
         {
             try
             {
-                if (personalProfiles == null || personalProfiles.Count == 0)
+                if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+                var dto = ProfileDto.FromProfile(profile);
+
+                var cacheDir = GetCacheDirectory();
+                if (cacheDir == null) return false;
+
+                // Legacy / primary filename
+                string baseFilename = profile.index > 0
+                    ? $"profile_{profile.index}.json"
+                    : $"profile_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.json";
+
+                var baseFullPath = Path.Combine(cacheDir, baseFilename);
+                var json = JsonSerializer.Serialize(dto, JsonOptions);
+                File.WriteAllText(baseFullPath, json);
+
+                Plugin.PluginLog?.Debug($"[ProfilesCache] Saved profile cache to {baseFullPath}");
+
+                // If player name/world provided, also write a name-based filename so it can be found by player+world search
+                if (!string.IsNullOrWhiteSpace(playerName) && !string.IsNullOrWhiteSpace(playerWorld))
                 {
-                    try { Plugin.PluginLog.Error("ProfilesCache: no personal profiles to persist."); } catch { }
-                    return;
+                    var nameSeg = SanitizeFileNameSegment(playerName);
+                    var worldSeg = SanitizeFileNameSegment(playerWorld);
+
+                    string nameFilename;
+                    if (profile.index > 0)
+                        nameFilename = $"profile_{profile.index}_{nameSeg}_{worldSeg}.json";
+                    else
+                        nameFilename = $"profile_{nameSeg}_{worldSeg}_{DateTime.UtcNow:yyyyMMdd_HHmmss_fff}.json";
+
+                    var nameFullPath = Path.Combine(cacheDir, nameFilename);
+                    File.WriteAllText(nameFullPath, json);
+                    Plugin.PluginLog?.Debug($"[ProfilesCache] Saved profile cache (name/world) to {nameFullPath}");
                 }
 
-                try { Plugin.PluginLog.Error($"ProfilesCache: PersistAllPersonalProfiles starting ({personalProfiles.Count} profiles)"); } catch { }
-
-                // iterate a copy to avoid collection-modification issues
-                var copy = personalProfiles.ToList();
-                foreach (var profile in copy)
-                {
-                    if (profile == null)
-                        continue;
-
-                    try
-                    {
-                        // Use existing SaveCachedProfile logic (it handles writing layout files and image bins)
-                        SaveCachedProfile(true, profile, account);
-                        try { Plugin.PluginLog.Error($"ProfilesCache: Persisted tooltipData index={profile.index} title='{profile.title}'"); } catch { }
-                    }
-                    catch (Exception exProfile)
-                    {
-                        try { Plugin.PluginLog.Error($"ProfilesCache: Persist tooltipData index={profile.index} failed: {exProfile}"); } catch { }
-                    }
-                }
-
-                try { Plugin.PluginLog.Error("ProfilesCache: PersistAllPersonalProfiles completed."); } catch { }
+                return true;
             }
             catch (Exception ex)
             {
-                try { Plugin.PluginLog.Error($"ProfilesCache.PersistAllPersonalProfiles top-level failed: {ex}"); } catch { }
-            }
-        }
-        private static void SaveCachedProfile(bool personal, ProfileData profile, Account account = null)
-        {
-            try
-            {
-                var basePath = ResolveBasePath();
-                try { Directory.CreateDirectory(basePath); } catch (Exception ex) { try { Plugin.PluginLog.Error($"ProfilesCache: Could not ensure basePath '{basePath}': {ex}"); } catch { } }
-
-                try { Plugin.PluginLog.Error($"ProfilesCache: saving to basePath='{basePath}'"); } catch { }
-                var profilesPath = Path.Combine(basePath, ProfilesFolderName);
-                try { Directory.CreateDirectory(profilesPath); } catch (Exception ex) { try { Plugin.PluginLog.Error($"ProfilesCache: Could not ensure profilesPath '{profilesPath}': {ex}"); } catch { } }
-
-                var opts = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                };
-
-                // Build a compact JSON for the tooltipData (do not inline large binaries or complex customTabs layouts)
-                var node = new JsonObject();
-
-                // Core ProfileData fields
-                node["index"] = profile?.index ?? -1;
-                node["profileTitle"] = profile?.title ?? string.Empty;
-                node["title"] = profile?.title ?? string.Empty;
-                node["titleColor"] = new JsonArray(
-                    profile?.titleColor.X ?? 1f,
-                    profile?.titleColor.Y ?? 1f,
-                    profile?.titleColor.Z ?? 1f,
-                    profile?.titleColor.W ?? 1f
-                );
-
-                node["isPrivate"] = profile?.isPrivate ?? false;
-                // both variants kept for compatibility
-                node["isActive"] = profile?.isActive ?? false;
-                // additional flags
-                try
-                {
-                    node["showOnCompass"] = profile?.SHOW_ON_COMPASS ?? false;
-                    node["nsfw"] = profile?.NSFW ?? false;
-                    node["triggering"] = profile?.TRIGGERING ?? false;
-                    node["spoilerARR"] = profile?.SpoilerARR ?? false;
-                    node["spoilerHW"] = profile?.SpoilerHW ?? false;
-                    node["spoilerSB"] = profile?.SpoilerSB ?? false;
-                    node["spoilerSHB"] = profile?.SpoilerSHB ?? false;
-                    node["spoilerEW"] = profile?.SpoilerEW ?? false;
-                    node["spoilerDT"] = profile?.SpoilerDT ?? false;
-                }
-                catch { }
-
-                // Try to capture avatar/background raw bytes (explicit properties)
-                try
-                {
-                    if (profile != null)
-                    {
-                        if (profile.avatarBytes != null && profile.avatarBytes.Length > 0)
-                            node["avatarBytes"] = Convert.ToBase64String(profile.avatarBytes);
-
-                        if (profile.backgroundBytes != null && profile.backgroundBytes.Length > 0)
-                            node["backgroundBytes"] = Convert.ToBase64String(profile.backgroundBytes);
-                    }
-                }
-                catch { /* non-fatal */ }
-
-                // Presence/size metadata (if textures available)
-                try
-                {
-                    node["avatarPresent"] = profile?.avatar != null && profile.avatar.Handle != IntPtr.Zero;
-                    if (node["avatarPresent"].GetValue<bool>() && profile.avatar != null)
-                        node["avatarSize"] = new JsonArray(profile.avatar.Width, profile.avatar.Height);
-                }
-                catch { }
-
-                try
-                {
-                    node["backgroundPresent"] = profile?.background != null && profile.background.Handle != IntPtr.Zero;
-                    if (node["backgroundPresent"].GetValue<bool>() && profile.background != null)
-                        node["backgroundSize"] = new JsonArray(profile.background.Width, profile.background.Height);
-                }
-                catch { }
-
-                // Try to serialize simple lists/objects that may exist on ProfileData (best-effort)
-                try { node["customTabs"] = null; } catch { }
-
-                // Helper to safely write text files and log errors
-                static void SafeWriteAllText(string path, string contents)
-                {
-                    try
-                    {
-                        File.WriteAllText(path, contents);
-                        try { Plugin.PluginLog.Error($"ProfilesCache: Wrote file '{path}'"); } catch { }
-                    }
-                    catch (Exception ex)
-                    {
-                        try { Plugin.PluginLog.Error($"ProfilesCache: Failed writing file '{path}': {ex}"); } catch { }
-                    }
-                }
-
-                // Store customTabs metadata and write full layout files + binary image files into a dedicated folder for this tooltipData
-                try
-                {
-                    if (profile?.customTabs != null)
-                    {
-                        // Determine safe base filename for the tooltipData
-                        var safeName = SanitizeFileName(profile?.title ?? $"profile_{profile?.index ?? -1}");
-                        var filename = $"profile_{(profile?.index ?? -1)}_{safeName}_{Guid.NewGuid():N}.json";
-                        var profileFilePath = Path.Combine(profilesPath, filename);
-
-                        var profileFolderName = Path.GetFileNameWithoutExtension(filename);
-                        var profileFolderPath = Path.Combine(profilesPath, profileFolderName);
-                        try { Directory.CreateDirectory(profileFolderPath); } catch (Exception ex) { try { Plugin.PluginLog.Error($"ProfilesCache: Could not ensure profileFolderPath '{profileFolderPath}': {ex}"); } catch { } }
-
-                        // We'll write each custom tab's layout to a separate file inside profileFolderPath
-                        var tabsArray = new JsonArray();
-                        for (int tIndex = 0; tIndex < profile.customTabs.Count; tIndex++)
-                        {
-                            var tab = profile.customTabs[tIndex];
-                            var tabObj = new JsonObject
-                            {
-                                ["id"] = tab?.ID ?? tIndex
-                            };
-
-                            if (tab?.Layout != null)
-                            {
-                                var lt = tab.Layout.GetType();
-                                tabObj["layoutType"] = lt.AssemblyQualifiedName ?? lt.FullName;
-
-                                // Layout filename
-                                var layoutFileName = $"tab_{tIndex}_layout.json";
-                                tabObj["layoutFile"] = layoutFileName;
-
-                                // Special handling: GalleryLayout -> ensure we persist image bytes (try to fetch if missing)
-                                try
-                                {
-                                    if (tab.Layout is GalleryLayout gallery)
-                                    {
-                                        // Ensure images list initialized
-                                        gallery.images = gallery.images ?? new List<ProfileGalleryImage>();
-
-                                        // For each gallery image, if we don't have imageBytes try to fetch using the URL (best-effort)
-                                        for (int imgIndex = 0; imgIndex < gallery.images.Count; imgIndex++)
-                                        {
-                                            var img = gallery.images[imgIndex];
-                                            try
-                                            {
-                                                if ((img.imageBytes == null || img.imageBytes.Length == 0) && !string.IsNullOrWhiteSpace(img.url))
-                                                {
-                                                    try
-                                                    {
-                                                        // Best-effort synchronous fetch — fetch bytes and assign so cache persists them
-                                                        var fetched = Imaging.FetchUrlImageBytes(img.url).GetAwaiter().GetResult();
-                                                        if (fetched != null && fetched.Length > 0)
-                                                        {
-                                                            img.imageBytes = fetched;
-                                                            try { Plugin.PluginLog.Error($"ProfilesCache: fetched image bytes for tooltipData {profile.index} tab {tIndex} img {imgIndex}"); } catch { }
-                                                        }
-                                                    }
-                                                    catch (Exception exfetch)
-                                                    {
-                                                        try { Plugin.PluginLog.Error($"ProfilesCache: failed fetching image bytes for url '{img.url}': {exfetch}"); } catch { }
-                                                    }
-                                                }
-                                            }
-                                            catch { /* non-fatal per-image */ }
-                                        }
-
-                                        // Build a serializable layout node where large bytes are replaced by filenames
-                                        var galleryNode = new JsonObject
-                                        {
-                                            ["tabName"] = gallery.tabName ?? string.Empty,
-                                            ["tabIndex"] = gallery.tabIndex
-                                        };
-                                        var imgs = new JsonArray();
-                                        for (int imgIndex = 0; imgIndex < (gallery.images?.Count ?? 0); imgIndex++)
-                                        {
-                                            var img = gallery.images[imgIndex];
-                                            var imgObj = new JsonObject
-                                            {
-                                                ["index"] = img.index,
-                                                ["url"] = img.url ?? string.Empty,
-                                                ["tooltip"] = img.tooltip ?? string.Empty,
-                                                ["nsfw"] = img.nsfw,
-                                                ["trigger"] = img.trigger
-                                            };
-
-                                            // If imageBytes present -> write binary file
-                                            try
-                                            {
-                                                if (img.imageBytes != null && img.imageBytes.Length > 0)
-                                                {
-                                                    var imgFileName = $"tab_{tIndex}_img_{imgIndex}.bin";
-                                                    var imgPath = Path.Combine(profileFolderPath, imgFileName);
-                                                    try
-                                                    {
-                                                        File.WriteAllBytes(imgPath, img.imageBytes);
-                                                        imgObj["imageFile"] = imgFileName;
-                                                        try { Plugin.PluginLog.Error($"ProfilesCache: Wrote image bin '{imgPath}'"); } catch { }
-                                                    }
-                                                    catch (Exception ex)
-                                                    {
-                                                        try { Plugin.PluginLog.Error($"ProfilesCache: Failed writing image bin '{imgPath}': {ex}"); } catch { }
-                                                    }
-                                                }
-                                            }
-                                            catch { }
-
-                                            imgs.Add(imgObj);
-                                        }
-                                        galleryNode["images"] = imgs;
-
-                                        // write gallery layout file
-                                        var layoutPath = Path.Combine(profileFolderPath, layoutFileName);
-                                        SafeWriteAllText(layoutPath, galleryNode.ToJsonString(opts));
-                                    }
-                                    else
-                                    {
-                                        // For non-gallery layouts, attempt to serialize layout fully to file
-                                        try
-                                        {
-                                            // Create a lightweight DTO copy to avoid serializing texture handles or other non-serializable runtime objects.
-                                            // If layouts contain fields that can't be serialized, the SerializeToNode call below will fail and fallback will run.
-                                            var layoutJson = JsonSerializer.SerializeToNode(tab.Layout, tab.Layout.GetType(), opts);
-                                            var layoutPath = Path.Combine(profileFolderPath, layoutFileName);
-                                            SafeWriteAllText(layoutPath, layoutJson?.ToJsonString(opts) ?? "{}");
-                                        }
-                                        catch
-                                        {
-                                            // fallback: attempt a generic serialization
-                                            try
-                                            {
-                                                var layoutJson = JsonSerializer.SerializeToNode(tab.Layout, opts);
-                                                var layoutPath = Path.Combine(profileFolderPath, layoutFileName);
-                                                SafeWriteAllText(layoutPath, layoutJson?.ToJsonString(opts) ?? "{}");
-                                            }
-                                            catch (Exception ex)
-                                            {
-                                                try { Plugin.PluginLog.Error($"ProfilesCache: Failed serializing layout for tab '{tab?.Name}': {ex}"); } catch { }
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    try { Plugin.PluginLog.Error($"ProfilesCache: Exception handling tab layout for '{tab?.Name}': {ex}"); } catch { }
-                                }
-                            }
-                            else
-                            {
-                                tabObj["layoutType"] = string.Empty;
-                                tabObj["layoutFile"] = null;
-                            }
-
-                            tabsArray.Add(tabObj);
-                        }
-
-                        node["customTabs"] = tabsArray;
-
-                        // Include reference to tooltipData folder
-                        node["profileFolder"] = profileFolderName;
-
-                        // Attach account info for a personal tooltipData (if present)
-                        if (personal && account != null)
-                        {
-                            var acct = new JsonObject
-                            {
-                                ["accountName"] = account.accountName ?? string.Empty,
-                                ["accountKey"] = account.accountKey ?? string.Empty
-                            };
-                            try { acct["permissions"] = JsonSerializer.SerializeToNode(account.permissions, opts); } catch { }
-                            node["account"] = acct;
-                        }
-
-                        // Write the single tooltipData file
-                        try
-                        {
-                            SafeWriteAllText(profileFilePath, node.ToJsonString(opts));
-                        }
-                        catch (Exception ex)
-                        {
-                            try { Plugin.PluginLog.Error($"ProfilesCache: Failed to write tooltipData file '{profileFilePath}': {ex}"); } catch { }
-                        }
-
-                        // --- Update master index (profiles_index.json) ---
-                        var indexPath = Path.Combine(ResolveBasePath(), IndexFileName);
-                        JsonObject indexRoot;
-                        if (File.Exists(indexPath))
-                        {
-                            try
-                            {
-                                var t = File.ReadAllText(indexPath);
-                                indexRoot = JsonNode.Parse(t) as JsonObject ?? new JsonObject();
-                            }
-                            catch (Exception ex)
-                            {
-                                try { Plugin.PluginLog.Error($"ProfilesCache: Could not parse existing index file '{indexPath}': {ex}"); } catch { }
-                                indexRoot = new JsonObject();
-                            }
-                        }
-                        else indexRoot = new JsonObject();
-
-                        if (indexRoot["personal"] == null) indexRoot["personal"] = new JsonArray();
-                        if (indexRoot["viewed"] == null) indexRoot["viewed"] = new JsonArray();
-
-                        var indexArray = (JsonArray)(personal ? indexRoot["personal"] : indexRoot["viewed"]);
-
-                        // Remove previous entries for same tooltipData index if present
-                        for (int i = indexArray.Count - 1; i >= 0; i--)
-                        {
-                            var e = indexArray[i] as JsonObject;
-                            if (e == null) continue;
-                            try
-                            {
-                                if (e["index"] != null && e["index"].GetValue<int>() == (profile?.index ?? -1)) indexArray.RemoveAt(i);
-                            }
-                            catch { }
-                        }
-
-                        // Add metadata entry
-                        var meta = new JsonObject
-                        {
-                            ["file"] = filename,
-                            ["index"] = profile?.index ?? -1,
-                            ["title"] = profile?.title ?? string.Empty,
-                            ["savedAtUtc"] = DateTime.UtcNow.ToString("o")
-                        };
-                        if (personal && account != null)
-                        {
-                            var a = new JsonObject { ["accountName"] = account.accountName ?? string.Empty };
-                            meta["account"] = a;
-                        }
-
-                        indexArray.Add(meta);
-
-                        // commit index
-                        try
-                        {
-                            SafeWriteAllText(indexPath, indexRoot.ToJsonString(opts));
-                        }
-                        catch (Exception ex)
-                        {
-                            try { Plugin.PluginLog.Error($"ProfilesCache: Failed writing index file '{indexPath}': {ex}"); } catch { }
-                        }
-
-                        return; // we've already written file & index for this tooltipData branch
-                    }
-                }
-                catch (Exception exTabs)
-                {
-                    try { Plugin.PluginLog.Error($"SaveCachedProfile(customTabs handling) failed: {exTabs}"); } catch { }
-                }
-
-                // If no customTabs (or previous branch failed), write a simple tooltipData file
-                try
-                {
-                    var safeName2 = SanitizeFileName(profile?.title ?? "unknown");
-                    var filename2 = $"profile_{(profile?.index ?? -1)}_{safeName2}_{Guid.NewGuid():N}.json";
-                    var filePath = Path.Combine(ResolveBasePath(), ProfilesFolderName, filename2);
-                    SafeWriteAllText(filePath, node.ToJsonString(opts));
-
-                    // --- Update master index (profiles_index.json) ---
-                    var indexPath2 = Path.Combine(ResolveBasePath(), IndexFileName);
-                    JsonObject indexRoot2;
-                    if (File.Exists(indexPath2))
-                    {
-                        try
-                        {
-                            var t = File.ReadAllText(indexPath2);
-                            indexRoot2 = JsonNode.Parse(t) as JsonObject ?? new JsonObject();
-                        }
-                        catch { indexRoot2 = new JsonObject(); }
-                    }
-                    else indexRoot2 = new JsonObject();
-
-                    if (indexRoot2["personal"] == null) indexRoot2["personal"] = new JsonArray();
-                    if (indexRoot2["viewed"] == null) indexRoot2["viewed"] = new JsonArray();
-
-                    var indexArray2 = (JsonArray)(personal ? indexRoot2["personal"] : indexRoot2["viewed"]);
-
-                    // Remove previous entries for same tooltipData index if present
-                    for (int i = indexArray2.Count - 1; i >= 0; i--)
-                    {
-                        var e = indexArray2[i] as JsonObject;
-                        if (e == null) continue;
-                        try
-                        {
-                            if (e["index"] != null && e["index"].GetValue<int>() == (profile?.index ?? -1)) indexArray2.RemoveAt(i);
-                        }
-                        catch { }
-                    }
-
-                    // Add metadata entry
-                    var meta2 = new JsonObject
-                    {
-                        ["file"] = filename2,
-                        ["index"] = profile?.index ?? -1,
-                        ["title"] = profile?.title ?? string.Empty,
-                        ["savedAtUtc"] = DateTime.UtcNow.ToString("o")
-                    };
-                    if (personal && account != null)
-                    {
-                        var a = new JsonObject { ["accountName"] = account.accountName ?? string.Empty };
-                        meta2["account"] = a;
-                    }
-
-                    indexArray2.Add(meta2);
-
-                    // commit index
-                    try
-                    {
-                        SafeWriteAllText(indexPath2, indexRoot2.ToJsonString(opts));
-                    }
-                    catch (Exception exSimple)
-                    {
-                        try { Plugin.PluginLog.Error($"SaveCachedProfile(fallback) failed: {exSimple}"); } catch { }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    try { Plugin.PluginLog.Error($"SaveCachedProfile failed: {ex}"); } catch { /* swallow */ }
-                }
-            }
-            catch (Exception ex)
-            {
-                try { Plugin.PluginLog.Error($"SaveCachedProfile top-level failed: {ex}"); } catch { /* swallow */ }
+                Plugin.PluginLog?.Debug($"[ProfilesCache] Failed saving profile cache: {ex}");
+                return false;
             }
         }
 
-        public static List<ProfileData> LoadCachedProfiles(bool personal)
+        /// <summary>
+        /// Try to load a cached profile by index. Returns null if file not found or deserialization fails.
+        /// </summary>
+        public static ProfileData? LoadProfileCache(int index)
         {
-            var results = new List<ProfileData>();
-
             try
             {
-                var basePath = ResolveBasePath();
-                var indexPath = Path.Combine(basePath, IndexFileName);
-                if (!File.Exists(indexPath)) return results;
+                var cacheDir = GetCacheDirectory();
+                if (cacheDir == null) return null;
 
-                var text = File.ReadAllText(indexPath);
-                var indexRoot = JsonNode.Parse(text) as JsonObject;
-                if (indexRoot == null) return results;
+                var fullPath = Path.Combine(cacheDir, $"profile_{index}.json");
+                if (!File.Exists(fullPath)) return null;
 
-                var listNode = personal ? indexRoot["personal"] as JsonArray : indexRoot["viewed"] as JsonArray;
-                if (listNode == null) return results;
+                var json = File.ReadAllText(fullPath);
+                var dto = JsonSerializer.Deserialize<ProfileDto>(json, JsonOptions);
+                if (dto == null) return null;
 
-                var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-                foreach (var item in listNode)
-                {
-                    if (item is not JsonObject meta) continue;
-                    var file = meta["file"]?.GetValue<string>();
-                    if (string.IsNullOrEmpty(file)) continue;
-
-                    var profilePath = Path.Combine(basePath, ProfilesFolderName, file);
-                    if (!File.Exists(profilePath)) continue;
-
-                    try
-                    {
-                        var profText = File.ReadAllText(profilePath);
-                        var obj = JsonNode.Parse(profText) as JsonObject;
-                        if (obj == null) continue;
-
-                        var pd = new ProfileData();
-
-                        // Basic ProfileData fields
-                        pd.index = obj["index"]?.GetValue<int>() ?? -1;
-                        pd.title = obj["title"]?.GetValue<string>() ?? string.Empty;
-
-                        try
-                        {
-                            var tc = obj["titleColor"] as JsonArray;
-                            if (tc != null && tc.Count >= 4) pd.titleColor = new System.Numerics.Vector4(tc[0].GetValue<float>(), tc[1].GetValue<float>(), tc[2].GetValue<float>(), tc[3].GetValue<float>());
-                            else pd.titleColor = new System.Numerics.Vector4(1, 1, 1, 1);
-                        }
-                        catch { pd.titleColor = new System.Numerics.Vector4(1, 1, 1, 1); }
-
-                        pd.isPrivate = obj["isPrivate"]?.GetValue<bool>() ?? false;
-                        pd.isActive = obj["isActive"]?.GetValue<bool>() ?? pd.isActive;
-
-                        // additional flags
-                        try
-                        {
-                            pd.SHOW_ON_COMPASS = obj["showOnCompass"]?.GetValue<bool>() ?? pd.SHOW_ON_COMPASS;
-                            pd.NSFW = obj["nsfw"]?.GetValue<bool>() ?? pd.NSFW;
-                            pd.TRIGGERING = obj["triggering"]?.GetValue<bool>() ?? pd.TRIGGERING;
-                            pd.SpoilerARR = obj["spoilerARR"]?.GetValue<bool>() ?? pd.SpoilerARR;
-                            pd.SpoilerHW = obj["spoilerHW"]?.GetValue<bool>() ?? pd.SpoilerHW;
-                            pd.SpoilerSB = obj["spoilerSB"]?.GetValue<bool>() ?? pd.SpoilerSB;
-                            pd.SpoilerSHB = obj["spoilerSHB"]?.GetValue<bool>() ?? pd.SpoilerSHB;
-                            pd.SpoilerEW = obj["spoilerEW"]?.GetValue<bool>() ?? pd.SpoilerEW;
-                            pd.SpoilerDT = obj["spoilerDT"]?.GetValue<bool>() ?? pd.SpoilerDT;
-                        }
-                        catch { }
-
-                        // Attempt to restore avatar/background bytes (if stored inline for compatibility)
-                        try
-                        {
-                            if (obj["avatarBytes"] != null)
-                            {
-                                var b64 = obj["avatarBytes"].GetValue<string>();
-                                if (!string.IsNullOrEmpty(b64))
-                                {
-                                    var bytes = Convert.FromBase64String(b64);
-                                    pd.avatarBytes = bytes;
-                                    if (Plugin.TextureProvider != null && bytes.Length > 0)
-                                    {
-                                        try
-                                        {
-                                            var tex = Plugin.TextureProvider.CreateFromImageAsync(bytes).Result;
-                                            if (tex != null && tex.Handle != IntPtr.Zero) pd.avatar = tex;
-                                        }
-                                        catch { }
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
-
-                        try
-                        {
-                            if (obj["backgroundBytes"] != null)
-                            {
-                                var b64 = obj["backgroundBytes"].GetValue<string>();
-                                if (!string.IsNullOrEmpty(b64))
-                                {
-                                    var bytes = Convert.FromBase64String(b64);
-                                    pd.backgroundBytes = bytes;
-                                    if (Plugin.TextureProvider != null && bytes.Length > 0)
-                                    {
-                                        try
-                                        {
-                                            var tex = Plugin.TextureProvider.CreateFromImageAsync(bytes).Result;
-                                            if (tex != null && tex.Handle != IntPtr.Zero) pd.background = tex;
-                                        }
-                                        catch { }
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
-
-                        // customTabs handling: prefer profileFolder + per-tab layout files
-                        pd.customTabs = new List<CustomTab>();
-                        try
-                        {
-                            var tabs = obj["customTabs"] as JsonArray;
-                            var profileFolderName = obj["profileFolder"]?.GetValue<string>();
-                            var profileFolderPath = !string.IsNullOrEmpty(profileFolderName)
-                                ? Path.Combine(ResolveBasePath(), ProfilesFolderName, profileFolderName)
-                                : Path.Combine(ResolveBasePath(), ProfilesFolderName, Path.GetFileNameWithoutExtension(file));
-
-                            if (tabs != null)
-                            {
-                                for (int t = 0; t < tabs.Count; t++)
-                                {
-                                    if (tabs[t] is not JsonObject tobj) continue;
-                                    var tab = new CustomTab { Name = tobj["name"]?.GetValue<string>() ?? string.Empty };
-                                    tab.ID = tobj["id"]?.GetValue<int>() ?? t;
-
-                                    var layoutTypeName = tobj["layoutType"]?.GetValue<string>();
-                                    var layoutFileName = tobj["layoutFile"]?.GetValue<string>();
-
-                                    // Try to load layout from file if present
-                                    if (!string.IsNullOrWhiteSpace(layoutFileName))
-                                    {
-                                        var layoutPath = Path.Combine(profileFolderPath, layoutFileName);
-                                        if (File.Exists(layoutPath))
-                                        {
-                                            try
-                                            {
-                                                var layoutText = File.ReadAllText(layoutPath);
-                                                // If layoutType indicates GalleryLayout, special-load images referenced by file names
-                                                if (!string.IsNullOrWhiteSpace(layoutTypeName) &&
-                                                    layoutTypeName.Contains("GalleryLayout"))
-                                                {
-                                                    var gnode = JsonNode.Parse(layoutText) as JsonObject;
-                                                    if (gnode != null)
-                                                    {
-                                                        var gallery = new GalleryLayout
-                                                        {
-                                                            tabName = gnode["tabName"]?.GetValue<string>() ?? string.Empty,
-                                                            tabIndex = gnode["tabIndex"]?.GetValue<int>() ?? 0,
-                                                            images = new List<ProfileGalleryImage>()
-                                                        };
-
-                                                        if (gnode["images"] is JsonArray imgArr)
-                                                        {
-                                                            for (int imgIdx = 0; imgIdx < imgArr.Count; imgIdx++)
-                                                            {
-                                                                if (imgArr[imgIdx] is not JsonObject imgObj) continue;
-                                                                var gi = new ProfileGalleryImage
-                                                                {
-                                                                    index = imgObj["index"]?.GetValue<int>() ?? -1,
-                                                                    url = imgObj["url"]?.GetValue<string>() ?? string.Empty,
-                                                                    tooltip = imgObj["tooltip"]?.GetValue<string>() ?? string.Empty,
-                                                                    nsfw = imgObj["nsfw"]?.GetValue<bool>() ?? false,
-                                                                    trigger = imgObj["trigger"]?.GetValue<bool>() ?? false,
-                                                                    image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
-                                                                    thumbnail = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab),
-                                                                    imageBytes = Array.Empty<byte>()
-                                                                };
-
-                                                                try
-                                                                {
-                                                                    var imgFile = imgObj["imageFile"]?.GetValue<string>();
-                                                                    if (!string.IsNullOrEmpty(imgFile))
-                                                                    {
-                                                                        var imgPath = Path.Combine(profileFolderPath, imgFile);
-                                                                        if (File.Exists(imgPath))
-                                                                        {
-                                                                            var bytes = File.ReadAllBytes(imgPath);
-                                                                            gi.imageBytes = bytes;
-
-                                                                            if (Plugin.TextureProvider != null && bytes.Length > 0)
-                                                                            {
-                                                                                try
-                                                                                {
-                                                                                    var tex = Plugin.TextureProvider.CreateFromImageAsync(bytes).Result;
-                                                                                    if (tex != null && tex.Handle != IntPtr.Zero) gi.image = tex;
-                                                                                }
-                                                                                catch { }
-                                                                            }
-
-                                                                            // generate thumbnail from image bytes
-                                                                            try
-                                                                            {
-                                                                                var thumbBytes = Imaging.ScaleImageBytes(bytes, 200, 200);
-                                                                                if (thumbBytes != null && thumbBytes.Length > 0 && Plugin.TextureProvider != null)
-                                                                                {
-                                                                                    var ttex = Plugin.TextureProvider.CreateFromImageAsync(thumbBytes).Result;
-                                                                                    if (ttex != null && ttex.Handle != IntPtr.Zero) gi.thumbnail = ttex;
-                                                                                }
-                                                                            }
-                                                                            catch { }
-                                                                        }
-                                                                    }
-                                                                }
-                                                                catch { }
-
-                                                                gallery.images.Add(gi);
-                                                            }
-                                                        }
-
-                                                        tab.Layout = gallery;
-                                                    }
-                                                }
-                                                else
-                                                {
-                                                    // Generic restore: try to resolve type then deserialize into it
-                                                    Type ltype = null;
-                                                    if (!string.IsNullOrWhiteSpace(layoutTypeName))
-                                                        ltype = ResolveType(layoutTypeName);
-
-                                                    if (ltype != null)
-                                                    {
-                                                        try
-                                                        {
-                                                            var des = JsonSerializer.Deserialize(layoutText, ltype, opts);
-                                                            if (des is CustomLayout cl) tab.Layout = cl;
-                                                            else if (des != null && typeof(CustomLayout).IsAssignableFrom(ltype)) tab.Layout = (CustomLayout)des;
-                                                            else tab.Layout = null;
-                                                        }
-                                                        catch
-                                                        {
-                                                            // fallback: heuristics
-                                                            object layoutObj = null;
-                                                            var known = new[]
-                                                            {
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.BioLayout",
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.DetailsLayout",
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.GalleryLayout",
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.InfoLayout",
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.StoryLayout",
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.TreeLayout",
-                                                                "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.InventoryLayout"
-                                                            };
-                                                            foreach (var tn2 in known)
-                                                            {
-                                                                var tt = ResolveType(tn2);
-                                                                if (tt == null) continue;
-                                                                try
-                                                                {
-                                                                    var des2 = JsonSerializer.Deserialize(layoutText, tt, opts);
-                                                                    if (des2 != null && typeof(CustomLayout).IsAssignableFrom(tt))
-                                                                    {
-                                                                        layoutObj = (CustomLayout)des2;
-                                                                        break;
-                                                                    }
-                                                                }
-                                                                catch { layoutObj = null; }
-                                                            }
-                                                            tab.Layout = layoutObj as CustomLayout;
-                                                        }
-                                                    }
-                                                    else
-                                                    {
-                                                        // Unknown layoutType -> heuristic
-                                                        object layoutObj = null;
-                                                        var known = new[]
-                                                        {
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.BioLayout",
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.DetailsLayout",
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.GalleryLayout",
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.InfoLayout",
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.StoryLayout",
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.TreeLayout",
-                                                            "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.InventoryLayout"
-                                                        };
-                                                        foreach (var tn2 in known)
-                                                        {
-                                                            var tt = ResolveType(tn2);
-                                                            if (tt == null) continue;
-                                                            try
-                                                            {
-                                                                var des = JsonSerializer.Deserialize(layoutText, tt, opts);
-                                                                if (des != null && typeof(CustomLayout).IsAssignableFrom(tt))
-                                                                {
-                                                                    layoutObj = (CustomLayout)des;
-                                                                    break;
-                                                                }
-                                                            }
-                                                            catch { layoutObj = null; }
-                                                        }
-                                                        tab.Layout = layoutObj as CustomLayout;
-                                                    }
-                                                }
-                                            }
-                                            catch { tab.Layout = null; }
-                                        }
-                                        else
-                                        {
-                                            // If layoutFile isn't present - attempt inline layoutData (backward compatibility)
-                                            var layoutData = tobj["layoutData"];
-                                            if (layoutData != null)
-                                            {
-                                                object layoutObj = null;
-                                                var known = new[]
-                                                {
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.BioLayout",
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.DetailsLayout",
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.GalleryLayout",
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.InfoLayout",
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.StoryLayout",
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.TreeLayout",
-                                                    "AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes.InventoryLayout"
-                                                };
-                                                foreach (var tn2 in known)
-                                                {
-                                                    var tt = ResolveType(tn2);
-                                                    if (tt == null) continue;
-                                                    try
-                                                    {
-                                                        var des = JsonSerializer.Deserialize(layoutData.ToJsonString(), tt, opts);
-                                                        if (des != null && typeof(CustomLayout).IsAssignableFrom(tt))
-                                                        {
-                                                            layoutObj = (CustomLayout)des;
-                                                            break;
-                                                        }
-                                                    }
-                                                    catch { layoutObj = null; }
-                                                }
-                                                tab.Layout = layoutObj as CustomLayout;
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        // no layout info
-                                        tab.Layout = null;
-                                    }
-
-                                    pd.customTabs.Add(tab);
-                                }
-                            }
-                        }
-                        catch { pd.customTabs = pd.customTabs ?? new List<CustomTab>(); }
-
-                        results.Add(pd);
-                    }
-                    catch (Exception exFile)
-                    {
-                        try { Plugin.PluginLog?.Error($"Failed loading tooltipData file '{file}': {exFile}"); } catch { }
-                    }
-                }
+                return dto.ToProfile();
             }
             catch (Exception ex)
             {
-                try { Plugin.PluginLog?.Error($"LoadCachedProfiles failed: {ex}"); } catch { }
+                Plugin.PluginLog?.Debug($"[ProfilesCache] Failed loading profile cache: {ex}");
+                return null;
             }
+        }
 
-            return results;
-        }     // Compares scalar fields, colors, avatar/background bytes, and customTabs (including gallery image bytes).
-        public static bool AreProfilesEquivalent(ProfileData a, ProfileData b)
+        /// <summary>
+        /// Try to load a cached profile by playerName and playerWorld.
+        /// Will search cache files for filenames containing the sanitized playerName and playerWorld.
+        /// If multiple matches are found the most recently written file is returned.
+        /// </summary>
+        public static ProfileData? LoadProfileCache(string playerName, string playerWorld)
+        {
+            try
+            {
+                var cacheDir = GetCacheDirectory();
+                if (cacheDir == null) return null;
+
+                var nameSeg = SanitizeFileNameSegment(playerName);
+                var worldSeg = SanitizeFileNameSegment(playerWorld);
+
+                // Look for files that contain both segments in the filename (case-insensitive)
+                var files = Directory.EnumerateFiles(cacheDir, "*.json", SearchOption.TopDirectoryOnly)
+                    .Where(f =>
+                    {
+                        var fn = Path.GetFileNameWithoutExtension(f);
+                        return fn != null
+                            && fn.IndexOf(nameSeg, StringComparison.OrdinalIgnoreCase) >= 0
+                            && fn.IndexOf(worldSeg, StringComparison.OrdinalIgnoreCase) >= 0;
+                    })
+                    .ToList();
+
+                if (files.Count == 0) return null;
+
+                // prefer the newest file (by last write time)
+                var chosen = files.OrderByDescending(File.GetLastWriteTimeUtc).First();
+
+                var json = File.ReadAllText(chosen);
+                var dto = JsonSerializer.Deserialize<ProfileDto>(json, JsonOptions);
+                if (dto == null) return null;
+
+                Plugin.PluginLog?.Debug($"[ProfilesCache] Loaded profile cache from {chosen}");
+                return dto.ToProfile();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"[ProfilesCache] Failed loading profile cache by name/world: {ex}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Check whether a cached profile file exists for the given player name and world.
+        /// Returns true when at least one cache file contains both sanitized name and world segments.
+        /// </summary>
+        public static bool CacheExistsForPlayer(string playerName, string playerWorld)
+        {
+            try
+            {
+                var cacheDir = GetCacheDirectory();
+                if (cacheDir == null) return false;
+
+                var nameSeg = SanitizeFileNameSegment(playerName);
+                var worldSeg = SanitizeFileNameSegment(playerWorld);
+
+                return Directory.EnumerateFiles(cacheDir, "*.json", SearchOption.TopDirectoryOnly)
+                    .Any(f =>
+                    {
+                        var fn = Path.GetFileNameWithoutExtension(f);
+                        return !string.IsNullOrEmpty(fn)
+                            && fn.IndexOf(nameSeg, StringComparison.OrdinalIgnoreCase) >= 0
+                            && fn.IndexOf(worldSeg, StringComparison.OrdinalIgnoreCase) >= 0;
+                    });
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"[ProfilesCache] CacheExistsForPlayer failed: {ex}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Compare two ProfileData instances for equality of cached-relevant values.
+        /// Uses the same DTO used for serialization so runtime-only fields (textures, caches) are ignored.
+        /// Returns true if profiles are equivalent (no changes), false otherwise.
+        /// </summary>
+        public static bool ProfilesEqual(ProfileData a, ProfileData b)
         {
             if (ReferenceEquals(a, b)) return true;
             if (a == null || b == null) return false;
 
-            // Scalars
-            if (!string.Equals(a.title ?? string.Empty, b.title ?? string.Empty, StringComparison.Ordinal)) return false;
-            if (!string.Equals(a.title ?? string.Empty, b.title ?? string.Empty, StringComparison.Ordinal)) return false;
-            if (a.isPrivate != b.isPrivate) return false;
-            if (a.isActive != b.isActive) return false;
-            if (a.SHOW_ON_COMPASS != b.SHOW_ON_COMPASS) return false;
-            if (a.NSFW != b.NSFW) return false;
-            if (a.TRIGGERING != b.TRIGGERING) return false;
-            if (a.SpoilerARR != b.SpoilerARR) return false;
-            if (a.SpoilerHW != b.SpoilerHW) return false;
-            if (a.SpoilerSB != b.SpoilerSB) return false;
-            if (a.SpoilerSHB != b.SpoilerSHB) return false;
-            if (a.SpoilerEW != b.SpoilerEW) return false;
-            if (a.SpoilerDT != b.SpoilerDT) return false;
-
-            // titleColor (exact compare)
-            if (!a.titleColor.Equals(b.titleColor)) return false;
-
-            // avatar/background bytes (prefer explicit bytes if available)
-            if (!ByteArrayEquals(a.avatarBytes, b.avatarBytes)) return false;
-
-            if (!ByteArrayEquals(a.backgroundBytes, b.backgroundBytes)) return false;
-
-            // customTabs deep compare
-            if (!CompareCustomTabs(a.customTabs, b.customTabs)) return false;
-
-            // If you want to compare more fields (Name/Race/etc.), extend here.
-            return true;
-        }
-
-        private static bool ByteArrayEquals(byte[] x, byte[] y)
-        {
-            if (ReferenceEquals(x, y)) return true;
-            if (x == null && y == null) return true;
-            if (x == null || y == null) return false;
-            if (x.Length != y.Length) return false;
-            // Use a fast equality check
-            return x.SequenceEqual(y);
-        }
-
-        private static bool CompareCustomTabs(List<CustomTab> aTabs, List<CustomTab> bTabs)
-        {
-            if (ReferenceEquals(aTabs, bTabs)) return true;
-            if (aTabs == null && bTabs == null) return true;
-            if (aTabs == null || bTabs == null) return false;
-            if (aTabs.Count != bTabs.Count) return false;
-
-            var opts = new JsonSerializerOptions { WriteIndented = false, PropertyNameCaseInsensitive = true };
-
-            for (int i = 0; i < aTabs.Count; i++)
+            try
             {
-                var at = aTabs[i];
-                var bt = bTabs[i];
+                var dtoA = ProfileDto.FromProfile(a);
+                var dtoB = ProfileDto.FromProfile(b);
 
-                if (at == null && bt == null) continue;
-                if (at == null || bt == null) return false;
+                // Canonical JSON comparison using the same options as caching.
+                var jsonA = JsonSerializer.Serialize(dtoA, JsonOptions);
+                var jsonB = JsonSerializer.Serialize(dtoB, JsonOptions);
 
-                if (!string.Equals(at.Name ?? string.Empty, bt.Name ?? string.Empty, StringComparison.Ordinal)) return false;
-                if (at.ID != bt.ID) return false;
+                return string.Equals(jsonA, jsonB, StringComparison.Ordinal);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"[ProfilesCache] ProfilesEqual failed: {ex}");
+                return false;
+            }
+        }
 
-                // Compare layout types
-                var atType = at.Layout?.GetType();
-                var btType = bt.Layout?.GetType();
-                if (atType == null && btType == null) continue;
-                if (atType == null || btType == null) return false;
-                if (atType.FullName != btType.FullName) return false;
+        // --- DTOs and helpers: convert ProfileData into a JSON friendly structure (no texture-wrap or runtime-only objects) ---
 
-                // For GalleryLayouts, compare image entries and image bytes
-                if (at.Layout is GalleryLayout aGallery && bt.Layout is GalleryLayout bGallery)
+        private class ProfileDto
+        {
+            public int Index { get; set; }
+            public bool ShowOnCompass { get; set; }
+            public bool Nsfw { get; set; }
+            public bool Triggering { get; set; }
+            public bool SpoilerARR { get; set; }
+            public bool SpoilerHW { get; set; }
+            public bool SpoilerSB { get; set; }
+            public bool SpoilerSHB { get; set; }
+            public bool SpoilerEW { get; set; }
+            public bool SpoilerDT { get; set; }
+
+            public byte[] AvatarBytes { get; set; } = Array.Empty<byte>();
+            public byte[] BackgroundBytes { get; set; } = Array.Empty<byte>();
+
+            public string Title { get; set; } = string.Empty;
+            public Vector4 TitleColor { get; set; } = new Vector4(1, 1, 1, 1);
+
+            public bool IsPrivate { get; set; }
+            public bool IsActive { get; set; }
+
+            public string OOC { get; set; } = string.Empty;
+
+            public List<CustomTabDto> CustomTabs { get; set; } = new();
+
+            public static ProfileDto FromProfile(ProfileData p)
+            {
+                var dto = new ProfileDto
                 {
-                    if (!string.Equals(aGallery.tabName ?? string.Empty, bGallery.tabName ?? string.Empty, StringComparison.Ordinal)) return false;
-                    if (aGallery.tabIndex != bGallery.tabIndex) return false;
+                    Index = p.index,
+                    ShowOnCompass = p.SHOW_ON_COMPASS,
+                    Nsfw = p.NSFW,
+                    Triggering = p.TRIGGERING,
+                    SpoilerARR = p.SpoilerARR,
+                    SpoilerHW = p.SpoilerHW,
+                    SpoilerSB = p.SpoilerSB,
+                    SpoilerSHB = p.SpoilerSHB,
+                    SpoilerEW = p.SpoilerEW,
+                    SpoilerDT = p.SpoilerDT,
+                    AvatarBytes = p.avatarBytes ?? Array.Empty<byte>(),
+                    BackgroundBytes = p.backgroundBytes ?? Array.Empty<byte>(),
+                    Title = p.title ?? string.Empty,
+                    TitleColor = p.titleColor,
+                    IsPrivate = p.isPrivate,
+                    IsActive = p.isActive,
+                    OOC = p.OOC ?? string.Empty,
+                };
 
-                    var aImgs = aGallery.images ?? new List<ProfileGalleryImage>();
-                    var bImgs = bGallery.images ?? new List<ProfileGalleryImage>();
-                    if (aImgs.Count != bImgs.Count) return false;
+                if (p.customTabs != null)
+                {
+                    foreach (var tab in p.customTabs)
+                        dto.CustomTabs.Add(CustomTabDto.FromCustomTab(tab));
+                }
 
-                    for (int j = 0; j < aImgs.Count; j++)
+                return dto;
+            }
+
+            public ProfileData ToProfile()
+            {
+                var p = new ProfileData
+                {
+                    index = Index,
+                    SHOW_ON_COMPASS = ShowOnCompass,
+                    NSFW = Nsfw,
+                    TRIGGERING = Triggering,
+                    SpoilerARR = SpoilerARR,
+                    SpoilerHW = SpoilerHW,
+                    SpoilerSB = SpoilerSB,
+                    SpoilerSHB = SpoilerSHB,
+                    SpoilerEW = SpoilerEW,
+                    SpoilerDT = SpoilerDT,
+                    avatarBytes = AvatarBytes ?? Array.Empty<byte>(),
+                    backgroundBytes = BackgroundBytes ?? Array.Empty<byte>(),
+                    title = Title,
+                    titleColor = TitleColor,
+                    isPrivate = IsPrivate,
+                    isActive = IsActive,
+                    OOC = OOC ?? string.Empty,
+                    customTabs = new List<CustomTab>()
+                };
+
+                if (CustomTabs != null)
+                {
+                    foreach (var t in CustomTabs)
+                        p.customTabs.Add(t.ToCustomTab());
+                }
+
+                return p;
+            }
+        }
+
+        private class CustomTabDto
+        {
+            public int ID { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public bool IsOpen { get; set; }
+            public bool ShowPopup { get; set; }
+            public int Type { get; set; }
+            public CustomLayoutDto? Layout { get; set; }
+
+            public static CustomTabDto FromCustomTab(CustomTab t)
+            {
+                return new CustomTabDto
+                {
+                    ID = t.ID,
+                    Name = t.Name ?? string.Empty,
+                    IsOpen = t.IsOpen,
+                    ShowPopup = t.ShowPopup,
+                    Type = t.type,
+                    Layout = CustomLayoutDto.FromLayout(t.Layout)
+                };
+            }
+
+            public CustomTab ToCustomTab()
+            {
+                return new CustomTab
+                {
+                    ID = ID,
+                    Name = Name ?? string.Empty,
+                    IsOpen = IsOpen,
+                    ShowPopup = ShowPopup,
+                    type = Type,
+                    Layout = Layout?.ToLayout()
+                };
+            }
+        }
+
+        private class CustomLayoutDto
+        {
+            public int Id { get; set; }
+            public string Name { get; set; } = string.Empty;
+            public string LayoutType { get; set; } = string.Empty;
+            // Polymorphic, include a few commonly used layout payloads
+            public BioLayoutDto? Bio { get; set; }
+            public GalleryLayoutDto? Gallery { get; set; }
+            public RosterLayoutDto? Roster { get; set; }
+            public InfoLayoutDto? Info { get; set; }
+            public DetailsLayoutDto? Details { get; set; }
+
+            public static CustomLayoutDto? FromLayout(CustomLayout? layout)
+            {
+                if (layout == null) return null;
+                var dto = new CustomLayoutDto
+                {
+                    Id = layout.id,
+                    Name = layout.name ?? string.Empty,
+                    LayoutType = layout.layoutType.ToString()
+                };
+
+                switch (layout)
+                {
+                    case BioLayout b:
+                        dto.Bio = BioLayoutDto.FromBio(b);
+                        break;
+                    case GalleryLayout g:
+                        dto.Gallery = GalleryLayoutDto.FromGallery(g);
+                        break;
+                    case RosterLayout r:
+                        dto.Roster = RosterLayoutDto.FromRoster(r);
+                        break;
+                    case InfoLayout i:
+                        dto.Info = InfoLayoutDto.FromInfo(i);
+                        break;
+                    case DetailsLayout d:
+                        dto.Details = DetailsLayoutDto.FromDetails(d);
+                        break;
+                }
+
+                return dto;
+            }
+
+            public CustomLayout? ToLayout()
+            {
+                // Re-create minimal layout instances; texture/runtime-only fields will remain default/null
+                if (Enum.TryParse<LayoutTypes>(LayoutType, out var lt))
+                {
+                    switch (lt)
                     {
-                        var ai = aImgs[j];
-                        var bi = bImgs[j];
-                        if (!string.Equals(ai.url ?? string.Empty, bi.url ?? string.Empty, StringComparison.Ordinal)) return false;
-                        if (!string.Equals(ai.tooltip ?? string.Empty, bi.tooltip ?? string.Empty, StringComparison.Ordinal)) return false;
-                        if (ai.nsfw != bi.nsfw) return false;
-                        if (ai.trigger != bi.trigger) return false;
+                        case LayoutTypes.Bio:
+                            var bio = new BioLayout
+                            {
+                                id = Id,
+                                name = Name,
+                                layoutType = lt
+                            };
+                            if (Bio != null)
+                            {
+                                bio.name = Bio.Name ?? string.Empty;
+                                bio.race = Bio.Race ?? string.Empty;
+                                bio.gender = Bio.Gender ?? string.Empty;
+                                bio.age = Bio.Age ?? string.Empty;
+                                bio.height = Bio.Height ?? string.Empty;
+                                bio.weight = Bio.Weight ?? string.Empty;
+                                bio.afg = Bio.Afg ?? string.Empty;
+                                bio.alignment = Bio.Alignment;
+                                bio.personality_1 = Bio.Personality1;
+                                bio.personality_2 = Bio.Personality2;
+                                bio.personality_3 = Bio.Personality3;
+                                bio.descriptors = Bio.Descriptors?.ConvertAll(d => new descriptor { index = d.Index, name = d.Name, description = d.Description }) ?? new List<descriptor>();
+                                bio.traits = Bio.Traits?.ConvertAll(t => new trait { index = t.Index, name = t.Name, description = t.Description, iconID = t.IconID }) ?? new List<trait>();
+                                bio.fields = Bio.Fields?.ConvertAll(f => new field { index = f.Index, name = f.Name, description = f.Description }) ?? new List<field>();
+                            }
+                            return bio;
 
-                        if (!ByteArrayEquals(ai.imageBytes, bi.imageBytes)) return false;
+                        case LayoutTypes.Gallery:
+                            var gallery = new GalleryLayout { id = Id, name = Name, layoutType = lt };
+                            if (Gallery?.Images != null)
+                            {
+                                gallery.images = Gallery.Images.ConvertAll(i => new ProfileGalleryImage
+                                {
+                                    index = i.Index,
+                                    url = i.Url ?? string.Empty,
+                                    tooltip = i.Tooltip ?? string.Empty,
+                                    nsfw = i.Nsfw,
+                                    trigger = i.Trigger,
+                                    imageBytes = i.ImageBytes ?? Array.Empty<byte>()
+                                });
+                            }
+                            return gallery;
 
-                        // If imageBytes not present on either side, try comparing texture handles where available
-                        if ((ai.imageBytes == null || ai.imageBytes.Length == 0) && (bi.imageBytes == null || bi.imageBytes.Length == 0))
-                        {
-                            var ah = (object?)ai.image?.Handle;
-                            var bh = (object?)bi.image?.Handle;
-                            if (!object.Equals(ah, bh)) return false;
-                        }
+                        case LayoutTypes.Roster:
+                            var roster = new RosterLayout { id = Id, name = Name, layoutType = lt };
+                            if (Roster?.Members != null)
+                            {
+                                roster.members = Roster.Members.ConvertAll(mi => new ProfileData { index = mi });
+                            }
+                            if (Roster?.Affiliates != null)
+                            {
+                                roster.affiliates = Roster.Affiliates.ConvertAll(ai => new ProfileData { index = ai });
+                            }
+                            return roster;
+
+                        case LayoutTypes.Info:
+                            var info = new InfoLayout { id = Id, name = Name, layoutType = lt };
+                            if (Info != null) info.text = Info.Text ?? string.Empty;
+                            return info;
+
+                        case LayoutTypes.Details:
+                            var details = new DetailsLayout { id = Id, name = Name, layoutType = lt };
+                            if (Details?.DetailsList != null)
+                                details.details = Details.DetailsList.ConvertAll(d => new Detail { id = d.Id, name = d.Name ?? string.Empty, content = d.Content ?? string.Empty });
+                            return details;
+
+                        default:
+                            return new CustomLayout { id = Id, name = Name, layoutType = lt };
                     }
-
-                    continue;
                 }
 
-                // For other layouts, attempt to compare by JSON serialization (best-effort)
-                try
-                {
-                    var aJson = JsonSerializer.Serialize(at.Layout, at.Layout.GetType(), opts);
-                    var bJson = JsonSerializer.Serialize(bt.Layout, bt.Layout.GetType(), opts);
-                    if (!string.Equals(aJson, bJson, StringComparison.Ordinal)) return false;
-                }
-                catch
-                {
-                    // If serialization fails, fall back to type comparison only (already compared)
-                    continue;
-                }
+                return null;
             }
-
-            return true;
         }
 
-        // Resolve type helper
-        private static Type ResolveType(string fullName)
+        private class BioLayoutDto
         {
-            if (string.IsNullOrWhiteSpace(fullName)) return null;
-            var t = Type.GetType(fullName);
-            if (t != null) return t;
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            public string Name { get; set; } = string.Empty;
+            public string Race { get; set; } = string.Empty;
+            public string Gender { get; set; } = string.Empty;
+            public string Age { get; set; } = string.Empty;
+            public string Height { get; set; } = string.Empty;
+            public string Weight { get; set; } = string.Empty;
+            public string Afg { get; set; } = string.Empty;
+            public int Alignment { get; set; }
+            public int Personality1 { get; set; }
+            public int Personality2 { get; set; }
+            public int Personality3 { get; set; }
+
+            public List<SimpleDescriptorDto> Descriptors { get; set; } = new();
+            public List<SimpleTraitDto> Traits { get; set; } = new();
+            public List<SimpleFieldDto> Fields { get; set; } = new();
+
+            public static BioLayoutDto FromBio(BioLayout b)
             {
-                try
+                var dto = new BioLayoutDto
                 {
-                    t = asm.GetType(fullName, false, false);
-                    if (t != null) return t;
-                }
-                catch { }
+                    Name = b.name ?? string.Empty,
+                    Race = b.race ?? string.Empty,
+                    Gender = b.gender ?? string.Empty,
+                    Age = b.age ?? string.Empty,
+                    Height = b.height ?? string.Empty,
+                    Weight = b.weight ?? string.Empty,
+                    Afg = b.afg ?? string.Empty,
+                    Alignment = b.alignment,
+                    Personality1 = b.personality_1,
+                    Personality2 = b.personality_2,
+                    Personality3 = b.personality_3
+                };
+
+                if (b.descriptors != null)
+                    dto.Descriptors.AddRange(b.descriptors.ConvertAll(d => new SimpleDescriptorDto { Index = d.index, Name = d.name ?? string.Empty, Description = d.description ?? string.Empty }));
+
+                if (b.traits != null)
+                    dto.Traits.AddRange(b.traits.ConvertAll(t => new SimpleTraitDto { Index = t.index, Name = t.name ?? string.Empty, Description = t.description ?? string.Empty, IconID = t.iconID }));
+
+                if (b.fields != null)
+                    dto.Fields.AddRange(b.fields.ConvertAll(f => new SimpleFieldDto { Index = f.index, Name = f.name ?? string.Empty, Description = f.description ?? string.Empty }));
+
+                return dto;
             }
-            return null;
+        }
+
+        private class GalleryLayoutDto
+        {
+            public List<GalleryImageDto> Images { get; set; } = new();
+
+            public static GalleryLayoutDto FromGallery(GalleryLayout g)
+            {
+                var dto = new GalleryLayoutDto();
+                if (g.images != null)
+                {
+                    foreach (var i in g.images)
+                        dto.Images.Add(new GalleryImageDto
+                        {
+                            Index = i.index,
+                            Url = i.url ?? string.Empty,
+                            Tooltip = i.tooltip ?? string.Empty,
+                            Nsfw = i.nsfw,
+                            Trigger = i.trigger,
+                            ImageBytes = i.imageBytes ?? Array.Empty<byte>()
+                        });
+                }
+                return dto;
+            }
+        }
+
+        private class RosterLayoutDto
+        {
+            public List<int> Members { get; set; } = new();
+            public List<int> Affiliates { get; set; } = new();
+
+            public static RosterLayoutDto FromRoster(RosterLayout r)
+            {
+                var dto = new RosterLayoutDto();
+                if (r.members != null) dto.Members.AddRange(r.members.ConvertAll(m => m.index));
+                if (r.affiliates != null) dto.Affiliates.AddRange(r.affiliates.ConvertAll(a => a.index));
+                return dto;
+            }
+        }
+
+        private class InfoLayoutDto
+        {
+            public string Text { get; set; } = string.Empty;
+            public static InfoLayoutDto FromInfo(InfoLayout i) => new InfoLayoutDto { Text = i.text ?? string.Empty };
+        }
+
+        private class DetailsLayoutDto
+        {
+            public List<DetailDto> DetailsList { get; set; } = new();
+            public static DetailsLayoutDto FromDetails(DetailsLayout d)
+            {
+                var dto = new DetailsLayoutDto();
+                if (d.details != null)
+                    dto.DetailsList.AddRange(d.details.ConvertAll(x => new DetailDto { Id = x.id, Name = x.name ?? string.Empty, Content = x.content ?? string.Empty }));
+                return dto;
+            }
+        }
+
+        private class SimpleDescriptorDto { public int Index { get; set; } public string Name { get; set; } = string.Empty; public string Description { get; set; } = string.Empty; }
+        private class SimpleTraitDto { public int Index { get; set; } public string Name { get; set; } = string.Empty; public string Description { get; set; } = string.Empty; public int IconID { get; set; } }
+        private class SimpleFieldDto { public int Index { get; set; } public string Name { get; set; } = string.Empty; public string Description { get; set; } = string.Empty; }
+
+        private class GalleryImageDto { public int Index { get; set; } public string Url { get; set; } = string.Empty; public string Tooltip { get; set; } = string.Empty; public bool Nsfw { get; set; } public bool Trigger { get; set; } public byte[] ImageBytes { get; set; } = Array.Empty<byte>(); }
+        private class DetailDto { public int Id { get; set; } public string Name { get; set; } = string.Empty; public string Content { get; set; } = string.Empty; }
+
+        // --- Json converter for Vector4 ---
+        private class Vector4Converter : JsonConverter<Vector4>
+        {
+            public override Vector4 Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+            {
+                if (reader.TokenType != JsonTokenType.StartArray) return new Vector4(1, 1, 1, 1);
+                var vals = new List<float>();
+                while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+                {
+                    if (reader.TokenType == JsonTokenType.Number && reader.TryGetSingle(out var f)) vals.Add(f);
+                }
+                if (vals.Count >= 4) return new Vector4(vals[0], vals[1], vals[2], vals[3]);
+                if (vals.Count == 3) return new Vector4(vals[0], vals[1], vals[2], 1f);
+                return new Vector4(1, 1, 1, 1);
+            }
+
+            public override void Write(Utf8JsonWriter writer, Vector4 value, JsonSerializerOptions options)
+            {
+                writer.WriteStartArray();
+                writer.WriteNumberValue(value.X);
+                writer.WriteNumberValue(value.Y);
+                writer.WriteNumberValue(value.Z);
+                writer.WriteNumberValue(value.W);
+                writer.WriteEndArray();
+            }
         }
     }
 }

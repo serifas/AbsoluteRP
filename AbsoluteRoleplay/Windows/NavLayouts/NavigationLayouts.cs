@@ -44,7 +44,7 @@ namespace AbsoluteRP.Windows.NavLayouts
                 () => {
                     if (Plugin.IsOnline())
                     {
-                       // Plugin.plugin.ToggleSystemsWindow();
+                      //  Plugin.plugin.ToggleSystemsWindow();
                     }
                 },
                 () => { /* Quests logic */ },
@@ -67,17 +67,20 @@ namespace AbsoluteRP.Windows.NavLayouts
             List<string> groupnames = new List<string>();
             List<Action> actions = new List<Action>();
             List<ImTextureID> logos = new List<ImTextureID>();
+            List<int> badges = new List<int>();
 
             foreach (Group group in groups)
             {
                 groupnames.Add(group.name);
                 logos.Add(group.logo.Handle);
+                badges.Add(group.GetTotalUnreadCount());
                 actions.Add(() => { /* Profiles logic */
                     if (Plugin.IsOnline())
                     {
-                        Groups.openGroupCreation = false;
-                        Groups.LoadGroup(group);
-                        Groups.manageGroup = false;
+                        GroupsData.openGroupCreation = false;
+                        GroupsData.LoadGroup(group);
+
+                        GroupsData.manageGroup = false;
                     }
                 });
             }
@@ -85,8 +88,8 @@ namespace AbsoluteRP.Windows.NavLayouts
             navigation.names = groupnames.ToArray();
             // Define actions for each button
             navigation.actions = actions.ToArray();
-
             navigation.textureIDs = logos.ToArray();
+            navigation.badges = badges.ToArray();
             return navigation;
         }
 
@@ -113,8 +116,8 @@ namespace AbsoluteRP.Windows.NavLayouts
             navigation.actions = new Action[]
             {
             () => {  Util.OpenLink("https://ko-fi.com/absoluteroleplay");},
-            () => {  Util.OpenLink("https://patreon.com/AbsoluteRolelay"); },
-            () => {  Util.OpenLink("https://discord.gg/absolute-roleplay"); }
+            () => {  Util.OpenLink("https://patreon.com/AbsoluteRoleplay"); },
+            () => {  Util.OpenLink("https://discord.gg/NnhspF2cSQ"); }
             };
             navigation.textureIDs =  new ImTextureID[] {
             UI.UICommonImage(UI.CommonImageTypes.kofiBtn).Handle,
@@ -166,7 +169,7 @@ namespace AbsoluteRP.Windows.NavLayouts
             {
             "Connections",
             "Bookmarks",
-            "Groups - WIP",
+            "Groups",
             "Search"
             };
             // Define actions for each button
@@ -179,7 +182,7 @@ namespace AbsoluteRP.Windows.NavLayouts
                     SocialWindow.view = SocialWindow.bookmarks;
                 },
                 () => {
-                    //SocialWindow.view = SocialWindow.groups;
+                    SocialWindow.view = SocialWindow.groups;
                 },
                 () => {
                     SocialWindow.view = SocialWindow.search;

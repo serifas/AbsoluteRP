@@ -22,6 +22,10 @@ namespace Networking
         {
             return readPos;
         }
+        public void SetReadPos(int pos)
+        {
+            readPos = pos;
+        }
         public byte[] ToArray()
         {
             return Buff.ToArray();
@@ -44,6 +48,29 @@ namespace Networking
         {
             Buff.Add(input);
             buffUpdated = true;
+        }
+
+        public byte ReadByte(bool Peek = true)
+        {
+            if (Buff.Count > readPos)
+            {
+                if (buffUpdated)
+                {
+                    readBuff = Buff.ToArray();
+                    buffUpdated = false;
+                }
+
+                var value = readBuff[readPos];
+                if (Peek & Buff.Count > readPos)
+                {
+                    readPos += 1;
+                }
+                return value;
+            }
+            else
+            {
+                throw new Exception("Wrong Data Type. You are not trying to read out a 'BYTE'");
+            }
         }
 
         public void WriteBytes(byte[] input)

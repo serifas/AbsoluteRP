@@ -186,12 +186,9 @@ public class MainPanel : Window, IDisposable
             }
             if (Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
             {
-                using (ImRaii.Disabled(true))
+                if (ImGui.Button("View Likes", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
                 {
-                    if (ImGui.Button("Open ARP Chat", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
-                    {
-                        Plugin.plugin.ToggleChatWindow();
-                    }
+                    Plugin.plugin.ToggleViewLikesWindow();
                 }
 
                 if (ImGui.Button("Options", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))

@@ -30,12 +30,307 @@ using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
 namespace AbsoluteRP
 {
+    public class GroupChatMessage
+    {
+        public int messageID { get; set; }
+        public int groupID { get; set; }
+        public int channelID { get; set; }
+        public int senderUserID { get; set; }
+        public string senderName { get; set; }
+        public int senderProfileID { get; set; }
+        public IDalamudTextureWrap avatar { get; set; }
+        public string messageContent { get; set; }
+        public long timestamp { get; set; }
+        public bool isEdited { get; set; }
+        public long? editedTimestamp { get; set; }
+        public bool deleted { get; set; }
+        public bool isPinned { get; set; }
+    }
+
+    public class GroupCategory
+    {
+        public int id { get; set; }
+        public int groupID { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public int sortOrder { get; set; }
+        public List<GroupChannel> channels { get; set; }
+        public bool collapsed {get;set;}
+    }
+
+    public class GroupRosterField
+    {
+        public int id { get; set; }
+        public int groupID { get; set; }
+        public string name { get; set; }
+        public string dropdownOptions { get; set; }
+        public int fieldType { get; set; }
+        public bool required { get; set; }
+        public int sortOrder { get; set; }
+    }
+
+    public class GroupInvite
+    {
+        public int inviteID { get; set; }
+        public int groupID { get; set; }
+        public string groupName { get; set; }
+        public string groupDescription { get; set; }
+        public byte[] groupIcon { get; set; }
+        public string groupLogoUrl { get; set; }
+        public int inviterUserID { get; set; }
+        public string inviterName { get; set; }
+        public int inviteeUserID { get; set; }
+        public string inviteeName { get; set; }
+        public int inviteeProfileID { get; set; }
+        public string message { get; set; }
+        public byte status { get; set; } // 0=pending, 1=accepted, 2=declined, 3=cancelled
+        public long createdAt { get; set; }
+    }
+
+    public class GroupMember
+    {
+        public int id { get; set; }
+        public int userID { get; set; }
+        public int profileID { get; set; }
+        public bool owner { get; set; }
+        public string name { get; set; }
+        public string note { get; set; }
+        public string lodestoneURL { get; set; }
+        // Legacy single rank (for backwards compatibility)
+        public GroupRank rank { get; set; }
+        // Multiple ranks support
+        public List<GroupRank> ranks { get; set; } = new List<GroupRank>();
+        public IDalamudTextureWrap avatar { get; set; }
+        // Self-assign roles and rules agreement
+        public List<GroupSelfAssignRole> selfAssignedRoles { get; set; } = new List<GroupSelfAssignRole>();
+        public bool hasAgreedToRules { get; set; }
+        public int agreedRulesVersion { get; set; }
+    }
+
+    public class ProfileLike
+    {
+        public int likerUserID { get; set; }
+        public int likerProfileID { get; set; }
+        public string likerName { get; set; }
+        public string comment { get; set; }
+        public int likeCount { get; set; }
+        public long likedAt { get; set; }
+    }
+
+    public class GroupRank
+    {
+        public int id { get; set; }
+        public int groupID { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public int hierarchy { get; set; } // Higher number = higher rank, owner has highest
+        public bool isDefaultMember { get; set; } // When true, new members joining the group get this rank
+        public GroupRankPermissions permissions { get; set; }
+    }
+
+    public class GroupRankPermissions
+    {
+        // Members
+        public bool canInvite { get; set; }
+        public bool canKick { get; set; }
+        public bool canBan { get; set; }
+        public bool canPromote { get; set; }
+        public bool canDemote { get; set; }
+
+        // Messages
+        public bool canCreateAnnouncement { get; set; }
+        public bool canReadMessages { get; set; }
+        public bool canSendMessages { get; set; }
+        public bool canDeleteOthersMessages { get; set; }
+        public bool canPinMessages { get; set; }
+
+        // Categories
+        public bool canCreateCategory { get; set; }
+        public bool canEditCategory { get; set; }
+        public bool canDeleteCategory { get; set; }
+        public bool canLockCategory { get; set; }
+
+        // Forums (Channels)
+        public bool canCreateForum { get; set; }
+        public bool canEditForum { get; set; }
+        public bool canDeleteForum { get; set; }
+        public bool canLockForum { get; set; }
+        public bool canMuteForum { get; set; }
+
+        // Rank Management
+        public bool canManageRanks { get; set; }
+        public bool canCreateRanks { get; set; }
+
+        // Self-Assign Roles
+        public bool canManageSelfAssignRoles { get; set; }
+
+        // Forms
+        public bool canCreateForms { get; set; }
+    }
+
+    // Form channel field definition
+    public class FormField
+    {
+        public int id { get; set; }
+        public int channelId { get; set; }
+        public string title { get; set; }
+        public int fieldType { get; set; } // 0=single-line, 1=multi-line
+        public bool isOptional { get; set; }
+        public int sortOrder { get; set; }
+    }
+
+    // Form submission
+    public class FormSubmission
+    {
+        public int id { get; set; }
+        public int channelId { get; set; }
+        public int userId { get; set; }
+        public int profileId { get; set; }
+        public string profileName { get; set; }
+        public DateTime submittedAt { get; set; }
+        public List<FormSubmissionValue> values { get; set; } = new List<FormSubmissionValue>();
+    }
+
+    // Individual field value in a submission
+    public class FormSubmissionValue
+    {
+        public int fieldId { get; set; }
+        public string fieldTitle { get; set; }
+        public string value { get; set; }
+    }
+
+    public class GroupForumCategory
+    {
+        public int id { get; set; }
+        public int parentCategoryID { get; set; }
+        public int categoryIndex { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public string icon { get; set; }
+        public bool collapsed { get; set; }
+        public byte categoryType { get; set; }
+        public int sortOrder { get; set; }
+        public int groupID { get; set; }
+        public long createdAt { get; set; }
+        public long updatedAt { get; set; }
+        public List<GroupForumChannel> channels { get; set; }
+    }
+
+    public class GroupForumChannel
+    {
+        public int id { get; set; }
+        public int parentChannelID { get; set; }
+        public int channelIndex { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public byte channelType { get; set; }
+        public bool isLocked { get; set; }
+        public bool isNSFW { get; set; }
+        public int sortOrder { get; set; }
+        public int groupID { get; set; }
+        public int categoryID { get; set; }
+        public long createdAt { get; set; }
+        public long updatedAt { get; set; }
+        public long lastMessageAt { get; set; }
+        public List<GroupForumChannel> subChannels { get; set; }
+    }
+
+    public class GroupForumChannelPermission
+    {
+        public int channelID { get; set; }
+        public int rankID { get; set; }
+        public int userID { get; set; }
+        public bool canView { get; set; }
+        public bool canPost { get; set; }
+        public bool canReply { get; set; }
+        public bool canCreateThreads { get; set; }
+        public bool canEditOwn { get; set; }
+        public bool canDeleteOwn { get; set; }
+        public bool canManage { get; set; }
+        public bool canPin { get; set; }
+        public bool canLock { get; set; }
+    }
+    public class GroupChannel
+    {
+        public int id { get; set; }
+        public int index { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public int categoryID { get; set; }
+        public int groupID { get; set; }
+        public int channelType { get; set; } // 0 = text, 1 = announcement, 2 = rules, 3 = role selection, 4 = form
+        public bool isLocked { get; set; } // When true, no one can send messages
+        public bool isNsfw { get; set; } // When true, shows warning before viewing
+        public bool everyoneCanView { get; set; } = true; // When true, all members can see the channel
+        public bool everyoneCanPost { get; set; } = true; // When true, all members can post in the channel
+        public bool allowFormatTags { get; set; } = false; // Form channels: allow HTML rendering in submissions
+        public List<GroupMember> AllowedMembers { get; set; }
+        public List<GroupRank> AllowedRanks { get; set; }
+        public List<GroupSelfAssignRole> AllowedRoles { get; set; } // Self-assign roles with channel access
+        public List<ChannelMemberPermission> MemberPermissions { get; set; } // Members with canView/canPost flags
+        public List<ChannelRankPermission> RankPermissions { get; set; } // Ranks with canView/canPost flags
+        public List<ChannelRolePermission> RolePermissions { get; set; } // Roles with canView/canPost flags
+        public int unreadCount { get; set; }
+    }
+
+    public class ChannelMemberPermission
+    {
+        public int memberID { get; set; }
+        public string memberName { get; set; }
+        public bool canView { get; set; }
+        public bool canPost { get; set; }
+    }
+
+    public class ChannelRankPermission
+    {
+        public int rankID { get; set; }
+        public string rankName { get; set; }
+        public bool canView { get; set; }
+        public bool canPost { get; set; }
+    }
+
+    public class ChannelRolePermission
+    {
+        public int roleID { get; set; }
+        public string roleName { get; set; }
+        public string roleColor { get; set; }
+        public bool canView { get; set; }
+        public bool canPost { get; set; }
+    }
+  
+    public class GroupMemberMetadata
+    {
+        public int memberID { get; set; }
+        public long joinDate { get; set; }
+        public long lastActive { get; set; }
+        public string customTitle { get; set; }
+        public string statusMessage { get; set; }
+        public string nicknameColor { get; set; }
+        public bool isOnline { get; set; }
+    }
+  
+    public class GroupMemberFieldValue
+    {
+        public int fieldID { get; set; }
+        public string fieldValue { get; set; }
+    }
+    public class GroupChatReadStatus
+    {
+        public int userID { get; set; }
+        public int channelID { get; set; }
+        public int lastReadMessageID { get; set; }
+        public long lastReadTimestamp { get; set; }
+    }
+  
+    
+    
     public class Group
     {
         public int groupID { get; set; }
         public string name { get; set; } = string.Empty;
         public IDalamudTextureWrap logo { get; set; } = UI.UICommonImage(CommonImageTypes.blank);
         public IDalamudTextureWrap background { get; set; } = UI.UICommonImage(CommonImageTypes.blank);
+        public string logoUrl { get; set; } = string.Empty;
         public byte[] logoBytes { get; set; }
         public byte[] backgroundBytes { get; set; }
         public bool openInvite { get; set; }
@@ -44,41 +339,60 @@ namespace AbsoluteRP
         public List<GroupRank> ranks { get; set; }
         public List<GroupMember> members { get; set; }
         public List<GroupBans> bans { get; set; }
+        public List<GroupInvite> invites { get; set; }
         public ApplicationForm application { get; set; }
         public ProfileData ProfileData { get; set; }
         public ProfileData OwnerProfile { get; set; }
         public List<GroupCategory> categories { get; set; }
+        // Rules channel and self-assign roles
+        public string rulesContent { get; set; }
+        public int rulesVersion { get; set; }
+        public int? rulesChannelID { get; set; }
+        public int? roleSelectionChannelID { get; set; }
+        public List<GroupSelfAssignRole> selfAssignRoles { get; set; } = new List<GroupSelfAssignRole>();
+
+        /// <summary>
+        /// Gets the total unread message count across all channels in this group
+        /// </summary>
+        public int GetTotalUnreadCount()
+        {
+            if (categories == null) return 0;
+            int total = 0;
+            foreach (var category in categories)
+            {
+                if (category.channels != null)
+                {
+                    foreach (var channel in category.channels)
+                    {
+                        total += channel.unreadCount;
+                    }
+                }
+            }
+            return total;
+        }
     }
-    public class GroupCategory
-    {
-        public int id { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-        public IDalamudTextureWrap icon { get; set; }
-        public List<GroupMember> AllowedMembers { get; set; }
-        public List<GroupRank> AllowedRanks { get; set; }
-    }
-    public class GroupRank
-    {
-        public int id { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-        public List<RankPermissions> permissions { get; set; }
-    }
-    public class GroupMember
-    {
-        public int id { get; set; }
-        public int profileID { get; set; }
-        public bool owner { get; set; }
-        public string name { get; set; }
-        public string note { get; set; }
-        public GroupRank rank { get; set; }
-    }
+    
+   
     public class GroupBans
     {
-        public int memberID { get; set; }
+        public int id { get; set; }
+        public int userID { get; set; }
         public int profileID { get; set; }
+        public string name { get; set; }
         public string lodestoneURL { get; set; }
+    }
+
+    /// <summary>
+    /// Lightweight group result for search display
+    /// </summary>
+    public class GroupSearchResult
+    {
+        public int groupID { get; set; }
+        public string name { get; set; }
+        public string description { get; set; }
+        public string logoUrl { get; set; }
+        public int memberCount { get; set; }
+        public IDalamudTextureWrap logo { get; set; }
     }
     public class ApplicationForm
     {
@@ -100,21 +414,14 @@ namespace AbsoluteRP
         public string name { get; set; }
         public string description { get; set; }
     }
-    public class GroupChannel
-    {
-        public int id { get; set; }
-        public int index { get; set; }
-        public string name { get; set; }
-        public string description { get; set; }
-        public List<GroupMember> AllowedMembers { get; set; }
-        public List<GroupRank> AllowedRanks { get; set; }
-    }
+    
     public class Navigation
     {
         public string[] names { get; set; } = new string[0];
         public Action[] actions { get; set; } = new Action[0];
         public ImTextureID[] textureIDs { get; set; } = new ImTextureID[0];
         public bool[] show { get; set; } = new bool[0];
+        public int[] badges { get; set; } = new int[0]; // Unread count badges
 
     }
     public class SystemData
@@ -165,6 +472,10 @@ namespace AbsoluteRP
     public class ProfileData
     {
         public int index {  get; set; }
+        public int id { get; set; }
+        public int accountID { get; set; }
+        public string playerName { get; set; } = string.Empty;
+        public string playerWorld { get; set; } = string.Empty;
         public IDalamudTextureWrap avatar;
         public IDalamudTextureWrap background;
         public bool SHOW_ON_COMPASS { get; set; } = false;
@@ -1731,5 +2042,40 @@ public class CustomLayout
     public int id { get; set; }
     public string name { get; set; }
     public LayoutTypes layoutType { get; set; }
-    public bool viewable { get; set; } = true; // If the layout is viewable by others   
+    public bool viewable { get; set; } = true; // If the layout is viewable by others
+}
+
+// Section for organizing self-assign roles
+public class GroupRoleSection
+{
+    public int id { get; set; }
+    public int groupID { get; set; }
+    public string name { get; set; }
+    public int sortOrder { get; set; }
+}
+
+// Self-assign role that members can toggle on/off
+public class GroupSelfAssignRole
+{
+    public int id { get; set; }
+    public int groupID { get; set; }
+    public int sectionID { get; set; } // 0 = no section (Uncategorized)
+    public string name { get; set; }
+    public string color { get; set; } // Hex color code (e.g., "#FF5733")
+    public string description { get; set; }
+    public int sortOrder { get; set; }
+    public long createdAt { get; set; }
+    public long updatedAt { get; set; }
+    // Channel permissions granted by this role
+    public List<GroupChannelRolePermission> channelPermissions { get; set; } = new List<GroupChannelRolePermission>();
+}
+
+// Permission granted by a self-assign role for a specific channel
+public class GroupChannelRolePermission
+{
+    public int id { get; set; }
+    public int channelID { get; set; }
+    public int roleID { get; set; }
+    public bool canView { get; set; }
+    public bool canPost { get; set; }
 }
