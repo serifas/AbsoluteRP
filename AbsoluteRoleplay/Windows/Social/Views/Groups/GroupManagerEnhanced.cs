@@ -1,4 +1,5 @@
 using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Social.Views.Groups.GroupManager;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
@@ -79,6 +80,20 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 {
                     DrawSettingsTab(group);
                     ImGui.EndTabItem();
+                }
+
+                // Join Requests tab - only show if user has permission or is owner
+                if (GroupPermissions.CanAcceptJoinRequests(group) || GroupPermissions.IsOwner(group))
+                {
+                    // Show badge with pending request count
+                    int pendingCount = group.joinRequests?.Count(r => r.status == 0) ?? 0;
+                    string tabLabel = pendingCount > 0 ? $"Join Requests ({pendingCount})" : "Join Requests";
+
+                    if (ImGui.BeginTabItem(tabLabel))
+                    {
+                        DrawJoinRequestsTab(group);
+                        ImGui.EndTabItem();
+                    }
                 }
 
                 ImGui.EndTabBar();
@@ -636,6 +651,142 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                     }
                 }
             }
+        }
+
+        #endregion
+
+        #region Join Requests Tab
+
+        private static bool joinRequestsFetched = false;
+        private static int lastFetchedGroupID = -1;
+
+        private static void DrawJoinRequestsTab(Group group)
+        {
+            ImGui.BeginChild("JoinRequestsSettings", new Vector2(-1, -1), false);
+
+            ImGui.Text("Pending Join Requests");
+            ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "Users who want to join your group. Accept or decline their requests.");
+            ImGui.Spacing();
+
+            // Fetch join requests if not already fetched or group changed
+            if (!joinRequestsFetched || lastFetchedGroupID != group.groupID)
+            {
+                var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                    x.characterName == Plugin.plugin.playername &&
+                    x.characterWorld == Plugin.plugin.playerworld);
+                if (character != null)
+                {
+                    DataSender.FetchJoinRequests(character, group.groupID);
+                    joinRequestsFetched = true;
+                    lastFetchedGroupID = group.groupID;
+                }
+            }
+
+            // Refresh button
+            if (ImGui.Button("Refresh"))
+            {
+                var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                    x.characterName == Plugin.plugin.playername &&
+                    x.characterWorld == Plugin.plugin.playerworld);
+                if (character != null)
+                {
+                    DataSender.FetchJoinRequests(character, group.groupID);
+                }
+            }
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            // Get pending requests
+            var pendingRequests = group.joinRequests?.Where(r => r.status == 0).ToList() ?? new List<GroupJoinRequest>();
+
+            if (pendingRequests.Count == 0)
+            {
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), "No pending join requests.");
+            }
+            else
+            {
+                ImGui.Text($"{pendingRequests.Count} pending request(s)");
+                ImGui.Spacing();
+
+                using (var table = ImRaii.Table("JoinRequestsTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY))
+                {
+                    if (table)
+                    {
+                        ImGui.TableSetupColumn("Requester", ImGuiTableColumnFlags.WidthFixed, 180f * ImGui.GetIO().FontGlobalScale);
+                        ImGui.TableSetupColumn("World", ImGuiTableColumnFlags.WidthFixed, 100f * ImGui.GetIO().FontGlobalScale);
+                        ImGui.TableSetupColumn("Message", ImGuiTableColumnFlags.WidthStretch);
+                        ImGui.TableSetupColumn("Requested", ImGuiTableColumnFlags.WidthFixed, 100f * ImGui.GetIO().FontGlobalScale);
+                        ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, 140f * ImGui.GetIO().FontGlobalScale);
+                        ImGui.TableSetupScrollFreeze(0, 1);
+                        ImGui.TableHeadersRow();
+
+                        foreach (var request in pendingRequests)
+                        {
+                            ImGui.TableNextRow();
+
+                            // Requester name
+                            ImGui.TableNextColumn();
+                            ImGui.Text(request.requesterName ?? "Unknown");
+
+                            // World
+                            ImGui.TableNextColumn();
+                            ImGui.Text(request.requesterWorld ?? "Unknown");
+
+                            // Message
+                            ImGui.TableNextColumn();
+                            if (!string.IsNullOrEmpty(request.message))
+                            {
+                                ImGui.TextWrapped(request.message);
+                            }
+                            else
+                            {
+                                ImGui.TextDisabled("(No message)");
+                            }
+
+                            // Requested time
+                            ImGui.TableNextColumn();
+                            var requestDate = DateTimeOffset.FromUnixTimeSeconds(request.createdAt).LocalDateTime;
+                            ImGui.Text(requestDate.ToString("MM/dd/yy"));
+                            if (ImGui.IsItemHovered())
+                            {
+                                ImGui.SetTooltip(requestDate.ToString("F"));
+                            }
+
+                            // Actions
+                            ImGui.TableNextColumn();
+                            if (ImGui.SmallButton($"Accept##{request.requestID}"))
+                            {
+                                var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                                    x.characterName == Plugin.plugin.playername &&
+                                    x.characterWorld == Plugin.plugin.playerworld);
+                                if (character != null)
+                                {
+                                    DataSender.RespondToJoinRequest(character, request.requestID, group.groupID, true);
+                                    // Remove from local list
+                                    group.joinRequests?.Remove(request);
+                                }
+                            }
+                            ImGui.SameLine();
+                            if (ImGui.SmallButton($"Decline##{request.requestID}"))
+                            {
+                                var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                                    x.characterName == Plugin.plugin.playername &&
+                                    x.characterWorld == Plugin.plugin.playerworld);
+                                if (character != null)
+                                {
+                                    DataSender.RespondToJoinRequest(character, request.requestID, group.groupID, false);
+                                    // Remove from local list
+                                    group.joinRequests?.Remove(request);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            ImGui.EndChild();
         }
 
         #endregion

@@ -106,6 +106,10 @@ namespace Networking
             packets.Add((int)ServerPackets.SendFormSubmitResult, DataReceiver.HandleFormSubmitResult);
             // Group Search
             packets.Add((int)ServerPackets.SendPublicGroupSearchResults, DataReceiver.HandlePublicGroupSearchResults);
+            // Join Requests
+            packets.Add((int)ServerPackets.SendJoinRequests, DataReceiver.HandleJoinRequests);
+            packets.Add((int)ServerPackets.SendJoinRequestResult, DataReceiver.HandleJoinRequestResult);
+            packets.Add((int)ServerPackets.SendJoinRequestNotification, DataReceiver.HandleJoinRequestNotification);
 
             //simple message back from server, simply for verification that the user is connected
         }

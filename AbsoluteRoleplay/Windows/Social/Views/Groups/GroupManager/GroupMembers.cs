@@ -29,37 +29,55 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
         /// <summary>
         /// Safely renders a member avatar using the centralized texture cache.
+        /// Uses defensive checks to prevent crashes from disposed textures.
         /// </summary>
         private static void RenderMemberAvatar(GroupMember member, Vector2 size)
         {
+            // Early exit if member is null
+            if (member == null) return;
+
             try
             {
                 // Capture the texture reference locally to avoid race conditions
                 // where member.avatar might be set to null by another thread mid-render
                 var memberAvatarRef = member.avatar;
 
+                // Skip if no avatar reference
+                if (memberAvatarRef == null) return;
+
                 // Use the centralized texture cache from GroupsData
                 var avatar = GroupsData.GetMemberAvatar(member.id, memberAvatarRef);
 
-                // Double-check texture is valid right before rendering
-                if (avatar != null && GroupsData.IsTextureValid(avatar))
-                {
-                    // Final safety check: capture handle and verify it's not default
-                    var handle = avatar.Handle;
-                    if (handle != default)
-                    {
-                        ImGui.Image(handle, size);
-                    }
-                }
-                // If no valid avatar, we simply don't render anything (no placeholder needed)
+                // Skip if cache returned null or texture is queued for disposal
+                if (avatar == null) return;
+
+                // Check texture validity - this can throw if texture is disposed
+                if (!GroupsData.IsTextureValid(avatar)) return;
+
+                // Capture handle - this is the critical point where we get the native pointer
+                // If the texture is disposed between IsTextureValid and here, this will throw
+                var handle = avatar.Handle;
+
+                // Verify handle is valid before passing to ImGui
+                if (handle == default) return;
+
+                // At this point we have what appears to be a valid handle
+                // The ImGui.Image call can still crash if the underlying DirectX texture
+                // is released between now and when ImGui processes the draw command
+                ImGui.Image(handle, size);
             }
             catch (ObjectDisposedException)
             {
                 // Texture was disposed between validation and use - silently ignore
-                Plugin.PluginLog.Debug($"[GroupMembers] Avatar for member {member.id} was disposed during render");
+                // This is expected behavior during texture refresh cycles
+            }
+            catch (NullReferenceException)
+            {
+                // Handle can become null during async operations - silently ignore
             }
             catch (Exception ex)
             {
+                // Log unexpected exceptions but don't crash
                 Plugin.PluginLog.Warning($"[GroupMembers] Failed to render avatar for member {member.id}: {ex.Message}");
             }
         }
@@ -246,13 +264,17 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
             ImGui.SetNextWindowSize(new Vector2(450, 400), ImGuiCond.FirstUseEver);
 
-            if (ImGui.Begin("Manage Ranks##AssignRankDialog", ref showAssignRankDialog))
+            // IMPORTANT: ImGui.End() must ALWAYS be called after ImGui.Begin(), regardless of return value
+            // This prevents ImGui state corruption that can cause crashes
+            var windowOpen = ImGui.Begin("Manage Ranks##AssignRankDialog", ref showAssignRankDialog);
+            try
             {
+                if (!windowOpen) return;
+
                 var member = group.members?.FirstOrDefault(m => m.id == selectedMemberForRank);
                 if (member == null)
                 {
                     ImGui.Text("Member not found");
-                    ImGui.End();
                     return;
                 }
 
@@ -357,7 +379,9 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                         showAssignRankDialog = false;
                     }
                 }
-
+            }
+            finally
+            {
                 ImGui.End();
             }
         }
@@ -368,13 +392,17 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
             ImGui.SetNextWindowSize(new Vector2(350, 150), ImGuiCond.FirstUseEver);
 
-            if (ImGui.Begin("Confirm Kick##KickConfirmDialog", ref showKickConfirmDialog))
+            // IMPORTANT: ImGui.End() must ALWAYS be called after ImGui.Begin(), regardless of return value
+            // This prevents ImGui state corruption that can cause crashes
+            var windowOpen = ImGui.Begin("Confirm Kick##KickConfirmDialog", ref showKickConfirmDialog);
+            try
             {
+                if (!windowOpen) return;
+
                 var member = group.members?.FirstOrDefault(m => m.id == selectedMemberForKick);
                 if (member == null)
                 {
                     ImGui.Text("Member not found");
-                    ImGui.End();
                     return;
                 }
 
@@ -399,7 +427,9 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 {
                     showKickConfirmDialog = false;
                 }
-
+            }
+            finally
+            {
                 ImGui.End();
             }
         }
@@ -410,13 +440,17 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
             ImGui.SetNextWindowSize(new Vector2(350, 150), ImGuiCond.FirstUseEver);
 
-            if (ImGui.Begin("Confirm Ban##BanConfirmDialog", ref showBanConfirmDialog))
+            // IMPORTANT: ImGui.End() must ALWAYS be called after ImGui.Begin(), regardless of return value
+            // This prevents ImGui state corruption that can cause crashes
+            var windowOpen = ImGui.Begin("Confirm Ban##BanConfirmDialog", ref showBanConfirmDialog);
+            try
             {
+                if (!windowOpen) return;
+
                 var member = group.members?.FirstOrDefault(m => m.id == selectedMemberForBan);
                 if (member == null)
                 {
                     ImGui.Text("Member not found");
-                    ImGui.End();
                     return;
                 }
 
@@ -454,7 +488,9 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 {
                     showBanConfirmDialog = false;
                 }
-
+            }
+            finally
+            {
                 ImGui.End();
             }
         }

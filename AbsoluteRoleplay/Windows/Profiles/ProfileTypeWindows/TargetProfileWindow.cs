@@ -251,51 +251,57 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     if (showLikeCommentDialog)
                     {
                         ImGui.SetNextWindowSize(new Vector2(400, 320), ImGuiCond.FirstUseEver);
-                        if (ImGui.Begin("Like Profile##likeDialog", ref showLikeCommentDialog, ImGuiWindowFlags.NoCollapse))
+                        var dialogOpen = ImGui.Begin("Like Profile##likeDialog", ref showLikeCommentDialog, ImGuiWindowFlags.NoCollapse);
+                        try
                         {
-                            ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), $"Liking: {profileData.title}");
-                            ImGui.Separator();
-                            ImGui.Spacing();
-
-                            // Like count input with validation
-                            ImGui.Text("Number of likes to send:");
-                            ImGui.SetNextItemWidth(200);
-                            if (ImGui.InputInt("##likeCount", ref likeCountInput))
+                            if (dialogOpen)
                             {
-                                // Clamp to valid range (1 to remaining likes)
-                                if (likeCountInput < 1) likeCountInput = 1;
-                                if (likeCountInput > DataReceiver.likesRemaining) likeCountInput = DataReceiver.likesRemaining;
-                            }
-                            ImGui.SameLine();
-                            ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"(Max: {DataReceiver.likesRemaining})");
+                                ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), $"Liking: {profileData.title}");
+                                ImGui.Separator();
+                                ImGui.Spacing();
 
-                            ImGui.Spacing();
-
-                            ImGui.Text("Leave an optional comment:");
-                            ImGui.InputTextMultiline("##likeComment", ref likeCommentBuffer, 500, new Vector2(380, 100));
-
-                            ImGui.Spacing();
-
-                            if (ImGui.Button($"Send {likeCountInput} Like(s)", new Vector2(150, 30)))
-                            {
-                                if (Plugin.character != null && profileData != null && likeCountInput > 0)
+                                // Like count input with validation
+                                ImGui.Text("Number of likes to send:");
+                                ImGui.SetNextItemWidth(200);
+                                if (ImGui.InputInt("##likeCount", ref likeCountInput))
                                 {
-                                    DataSender.LikeProfile(Plugin.character, profileData.id, likeCommentBuffer, likeCountInput);
+                                    // Clamp to valid range (1 to remaining likes)
+                                    if (likeCountInput < 1) likeCountInput = 1;
+                                    if (likeCountInput > DataReceiver.likesRemaining) likeCountInput = DataReceiver.likesRemaining;
+                                }
+                                ImGui.SameLine();
+                                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"(Max: {DataReceiver.likesRemaining})");
+
+                                ImGui.Spacing();
+
+                                ImGui.Text("Leave an optional comment:");
+                                ImGui.InputTextMultiline("##likeComment", ref likeCommentBuffer, 500, new Vector2(380, 100));
+
+                                ImGui.Spacing();
+
+                                if (ImGui.Button($"Send {likeCountInput} Like(s)", new Vector2(150, 30)))
+                                {
+                                    if (Plugin.character != null && profileData != null && likeCountInput > 0)
+                                    {
+                                        DataSender.LikeProfile(Plugin.character, profileData.id, likeCommentBuffer, likeCountInput);
+                                        likeCommentBuffer = string.Empty;
+                                        likeCountInput = 1;
+                                        showLikeCommentDialog = false;
+                                    }
+                                }
+
+                                ImGui.SameLine();
+
+                                if (ImGui.Button("Cancel", new Vector2(120, 30)))
+                                {
                                     likeCommentBuffer = string.Empty;
                                     likeCountInput = 1;
                                     showLikeCommentDialog = false;
                                 }
                             }
-
-                            ImGui.SameLine();
-
-                            if (ImGui.Button("Cancel", new Vector2(120, 30)))
-                            {
-                                likeCommentBuffer = string.Empty;
-                                likeCountInput = 1;
-                                showLikeCommentDialog = false;
-                            }
-
+                        }
+                        finally
+                        {
                             ImGui.End();
                         }
                     }

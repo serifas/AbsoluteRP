@@ -460,7 +460,7 @@ namespace AbsoluteRP
             statusBarEntry.Tooltip = "Absolute Roleplay";
             entry.OnClick = _ => ToggleMainUI();
         }
-
+        /*
         public void LoadConnectionsBarEntry(float deltaTime)
         {
             timer += deltaTime;
@@ -477,7 +477,7 @@ namespace AbsoluteRP
             statusString.AddUiGlow(0);
             SeString str = statusString.BuiltString;
             connectionsBarEntry.Text = str;
-        }
+        }*/
 
         public void UnloadConnectionsBar()
         {
@@ -571,7 +571,7 @@ namespace AbsoluteRP
                 texture.Dispose();
             }
         }
-
+        /*
         public void CheckConnectionsRequestStatus()
         {
             TimeSpan deltaTimeSpan = Framework.UpdateDelta;
@@ -584,7 +584,7 @@ namespace AbsoluteRP
             {
                 UnloadConnectionsBar();
             }
-        }
+        }*/
 
         public void CheckGroupInviteStatus()
         {
@@ -643,6 +643,9 @@ namespace AbsoluteRP
 
                 // Draw group invite dialog
                 GroupInviteDialog.Draw();
+
+                // Draw group join request dialog
+                GroupJoinRequestDialog.Draw();
 
                 // Update DTR bar entries
                 CheckGroupInviteStatus();

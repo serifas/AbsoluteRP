@@ -87,6 +87,24 @@ namespace AbsoluteRP
         public long createdAt { get; set; }
     }
 
+    /// <summary>
+    /// Represents a request from a user to join a group (for visible but non-open groups)
+    /// </summary>
+    public class GroupJoinRequest
+    {
+        public int requestID { get; set; }
+        public int groupID { get; set; }
+        public int requesterUserID { get; set; }
+        public int requesterProfileID { get; set; }
+        public string requesterName { get; set; }
+        public string requesterWorld { get; set; }
+        public string avatarUrl { get; set; }
+        public IDalamudTextureWrap avatar { get; set; }
+        public string message { get; set; }
+        public byte status { get; set; } // 0=pending, 1=accepted, 2=declined
+        public long createdAt { get; set; }
+    }
+
     public class GroupMember
     {
         public int id { get; set; }
@@ -136,6 +154,7 @@ namespace AbsoluteRP
         public bool canBan { get; set; }
         public bool canPromote { get; set; }
         public bool canDemote { get; set; }
+        public bool canAcceptJoinRequests { get; set; }
 
         // Messages
         public bool canCreateAnnouncement { get; set; }
@@ -335,11 +354,13 @@ namespace AbsoluteRP
         public byte[] backgroundBytes { get; set; }
         public bool openInvite { get; set; }
         public bool visible { get; set; }
+        public bool canInvite { get; set; } // Whether the current user can invite to this group
         public string description { get; set; }
         public List<GroupRank> ranks { get; set; }
         public List<GroupMember> members { get; set; }
         public List<GroupBans> bans { get; set; }
         public List<GroupInvite> invites { get; set; }
+        public List<GroupJoinRequest> joinRequests { get; set; } = new List<GroupJoinRequest>();
         public ApplicationForm application { get; set; }
         public ProfileData ProfileData { get; set; }
         public ProfileData OwnerProfile { get; set; }
@@ -392,6 +413,7 @@ namespace AbsoluteRP
         public string description { get; set; }
         public string logoUrl { get; set; }
         public int memberCount { get; set; }
+        public bool openInvite { get; set; } // True = anyone can join, False = requires request to join
         public IDalamudTextureWrap logo { get; set; }
     }
     public class ApplicationForm

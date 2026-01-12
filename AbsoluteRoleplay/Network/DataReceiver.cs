@@ -143,6 +143,10 @@ namespace Networking
         SendFormSubmitResult = 125,
         // Group Search
         SendPublicGroupSearchResults = 126,
+        // Join Requests
+        SendJoinRequests = 127,
+        SendJoinRequestResult = 128,
+        SendJoinRequestNotification = 129,
     }
     class DataReceiver
     {
@@ -150,6 +154,7 @@ namespace Networking
         public static List<GroupCategory> categories = new List<GroupCategory>();
         public static List<GroupRosterField> rosterFields = new List<GroupRosterField>();
         public static List<GroupInvite> invites = new List<GroupInvite>();
+        public static List<GroupJoinRequest> joinRequests = new List<GroupJoinRequest>();
         public static List<GroupMember> members = new List<GroupMember>();
         public static List<GroupForumCategory> forumStructure = new List<GroupForumCategory>();
         public static List<GroupForumChannelPermission> forumPermissions = new List<GroupForumChannelPermission>();
@@ -267,29 +272,49 @@ namespace Networking
                     Plugin.PluginLog.Info($"[ReceiveGroupMemberships] Receiving {groupCount} groups");
                     for (int i = 0; i < groupCount; i++)
                     {
-                        int id = buffer.ReadInt();
-                        string name = buffer.ReadString();
-                        string logoURL = buffer.ReadString();
-                        string imgURL = buffer.ReadString();
-                        int profileID = buffer.ReadInt();
-                        bool visible = buffer.ReadBool();
-                        bool openInvite = buffer.ReadBool();
-                        Plugin.PluginLog.Info($"[ReceiveGroupMemberships] Group {id} '{name}' has profileID: {profileID}, visible: {visible}, openInvite: {openInvite}");
-                        byte[] logoBytes = Imaging.FetchUrlImageBytes(logoURL).GetAwaiter().GetResult();
-                        IDalamudTextureWrap logoImg = Plugin.TextureProvider.CreateFromImageAsync(logoBytes).GetAwaiter().GetResult();
-                        Group group = new Group()
+                        try
                         {
-                            groupID = id,
-                            name = name,
-                            logo = logoImg,
-                            logoUrl = logoURL,
-                            visible = visible,
-                            openInvite = openInvite,
-                            ProfileData = profileID > 0 ? new ProfileData { id = profileID } : null
-                        };
-                        GroupsData.groups.Add(group);
-                        // Cache the group info for embed display even after leaving the group
-                        GroupsData.CacheGroupInfo(id, name, logoURL, logoImg);
+                            int id = buffer.ReadInt();
+                            string name = buffer.ReadString();
+                            string logoURL = buffer.ReadString();
+                            string imgURL = buffer.ReadString();
+                            int profileID = buffer.ReadInt();
+                            bool visible = buffer.ReadBool();
+                            bool openInvite = buffer.ReadBool();
+                            bool canInvite = buffer.ReadBool();
+                            Plugin.PluginLog.Info($"[ReceiveGroupMemberships] Group {i+1}/{groupCount}: id={id}, name='{name}', profileID={profileID}, visible={visible}, openInvite={openInvite}, canInvite={canInvite}");
+
+                            // Try to load logo image, but don't fail the whole group if it fails
+                            IDalamudTextureWrap logoImg = null;
+                            try
+                            {
+                                byte[] logoBytes = Imaging.FetchUrlImageBytes(logoURL).GetAwaiter().GetResult();
+                                logoImg = Plugin.TextureProvider.CreateFromImageAsync(logoBytes).GetAwaiter().GetResult();
+                            }
+                            catch (Exception imgEx)
+                            {
+                                Plugin.PluginLog.Warning($"[ReceiveGroupMemberships] Failed to load logo for group {id} '{name}': {imgEx.Message}");
+                            }
+
+                            Group group = new Group()
+                            {
+                                groupID = id,
+                                name = name,
+                                logo = logoImg,
+                                logoUrl = logoURL,
+                                visible = visible,
+                                openInvite = openInvite,
+                                canInvite = canInvite,
+                                ProfileData = profileID > 0 ? new ProfileData { id = profileID } : null
+                            };
+                            GroupsData.groups.Add(group);
+                            // Cache the group info for embed display even after leaving the group
+                            GroupsData.CacheGroupInfo(id, name, logoURL, logoImg);
+                        }
+                        catch (Exception groupEx)
+                        {
+                            Plugin.PluginLog.Error($"[ReceiveGroupMemberships] Failed to parse group {i+1}/{groupCount}: {groupEx.Message}");
+                        }
                     }
                     // Clear any pending join requests for groups we're now a member of
                     AbsoluteRP.Windows.Social.Views.GroupsData.ClearPendingJoinRequests();
@@ -960,7 +985,7 @@ namespace Networking
 
                     Plugin.plugin.OpenSocialWindow();
                     Plugin.plugin.newConnection = false;
-                    Plugin.plugin.CheckConnectionsRequestStatus();
+                   // Plugin.plugin.CheckConnectionsRequestStatus();
 
                 }
             }
@@ -980,7 +1005,7 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     Plugin.PluginLog.Info("[ReceiveConnectionsRequest] Server notified of pending connection request - showing DTR bar");
                     Plugin.plugin.newConnection = true;
-                    Plugin.plugin.CheckConnectionsRequestStatus();
+                  //  Plugin.plugin.CheckConnectionsRequestStatus();
 
                 }
             }
@@ -3801,13 +3826,17 @@ namespace Networking
                             if (oldMember.avatar != null)
                             {
                                 // Queue for deferred disposal instead of immediate dispose
+                                // IMPORTANT: Do NOT set oldMember.avatar = null here!
+                                // The render thread may still be using this reference.
+                                // The disposal queue will handle cleanup at end of frame.
                                 AbsoluteRP.Windows.Social.Views.GroupsData.QueueTextureForDisposal(oldMember.avatar);
-                                oldMember.avatar = null; // Clear reference immediately
                                 Plugin.PluginLog.Info($"[HandleGroupMembers] Queued avatar for {oldMember.name} for deferred disposal");
                             }
                         }
                     }
 
+                    // Replace the members list atomically - the old members list (and its avatar references)
+                    // will be garbage collected after this, but textures are queued for safe disposal
                     AbsoluteRP.Windows.Social.Views.GroupsData.currentGroup.members = members;
                     Plugin.PluginLog.Info($"Updated currentGroup.members with {members.Count} members");
 
@@ -4909,10 +4938,11 @@ namespace Networking
                         name = buffer.ReadString(),
                         description = buffer.ReadString(),
                         logoUrl = buffer.ReadString(),
-                        memberCount = buffer.ReadInt()
+                        memberCount = buffer.ReadInt(),
+                        openInvite = buffer.ReadBool() // Whether anyone can join or if it requires a request
                     };
                     results.Add(result);
-                    Plugin.PluginLog.Info($"[HandlePublicGroupSearchResults] Result {i}: id={result.groupID}, name='{result.name}', members={result.memberCount}");
+                    Plugin.PluginLog.Info($"[HandlePublicGroupSearchResults] Result {i}: id={result.groupID}, name='{result.name}', members={result.memberCount}, openInvite={result.openInvite}");
                 }
 
                 buffer.Dispose();
@@ -4924,6 +4954,165 @@ namespace Networking
             {
                 Plugin.PluginLog.Error($"HandlePublicGroupSearchResults error: {ex.Message}");
                 groupSearchInProgress = false;
+            }
+        }
+
+        #endregion
+
+        #region Join Requests
+
+        /// <summary>
+        /// Handles the list of join requests for a group.
+        /// </summary>
+        public static void HandleJoinRequests(byte[] data)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteBytes(data);
+                buffer.ReadInt(); // packet ID
+
+                int groupID = buffer.ReadInt();
+                int count = buffer.ReadInt();
+                Plugin.PluginLog.Info($"[HandleJoinRequests] Received {count} join requests for group {groupID}");
+
+                var requests = new List<GroupJoinRequest>();
+                for (int i = 0; i < count; i++)
+                {
+                    var request = new GroupJoinRequest
+                    {
+                        requestID = buffer.ReadInt(),
+                        groupID = groupID,
+                        requesterUserID = buffer.ReadInt(),
+                        requesterProfileID = buffer.ReadInt(),
+                        requesterName = buffer.ReadString(),
+                        requesterWorld = buffer.ReadString(),
+                        avatarUrl = buffer.ReadString(),
+                        message = buffer.ReadString(),
+                        status = buffer.ReadByte(),
+                        createdAt = buffer.ReadLong()
+                    };
+                    requests.Add(request);
+                    Plugin.PluginLog.Debug($"[HandleJoinRequests] Request {i}: id={request.requestID}, name='{request.requesterName}@{request.requesterWorld}'");
+                }
+
+                buffer.Dispose();
+
+                // Update the join requests list
+                joinRequests = requests;
+
+                // Also update the group's join requests if we have it loaded
+                var group = AbsoluteRP.Windows.Social.Views.GroupsData.groups?.FirstOrDefault(g => g.groupID == groupID);
+                if (group != null)
+                {
+                    group.joinRequests = requests;
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"HandleJoinRequests error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handles the result of sending a join request or responding to one.
+        /// </summary>
+        public static void HandleJoinRequestResult(byte[] data)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteBytes(data);
+                buffer.ReadInt(); // packet ID
+
+                bool success = buffer.ReadBool();
+                string message = buffer.ReadString();
+                int actionType = buffer.ReadInt(); // 0=sent, 1=accepted, 2=declined, 3=cancelled
+
+                buffer.Dispose();
+
+                Plugin.PluginLog.Info($"[HandleJoinRequestResult] Success: {success}, Action: {actionType}, Message: {message}");
+
+                // Show notification to user
+                if (success)
+                {
+                    switch (actionType)
+                    {
+                        case 0:
+                            Plugin.PluginLog.Info("Join request sent successfully!");
+                            break;
+                        case 1:
+                            Plugin.PluginLog.Info("Join request accepted!");
+                            break;
+                        case 2:
+                            Plugin.PluginLog.Info("Join request declined.");
+                            break;
+                        case 3:
+                            Plugin.PluginLog.Info("Join request cancelled.");
+                            break;
+                    }
+                }
+                else
+                {
+                    Plugin.PluginLog.Warning($"Join request action failed: {message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"HandleJoinRequestResult error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Handles a notification that a new join request has been received (for group admins).
+        /// </summary>
+        public static void HandleJoinRequestNotification(byte[] data)
+        {
+            try
+            {
+                ByteBuffer buffer = new ByteBuffer();
+                buffer.WriteBytes(data);
+                buffer.ReadInt(); // packet ID
+
+                int groupID = buffer.ReadInt();
+                string groupName = buffer.ReadString();
+                var request = new GroupJoinRequest
+                {
+                    requestID = buffer.ReadInt(),
+                    groupID = groupID,
+                    requesterUserID = buffer.ReadInt(),
+                    requesterProfileID = buffer.ReadInt(),
+                    requesterName = buffer.ReadString(),
+                    requesterWorld = buffer.ReadString(),
+                    avatarUrl = buffer.ReadString(),
+                    message = buffer.ReadString(),
+                    status = 0, // pending
+                    createdAt = buffer.ReadLong()
+                };
+
+                buffer.Dispose();
+
+                Plugin.PluginLog.Info($"[HandleJoinRequestNotification] New join request from {request.requesterName}@{request.requesterWorld} for group '{groupName}'");
+
+                // Add to the group's join requests if loaded
+                var group = AbsoluteRP.Windows.Social.Views.GroupsData.groups?.FirstOrDefault(g => g.groupID == groupID);
+                if (group != null)
+                {
+                    if (group.joinRequests == null)
+                        group.joinRequests = new List<GroupJoinRequest>();
+
+                    // Only add if not already present
+                    if (!group.joinRequests.Any(r => r.requestID == request.requestID))
+                    {
+                        group.joinRequests.Add(request);
+                    }
+                }
+
+                // TODO: Show notification window similar to GroupInviteNotification
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"HandleJoinRequestNotification error: {ex.Message}");
             }
         }
 

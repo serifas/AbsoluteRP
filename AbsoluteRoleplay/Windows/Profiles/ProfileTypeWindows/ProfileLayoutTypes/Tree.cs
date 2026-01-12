@@ -201,116 +201,122 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     }
                     if (self)
                     {
-                        if (ImGui.Begin("Create", ref showRelationshipInputWindow, ImGuiWindowFlags.AlwaysAutoResize))
+                        var windowOpen = ImGui.Begin("Create", ref showRelationshipInputWindow, ImGuiWindowFlags.AlwaysAutoResize);
+                        try
                         {
-                            var SlotEdit = layout.ActionSourceSlot ?? layout.SelectedSlot;
-                            if (SlotEdit == null)
+                            if (windowOpen)
                             {
-                                ImGui.Text("No node selected.");
-                                ImGui.End();
-                                return;
-                            }
-
-                            // Always update the slot to match the current edit slot
-                            rel.Slot = SlotEdit.Value;
-
-                            // Only update editingName/Description if the slot changed or window just opened
-                            if (editingSlot != SlotEdit)
-                            {
-                                editingName = rel?.Name ?? string.Empty;
-                                editingDescription = rel?.Description ?? string.Empty;
-                                learnedToggle = rel?.active ?? false; // <-- Set toggle from relationship
-                                editingSlot = SlotEdit;
-                            }
-
-                            // Now use editingName/Description for ImGui input
-                            ImGui.Text("NAME:");
-                            if (ImGui.InputText("##RelationshipName", ref editingName, 200))
-                            {
-                                if (rel != null) rel.Name = editingName;
-                            }
-                            ImGui.SameLine();
-                            ImGui.Checkbox("Active", ref learnedToggle);
-                            ImGui.Text("DESCRIPTION:");
-                            if (ImGui.InputTextMultiline("##RelationshipDescription", ref editingDescription, 400, new Vector2(350, 60)))
-                            {
-                                if (rel != null) rel.Description = editingDescription;
-                            }
-                            ImGui.Text("ICON:");
-                            if (ImGui.Button("Choose Icon"))
-                            {
-                                IconSelection = true;
-                            }
-                            if (IconSelection)
-                            {
-                                if (!WindowOperations.iconsLoaded)
-                                    WindowOperations.LoadIconsLazy(Plugin.plugin);
-
-                                IDalamudTextureWrap relIcon = rel.IconTexture;
-                                WindowOperations.RenderIcons(Plugin.plugin, false, true, null, rel, ref relIcon);
-                                rel.IconTexture = relIcon;
-                            }
-                            // Defensive: Only draw if texture is valid
-                            if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
-                            {
-                                ImGui.SameLine();
-                                ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
-                            }
-
-                            if (ImGui.Button("Accept"))
-                            {
-                                // Always update the rel object with the latest editing buffer and slot
-                                rel.Name = editingName;
-                                rel.Description = editingDescription;
-                                rel.Slot = SlotEdit.Value;
-                                Plugin.PluginLog.Debug($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
-
-                                // Remove any existing relationship at this slot (avoid duplicates)
-                                layout.relationships.RemoveAll(r => r.Slot.HasValue && r.Slot.Value == SlotEdit.Value);
-
-                                // Add the updated/new relationship
-                                layout.relationships.Add(rel);
-
-                                WindowOperations.SetIcon = false;
-                                WindowOperations.selectedIcon = null;
-                                showRelationshipInputWindow = false;
-
-                                // Clear editing state
-                                editingSlot = null;
-                                editingName = string.Empty;
-                                editingDescription = string.Empty;
-                                rel.active = learnedToggle;
-                            }
-                            ImGui.SameLine();
-                            if (ImGui.Button("Cancel"))
-                            {
-                                showRelationshipInputWindow = false;
-                            }
-
-                            ImGui.Separator();
-                            ImGui.Text("Preview:");
-                            if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
-                            {
-                                ImGui.SameLine();
-                                if (learnedToggle)
+                                var SlotEdit = layout.ActionSourceSlot ?? layout.SelectedSlot;
+                                if (SlotEdit == null)
                                 {
-                                    // Normal color
-                                    ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
+                                    ImGui.Text("No node selected.");
                                 }
                                 else
                                 {
-                                    // Desaturate: use grayscale tint
-                                    var pos = ImGui.GetCursorScreenPos();
-                                    var size = new Vector2(32, 32);
-                                    // Grayscale tint (luminance weights)
-                                    Vector4 gray = new Vector4(0.299f, 0.587f, 0.114f, 1f);
-                                    drawList.AddImage(rel.IconTexture.Handle, pos, pos + size, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
-                                    ImGui.Dummy(size); // Reserve space
+                                    // Always update the slot to match the current edit slot
+                                    rel.Slot = SlotEdit.Value;
+
+                                    // Only update editingName/Description if the slot changed or window just opened
+                                    if (editingSlot != SlotEdit)
+                                    {
+                                        editingName = rel?.Name ?? string.Empty;
+                                        editingDescription = rel?.Description ?? string.Empty;
+                                        learnedToggle = rel?.active ?? false; // <-- Set toggle from relationship
+                                        editingSlot = SlotEdit;
+                                    }
+
+                                    // Now use editingName/Description for ImGui input
+                                    ImGui.Text("NAME:");
+                                    if (ImGui.InputText("##RelationshipName", ref editingName, 200))
+                                    {
+                                        if (rel != null) rel.Name = editingName;
+                                    }
+                                    ImGui.SameLine();
+                                    ImGui.Checkbox("Active", ref learnedToggle);
+                                    ImGui.Text("DESCRIPTION:");
+                                    if (ImGui.InputTextMultiline("##RelationshipDescription", ref editingDescription, 400, new Vector2(350, 60)))
+                                    {
+                                        if (rel != null) rel.Description = editingDescription;
+                                    }
+                                    ImGui.Text("ICON:");
+                                    if (ImGui.Button("Choose Icon"))
+                                    {
+                                        IconSelection = true;
+                                    }
+                                    if (IconSelection)
+                                    {
+                                        if (!WindowOperations.iconsLoaded)
+                                            WindowOperations.LoadIconsLazy(Plugin.plugin);
+
+                                        IDalamudTextureWrap relIcon = rel.IconTexture;
+                                        WindowOperations.RenderIcons(Plugin.plugin, false, true, null, rel, ref relIcon);
+                                        rel.IconTexture = relIcon;
+                                    }
+                                    // Defensive: Only draw if texture is valid
+                                    if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
+                                    {
+                                        ImGui.SameLine();
+                                        ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
+                                    }
+
+                                    if (ImGui.Button("Accept"))
+                                    {
+                                        // Always update the rel object with the latest editing buffer and slot
+                                        rel.Name = editingName;
+                                        rel.Description = editingDescription;
+                                        rel.Slot = SlotEdit.Value;
+                                        Plugin.PluginLog.Debug($"[Tree] Accept: Setting rel.Slot to {SlotEdit.Value.x}, {SlotEdit.Value.y}");
+
+                                        // Remove any existing relationship at this slot (avoid duplicates)
+                                        layout.relationships.RemoveAll(r => r.Slot.HasValue && r.Slot.Value == SlotEdit.Value);
+
+                                        // Add the updated/new relationship
+                                        layout.relationships.Add(rel);
+
+                                        WindowOperations.SetIcon = false;
+                                        WindowOperations.selectedIcon = null;
+                                        showRelationshipInputWindow = false;
+
+                                        // Clear editing state
+                                        editingSlot = null;
+                                        editingName = string.Empty;
+                                        editingDescription = string.Empty;
+                                        rel.active = learnedToggle;
+                                    }
+                                    ImGui.SameLine();
+                                    if (ImGui.Button("Cancel"))
+                                    {
+                                        showRelationshipInputWindow = false;
+                                    }
+
+                                    ImGui.Separator();
+                                    ImGui.Text("Preview:");
+                                    if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
+                                    {
+                                        ImGui.SameLine();
+                                        if (learnedToggle)
+                                        {
+                                            // Normal color
+                                            ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
+                                        }
+                                        else
+                                        {
+                                            // Desaturate: use grayscale tint
+                                            var pos = ImGui.GetCursorScreenPos();
+                                            var size = new Vector2(32, 32);
+                                            // Grayscale tint (luminance weights)
+                                            Vector4 gray = new Vector4(0.299f, 0.587f, 0.114f, 1f);
+                                            drawList.AddImage(rel.IconTexture.Handle, pos, pos + size, Vector2.Zero, Vector2.One, ImGui.ColorConvertFloat4ToU32(gray));
+                                            ImGui.Dummy(size); // Reserve space
+                                        }
+                                    }
+                                    Misc.RenderHtmlElements(editingName, false, false, true, true, ImGui.CalcTextSize(editingName));
+                                    Misc.RenderHtmlElements(editingDescription, false, false, true, true, ImGui.CalcTextSize(editingDescription));
                                 }
                             }
-                            Misc.RenderHtmlElements(editingName, false, false, true, true, ImGui.CalcTextSize(editingName));
-                            Misc.RenderHtmlElements(editingDescription, false, false, true, true, ImGui.CalcTextSize(editingDescription));
-
+                        }
+                        finally
+                        {
                             ImGui.End();
                         }
                     }

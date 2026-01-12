@@ -194,6 +194,11 @@ namespace Networking
         UpdateFormChannelSettings = 165,
         // Group Search
         SearchPublicGroups = 166,
+        // Join Requests
+        SendJoinRequest = 167,
+        FetchJoinRequests = 168,
+        RespondToJoinRequest = 169,
+        CancelJoinRequest = 170,
     }
     public class DataSender
     {
@@ -2700,6 +2705,111 @@ buffer.WriteFloat(emptyElement.color.W);
                 catch (Exception ex)
                 {
                     Plugin.PluginLog.Debug("Debug in RequestJoinGroup: " + ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Sends a join request to a group that is visible but not open for direct joining.
+        /// </summary>
+        internal static async void SendJoinRequest(Character character, int groupID, string message)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SendJoinRequest);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteString(message ?? string.Empty);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendJoinRequest: " + ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Fetches pending join requests for a group (for members with permission to accept requests).
+        /// </summary>
+        internal static async void FetchJoinRequests(Character character, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchJoinRequests);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchJoinRequests: " + ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Responds to a join request (accept or decline).
+        /// </summary>
+        /// <param name="accept">True to accept, false to decline</param>
+        internal static async void RespondToJoinRequest(Character character, int requestID, int groupID, bool accept)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.RespondToJoinRequest);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(requestID);
+                        buffer.WriteInt(groupID);
+                        buffer.WriteBool(accept);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in RespondToJoinRequest: " + ex.ToString());
+                }
+            }
+        }
+
+        /// <summary>
+        /// Cancels a pending join request (by the requester).
+        /// </summary>
+        internal static async void CancelJoinRequest(Character character, int requestID, int groupID)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CancelJoinRequest);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(requestID);
+                        buffer.WriteInt(groupID);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in CancelJoinRequest: " + ex.ToString());
                 }
             }
         }

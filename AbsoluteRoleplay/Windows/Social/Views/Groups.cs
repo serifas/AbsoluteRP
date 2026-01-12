@@ -5993,7 +5993,7 @@ namespace AbsoluteRP.Windows.Social.Views
                         ImGui.EndGroup();
 
                         // Button section (right-aligned)
-                        ImGui.SameLine(ImGui.GetContentRegionAvail().X - 80);
+                        ImGui.SameLine(ImGui.GetContentRegionAvail().X - 100);
                         ImGui.BeginGroup();
                         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 8); // Center vertically
 
@@ -6009,8 +6009,9 @@ namespace AbsoluteRP.Windows.Social.Views
                         {
                             ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.3f, 1f), "Pending");
                         }
-                        else
+                        else if (result.openInvite)
                         {
+                            // Open groups - direct join
                             using (ImRaii.PushColor(ImGuiCol.Button, new Vector4(0.2f, 0.5f, 0.2f, 1f)))
                             using (ImRaii.PushColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.6f, 0.3f, 1f)))
                             using (ImRaii.PushColor(ImGuiCol.ButtonActive, new Vector4(0.15f, 0.4f, 0.15f, 1f)))
@@ -6020,6 +6021,24 @@ namespace AbsoluteRP.Windows.Social.Views
                                     DataSender.RequestJoinGroup(Plugin.character, result.groupID);
                                     GroupsData.pendingJoinRequests.Add(result.groupID);
                                 }
+                            }
+                        }
+                        else
+                        {
+                            // Closed groups - request to join
+                            using (ImRaii.PushColor(ImGuiCol.Button, new Vector4(0.3f, 0.3f, 0.5f, 1f)))
+                            using (ImRaii.PushColor(ImGuiCol.ButtonHovered, new Vector4(0.4f, 0.4f, 0.6f, 1f)))
+                            using (ImRaii.PushColor(ImGuiCol.ButtonActive, new Vector4(0.25f, 0.25f, 0.4f, 1f)))
+                            {
+                                if (ImGui.SmallButton($"Request##{result.groupID}"))
+                                {
+                                    // Open the join request dialog
+                                    AbsoluteRP.Windows.Social.Views.Groups.GroupJoinRequestDialog.Open(result.groupID, result.name, result.description);
+                                }
+                            }
+                            if (ImGui.IsItemHovered())
+                            {
+                                ImGui.SetTooltip("This group requires approval to join. Click to send a request.");
                             }
                         }
                         ImGui.EndGroup();

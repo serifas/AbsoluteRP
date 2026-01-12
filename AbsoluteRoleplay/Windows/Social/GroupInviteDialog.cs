@@ -1,5 +1,6 @@
 using AbsoluteRP.Windows.Social.Views;
 using AbsoluteRP.Windows.Social.Views.Groups;
+using AbsoluteRP.Windows.Social.Views.Groups.GroupManager;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
 using Networking;
@@ -24,6 +25,15 @@ namespace AbsoluteRP.Windows.Social
             selectedGroupID = -1;
             inviteMessage = $"You've been invited to join our group!";
             isOpen = true;
+
+            // Always fetch groups when opening the dialog to ensure we have the latest data
+            var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                x.characterName == Plugin.plugin.playername &&
+                x.characterWorld == Plugin.plugin.playerworld);
+            if (character != null)
+            {
+                DataSender.FetchGroups(character);
+            }
         }
 
         public static void Draw()
@@ -33,99 +43,101 @@ namespace AbsoluteRP.Windows.Social
             ImGui.SetNextWindowSize(new Vector2(450, 400), ImGuiCond.FirstUseEver);
             ImGui.SetNextWindowPos(ImGui.GetMainViewport().GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
 
-            if (ImGui.Begin($"Invite {targetName} to Group##GroupInviteDialog", ref isOpen, ImGuiWindowFlags.NoCollapse))
+            var windowOpen = ImGui.Begin($"Invite {targetName} to Group##GroupInviteDialog", ref isOpen, ImGuiWindowFlags.NoCollapse);
+            try
             {
-                try
+                if (!windowOpen) return;
+
+                // Get user's groups where they have invite permission (using pre-fetched canInvite flag)
+                var myGroups = GroupsData.groups.Where(g => g.canInvite).ToList();
+
+                if (myGroups.Count == 0)
                 {
-                    // Get user's groups where they have invite permission (with detailed logging for debugging)
-                    var myGroups = GroupsData.groups.Where(g => GroupPermissions.CanInvite(g, true)).ToList();
+                    ImGui.TextWrapped("You don't have permission to invite members to any groups, or you're not in any groups.");
+                    ImGui.Spacing();
 
-                    if (myGroups.Count == 0)
+                    if (ImGui.Button("Close", new Vector2(120, 0)))
                     {
-                        ImGui.TextWrapped("You don't have permission to invite members to any groups, or you're not in any groups.");
-                        ImGui.Spacing();
-
-                        if (ImGui.Button("Close", new Vector2(120, 0)))
-                        {
-                            isOpen = false;
-                        }
+                        isOpen = false;
                     }
-                    else
+                }
+                else
+                {
+                    ImGui.TextWrapped($"Select a group to invite {targetName}@{targetWorld}:");
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    // Group selection list
+                    using (var child = ImRaii.Child("GroupsList", new Vector2(-1, 200), true))
                     {
-                        ImGui.TextWrapped($"Select a group to invite {targetName}@{targetWorld}:");
-                        ImGui.Spacing();
-                        ImGui.Separator();
-                        ImGui.Spacing();
-
-                        // Group selection list
-                        using (var child = ImRaii.Child("GroupsList", new Vector2(-1, 200), true))
+                        foreach (var group in myGroups)
                         {
-                            foreach (var group in myGroups)
+                            bool isSelected = selectedGroupID == group.groupID;
+
+                            if (ImGui.Selectable($"{group.name}##Group{group.groupID}", isSelected, ImGuiSelectableFlags.None, new Vector2(0, 40)))
                             {
-                                bool isSelected = selectedGroupID == group.groupID;
-
-                                if (ImGui.Selectable($"{group.name}##Group{group.groupID}", isSelected, ImGuiSelectableFlags.None, new Vector2(0, 40)))
-                                {
-                                    selectedGroupID = group.groupID;
-                                }
-
-                                if (isSelected)
-                                {
-                                    ImGui.SetItemDefaultFocus();
-                                }
-
-                                // Show group description
-                                if (!string.IsNullOrEmpty(group.description))
-                                {
-                                    ImGui.SameLine();
-                                    ImGui.TextDisabled($" - {group.description}");
-                                }
+                                selectedGroupID = group.groupID;
                             }
-                        }
 
-                        ImGui.Spacing();
-
-                        // Invite message
-                        ImGui.Text("Invite Message:");
-                        ImGui.InputTextMultiline("##InviteMessage", ref inviteMessage, 500, new Vector2(-1, 60));
-
-                        ImGui.Spacing();
-                        ImGui.Separator();
-                        ImGui.Spacing();
-
-                        // Action buttons
-                        ImGui.BeginDisabled(selectedGroupID == -1);
-                        if (ImGui.Button("Send Invite", new Vector2(120, 0)))
-                        {
-                            SendInvite();
-                        }
-                        ImGui.EndDisabled();
-
-                        ImGui.SameLine();
-
-                        if (ImGui.Button("Cancel", new Vector2(120, 0)))
-                        {
-                            isOpen = false;
-                        }
-
-                        // Show selected group info
-                        if (selectedGroupID > 0)
-                        {
-                            var selectedGroup = myGroups.FirstOrDefault(g => g.groupID == selectedGroupID);
-                            if (selectedGroup != null)
+                            if (isSelected)
                             {
-                                ImGui.Spacing();
-                                ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), $"Selected: {selectedGroup.name}");
+                                ImGui.SetItemDefaultFocus();
+                            }
+
+                            // Show group description
+                            if (!string.IsNullOrEmpty(group.description))
+                            {
+                                ImGui.SameLine();
+                                ImGui.TextDisabled($" - {group.description}");
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Error($"Error in GroupInviteDialog: {ex.Message}");
-                    ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), "An error occurred. Please try again.");
-                }
 
+                    ImGui.Spacing();
+
+                    // Invite message
+                    ImGui.Text("Invite Message:");
+                    ImGui.InputTextMultiline("##InviteMessage", ref inviteMessage, 500, new Vector2(-1, 60));
+
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    // Action buttons
+                    ImGui.BeginDisabled(selectedGroupID == -1);
+                    if (ImGui.Button("Send Invite", new Vector2(120, 0)))
+                    {
+                        SendInvite();
+                    }
+                    ImGui.EndDisabled();
+
+                    ImGui.SameLine();
+
+                    if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                    {
+                        isOpen = false;
+                    }
+
+                    // Show selected group info
+                    if (selectedGroupID > 0)
+                    {
+                        var selectedGroup = myGroups.FirstOrDefault(g => g.groupID == selectedGroupID);
+                        if (selectedGroup != null)
+                        {
+                            ImGui.Spacing();
+                            ImGui.TextColored(new Vector4(0.5f, 1f, 0.5f, 1f), $"Selected: {selectedGroup.name}");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"Error in GroupInviteDialog: {ex.Message}");
+                ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), "An error occurred. Please try again.");
+            }
+            finally
+            {
                 ImGui.End();
             }
         }

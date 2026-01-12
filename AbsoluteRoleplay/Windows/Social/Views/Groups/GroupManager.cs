@@ -57,6 +57,9 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 // Fetch pending invites (for Invites tab)
                 DataSender.FetchGroupInvites(Plugin.character, false, group.groupID);
 
+                // Fetch join requests (for Join Requests tab)
+                DataSender.FetchJoinRequests(Plugin.character, group.groupID);
+
                 // Fetch roster fields if they exist
                 DataSender.FetchGroupRosterFields(Plugin.character, group.groupID);
 
@@ -226,6 +229,11 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             if (ImGui.BeginTabItem("Invites"))
             {
                 DrawInvitesTab(group);
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("Join Requests"))
+            {
+                DrawJoinRequestsTab(group);
                 ImGui.EndTabItem();
             }
             if (ImGui.BeginTabItem("Bans"))
@@ -798,6 +806,167 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
 
                         // Remove from local list immediately
                         group.bans.RemoveAll(b => b.id == banToRemove);
+                    }
+                }
+            }
+        }
+
+        private static void DrawJoinRequestsTab(Group group)
+        {
+            // Refresh button at the top
+            if (ImGui.Button("Refresh Requests"))
+            {
+                DataSender.FetchJoinRequests(Plugin.character, group.groupID);
+            }
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            // Get current user to check permissions
+            var currentMember = group.members?.FirstOrDefault(m => m.userID == Plugin.plugin.Configuration.account.userID);
+            bool isOwner = currentMember?.owner == true;
+            bool canAcceptRequests = isOwner || currentMember?.rank?.permissions?.canAcceptJoinRequests == true;
+
+            if (group.joinRequests == null || group.joinRequests.Count == 0)
+            {
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "No pending join requests.");
+                return;
+            }
+
+            // Filter to only show pending requests (status = 0)
+            var pendingRequests = group.joinRequests.Where(r => r.status == 0).ToList();
+
+            if (pendingRequests.Count == 0)
+            {
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "No pending join requests.");
+                return;
+            }
+
+            ImGui.TextColored(new Vector4(0.3f, 0.8f, 1f, 1f), $"Pending Join Requests ({pendingRequests.Count})");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            // Display requests in a table
+            if (ImGui.BeginTable("##JoinRequestsTable", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+            {
+                ImGui.TableSetupColumn("Requester", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("World", ImGuiTableColumnFlags.WidthFixed, 100);
+                ImGui.TableSetupColumn("Message", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn("Date", ImGuiTableColumnFlags.WidthFixed, 120);
+                ImGui.TableSetupColumn("Actions", ImGuiTableColumnFlags.WidthFixed, 150);
+                ImGui.TableHeadersRow();
+
+                int requestToAccept = -1;
+                int requestToDecline = -1;
+
+                foreach (var request in pendingRequests)
+                {
+                    ImGui.TableNextRow();
+
+                    // Requester name
+                    ImGui.TableNextColumn();
+                    ImGui.Text(request.requesterName ?? "Unknown");
+
+                    // World
+                    ImGui.TableNextColumn();
+                    ImGui.Text(request.requesterWorld ?? "Unknown");
+
+                    // Message
+                    ImGui.TableNextColumn();
+                    string displayMessage = request.message ?? "";
+                    if (displayMessage.Length > 50)
+                    {
+                        displayMessage = displayMessage.Substring(0, 47) + "...";
+                    }
+                    ImGui.Text(displayMessage);
+                    if (!string.IsNullOrEmpty(request.message) && request.message.Length > 50)
+                    {
+                        if (ImGui.IsItemHovered())
+                        {
+                            ImGui.SetTooltip(request.message);
+                        }
+                    }
+
+                    // Date
+                    ImGui.TableNextColumn();
+                    if (request.createdAt > 0)
+                    {
+                        var dateTime = DateTimeOffset.FromUnixTimeMilliseconds(request.createdAt).LocalDateTime;
+                        ImGui.Text(dateTime.ToString("yyyy-MM-dd HH:mm"));
+                    }
+                    else
+                    {
+                        ImGui.Text("N/A");
+                    }
+
+                    // Actions
+                    ImGui.TableNextColumn();
+                    if (canAcceptRequests)
+                    {
+                        // Accept button
+                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.6f, 0.2f, 1f));
+                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.7f, 0.3f, 1f));
+                        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.1f, 0.5f, 0.1f, 1f));
+
+                        if (ImGui.Button($"Accept##req_{request.requestID}", new Vector2(65, 0)))
+                        {
+                            requestToAccept = request.requestID;
+                        }
+
+                        ImGui.PopStyleColor(3);
+
+                        ImGui.SameLine();
+
+                        // Decline button
+                        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.7f, 0.2f, 0.2f, 1f));
+                        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.8f, 0.3f, 0.3f, 1f));
+                        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0.1f, 0.1f, 1f));
+
+                        if (ImGui.Button($"Decline##req_{request.requestID}", new Vector2(65, 0)))
+                        {
+                            requestToDecline = request.requestID;
+                        }
+
+                        ImGui.PopStyleColor(3);
+                    }
+                    else
+                    {
+                        ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "No permission");
+                    }
+                }
+
+                ImGui.EndTable();
+
+                // Handle accept action outside the loop
+                if (requestToAccept > 0)
+                {
+                    var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                        x.characterName == Plugin.plugin.playername &&
+                        x.characterWorld == Plugin.plugin.playerworld);
+
+                    if (character != null)
+                    {
+                        DataSender.RespondToJoinRequest(character, requestToAccept, group.groupID, true);
+                        Plugin.PluginLog.Info($"Accepting join request {requestToAccept} for group {group.groupID}");
+
+                        // Remove from local list immediately
+                        group.joinRequests.RemoveAll(r => r.requestID == requestToAccept);
+                    }
+                }
+
+                // Handle decline action outside the loop
+                if (requestToDecline > 0)
+                {
+                    var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
+                        x.characterName == Plugin.plugin.playername &&
+                        x.characterWorld == Plugin.plugin.playerworld);
+
+                    if (character != null)
+                    {
+                        DataSender.RespondToJoinRequest(character, requestToDecline, group.groupID, false);
+                        Plugin.PluginLog.Info($"Declining join request {requestToDecline} for group {group.groupID}");
+
+                        // Remove from local list immediately
+                        group.joinRequests.RemoveAll(r => r.requestID == requestToDecline);
                     }
                 }
             }

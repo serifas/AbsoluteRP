@@ -25,8 +25,11 @@ namespace AbsoluteRP.Helpers
             )
         {
             ImGuiWindowFlags flags = ImGuiWindowFlags.NoBackground;
-            if (ImGui.Begin(windowName, flags))
+            var windowOpen = ImGui.Begin(windowName, flags);
+            try
             {
+                if (!windowOpen) return;
+
                 onOpen?.Invoke();
                 var drawList = ImGui.GetWindowDrawList();
                 var min = ImGui.GetWindowPos();
@@ -78,7 +81,9 @@ namespace AbsoluteRP.Helpers
                 }
 
                 // Your window content here...
-
+            }
+            finally
+            {
                 ImGui.End();
             }
         }

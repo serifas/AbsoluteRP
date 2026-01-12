@@ -153,6 +153,9 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
         public static bool CanDemote(Group group)
             => HasPermission(group, p => p.canDemote);
 
+        public static bool CanAcceptJoinRequests(Group group, bool enableDetailedLogging = false)
+            => HasPermission(group, p => p.canAcceptJoinRequests, enableDetailedLogging);
+
         public static bool CanCreateAnnouncement(Group group)
             => HasPermission(group, p => p.canCreateAnnouncement);
 
