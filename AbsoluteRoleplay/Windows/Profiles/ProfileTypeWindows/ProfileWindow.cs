@@ -249,6 +249,21 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                             }
                                         }
                                     }
+                                    ImGui.SameLine();
+                                    if (ImGui.Button("Start Over"))
+                                    {
+                                        // Reset all verification-related values
+                                        lodeStoneKey = string.Empty;
+                                        LodeSUrl = string.Empty;
+                                        lodeStoneKeyVerified = false;
+                                        VerificationSucceeded = false;
+                                        VerificationFailed = false;
+                                        checking = false;
+                                    }
+                                    if (ImGui.IsItemHovered())
+                                    {
+                                        ImGui.SetTooltip("Reset verification to start fresh with a new key");
+                                    }
                                 }
                                 if (VerificationFailed)
                                 {
@@ -637,6 +652,17 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             if (ImGui.Button("Set Background"))
             {
                 editBackground = true;
+            }
+            ImGui.SameLine();
+            if (ImGui.Button("X##RemoveBackground"))
+            {
+                // Create a 4x4 transparent PNG
+                CurrentProfile.backgroundBytes = CreateTransparentPng();
+                backgroundImage = null;
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Remove background image");
             }
 
             ImGui.Spacing();
@@ -1182,18 +1208,43 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             return false;
         }
 
-     
-       
+        /// <summary>
+        /// Creates a 4x4 transparent PNG as a byte array.
+        /// </summary>
+        private static byte[] CreateTransparentPng()
+        {
+            // Minimal valid 4x4 transparent PNG (manually constructed)
+            // PNG header + IHDR chunk + IDAT chunk (compressed transparent pixels) + IEND chunk
+            return new byte[]
+            {
+                // PNG signature
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+                // IHDR chunk (13 bytes data)
+                0x00, 0x00, 0x00, 0x0D, // chunk length
+                0x49, 0x48, 0x44, 0x52, // "IHDR"
+                0x00, 0x00, 0x00, 0x04, // width: 4
+                0x00, 0x00, 0x00, 0x04, // height: 4
+                0x08,                   // bit depth: 8
+                0x06,                   // color type: RGBA
+                0x00,                   // compression method
+                0x00,                   // filter method
+                0x00,                   // interlace method
+                0x90, 0x6B, 0x0B, 0x5C, // CRC
+                // IDAT chunk (compressed data for 4x4 transparent image)
+                0x00, 0x00, 0x00, 0x1B, // chunk length: 27
+                0x49, 0x44, 0x41, 0x54, // "IDAT"
+                0x78, 0x9C, 0x62, 0x60, 0x60, 0x60, 0x60, 0x60,
+                0x00, 0x02, 0x06, 0x20, 0x08, 0x00, 0x00, 0x00,
+                0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x15, 0x7F,
+                0x00, 0x11,
+                0x11, 0x94, 0x19, 0x8E, // CRC
+                // IEND chunk
+                0x00, 0x00, 0x00, 0x00, // chunk length: 0
+                0x49, 0x45, 0x4E, 0x44, // "IEND"
+                0xAE, 0x42, 0x60, 0x82  // CRC
+            };
+        }
 
-
-
-      
-        //method ot reset the entire story section
-     
-
-        //reset our tabs and go back to base ui with no tab selected
-
-      
         public void Dispose()
         {
             WindowOperations.SafeDispose(currentAvatarImg);

@@ -28,57 +28,36 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
         private static bool showBanConfirmDialog = false;
 
         /// <summary>
-        /// Safely renders a member avatar using the centralized texture cache.
-        /// Uses defensive checks to prevent crashes from disposed textures.
+        /// Safely renders a member avatar using defensive checks to prevent crashes from disposed textures.
         /// </summary>
         private static void RenderMemberAvatar(GroupMember member, Vector2 size)
         {
-            // Early exit if member is null
-            if (member == null) return;
-
             try
             {
-                // Capture the texture reference locally to avoid race conditions
-                // where member.avatar might be set to null by another thread mid-render
-                var memberAvatarRef = member.avatar;
-
-                // Skip if no avatar reference
-                if (memberAvatarRef == null) return;
-
-                // Use the centralized texture cache from GroupsData
-                var avatar = GroupsData.GetMemberAvatar(member.id, memberAvatarRef);
-
-                // Skip if cache returned null or texture is queued for disposal
-                if (avatar == null) return;
-
-                // Check texture validity - this can throw if texture is disposed
-                if (!GroupsData.IsTextureValid(avatar)) return;
-
-                // Capture handle - this is the critical point where we get the native pointer
-                // If the texture is disposed between IsTextureValid and here, this will throw
-                var handle = avatar.Handle;
-
-                // Verify handle is valid before passing to ImGui
-                if (handle == default) return;
-
-                // At this point we have what appears to be a valid handle
-                // The ImGui.Image call can still crash if the underlying DirectX texture
-                // is released between now and when ImGui processes the draw command
-                ImGui.Image(handle, size);
-            }
-            catch (ObjectDisposedException)
-            {
-                // Texture was disposed between validation and use - silently ignore
-                // This is expected behavior during texture refresh cycles
-            }
-            catch (NullReferenceException)
-            {
-                // Handle can become null during async operations - silently ignore
+                // Check if member has a valid avatar texture
+                if (member?.avatar != null && member.avatar.Handle != IntPtr.Zero)
+                {
+                    ImGui.Image(member.avatar.Handle, size);
+                }
+                else
+                {
+                    // Draw a placeholder box if no avatar available
+                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.2f, 0.3f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.2f, 0.2f, 0.3f, 1f));
+                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.2f, 0.2f, 0.3f, 1f));
+                    ImGui.Button($"##avatar_{member?.id ?? 0}", size);
+                    ImGui.PopStyleColor(3);
+                }
             }
             catch (Exception ex)
             {
-                // Log unexpected exceptions but don't crash
-                Plugin.PluginLog.Warning($"[GroupMembers] Failed to render avatar for member {member.id}: {ex.Message}");
+                // If rendering fails, show placeholder and log the error
+                Plugin.PluginLog.Debug($"[GroupMembers] RenderMemberAvatar exception: {ex.Message}");
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.2f, 0.3f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.2f, 0.2f, 0.3f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.2f, 0.2f, 0.3f, 1f));
+                ImGui.Button($"##avatar_{member?.id ?? 0}", size);
+                ImGui.PopStyleColor(3);
             }
         }
 

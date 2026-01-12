@@ -886,33 +886,29 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 5);
                 ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 5);
 
-                bool avatarDrawn = false;
-                var memberAvatarRef = member.avatar; // Capture reference to avoid race conditions
-                var cachedAvatar = GetMemberAvatar(member.id, memberAvatarRef);
-                if (cachedAvatar != null && IsTextureValid(cachedAvatar))
+                // Render avatar with fallback to placeholder
+                try
                 {
-                    try
+                    if (member.avatar != null && member.avatar.Handle != IntPtr.Zero)
                     {
-                        var handle = cachedAvatar.Handle;
-                        if (handle != default)
-                        {
-                            ImGui.Image(handle, new Vector2(avatarSize, avatarSize));
-                            avatarDrawn = true;
-                        }
+                        ImGui.Image(member.avatar.Handle, new Vector2(avatarSize, avatarSize));
                     }
-                    catch (ObjectDisposedException)
+                    else
                     {
-                        // Texture was disposed between validation and use - silently ignore
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.PluginLog.Warning($"[DrawMembersList] Failed to draw avatar for member {member.userID}: {ex.Message}");
+                        // Placeholder if no avatar available
+                        var placeholderPos = ImGui.GetCursorScreenPos();
+                        drawList.AddRectFilled(
+                            placeholderPos,
+                            new Vector2(placeholderPos.X + avatarSize, placeholderPos.Y + avatarSize),
+                            ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 1f)),
+                            4.0f
+                        );
+                        ImGui.Dummy(new Vector2(avatarSize, avatarSize));
                     }
                 }
-
-                if (!avatarDrawn)
+                catch
                 {
-                    // Placeholder for no avatar or failed to render
+                    // Fallback placeholder on error
                     var placeholderPos = ImGui.GetCursorScreenPos();
                     drawList.AddRectFilled(
                         placeholderPos,
