@@ -13,7 +13,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Platforms>x64</Platforms>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-        <EnableWindowsTargeting>true</EnableWindowsTargeting>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
     </PropertyGroup>
 
     <ItemGroup>
