@@ -5,6 +5,7 @@
     "Description": "Allows users to create, manage, view and bookmark roleplay profiles with FF.",
     "InternalName": "AbsoluteRoleplay",
     "ApplicableVersion": "any",
+    "ApplicableOS": "win64",
     "Tags": [
         "Absolute",
         "Roleplay",

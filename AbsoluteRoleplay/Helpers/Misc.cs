@@ -69,6 +69,7 @@ namespace AbsoluteRP
         private static Dictionary<string, AudioPlayerState> _audioPlayers = new();
         private static HashSet<string> _audioDownloading = new();
         private static readonly object _audioLock = new object();
+        private static bool _audioAvailable = true; // Set to false if NAudio fails (e.g., on Linux/Wine)
 
         /// <summary>
         /// State for an inline audio player
@@ -339,8 +340,18 @@ namespace AbsoluteRP
             ImGui.SetCursorScreenPos(cursorPos);
             if (ImGui.InvisibleButton($"play_{videoId}", new Vector2(videoWidth, videoHeight)))
             {
-                // Open the WebView2 Forms window (more efficient than frame streaming)
-                AbsoluteRP.Windows.Ect.YouTubePlayerWindow.OpenVideo(videoId, $"https://www.youtube.com/watch?v={videoId}");
+                // Try to open the WebView2 Forms window, fallback to browser if it fails (e.g., on Linux/Wine)
+                try
+                {
+                    AbsoluteRP.Windows.Ect.YouTubePlayerWindow.OpenVideo(videoId, $"https://www.youtube.com/watch?v={videoId}");
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Warning($"[VideoPlayer] Failed to open video player, opening in browser instead: {ex.Message}");
+                    // Fallback to opening in browser
+                    Misc.LoadUrl = true;
+                    Misc.UrlToLoad = $"https://www.youtube.com/watch?v={videoId}";
+                }
             }
 
             // Tooltip on hover
@@ -443,9 +454,17 @@ namespace AbsoluteRP
 
         /// <summary>
         /// Render an inline audio player for audio file URLs
+        /// Falls back to a clickable link if audio playback is not available (e.g., on Linux/Wine)
         /// </summary>
         public static void RenderAudioEmbed(string url, float maxWidth = 320f)
         {
+            // If audio is not available, just render as a clickable link
+            if (!_audioAvailable)
+            {
+                RenderAudioFallbackLink(url);
+                return;
+            }
+
             float scale = ImGui.GetIO().FontGlobalScale;
             float playerWidth = Math.Min(maxWidth * scale, ImGui.GetContentRegionAvail().X - 20f);
             float playerHeight = 95f * scale; // Increased height for volume control
@@ -704,6 +723,27 @@ namespace AbsoluteRP
             ImGui.PopID();
         }
 
+        /// <summary>
+        /// Render a simple clickable link for audio when the player is not available
+        /// </summary>
+        private static void RenderAudioFallbackLink(string url)
+        {
+            var fileName = GetFileNameFromUrl(url);
+
+            // Audio icon and filename
+            ImGui.TextColored(new Vector4(0.3f, 0.6f, 1f, 1f), $"[Audio] {fileName}");
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Audio player not available on this platform.\nClick to open in browser:\n" + url);
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    Misc.LoadUrl = true;
+                    Misc.UrlToLoad = url;
+                }
+            }
+        }
+
         private static string GetFileNameFromUrl(string url)
         {
             try
@@ -832,12 +872,29 @@ namespace AbsoluteRP
                 {
                     Plugin.PluginLog.Error($"[AudioPlayer] Inner exception: {ex.InnerException.Message}");
                 }
+
+                // Check if this is a platform-specific error (e.g., NAudio not working on Linux/Wine)
+                bool isPlatformError = ex is DllNotFoundException ||
+                                       ex is TypeInitializationException ||
+                                       ex is PlatformNotSupportedException ||
+                                       (ex.Message != null && (ex.Message.Contains("waveOut") ||
+                                                               ex.Message.Contains("MME") ||
+                                                               ex.Message.Contains("audio device")));
+
+                if (isPlatformError)
+                {
+                    Plugin.PluginLog.Warning("[AudioPlayer] Audio playback not available on this platform. Disabling audio player.");
+                    _audioAvailable = false;
+                }
+
                 lock (_audioLock)
                 {
                     if (_audioPlayers.TryGetValue(url, out var p))
                     {
                         p.IsLoading = false;
-                        p.ErrorMessage = ex.Message.Length > 60 ? ex.Message.Substring(0, 57) + "..." : ex.Message;
+                        p.ErrorMessage = isPlatformError
+                            ? "Audio not available on this platform"
+                            : (ex.Message.Length > 60 ? ex.Message.Substring(0, 57) + "..." : ex.Message);
                     }
                 }
                 CleanupTempFile(tempPath);
