@@ -8,6 +8,7 @@ using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
+using NAudio.Wave;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -58,6 +59,899 @@ namespace AbsoluteRP
         private static bool allow;
         public static bool LoadUrl { get; set; } = false;
         public static string UrlToLoad { get; set; }
+
+        // YouTube video embed state
+        private static Dictionary<string, IDalamudTextureWrap> _youtubeThumbnailCache = new();
+        private static HashSet<string> _youtubeThumbnailsLoading = new();
+        private static string _expandedVideoId = null; // Track which video is currently expanded/fullscreen
+
+        // Audio player state
+        private static Dictionary<string, AudioPlayerState> _audioPlayers = new();
+        private static HashSet<string> _audioDownloading = new();
+        private static readonly object _audioLock = new object();
+
+        /// <summary>
+        /// State for an inline audio player
+        /// </summary>
+        private class AudioPlayerState : IDisposable
+        {
+            public string Url { get; set; }
+            public string FileName { get; set; }
+            public string TempFilePath { get; set; }
+            public WaveOutEvent WaveOut { get; set; }
+            public AudioFileReader AudioReader { get; set; }
+            public bool IsLoading { get; set; } = true;
+            public bool IsPlaying { get; set; }
+            public bool IsPaused { get; set; }
+            public string ErrorMessage { get; set; }
+            public float DownloadProgress { get; set; }
+            public float Volume { get; set; } = 0.5f; // 0.0 to 1.0, default 50%
+            public TimeSpan CurrentTime => AudioReader?.CurrentTime ?? TimeSpan.Zero;
+            public TimeSpan TotalTime => AudioReader?.TotalTime ?? TimeSpan.Zero;
+
+            public void Dispose()
+            {
+                try
+                {
+                    Plugin.PluginLog.Info($"[AudioPlayer] Disposing audio player for: {FileName}");
+
+                    if (WaveOut != null)
+                    {
+                        if (WaveOut.PlaybackState == PlaybackState.Playing || WaveOut.PlaybackState == PlaybackState.Paused)
+                        {
+                            Plugin.PluginLog.Info($"[AudioPlayer] Stopping playback...");
+                            WaveOut.Stop();
+                        }
+                        WaveOut.Dispose();
+                        WaveOut = null;
+                        Plugin.PluginLog.Info($"[AudioPlayer] WaveOut disposed");
+                    }
+
+                    if (AudioReader != null)
+                    {
+                        AudioReader.Dispose();
+                        AudioReader = null;
+                        Plugin.PluginLog.Info($"[AudioPlayer] AudioReader disposed");
+                    }
+
+                    if (!string.IsNullOrEmpty(TempFilePath) && File.Exists(TempFilePath))
+                    {
+                        try { File.Delete(TempFilePath); } catch { }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Error($"[AudioPlayer] Error disposing: {ex.Message}");
+                }
+            }
+        }
+
+        // YouTube URL regex patterns
+        private static readonly Regex YoutubeUrlRegex = new Regex(
+            @"(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+        /// <summary>
+        /// Check if a URL is a YouTube video URL and extract the video ID
+        /// </summary>
+        public static bool TryGetYoutubeVideoId(string url, out string videoId)
+        {
+            videoId = null;
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            var match = YoutubeUrlRegex.Match(url);
+            if (match.Success)
+            {
+                videoId = match.Groups[1].Value;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Get the YouTube embed URL for a video ID
+        /// </summary>
+        public static string GetYoutubeEmbedUrl(string videoId)
+        {
+            return $"https://www.youtube.com/embed/{videoId}?autoplay=1";
+        }
+
+        /// <summary>
+        /// Get the YouTube thumbnail URL for a video ID
+        /// </summary>
+        public static string GetYoutubeThumbnailUrl(string videoId)
+        {
+            // mqdefault is 320x180, good balance of quality and size
+            return $"https://img.youtube.com/vi/{videoId}/mqdefault.jpg";
+        }
+
+        /// <summary>
+        /// Check if Browsingway plugin is installed and loaded
+        /// </summary>
+        public static bool IsBrowsingwayInstalled()
+        {
+            try
+            {
+                var browsingway = Plugin.PluginInterface.InstalledPlugins
+                    .FirstOrDefault(p => p.InternalName == "Browsingway" || p.Name == "Browsingway");
+                return browsingway != null && browsingway.IsLoaded;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Check if a URL points to an image based on extension or known image hosting services
+        /// </summary>
+        public static bool IsImageUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            url = url.ToLowerInvariant();
+
+            // Check for common image extensions (with or without query params)
+            var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".ico" };
+            foreach (var ext in imageExtensions)
+            {
+                // Check if URL contains the extension (handles query params like image.png?size=large)
+                if (url.Contains(ext))
+                    return true;
+            }
+
+            // Check for common image hosting services
+            var imageHosts = new[] {
+                "i.imgur.com",
+                "media.discordapp.net",
+                "cdn.discordapp.com",
+                "pbs.twimg.com",
+                "i.redd.it",
+                "preview.redd.it",
+                "i.pinimg.com",
+                "images.unsplash.com"
+            };
+            foreach (var host in imageHosts)
+            {
+                if (url.Contains(host))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Check if a URL points to an audio file based on extension
+        /// </summary>
+        public static bool IsAudioUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                return false;
+
+            url = url.ToLowerInvariant();
+
+            // Check for common audio extensions (with or without query params)
+            var audioExtensions = new[] { ".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac", ".wma" };
+            foreach (var ext in audioExtensions)
+            {
+                // Check if URL contains the extension before any query params
+                var queryIndex = url.IndexOf('?');
+                var pathPart = queryIndex > 0 ? url.Substring(0, queryIndex) : url;
+                if (pathPart.EndsWith(ext))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Render a YouTube video embed in chat. Shows thumbnail with play button.
+        /// Clicking opens the built-in video player.
+        /// </summary>
+        public static void RenderYoutubeEmbed(string url, string videoId, float maxWidth = 320f)
+        {
+            string thumbnailUrl = GetYoutubeThumbnailUrl(videoId);
+            float scale = ImGui.GetIO().FontGlobalScale;
+
+            // Check if this video is expanded
+            bool isExpanded = _expandedVideoId == videoId;
+            float videoWidth = isExpanded ? Math.Min(640f * scale, ImGui.GetContentRegionAvail().X - 20f) : Math.Min(maxWidth * scale, ImGui.GetContentRegionAvail().X - 20f);
+            float videoHeight = videoWidth * 9f / 16f; // 16:9 aspect ratio
+
+            ImGui.PushID($"youtube_{videoId}");
+
+            // Draw video container box
+            var cursorPos = ImGui.GetCursorScreenPos();
+            var drawList = ImGui.GetWindowDrawList();
+
+            // Background box
+            drawList.AddRectFilled(
+                cursorPos,
+                new Vector2(cursorPos.X + videoWidth, cursorPos.Y + videoHeight),
+                ImGui.GetColorU32(new Vector4(0.1f, 0.1f, 0.1f, 1f)),
+                4f);
+
+            // Border (YouTube red)
+            drawList.AddRect(
+                cursorPos,
+                new Vector2(cursorPos.X + videoWidth, cursorPos.Y + videoHeight),
+                ImGui.GetColorU32(new Vector4(0.8f, 0.1f, 0.1f, 1f)),
+                4f,
+                ImDrawFlags.None,
+                2f);
+
+            // Try to load and display thumbnail
+            bool thumbnailLoaded = false;
+            lock (_imageCacheLock)
+            {
+                if (_youtubeThumbnailCache.TryGetValue(videoId, out var thumbnail) && thumbnail != null)
+                {
+                    // Draw thumbnail
+                    ImGui.SetCursorScreenPos(cursorPos);
+                    ImGui.Image(thumbnail.Handle, new Vector2(videoWidth, videoHeight));
+                    thumbnailLoaded = true;
+                }
+                else if (!_youtubeThumbnailsLoading.Contains(videoId))
+                {
+                    // Start loading thumbnail
+                    _youtubeThumbnailsLoading.Add(videoId);
+                    LoadYoutubeThumbnailAsync(videoId, thumbnailUrl);
+                }
+            }
+
+            if (!thumbnailLoaded)
+            {
+                // Show loading placeholder
+                ImGui.SetCursorScreenPos(cursorPos);
+                ImGui.Dummy(new Vector2(videoWidth, videoHeight));
+
+                // Center "Loading..." text
+                var loadingText = "Loading...";
+                var textSize = ImGui.CalcTextSize(loadingText);
+                drawList.AddText(
+                    new Vector2(cursorPos.X + (videoWidth - textSize.X) / 2, cursorPos.Y + (videoHeight - textSize.Y) / 2),
+                    ImGui.GetColorU32(new Vector4(0.7f, 0.7f, 0.7f, 1f)),
+                    loadingText);
+            }
+
+            // Draw play button overlay
+            var centerX = cursorPos.X + videoWidth / 2;
+            var centerY = cursorPos.Y + videoHeight / 2;
+            float playButtonRadius = 25f * scale;
+
+            // Semi-transparent circle background (YouTube red)
+            drawList.AddCircleFilled(
+                new Vector2(centerX, centerY),
+                playButtonRadius,
+                ImGui.GetColorU32(new Vector4(0.8f, 0.1f, 0.1f, 0.9f)));
+
+            // Play triangle
+            float triangleSize = 12f * scale;
+            drawList.AddTriangleFilled(
+                new Vector2(centerX - triangleSize / 2 + 3f, centerY - triangleSize),
+                new Vector2(centerX - triangleSize / 2 + 3f, centerY + triangleSize),
+                new Vector2(centerX + triangleSize, centerY),
+                ImGui.GetColorU32(new Vector4(1f, 1f, 1f, 1f)));
+
+            // Invisible button for click detection on the video area
+            ImGui.SetCursorScreenPos(cursorPos);
+            if (ImGui.InvisibleButton($"play_{videoId}", new Vector2(videoWidth, videoHeight)))
+            {
+                // Open the WebView2 Forms window (more efficient than frame streaming)
+                AbsoluteRP.Windows.Ect.YouTubePlayerWindow.OpenVideo(videoId, $"https://www.youtube.com/watch?v={videoId}");
+            }
+
+            // Tooltip on hover
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Click to play video");
+            }
+
+            // Move cursor past the video box
+            ImGui.SetCursorScreenPos(new Vector2(cursorPos.X, cursorPos.Y + videoHeight + 4f));
+
+            // Expand/Collapse button row
+            var buttonRowY = cursorPos.Y + videoHeight + 4f;
+
+            // Expand button (positioned in top-right of video)
+            ImGui.SetCursorScreenPos(new Vector2(cursorPos.X + videoWidth - 30f * scale, cursorPos.Y + 5f));
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.1f, 0.1f, 0.1f, 0.7f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.2f, 0.2f, 0.2f, 0.9f));
+            ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+            if (ImGui.SmallButton(isExpanded ? "−" : "+"))
+            {
+                _expandedVideoId = isExpanded ? null : videoId;
+            }
+            ImGui.PopStyleVar();
+            ImGui.PopStyleColor(2);
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(isExpanded ? "Minimize preview" : "Expand preview");
+            }
+
+            // Position after video box
+            ImGui.SetCursorScreenPos(new Vector2(cursorPos.X, buttonRowY + 4f));
+
+            // Show URL below video (clickable to open in browser)
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 0.6f, 0.9f, 1f));
+            ImGui.TextWrapped(url);
+            ImGui.PopStyleColor();
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Click to open in browser");
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    Misc.LoadUrl = true;
+                    Misc.UrlToLoad = url;
+                }
+            }
+
+            ImGui.PopID();
+        }
+
+        /// <summary>
+        /// Async load YouTube thumbnail
+        /// </summary>
+        private static async void LoadYoutubeThumbnailAsync(string videoId, string thumbnailUrl)
+        {
+            try
+            {
+                using (var webClient = new System.Net.WebClient())
+                {
+                    var imageBytes = await webClient.DownloadDataTaskAsync(thumbnailUrl);
+                    if (imageBytes != null && imageBytes.Length > 0)
+                    {
+                        var tex = Plugin.TextureProvider.CreateFromImageAsync(imageBytes).Result;
+                        lock (_imageCacheLock)
+                        {
+                            if (tex != null)
+                                _youtubeThumbnailCache[videoId] = tex;
+                            else
+                                _youtubeThumbnailCache[videoId] = null;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Warning($"Failed to load YouTube thumbnail for {videoId}: {ex.Message}");
+                lock (_imageCacheLock)
+                {
+                    _youtubeThumbnailCache[videoId] = null;
+                }
+            }
+            finally
+            {
+                lock (_imageCacheLock)
+                {
+                    _youtubeThumbnailsLoading.Remove(videoId);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clear expanded video state (call when closing chat window, etc.)
+        /// </summary>
+        public static void ClearExpandedVideo()
+        {
+            _expandedVideoId = null;
+        }
+
+        /// <summary>
+        /// Render an inline audio player for audio file URLs
+        /// </summary>
+        public static void RenderAudioEmbed(string url, float maxWidth = 320f)
+        {
+            float scale = ImGui.GetIO().FontGlobalScale;
+            float playerWidth = Math.Min(maxWidth * scale, ImGui.GetContentRegionAvail().X - 20f);
+            float playerHeight = 95f * scale; // Increased height for volume control
+
+            string playerId = url.GetHashCode().ToString();
+
+            ImGui.PushID($"audio_{playerId}");
+
+            var cursorPos = ImGui.GetCursorScreenPos();
+            var drawList = ImGui.GetWindowDrawList();
+
+            // Background box (dark with blue tint for audio)
+            drawList.AddRectFilled(
+                cursorPos,
+                new Vector2(cursorPos.X + playerWidth, cursorPos.Y + playerHeight),
+                ImGui.GetColorU32(new Vector4(0.08f, 0.1f, 0.15f, 1f)),
+                6f);
+
+            // Border (blue for audio)
+            drawList.AddRect(
+                cursorPos,
+                new Vector2(cursorPos.X + playerWidth, cursorPos.Y + playerHeight),
+                ImGui.GetColorU32(new Vector4(0.2f, 0.4f, 0.8f, 1f)),
+                6f,
+                ImDrawFlags.None,
+                2f);
+
+            AudioPlayerState player;
+            lock (_audioLock)
+            {
+                if (!_audioPlayers.TryGetValue(url, out player))
+                {
+                    // Create new player state
+                    player = new AudioPlayerState
+                    {
+                        Url = url,
+                        FileName = GetFileNameFromUrl(url),
+                        IsLoading = true
+                    };
+                    _audioPlayers[url] = player;
+
+                    // Start downloading
+                    if (!_audioDownloading.Contains(url))
+                    {
+                        _audioDownloading.Add(url);
+                        _ = LoadAudioAsync(url);
+                    }
+                }
+            }
+
+            // Draw content based on state
+            float padding = 8f * scale;
+            float buttonSize = 30f * scale;
+            float contentStartX = cursorPos.X + padding;
+            float contentStartY = cursorPos.Y + padding;
+
+            if (player.IsLoading)
+            {
+                // Show loading state
+                var loadingText = "Loading audio...";
+                var textSize = ImGui.CalcTextSize(loadingText);
+                drawList.AddText(
+                    new Vector2(cursorPos.X + (playerWidth - textSize.X) / 2, cursorPos.Y + (playerHeight - textSize.Y) / 2),
+                    ImGui.GetColorU32(new Vector4(0.7f, 0.7f, 0.7f, 1f)),
+                    loadingText);
+            }
+            else if (!string.IsNullOrEmpty(player.ErrorMessage))
+            {
+                // Show error
+                var errorText = $"Error: {player.ErrorMessage}";
+                drawList.AddText(
+                    new Vector2(contentStartX, contentStartY),
+                    ImGui.GetColorU32(new Vector4(1f, 0.3f, 0.3f, 1f)),
+                    errorText);
+            }
+            else
+            {
+                // Draw title/filename
+                var titleText = "Audio";
+                if (titleText.Length > 40)
+                    titleText = titleText.Substring(0, 37) + "...";
+                drawList.AddText(
+                    new Vector2(contentStartX, contentStartY),
+                    ImGui.GetColorU32(new Vector4(0.9f, 0.9f, 0.9f, 1f)),
+                    titleText);
+
+                // Control buttons row
+                float controlsY = contentStartY + 22f * scale;
+
+                // Play/Pause button
+                ImGui.SetCursorScreenPos(new Vector2(contentStartX, controlsY));
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.4f, 0.8f, 0.8f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.5f, 0.9f, 1f));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.2f, 0.3f, 0.7f, 1f));
+                ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4f);
+
+                string playPauseIcon = player.IsPlaying && !player.IsPaused ? "Pause" : "Play";
+                if (ImGui.Button(playPauseIcon, new Vector2(buttonSize * 2, buttonSize)))
+                {
+                    ToggleAudioPlayback(player);
+                }
+
+                // Stop button
+                ImGui.SameLine();
+                if (ImGui.Button("Stop", new Vector2(buttonSize * 2, buttonSize)))
+                {
+                    StopAudioPlayback(player);
+                }
+                ImGui.PopStyleVar();
+                ImGui.PopStyleColor(3);
+
+                // Time display
+                ImGui.SameLine();
+                ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 7f * scale);
+                string timeText = $"{FormatAudioTime(player.CurrentTime)} / {FormatAudioTime(player.TotalTime)}";
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), timeText);
+
+                // Seek bar
+                float seekBarY = controlsY + buttonSize + 4f * scale;
+                float seekBarWidth = playerWidth - padding * 2;
+                float seekBarHeight = 8f * scale;
+
+                // Seek bar background
+                var seekBarPos = new Vector2(contentStartX, seekBarY);
+                drawList.AddRectFilled(
+                    seekBarPos,
+                    new Vector2(seekBarPos.X + seekBarWidth, seekBarPos.Y + seekBarHeight),
+                    ImGui.GetColorU32(new Vector4(0.15f, 0.15f, 0.2f, 1f)),
+                    4f);
+
+                // Seek bar progress
+                float progress = 0f;
+                if (player.TotalTime.TotalSeconds > 0)
+                {
+                    progress = (float)(player.CurrentTime.TotalSeconds / player.TotalTime.TotalSeconds);
+                }
+                if (progress > 0)
+                {
+                    drawList.AddRectFilled(
+                        seekBarPos,
+                        new Vector2(seekBarPos.X + seekBarWidth * progress, seekBarPos.Y + seekBarHeight),
+                        ImGui.GetColorU32(new Vector4(0.2f, 0.5f, 0.9f, 1f)),
+                        4f);
+                }
+
+                // Seek bar knob
+                float knobX = seekBarPos.X + seekBarWidth * progress;
+                drawList.AddCircleFilled(
+                    new Vector2(knobX, seekBarPos.Y + seekBarHeight / 2),
+                    6f * scale,
+                    ImGui.GetColorU32(new Vector4(0.3f, 0.6f, 1f, 1f)));
+
+                // Invisible button for seeking
+                ImGui.SetCursorScreenPos(seekBarPos);
+                if (ImGui.InvisibleButton($"seek_{playerId}", new Vector2(seekBarWidth, seekBarHeight + 8f * scale)))
+                {
+                    // Calculate seek position
+                    var mousePos = ImGui.GetMousePos();
+                    float seekProgress = (mousePos.X - seekBarPos.X) / seekBarWidth;
+                    seekProgress = Math.Clamp(seekProgress, 0f, 1f);
+                    SeekAudio(player, seekProgress);
+                }
+
+                // Dragging for seek
+                if (ImGui.IsItemActive())
+                {
+                    var mousePos = ImGui.GetMousePos();
+                    float seekProgress = (mousePos.X - seekBarPos.X) / seekBarWidth;
+                    seekProgress = Math.Clamp(seekProgress, 0f, 1f);
+                    SeekAudio(player, seekProgress);
+                }
+
+                // Volume control row
+                float volumeRowY = seekBarY + seekBarHeight + 12f * scale;
+                float volumeBarWidth = playerWidth - padding * 2 - 50f * scale; // Leave room for label
+                float volumeBarHeight = 6f * scale;
+
+                // Volume icon/label
+                var volumeLabel = player.Volume < 0.01f ? "Mute" : "Vol";
+                drawList.AddText(
+                    new Vector2(contentStartX, volumeRowY - 2f * scale),
+                    ImGui.GetColorU32(new Vector4(0.6f, 0.6f, 0.6f, 1f)),
+                    volumeLabel);
+
+                // Volume bar background
+                var volumeBarPos = new Vector2(contentStartX + 35f * scale, volumeRowY);
+                drawList.AddRectFilled(
+                    volumeBarPos,
+                    new Vector2(volumeBarPos.X + volumeBarWidth, volumeBarPos.Y + volumeBarHeight),
+                    ImGui.GetColorU32(new Vector4(0.15f, 0.15f, 0.2f, 1f)),
+                    3f);
+
+                // Volume bar fill
+                if (player.Volume > 0)
+                {
+                    drawList.AddRectFilled(
+                        volumeBarPos,
+                        new Vector2(volumeBarPos.X + volumeBarWidth * player.Volume, volumeBarPos.Y + volumeBarHeight),
+                        ImGui.GetColorU32(new Vector4(0.3f, 0.7f, 0.4f, 1f)),
+                        3f);
+                }
+
+                // Volume knob
+                float volumeKnobX = volumeBarPos.X + volumeBarWidth * player.Volume;
+                drawList.AddCircleFilled(
+                    new Vector2(volumeKnobX, volumeBarPos.Y + volumeBarHeight / 2),
+                    5f * scale,
+                    ImGui.GetColorU32(new Vector4(0.4f, 0.8f, 0.5f, 1f)));
+
+                // Invisible button for volume control
+                ImGui.SetCursorScreenPos(new Vector2(volumeBarPos.X, volumeBarPos.Y - 4f * scale));
+                if (ImGui.InvisibleButton($"volume_{playerId}", new Vector2(volumeBarWidth, volumeBarHeight + 8f * scale)))
+                {
+                    var mousePos = ImGui.GetMousePos();
+                    float newVolume = (mousePos.X - volumeBarPos.X) / volumeBarWidth;
+                    newVolume = Math.Clamp(newVolume, 0f, 1f);
+                    SetAudioVolume(player, newVolume);
+                }
+
+                // Dragging for volume
+                if (ImGui.IsItemActive())
+                {
+                    var mousePos = ImGui.GetMousePos();
+                    float newVolume = (mousePos.X - volumeBarPos.X) / volumeBarWidth;
+                    newVolume = Math.Clamp(newVolume, 0f, 1f);
+                    SetAudioVolume(player, newVolume);
+                }
+
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip($"Volume: {(int)(player.Volume * 100)}%");
+                }
+                ImGui.Spacing();
+            }
+
+            // Dummy to reserve space
+            ImGui.SetCursorScreenPos(cursorPos);
+            ImGui.Dummy(new Vector2(playerWidth, playerHeight));
+
+            // Show URL below player
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 0.6f, 0.9f, 1f));
+            var shortUrl = url.Length > 50 ? url.Substring(0, 47) + "..." : url;
+            ImGui.TextWrapped(shortUrl);
+            ImGui.PopStyleColor();
+
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Click to open in browser\n" + url);
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    Misc.LoadUrl = true;
+                    Misc.UrlToLoad = url;
+                }
+            }
+
+            ImGui.PopID();
+        }
+
+        private static string GetFileNameFromUrl(string url)
+        {
+            try
+            {
+                var uri = new Uri(url);
+                var fileName = Path.GetFileName(uri.LocalPath);
+                if (!string.IsNullOrEmpty(fileName))
+                    return Uri.UnescapeDataString(fileName);
+            }
+            catch { }
+            return "Audio File";
+        }
+
+        private static string FormatAudioTime(TimeSpan time)
+        {
+            if (time.TotalHours >= 1)
+                return time.ToString(@"h\:mm\:ss");
+            return time.ToString(@"mm\:ss");
+        }
+
+        private static async Task LoadAudioAsync(string url)
+        {
+            AudioPlayerState player;
+            lock (_audioLock)
+            {
+                if (!_audioPlayers.TryGetValue(url, out player))
+                    return;
+            }
+
+            string tempPath = null;
+            try
+            {
+                Plugin.PluginLog.Info($"[AudioPlayer] Starting download: {url}");
+
+                using var httpClient = new HttpClient();
+                httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+                // Add headers that some servers require
+                httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36");
+                httpClient.DefaultRequestHeaders.Add("Accept", "audio/*,*/*");
+
+                var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+
+                Plugin.PluginLog.Info($"[AudioPlayer] Response status: {response.StatusCode}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    throw new Exception($"HTTP {(int)response.StatusCode}: {response.ReasonPhrase}");
+                }
+
+                var contentLength = response.Content.Headers.ContentLength;
+                Plugin.PluginLog.Info($"[AudioPlayer] Content length: {contentLength ?? -1} bytes");
+
+                var extension = Path.GetExtension(new Uri(url).LocalPath);
+                if (string.IsNullOrEmpty(extension))
+                    extension = ".mp3";
+
+                tempPath = Path.Combine(Path.GetTempPath(), $"ARP_Audio_{Guid.NewGuid()}{extension}");
+
+                Plugin.PluginLog.Info($"[AudioPlayer] Downloading to: {tempPath}");
+
+                using (var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    await response.Content.CopyToAsync(fileStream);
+                }
+
+                var fileInfo = new FileInfo(tempPath);
+                Plugin.PluginLog.Info($"[AudioPlayer] Downloaded {fileInfo.Length} bytes");
+
+                if (fileInfo.Length == 0)
+                {
+                    throw new Exception("Downloaded file is empty");
+                }
+
+                // Load audio file
+                Plugin.PluginLog.Info($"[AudioPlayer] Loading audio file...");
+                var audioReader = new AudioFileReader(tempPath);
+                audioReader.Volume = player.Volume * 2f; // Set initial volume (doubled for louder output)
+                var waveOut = new WaveOutEvent();
+                waveOut.Init(audioReader);
+
+                Plugin.PluginLog.Info($"[AudioPlayer] Audio loaded successfully. Duration: {audioReader.TotalTime}");
+
+                waveOut.PlaybackStopped += (s, e) =>
+                {
+                    lock (_audioLock)
+                    {
+                        if (_audioPlayers.TryGetValue(url, out var p))
+                        {
+                            p.IsPlaying = false;
+                            p.IsPaused = false;
+                            if (p.AudioReader != null)
+                                p.AudioReader.Position = 0;
+                        }
+                    }
+                };
+
+                lock (_audioLock)
+                {
+                    if (_audioPlayers.TryGetValue(url, out var p))
+                    {
+                        p.TempFilePath = tempPath;
+                        p.AudioReader = audioReader;
+                        p.WaveOut = waveOut;
+                        p.IsLoading = false;
+                    }
+                }
+            }
+            catch (HttpRequestException httpEx)
+            {
+                Plugin.PluginLog.Error($"[AudioPlayer] HTTP error loading {url}: {httpEx.Message}");
+                lock (_audioLock)
+                {
+                    if (_audioPlayers.TryGetValue(url, out var p))
+                    {
+                        p.IsLoading = false;
+                        p.ErrorMessage = $"Network error: {httpEx.Message}";
+                    }
+                }
+                CleanupTempFile(tempPath);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[AudioPlayer] Failed to load audio from {url}: {ex.GetType().Name} - {ex.Message}");
+                if (ex.InnerException != null)
+                {
+                    Plugin.PluginLog.Error($"[AudioPlayer] Inner exception: {ex.InnerException.Message}");
+                }
+                lock (_audioLock)
+                {
+                    if (_audioPlayers.TryGetValue(url, out var p))
+                    {
+                        p.IsLoading = false;
+                        p.ErrorMessage = ex.Message.Length > 60 ? ex.Message.Substring(0, 57) + "..." : ex.Message;
+                    }
+                }
+                CleanupTempFile(tempPath);
+            }
+            finally
+            {
+                lock (_audioLock)
+                {
+                    _audioDownloading.Remove(url);
+                }
+            }
+        }
+
+        private static void CleanupTempFile(string tempPath)
+        {
+            if (!string.IsNullOrEmpty(tempPath) && File.Exists(tempPath))
+            {
+                try { File.Delete(tempPath); } catch { }
+            }
+        }
+
+        private static void ToggleAudioPlayback(AudioPlayerState player)
+        {
+            if (player.WaveOut == null)
+                return;
+
+            if (!player.IsPlaying)
+            {
+                player.WaveOut.Play();
+                player.IsPlaying = true;
+                player.IsPaused = false;
+            }
+            else if (!player.IsPaused)
+            {
+                player.WaveOut.Pause();
+                player.IsPaused = true;
+            }
+            else
+            {
+                player.WaveOut.Play();
+                player.IsPaused = false;
+            }
+        }
+
+        private static void StopAudioPlayback(AudioPlayerState player)
+        {
+            if (player.WaveOut == null)
+                return;
+
+            player.WaveOut.Stop();
+            player.IsPlaying = false;
+            player.IsPaused = false;
+
+            if (player.AudioReader != null)
+                player.AudioReader.Position = 0;
+        }
+
+        private static void SeekAudio(AudioPlayerState player, float progress)
+        {
+            if (player.AudioReader == null || player.AudioReader.Length <= 0)
+                return;
+
+            var position = (long)(progress * player.AudioReader.Length);
+            player.AudioReader.Position = Math.Min(position, player.AudioReader.Length - 1);
+        }
+
+        private static void SetAudioVolume(AudioPlayerState player, float volume)
+        {
+            player.Volume = Math.Clamp(volume, 0f, 1f);
+
+            // NAudio AudioFileReader Volume can go above 1.0 for amplification
+            // Map 0-100% display to 0-200% actual volume for louder output
+            if (player.AudioReader != null)
+            {
+                player.AudioReader.Volume = player.Volume * 2f;
+            }
+        }
+
+        /// <summary>
+        /// Pause all currently playing audio (call when closing windows with audio)
+        /// </summary>
+        public static void PauseAllAudio()
+        {
+            lock (_audioLock)
+            {
+                foreach (var player in _audioPlayers.Values)
+                {
+                    if (player.IsPlaying && !player.IsPaused && player.WaveOut != null)
+                    {
+                        player.WaveOut.Pause();
+                        player.IsPaused = true;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clean up all audio players (call when plugin is unloading)
+        /// </summary>
+        public static void CleanupAudioPlayers()
+        {
+            Plugin.PluginLog.Info($"[AudioPlayer] CleanupAudioPlayers called, {_audioPlayers.Count} players to clean up");
+            lock (_audioLock)
+            {
+                foreach (var player in _audioPlayers.Values)
+                {
+                    player.Dispose();
+                }
+                _audioPlayers.Clear();
+                _audioDownloading.Clear();
+            }
+            Plugin.PluginLog.Info($"[AudioPlayer] CleanupAudioPlayers complete");
+        }
+
         public class LoaderTweenState
         {
             public float TweenedValue;
@@ -612,6 +1506,9 @@ namespace AbsoluteRP
             var imgRegex = new Regex(@"<(img|image)>(.*?)</\1>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var colorRegex = new Regex(@"<color\s+hex\s*=\s*([A-Fa-f0-9]{6})\s*>(.*?)</color>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var urlRegex = new Regex(@"<url>(.*?)</url>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
+            // Bare URL regex - matches http/https URLs not wrapped in tags
+            // Uses negative lookbehind to skip URLs after > (inside tags)
+            var bareUrlRegex = new Regex(@"(?<!>)(https?://[^\s<>""]+)", RegexOptions.IgnoreCase);
             var tooltipRegex = new Regex(@"<tooltip>(.*?)</tooltip>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var boldRegex = new Regex(@"<b>(.*?)</b>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var italicRegex = new Regex(@"<i>(.*?)</i>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
@@ -636,6 +1533,7 @@ namespace AbsoluteRP
                 var imgMatch = imgRegex.Match(text, idx);
                 var colorMatch = colorRegex.Match(text, idx);
                 var urlMatch = urlRegex.Match(text, idx);
+                var bareUrlMatch = bareUrlRegex.Match(text, idx);
                 var tooltipMatch = tooltipRegex.Match(text, idx);
                 var boldMatch = boldRegex.Match(text, idx);
                 var italicMatch = italicRegex.Match(text, idx);
@@ -650,6 +1548,8 @@ namespace AbsoluteRP
                 if (imgMatch.Success && imgMatch.Index < nextTagIdx) { nextTagIdx = imgMatch.Index; nextType = "img"; nextMatch = imgMatch; }
                 if (colorMatch.Success && colorMatch.Index < nextTagIdx) { nextTagIdx = colorMatch.Index; nextType = "color"; nextMatch = colorMatch; }
                 if (urlMatch.Success && urlMatch.Index < nextTagIdx) { nextTagIdx = urlMatch.Index; nextType = "url"; nextMatch = urlMatch; }
+                // Bare URLs should be detected but only if they appear before a <url> tag (avoid double-matching)
+                if (bareUrlMatch.Success && bareUrlMatch.Index < nextTagIdx) { nextTagIdx = bareUrlMatch.Index; nextType = "bareurl"; nextMatch = bareUrlMatch; }
                 if (tooltipMatch.Success && tooltipMatch.Index < nextTagIdx) { nextTagIdx = tooltipMatch.Index; nextType = "tooltip"; nextMatch = tooltipMatch; }
                 if (boldMatch.Success && boldMatch.Index < nextTagIdx) { nextTagIdx = boldMatch.Index; nextType = "bold"; nextMatch = boldMatch; }
                 if (italicMatch.Success && italicMatch.Index < nextTagIdx) { nextTagIdx = italicMatch.Index; nextType = "italic"; nextMatch = italicMatch; }
@@ -681,6 +1581,7 @@ namespace AbsoluteRP
                         var imgMatch2 = imgRegex.Match(scaleContent, scaleIdx);
                         var colorMatch2 = colorRegex.Match(scaleContent, scaleIdx);
                         var urlMatch2 = urlRegex.Match(scaleContent, scaleIdx);
+                        var bareUrlMatch2 = bareUrlRegex.Match(scaleContent, scaleIdx);
                         var tooltipMatch2 = tooltipRegex.Match(scaleContent, scaleIdx);
                         var boldMatch2 = boldRegex.Match(scaleContent, scaleIdx);
                         var italicMatch2 = italicRegex.Match(scaleContent, scaleIdx);
@@ -693,6 +1594,7 @@ namespace AbsoluteRP
                         if (imgMatch2.Success && imgMatch2.Index < nextTagIdx2) { nextTagIdx2 = imgMatch2.Index; nextType2 = "img"; nextMatch2 = imgMatch2; }
                         if (colorMatch2.Success && colorMatch2.Index < nextTagIdx2) { nextTagIdx2 = colorMatch2.Index; nextType2 = "color"; nextMatch2 = colorMatch2; }
                         if (urlMatch2.Success && urlMatch2.Index < nextTagIdx2) { nextTagIdx2 = urlMatch2.Index; nextType2 = "url"; nextMatch2 = urlMatch2; }
+                        if (bareUrlMatch2.Success && bareUrlMatch2.Index < nextTagIdx2) { nextTagIdx2 = bareUrlMatch2.Index; nextType2 = "bareurl"; nextMatch2 = bareUrlMatch2; }
                         if (tooltipMatch2.Success && tooltipMatch2.Index < nextTagIdx2) { nextTagIdx2 = tooltipMatch2.Index; nextType2 = "tooltip"; nextMatch2 = tooltipMatch2; }
                         if (boldMatch2.Success && boldMatch2.Index < nextTagIdx2) { nextTagIdx2 = boldMatch2.Index; nextType2 = "bold"; nextMatch2 = boldMatch2; }
                         if (italicMatch2.Success && italicMatch2.Index < nextTagIdx2) { nextTagIdx2 = italicMatch2.Index; nextType2 = "italic"; nextMatch2 = italicMatch2; }
@@ -725,6 +1627,13 @@ namespace AbsoluteRP
                         }
                         else if (nextType2 == "url")
                         {
+                            string urlContent = nextMatch2.Groups[1].Value;
+                            segments.Add(("url", urlContent, scale, null, urlContent));
+                            scaleIdx = nextMatch2.Index + nextMatch2.Length;
+                        }
+                        else if (nextType2 == "bareurl")
+                        {
+                            // Bare URL without <url> tags
                             string urlContent = nextMatch2.Groups[1].Value;
                             segments.Add(("url", urlContent, scale, null, urlContent));
                             scaleIdx = nextMatch2.Index + nextMatch2.Length;
@@ -774,6 +1683,13 @@ namespace AbsoluteRP
                 }
                 else if (nextType == "url")
                 {
+                    string urlContent = nextMatch.Groups[1].Value;
+                    segments.Add(("url", urlContent, 1.0f, null, urlContent));
+                    idx = nextMatch.Index + nextMatch.Length;
+                }
+                else if (nextType == "bareurl")
+                {
+                    // Bare URL without <url> tags - treat the same as tagged URL
                     string urlContent = nextMatch.Groups[1].Value;
                     segments.Add(("url", urlContent, 1.0f, null, urlContent));
                     idx = nextMatch.Index + nextMatch.Length;
@@ -1044,17 +1960,188 @@ namespace AbsoluteRP
 
                 else if (seg.type == "url" && url && seg.url != null)
                 {
-                    string wrapped = WrapTextToFit(seg.content, wrapWidth);
-                    foreach (var line in wrapped.Split('\n'))
+                    // Check if this is a YouTube URL
+                    if (TryGetYoutubeVideoId(seg.url, out string videoId))
                     {
-                        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.2f, 0.5f, 1f, 1f));
-                        ImGui.Text(line);
-                        ImGui.PopStyleColor();
+                        // Render YouTube video embed
+                        RenderYoutubeEmbed(seg.url, videoId, wrapWidth > 0 ? wrapWidth : 320f);
+                    }
+                    // Check if this is an audio URL
+                    else if (IsAudioUrl(seg.url))
+                    {
+                        // Render audio player embed
+                        RenderAudioEmbed(seg.url, wrapWidth > 0 ? wrapWidth : 320f);
+                    }
+                    // Check if this is an image URL (in case it wasn't wrapped in <img> tags)
+                    else if (IsImageUrl(seg.url) && image)
+                    {
+                        // Render as image - reuse the same image rendering logic
+                        string imgUrl = seg.url;
+                        float imageScale = 1.0f;
 
-                        if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                        IDalamudTextureWrap texture = null;
+                        bool textureValid = false;
+                        bool isLoading = false;
+                        try
                         {
-                            Misc.LoadUrl = true;
-                            Misc.UrlToLoad = seg.url;
+                            lock (_imageCacheLock)
+                            {
+                                if (_imageCache.TryGetValue(imgUrl, out texture) && texture != null)
+                                {
+                                    var handle = texture.Handle;
+                                    textureValid = handle != default && texture.Width > 0 && texture.Height > 0;
+                                }
+                                isLoading = _imagesLoading.Contains(imgUrl);
+                            }
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            textureValid = false;
+                        }
+
+                        if (textureValid && texture != null)
+                        {
+                            Vector2 imgSize = new Vector2(texture.Width, texture.Height) * imageScale;
+
+                            // Limit image width for chat context
+                            if (limitImageWidth)
+                            {
+                                float maxWidth = wrapWidth * 0.65f;
+                                float maxHeight = wrapHeight * 0.5f;
+                                if (imgSize.X > 0 && imgSize.Y > 0)
+                                {
+                                    float widthScale = imgSize.X > maxWidth ? maxWidth / imgSize.X : 1.0f;
+                                    float heightScale = imgSize.Y > maxHeight ? maxHeight / imgSize.Y : 1.0f;
+                                    float finalScale = Math.Min(widthScale, heightScale);
+                                    imgSize *= finalScale;
+                                }
+                            }
+                            else
+                            {
+                                float maxWidth = wrapWidth;
+                                if (imgSize.X > maxWidth && imgSize.X > 0)
+                                {
+                                    float scaleDown = maxWidth / imgSize.X;
+                                    imgSize *= scaleDown;
+                                }
+                            }
+
+                            imgSize.X = Math.Max(imgSize.X, minImageSize);
+                            imgSize.Y = Math.Max(imgSize.Y, minImageSize);
+
+                            if (imgSize.X > 0 && imgSize.Y > 0)
+                            {
+                                try
+                                {
+                                    var handle = texture.Handle;
+                                    if (handle != default)
+                                    {
+                                        ImGui.Image(handle, imgSize);
+
+                                        if (limitImageWidth && ImGui.IsItemHovered())
+                                        {
+                                            ImGui.SetTooltip("Click to preview full image");
+                                            if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                                            {
+                                                Windows.Ect.ImagePreview.PreviewImage = texture;
+                                                Windows.Ect.ImagePreview.width = texture.Width;
+                                                Windows.Ect.ImagePreview.height = texture.Height;
+                                                Windows.Ect.ImagePreview.WindowOpen = true;
+                                                Plugin.plugin.OpenImagePreview();
+                                            }
+                                        }
+                                    }
+                                }
+                                catch { }
+                            }
+                        }
+                        else if (!isLoading)
+                        {
+                            lock (_imageCacheLock)
+                            {
+                                if (!_imagesLoading.Contains(imgUrl))
+                                {
+                                    _imagesLoading.Add(imgUrl);
+                                    // Fire-and-forget image loading
+                                    async void LoadImageForUrlSegment(string loadUrl)
+                                    {
+                                        try
+                                        {
+                                            using (var webClient = new System.Net.WebClient())
+                                            {
+                                                var imageBytes = await webClient.DownloadDataTaskAsync(loadUrl);
+                                                var tex = await Plugin.TextureProvider.CreateFromImageAsync(imageBytes);
+                                                lock (_imageCacheLock)
+                                                {
+                                                    if (tex != null && tex.Handle != default && tex.Width > 0 && tex.Height > 0)
+                                                        _imageCache[loadUrl] = tex;
+                                                    else
+                                                        _imageCache[loadUrl] = null;
+                                                }
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            lock (_imageCacheLock) { _imageCache[loadUrl] = null; }
+                                        }
+                                        finally
+                                        {
+                                            lock (_imageCacheLock) { _imagesLoading.Remove(loadUrl); }
+                                        }
+                                    }
+                                    LoadImageForUrlSegment(imgUrl);
+                                }
+                            }
+                            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "[Loading image...]");
+                        }
+                        else
+                        {
+                            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "[Loading image...]");
+                        }
+                    }
+                    else
+                    {
+                        // Regular URL - render as clickable link with visual feedback
+                        string wrapped = WrapTextToFit(seg.content, wrapWidth);
+                        foreach (var line in wrapped.Split('\n'))
+                        {
+                            var isHovered = false;
+
+                            // Blue text for links
+                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.2f, 0.5f, 1f, 1f));
+                            ImGui.Text(line);
+                            ImGui.PopStyleColor();
+
+                            isHovered = ImGui.IsItemHovered();
+
+                            // Draw underline (always visible for links, brighter when hovered)
+                            var min = ImGui.GetItemRectMin();
+                            var max = ImGui.GetItemRectMax();
+                            var drawList = ImGui.GetWindowDrawList();
+                            var underlineColor = isHovered
+                                ? ImGui.GetColorU32(new Vector4(0.4f, 0.7f, 1f, 1f))  // Brighter blue when hovered
+                                : ImGui.GetColorU32(new Vector4(0.2f, 0.5f, 1f, 0.5f)); // Dimmer underline normally
+                            drawList.AddLine(
+                                new Vector2(min.X, max.Y),
+                                new Vector2(max.X, max.Y),
+                                underlineColor,
+                                1.0f);
+
+                            // Show tooltip with full URL on hover
+                            if (isHovered)
+                            {
+                                ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                                ImGui.BeginTooltip();
+                                ImGui.Text(seg.url);
+                                ImGui.EndTooltip();
+
+                                // Handle click
+                                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                                {
+                                    Misc.LoadUrl = true;
+                                    Misc.UrlToLoad = seg.url;
+                                }
+                            }
                         }
                     }
                 }

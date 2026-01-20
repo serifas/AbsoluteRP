@@ -61,5 +61,42 @@ namespace AbsoluteRP.Defines
             ("Ban", "Ban this user, this action is perminant and no appeal can be made."),
         };
     }
-  
+
+    /// <summary>
+    /// Data structure for importing account data from the website.
+    /// </summary>
+    public class WebExportData
+    {
+        public string exportType { get; set; } = string.Empty;
+        public int exportVersion { get; set; }
+        public string exportDate { get; set; } = string.Empty;
+        public WebExportAccount account { get; set; } = new WebExportAccount();
+        public List<WebExportCharacter> characters { get; set; } = new List<WebExportCharacter>();
+    }
+
+    public class WebExportAccount
+    {
+        public string accountKey { get; set; } = string.Empty;
+        public string accountName { get; set; } = string.Empty;
+    }
+
+    public class WebExportCharacter
+    {
+        public string characterName { get; set; } = string.Empty;
+        public string characterWorld { get; set; } = string.Empty;
+        public string characterKey { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Data structure for exporting plugin data to the website.
+    /// </summary>
+    public class PluginExportData
+    {
+        public string exportType { get; set; } = "AbsoluteRP_PluginExport";
+        public int exportVersion { get; set; } = 1;
+        public string exportDate { get; set; } = string.Empty;
+        public string accountKey { get; set; } = string.Empty;
+        public string accountName { get; set; } = string.Empty;
+        public List<WebExportCharacter> characters { get; set; } = new List<WebExportCharacter>();
+    }
 }

@@ -131,6 +131,8 @@ namespace AbsoluteRP.Windows.Listings
 
         public override void OnClose()
         {
+            // Stop and dispose all audio players when closing the window
+            Misc.CleanupAudioPlayers();
             // Clean up group resources when window is closed
             GroupsData.ResetState();
             base.OnClose();

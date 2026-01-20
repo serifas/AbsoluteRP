@@ -39,6 +39,9 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
         // Message cache per channel
         private Dictionary<int, List<GroupChatMessage>> channelMessageCache = new Dictionary<int, List<GroupChatMessage>>();
 
+        // Track window open state for audio pause
+        private bool wasOpen = false;
+
         // Edit channel state
         private bool showEditChannelPopup = false;
         private GroupChannel channelBeingEdited = null;
@@ -66,8 +69,18 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
         }
 
+        public override void OnClose()
+        {
+            // Stop and dispose all audio players when closing the window
+            Misc.CleanupAudioPlayers();
+            base.OnClose();
+        }
+
         public void Dispose()
         {
+            // Stop and dispose all audio players
+            Misc.CleanupAudioPlayers();
+
             channelMessageCache.Clear();
             if (CurrentInstance == this)
                 CurrentInstance = null;
@@ -77,6 +90,17 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
         {
             currentGroup = group;
             WindowName = $"{group.name} - Group Chat###GroupChat_{group.groupID}";
+        }
+
+        public override void PreDraw()
+        {
+            // Check if window was just closed (IsOpen changed from true to false)
+            if (wasOpen && !IsOpen)
+            {
+                Misc.PauseAllAudio();
+            }
+            wasOpen = IsOpen;
+            base.PreDraw();
         }
 
         public override void Draw()
@@ -389,7 +413,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 ImGui.TextDisabled("(edited)");
             }
 
-            // Message content
+            // Message content - RenderHtmlElements now handles YouTube URLs automatically
             Misc.RenderHtmlElements(message.messageContent ?? string.Empty, true, true, true, false, limitImageWidth: true);
 
             ImGui.EndGroup();
@@ -558,8 +582,10 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             if (string.IsNullOrWhiteSpace(messageInput))
                 return;
 
-            // Process message to wrap image URLs in <img> tags
+            // Process message to wrap URLs in appropriate tags
+            // First wrap image URLs in <img> tags, then wrap remaining URLs in <url> tags
             string processedMessage = WrapImageUrls(messageInput);
+            processedMessage = WrapUrls(processedMessage);
 
             if (editingMessage != null)
             {
@@ -598,18 +624,34 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
         }
 
         /// <summary>
-        /// Wraps image URLs (http/https containing .jpg, .jpeg, .png, .gif, .webp) in img tags
+        /// Wraps image URLs (http/https containing .jpg, .jpeg, .png, .gif, .webp, .bmp, .svg, .tiff, .ico) in img tags
         /// Handles URLs with query parameters like image.png?size=large
+        /// Also handles URLs from common image hosting services
         /// </summary>
         private string WrapImageUrls(string message)
         {
-            // Regex to match URLs that contain image extensions anywhere (including with query params)
-            // Matches URLs not already wrapped in <img> tags
+            // First, handle URLs that are already wrapped - don't modify them
+            // Then match image URLs by extension or common image hosting patterns
             var imageUrlPattern = new System.Text.RegularExpressions.Regex(
-                @"(?<!<img>)(https?://[^\s<>""]*\.(?:jpg|jpeg|png|gif|webp)(?:[^\s<>""]*)?)(?!</img>)",
+                @"(?<!<img>|<url>)(https?://[^\s<>""]*?(?:\.(?:jpg|jpeg|png|gif|webp|bmp|svg|tiff|ico)|/(?:i\.imgur\.com|media\.discordapp\.net|cdn\.discordapp\.com|pbs\.twimg\.com|i\.redd\.it))[^\s<>""]*)(?!</img>|</url>)",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             return imageUrlPattern.Replace(message, "<img>$1</img>");
+        }
+
+        /// <summary>
+        /// Wraps non-image URLs in url tags for clickable links and YouTube embeds
+        /// Skips URLs already wrapped in img or url tags
+        /// </summary>
+        private string WrapUrls(string message)
+        {
+            // Match URLs not already wrapped in <img> or <url> tags
+            // This handles YouTube links, regular links, etc.
+            var urlPattern = new System.Text.RegularExpressions.Regex(
+                @"(?<!<img>|<url>)(https?://[^\s<>""]+)(?!</img>|</url>)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            return urlPattern.Replace(message, "<url>$1</url>");
         }
 
         private void StartEditingMessage(GroupChatMessage message)

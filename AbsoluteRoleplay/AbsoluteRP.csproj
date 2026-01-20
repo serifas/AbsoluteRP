@@ -9,6 +9,7 @@
         <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
         <IsPackable>true</IsPackable>
         <TargetFramework>net10.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
         <ImplicitUsings>enable</ImplicitUsings>
         <Platforms>x64</Platforms>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
@@ -28,9 +29,14 @@
         <None Remove="client\**" />
     </ItemGroup>
 
+    <PropertyGroup>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
     <!-- Explicit dependencies -->
     <ItemGroup>
         <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
         <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
         <PackageReference Include="K4os.Compression.LZ4.Legacy" Version="1.3.8" />
         <PackageReference Include="MessagePack" Version="3.1.4" />
@@ -40,6 +46,7 @@
         <PackageReference Include="NReco.Logging.File" Version="1.3.1" />
         <PackageReference Include="System.Drawing.Common" Version="10.0.1" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+        <PackageReference Include="NAudio" Version="2.2.1" />
     </ItemGroup>
 
     <ItemGroup>

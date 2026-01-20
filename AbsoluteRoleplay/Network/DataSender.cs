@@ -2687,7 +2687,7 @@ buffer.WriteFloat(emptyElement.color.W);
             }
         }
 
-        internal static async void RequestJoinGroup(Character character, int groupID)
+        internal static async void RequestJoinGroup(Character character, int groupID, string message = "")
         {
             if (ClientTCP.IsConnected())
             {
@@ -2699,6 +2699,7 @@ buffer.WriteFloat(emptyElement.color.W);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
                         buffer.WriteString(character.characterKey);
                         buffer.WriteInt(groupID);
+                        buffer.WriteString(message ?? string.Empty);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }

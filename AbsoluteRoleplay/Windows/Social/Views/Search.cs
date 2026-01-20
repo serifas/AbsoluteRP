@@ -79,12 +79,14 @@ namespace AbsoluteRP.Windows.Social.Views
             }
 
 
-            using (ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
-            {
-                ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
-                ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
+            using var table = ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg);
+            if (!table)
+                return;
 
-                foreach (var listing in SocialWindow.listings.Where(l => l.type == type))
+            ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
+            ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
+
+            foreach (var listing in SocialWindow.listings.Where(l => l.type == type))
                 {
                     ImGui.TableNextRow();
                     ImGui.TableSetColumnIndex(0);
@@ -109,7 +111,6 @@ namespace AbsoluteRP.Windows.Social.Views
                     ImGui.TableSetColumnIndex(1);
                     //description here
                 }
-            }
         }
         public static void DrawPageCountSelection()
         {

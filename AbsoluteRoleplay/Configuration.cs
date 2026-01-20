@@ -27,6 +27,7 @@ public class Configuration : IPluginConfiguration
     //Config options
     public bool showKofi { get; set; } = true;
     public bool showDisc { get; set; } = true;
+    //public bool showWeb { get; set; } = true;
     public bool showPatreon { get; set; } = true;
     public bool tooltip_DutyDisabled { get; set; } = true;
     public bool tooltip_PvPDisabled { get; set; } = true;

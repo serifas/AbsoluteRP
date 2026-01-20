@@ -15,6 +15,7 @@ namespace AbsoluteRP.Windows
         public static bool showKofi;
         public static bool showPatreon;
         public static bool showDisc;
+        public static bool showWeb;
         public Configuration Configuration;
         public static FileDialogManager _fileDialogManager; //for avatars only at the moment
         public static bool autoLogIn;
@@ -39,6 +40,7 @@ namespace AbsoluteRP.Windows
             showKofi = Plugin.plugin.Configuration.showKofi;
             showPatreon = Plugin.plugin.Configuration.showPatreon;
             showDisc = Plugin.plugin.Configuration.showDisc;
+         //   showWeb = Plugin.plugin.Configuration.showWeb;
             autoLogin = Plugin.plugin.Configuration.autoLogin;
            // showCompass = Plugin.plugin.Configuration.showCompass;
             _fileDialogManager = new FileDialogManager();
@@ -93,6 +95,12 @@ namespace AbsoluteRP.Windows
                         Plugin.plugin.Configuration.showDisc = showDisc;
                         Plugin.plugin.Configuration.Save();
                     }
+                /*    if (ImGui.Checkbox("Show Website Button.", ref showWeb))
+                    {
+                        Plugin.plugin.Configuration.showWeb = showWeb;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                */
                     //DrawAlertOptions();
                     ImGui.EndTabItem();
                 }

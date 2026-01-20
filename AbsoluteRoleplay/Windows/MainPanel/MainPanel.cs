@@ -1,14 +1,19 @@
+using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.NavLayouts;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Utility;
 using Networking;
 using System;
+using System.IO;
+using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 namespace AbsoluteRP.Windows.MainPanel;
 
 public class MainPanel : Window, IDisposable
@@ -19,6 +24,9 @@ public class MainPanel : Window, IDisposable
     private bool openTagPopup = false;
     private bool showMainPanel = false; // Control main panel visibility
     private string tempTagName = string.Empty;
+    private static FileDialogManager _fileDialogManager = new FileDialogManager();
+    private string importStatus = string.Empty;
+    private Vector4 importStatusColor = new Vector4(1, 1, 1, 1);
     private int selectedNavIndex = 0;
     private Func<bool>[] navButtons;
     public static bool viewProfile, viewSystems, viewEvents, viewConnections, viewListings;
@@ -191,6 +199,52 @@ public class MainPanel : Window, IDisposable
                     Plugin.plugin.ToggleViewLikesWindow();
                 }
 
+               /* if (ImGui.Button("Export for Website", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                {
+                    _fileDialogManager.SaveFileDialog("Export Account Data", "JSON{.json}",
+                        $"AbsoluteRP_Plugin_{Plugin.plugin.Configuration.account.accountName}.json", ".json",
+                        (success, filePath) =>
+                        {
+                            if (!success || string.IsNullOrEmpty(filePath))
+                                return;
+
+                            try
+                            {
+                                var exportData = new PluginExportData
+                                {
+                                    exportType = "AbsoluteRP_PluginExport",
+                                    exportVersion = 1,
+                                    exportDate = DateTime.UtcNow.ToString("o"),
+                                    accountKey = Plugin.plugin.Configuration.account.accountKey,
+                                    accountName = Plugin.plugin.Configuration.account.accountName,
+                                    characters = Plugin.plugin.Configuration.characters.Select(c => new WebExportCharacter
+                                    {
+                                        characterName = c.characterName,
+                                        characterWorld = c.characterWorld,
+                                        characterKey = c.characterKey
+                                    }).ToList()
+                                };
+
+                                var jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+                                var jsonContent = JsonSerializer.Serialize(exportData, jsonOptions);
+                                File.WriteAllText(filePath, jsonContent);
+
+                                status = "Account data exported successfully!";
+                                statusColor = new Vector4(0.3f, 1, 0.3f, 1);
+                            }
+                            catch (Exception ex)
+                            {
+                                status = $"Export failed: {ex.Message}";
+                                statusColor = new Vector4(1, 0.3f, 0.3f, 1);
+                                Plugin.PluginLog.Error($"Export account error: {ex}");
+                            }
+                        }, null, Plugin.plugin.Configuration.AlwaysOpenDefaultImport);
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Export account data to import on the website");
+                }*/
+
                 if (ImGui.Button("Options", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
                 {
                     Plugin.plugin.OpenOptionsWindow();
@@ -202,6 +256,92 @@ public class MainPanel : Window, IDisposable
                 {
                     openTagPopup = true;
                     ImGui.OpenPopup("Register Account");
+                }
+
+                // Import Account button - below Get Started
+                if (ImGui.Button("Import Account", new Vector2(buttonWidth * 2.14f, buttonHeight / 2f)))
+                {
+                    _fileDialogManager.OpenFileDialog("Import Account Data", "JSON{.json}", (success, files) =>
+                    {
+                        if (!success || files.Count == 0)
+                            return;
+
+                        try
+                        {
+                            var filePath = files[0].ToString();
+                            if (!File.Exists(filePath))
+                            {
+                                importStatus = "File not found.";
+                                importStatusColor = new Vector4(1, 0.3f, 0.3f, 1);
+                                return;
+                            }
+
+                            var jsonContent = File.ReadAllText(filePath);
+                            var importData = JsonSerializer.Deserialize<WebExportData>(jsonContent);
+
+                            if (importData == null || importData.exportType != "AbsoluteRP_WebExport")
+                            {
+                                importStatus = "Invalid file format.";
+                                importStatusColor = new Vector4(1, 0.3f, 0.3f, 1);
+                                return;
+                            }
+
+                            // Apply the imported data to the configuration
+                            Plugin.plugin.Configuration.account.accountKey = importData.account.accountKey;
+                            Plugin.plugin.Configuration.account.accountName = importData.account.accountName;
+
+                            // Import characters
+                            if (importData.characters != null)
+                            {
+                                foreach (var importChar in importData.characters)
+                                {
+                                    // Check if character already exists
+                                    var existingChar = Plugin.plugin.Configuration.characters.FirstOrDefault(
+                                        c => c.characterName == importChar.characterName &&
+                                             c.characterWorld == importChar.characterWorld);
+
+                                    if (existingChar == null)
+                                    {
+                                        Plugin.plugin.Configuration.characters.Add(new Character
+                                        {
+                                            characterName = importChar.characterName,
+                                            characterWorld = importChar.characterWorld,
+                                            characterKey = importChar.characterKey
+                                        });
+                                    }
+                                    else
+                                    {
+                                        // Update existing character key
+                                        existingChar.characterKey = importChar.characterKey;
+                                    }
+                                }
+                            }
+
+                            Plugin.plugin.Configuration.Save();
+
+                            importStatus = "Account imported successfully!";
+                            importStatusColor = new Vector4(0.3f, 1, 0.3f, 1);
+
+                            // Attempt to login with the new credentials
+                            DataSender.SendLogin();
+                        }
+                        catch (Exception ex)
+                        {
+                            importStatus = $"Import failed: {ex.Message}";
+                            importStatusColor = new Vector4(1, 0.3f, 0.3f, 1);
+                            Plugin.PluginLog.Error($"Import account error: {ex}");
+                        }
+                    }, 1, null, Plugin.plugin.Configuration.AlwaysOpenDefaultImport);
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.SetTooltip("Import account data exported from the website");
+                }
+
+                // Show import status message
+                if (!string.IsNullOrEmpty(importStatus))
+                {
+                    ImGui.TextColored(importStatusColor, importStatus);
                 }
             }
             // Popup logic
@@ -234,6 +374,9 @@ public class MainPanel : Window, IDisposable
                     ImGui.EndPopup();
                 }
             }
+
+            // Draw file dialog
+            _fileDialogManager.Draw();
 
 
 

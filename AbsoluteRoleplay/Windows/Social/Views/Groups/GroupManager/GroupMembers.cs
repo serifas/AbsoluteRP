@@ -71,63 +71,75 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                     return;
                 }
 
-                using (ImRaii.Table($"GroupMembers##GroupMembers{group.groupID}", 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg))
+                // IMPORTANT: ImRaii.Table returns a disposable that wraps whether the table was created.
+                // We must check if the table is valid before calling table operations to prevent crashes.
+                using var table = ImRaii.Table($"GroupMembers##GroupMembers{group.groupID}", 3, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg);
+
+                // If table creation failed, don't try to use table operations
+                if (!table)
                 {
-                    ImGui.TableSetupColumn($"Member##MemberDetails{group.groupID}", ImGuiTableColumnFlags.WidthFixed, 200);
-                    ImGui.TableSetupColumn($"Rank##MemberRank{group.groupID}", ImGuiTableColumnFlags.WidthFixed, 150);
-                    ImGui.TableSetupColumn($"Controls##MemberControls{group.groupID}", ImGuiTableColumnFlags.WidthStretch);
+                    Plugin.PluginLog.Debug("[GroupMembers] Table creation failed, skipping table rendering.");
+                    // Still render dialogs even if table failed
+                    RenderAssignRankDialog(group);
+                    RenderKickConfirmDialog(group);
+                    RenderBanConfirmDialog(group);
+                    return;
+                }
 
-                    ImGui.TableHeadersRow();
+                ImGui.TableSetupColumn($"Member##MemberDetails{group.groupID}", ImGuiTableColumnFlags.WidthFixed, 200);
+                ImGui.TableSetupColumn($"Rank##MemberRank{group.groupID}", ImGuiTableColumnFlags.WidthFixed, 150);
+                ImGui.TableSetupColumn($"Controls##MemberControls{group.groupID}", ImGuiTableColumnFlags.WidthStretch);
 
-                    // Guard against null members list
-                    foreach (GroupMember member in group.members ?? Enumerable.Empty<GroupMember>())
+                ImGui.TableHeadersRow();
+
+                // Guard against null members list
+                foreach (GroupMember member in group.members ?? Enumerable.Empty<GroupMember>())
+                {
+                    if (member == null) continue;
+
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+
+                    // Render avatar using centralized texture cache for safety
+                    RenderMemberAvatar(member, new Vector2(100, 100));
+
+                    ImGui.Text(member.name ?? string.Empty);
+
+                    if (member.owner)
                     {
-                        if (member == null) continue;
+                        ImGui.TextColored(new Vector4(1f, 0.84f, 0f, 1f), "(Owner)");
+                    }
 
-                        ImGui.TableNextRow();
-                        ImGui.TableSetColumnIndex(0);
+                    ImGui.TableSetColumnIndex(1);
 
-                        // Render avatar using centralized texture cache for safety
-                        RenderMemberAvatar(member, new Vector2(100, 100));
-
-                        ImGui.Text(member.name ?? string.Empty);
-
-                        if (member.owner)
+                    // Display all ranks (multiple ranks support)
+                    if (member.ranks != null && member.ranks.Count > 0)
+                    {
+                        // Sort by hierarchy (highest first) and display each rank
+                        var sortedRanks = member.ranks.OrderByDescending(r => r.hierarchy).ToList();
+                        for (int i = 0; i < sortedRanks.Count; i++)
                         {
-                            ImGui.TextColored(new Vector4(1f, 0.84f, 0f, 1f), "(Owner)");
-                        }
-
-                        ImGui.TableSetColumnIndex(1);
-
-                        // Display all ranks (multiple ranks support)
-                        if (member.ranks != null && member.ranks.Count > 0)
-                        {
-                            // Sort by hierarchy (highest first) and display each rank
-                            var sortedRanks = member.ranks.OrderByDescending(r => r.hierarchy).ToList();
-                            for (int i = 0; i < sortedRanks.Count; i++)
+                            var r = sortedRanks[i];
+                            if (r != null && !string.IsNullOrEmpty(r.name))
                             {
-                                var r = sortedRanks[i];
-                                if (r != null && !string.IsNullOrEmpty(r.name))
-                                {
-                                    ImGui.Text(r.name);
-                                }
+                                ImGui.Text(r.name);
                             }
                         }
-                        else if (member.rank != null && !string.IsNullOrEmpty(member.rank.name))
-                        {
-                            // Fallback to legacy single rank
-                            ImGui.Text(member.rank.name);
-                        }
-                        else
-                        {
-                            ImGui.TextDisabled("No Rank");
-                        }
-
-                        ImGui.TableSetColumnIndex(2);
-
-                        // Member management controls
-                        RenderMemberControls(group, member);
                     }
+                    else if (member.rank != null && !string.IsNullOrEmpty(member.rank.name))
+                    {
+                        // Fallback to legacy single rank
+                        ImGui.Text(member.rank.name);
+                    }
+                    else
+                    {
+                        ImGui.TextDisabled("No Rank");
+                    }
+
+                    ImGui.TableSetColumnIndex(2);
+
+                    // Member management controls
+                    RenderMemberControls(group, member);
                 }
 
                 // Render dialogs

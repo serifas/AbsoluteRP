@@ -662,7 +662,18 @@ namespace AbsoluteRP.Windows.Social.Views
                 LoadGroup(selectedGroup);
             }
 
-            createGroup = CustomLayouts.TransparentImageButton(UI.UICommonImage(UI.CommonImageTypes.create).Handle, new Vector2(buttonSize, buttonSize), "Create Group");
+            // Safely get the create button texture - avoid crashing if texture failed to load
+            var createTexture = UI.UICommonImage(UI.CommonImageTypes.create);
+            if (createTexture != null && createTexture.Handle != IntPtr.Zero)
+            {
+                createGroup = CustomLayouts.TransparentImageButton(createTexture.Handle, new Vector2(buttonSize, buttonSize), "Create Group");
+            }
+            else
+            {
+                // Fallback text button if texture unavailable
+                createGroup = ImGui.Button("+", new Vector2(buttonSize, buttonSize));
+                if (ImGui.IsItemHovered()) ImGui.SetTooltip("Create Group");
+            }
             if (createGroup)
             {
                 // open the creation editor and ensure GroupCreation has an edit buffer and file dialog manager
@@ -708,7 +719,19 @@ namespace AbsoluteRP.Windows.Social.Views
                 {
                     ImGui.SameLine();
                     ImGui.SetCursorPosX(ImGui.GetWindowSize().X - ImGui.GetIO().FontGlobalScale * 45);
-                    if (CustomLayouts.TransparentImageButton(UI.UICommonImage(UI.CommonImageTypes.socialGroupSettings).Handle, new Vector2(ImGui.GetIO().FontGlobalScale * 20, ImGui.GetIO().FontGlobalScale * 20)))
+                    // Safely get the settings texture - avoid crashing if texture failed to load
+                    var settingsTexture = UI.UICommonImage(UI.CommonImageTypes.socialGroupSettings);
+                    bool settingsClicked = false;
+                    if (settingsTexture != null && settingsTexture.Handle != IntPtr.Zero)
+                    {
+                        settingsClicked = CustomLayouts.TransparentImageButton(settingsTexture.Handle, new Vector2(ImGui.GetIO().FontGlobalScale * 20, ImGui.GetIO().FontGlobalScale * 20));
+                    }
+                    else
+                    {
+                        // Fallback text button if texture unavailable
+                        settingsClicked = ImGui.Button("S", new Vector2(ImGui.GetIO().FontGlobalScale * 20, ImGui.GetIO().FontGlobalScale * 20));
+                    }
+                    if (settingsClicked)
                     {
                         manageGroup = true;
                     }
@@ -5809,7 +5832,7 @@ namespace AbsoluteRP.Windows.Social.Views
                         // Avatar section
                         ImGui.BeginGroup();
 
-                        if (avatarTexture != null)
+                        if (avatarTexture != null && avatarTexture.Handle != IntPtr.Zero)
                         {
                             ImGui.Image(avatarTexture.Handle, new Vector2(avatarSize, avatarSize));
                         }
@@ -5954,7 +5977,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     {
                         // Logo
                         ImGui.BeginGroup();
-                        if (result.logo != null)
+                        if (result.logo != null && result.logo.Handle != IntPtr.Zero)
                         {
                             ImGui.Image(result.logo.Handle, new Vector2(logoSize, logoSize));
                         }
@@ -6146,7 +6169,7 @@ namespace AbsoluteRP.Windows.Social.Views
                         // Logo section
                         ImGui.BeginGroup();
 
-                        if (logoTexture != null)
+                        if (logoTexture != null && logoTexture.Handle != IntPtr.Zero)
                         {
                             ImGui.Image(logoTexture.Handle, new Vector2(logoSize, logoSize));
                         }

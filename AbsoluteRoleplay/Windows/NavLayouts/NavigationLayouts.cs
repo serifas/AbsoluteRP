@@ -104,25 +104,30 @@ namespace AbsoluteRP.Windows.NavLayouts
             Plugin.plugin.Configuration.showKofi,
             Plugin.plugin.Configuration.showPatreon,
             Plugin.plugin.Configuration.showDisc,
+            //Plugin.plugin.Configuration.showWeb
+
             };
 
             navigation.names = new[]
             {
             "Support me on Ko-Fi",
             "Support me on Patreon",
-            "Join the Discord"
+            "Join the Discord",
+        //    "Absolute Roleplay Website"
             };
             // Define actions for each button
             navigation.actions = new Action[]
             {
             () => {  Util.OpenLink("https://ko-fi.com/absoluteroleplay");},
             () => {  Util.OpenLink("https://patreon.com/AbsoluteRoleplay"); },
-            () => {  Util.OpenLink("https://discord.gg/NnhspF2cSQ"); }
+            () => {  Util.OpenLink("https://discord.gg/NnhspF2cSQ"); },
+         //   () => {  Util.OpenLink("https:"); }
             };
             navigation.textureIDs =  new ImTextureID[] {
             UI.UICommonImage(UI.CommonImageTypes.kofiBtn).Handle,
             UI.UICommonImage(UI.CommonImageTypes.patreonBtn).Handle,
-            UI.UICommonImage(UI.CommonImageTypes.discordBtn).Handle
+            UI.UICommonImage(UI.CommonImageTypes.discordBtn).Handle,
+         //   UI.UICommonImage(UI.CommonImageTypes.websiteBtn).Handle
             };
 
            

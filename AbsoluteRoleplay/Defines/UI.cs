@@ -905,6 +905,7 @@ namespace AbsoluteRP
             socialSearch = 62,
             create = 63,
             socialGroupSettings = 64,
+            websiteBtn = 65,
         }
         public enum ListingCategory
         {
@@ -1021,6 +1022,7 @@ namespace AbsoluteRP
                         CommonImageTypes.discordBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/disc_btn.png"))).Result,
                         CommonImageTypes.kofiBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/kofi_btn.png"))).Result,
                         CommonImageTypes.patreonBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/patreon_btn.png"))).Result,
+                        CommonImageTypes.websiteBtn => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/icon.png"))).Result,
                         CommonImageTypes.blankPictureTab => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/picturetab.png"))).Result,
                         CommonImageTypes.NSFW => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/nsfw.png"))).Result,
                         CommonImageTypes.NSFWTRIGGER => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/galleries/nsfw_trigger.png"))).Result,

@@ -53,6 +53,30 @@ namespace AbsoluteRP.Helpers
         public static string currentCategory = "Items";
         public static string currentStatusCategory = "Buffs";
 
+        // Status icon loading - use actual Status sheet entries instead of arbitrary ID range
+        private static List<uint> statusIconIds = new();
+        private static int statusIconLoadIndex = 0;
+        internal static bool statusIconsLoaded = false;
+        public static bool isLoadingStatusIcons = false;
+        public static Dictionary<uint, string> StatusIdToName = new();
+
+        /// <summary>
+        /// Resets the status icon loading state, allowing icons to be reloaded.
+        /// Call this if you need to refresh the status icon cache.
+        /// </summary>
+        public static void ResetStatusIconLoading()
+        {
+            statusIconIds.Clear();
+            statusIconLoadIndex = 0;
+            statusIconsLoaded = false;
+            isLoadingStatusIcons = false;
+            StatusIdToName.Clear();
+            categorizedStatusIcons["Buffs"].Clear();
+            categorizedStatusIcons["Debuffs"].Clear();
+            statusIconPage = 0;
+            Plugin.PluginLog.Debug("Status icon loading state has been reset.");
+        }
+
         public static void DrawTooltipInfo(IGameObject? mouseOverTarget)
         {
             if (Plugin.plugin.Configuration.tooltip_Enabled && !Plugin.ClientState.IsGPosing)
@@ -283,73 +307,131 @@ namespace AbsoluteRP.Helpers
         }
         
     
+        /// <summary>
+        /// Builds the list of valid Status IDs and their names from the Excel sheet.
+        /// This should be called once before loading icons.
+        /// </summary>
+        public static void BuildStatusIconIdList()
+        {
+            if (statusIconIds.Count > 0)
+                return; // Already built
+
+            statusIconIds.Clear();
+            StatusIdToName.Clear();
+
+            var statusSheet = Plugin.DataManager.Excel.GetSheet<Lumina.Excel.Sheets.Status>();
+            if (statusSheet == null)
+            {
+                Plugin.PluginLog.Debug("Failed to get Status sheet from Excel data.");
+                return;
+            }
+
+            foreach (var status in statusSheet)
+            {
+                // Only add entries with valid icons
+                if (status.Icon > 0)
+                {
+                    statusIconIds.Add(status.RowId);
+
+                    // Get the status name for tooltips/search
+                    string statusName = null;
+                    try
+                    {
+                        var nameProp = status.Name;
+                        var textValueProp = nameProp.GetType().GetProperty("TextValue");
+                        if (textValueProp != null)
+                            statusName = textValueProp.GetValue(nameProp) as string;
+                        if (string.IsNullOrEmpty(statusName))
+                        {
+                            var valueProp = nameProp.GetType().GetProperty("Value");
+                            if (valueProp != null)
+                                statusName = valueProp.GetValue(nameProp) as string;
+                        }
+                        if (string.IsNullOrEmpty(statusName))
+                            statusName = nameProp.ToString();
+                    }
+                    catch
+                    {
+                        statusName = $"Status {status.RowId}";
+                    }
+
+                    if (!string.IsNullOrEmpty(statusName))
+                        StatusIdToName[status.RowId] = statusName;
+                }
+            }
+
+            Plugin.PluginLog.Debug($"Built status icon list with {statusIconIds.Count} valid entries.");
+        }
+
         public static async void LoadStatusIconsLazy(Plugin Plugin)
         {
-            int loadedThisFrame = 0;
+            if (statusIconsLoaded || isLoadingStatusIcons)
+                return;
 
-            while (nextIconToLoad <= maxIconId && loadedThisFrame < iconsLoadedPerFrame)
+            isLoadingStatusIcons = true;
+
+            // Build the list of valid status IDs if not already done
+            if (statusIconIds.Count == 0)
+            {
+                BuildStatusIconIdList();
+            }
+
+            int loadedThisFrame = 0;
+            const int iconsPerFrame = 20; // Increased from 10 for faster loading
+
+            while (statusIconLoadIndex < statusIconIds.Count && loadedThisFrame < iconsPerFrame)
             {
                 try
                 {
-                    // Get the status row
-                    var statusIcon = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Status>()?.GetRow((uint)nextIconToLoad);
+                    var statusRowId = statusIconIds[statusIconLoadIndex];
+                    var statusRow = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Status>()?.GetRow(statusRowId);
 
-                    if (statusIcon != null)
+                    if (statusRow != null)
                     {
-                        var statusIconID = statusIcon.Value.Icon;
+                        var statusIconID = statusRow.Value.Icon;
 
-                        // Ensure that the statusIconID is valid before attempting to load the icon
                         if (statusIconID > 0)
                         {
-                            var icon = Plugin.DataManager.GameData.GetIcon(statusIconID);
-
-                            // Ensure icon is valid and has a file path
-                            if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                            // Check if already loaded to avoid duplicates
+                            var existingIcon = categorizedStatusIcons["Buffs"].FirstOrDefault(x => x.IconId == statusRowId);
+                            if (existingIcon.Texture == null)
                             {
-                                // Log more info to debug potential issues with the icon data
+                                var icon = Plugin.DataManager.GameData.GetIcon(statusIconID);
 
-                                // Load the texture asynchronously
-                                var texture =  await LoadTextureAsync(icon.FilePath);
-
-                                if (texture != null && texture.Width > 0 && texture.Height > 0)
-                                {                                   
-                                    // Add to categorized icons (e.g., Buffs or Debuffs)
-                                    categorizedStatusIcons["Buffs"].Add(((uint)nextIconToLoad, texture));
-                                }
-                                else
+                                if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
                                 {
-                                    Plugin.PluginLog.Debug($"Failed to load texture for status icon {statusIconID}. File path was invalid or texture loading failed.");
+                                    var texture = await LoadTextureAsync(icon.FilePath);
+
+                                    if (texture != null && texture.Width > 0 && texture.Height > 0)
+                                    {
+                                        // Store the Status Row ID (not the icon file ID) for proper lookup later
+                                        categorizedStatusIcons["Buffs"].Add((statusRowId, texture));
+                                    }
                                 }
                             }
-                            else
-                            {
-                                Plugin.PluginLog.Debug($"Icon not found for Status ID {statusIcon.Value.RowId} with Icon ID {statusIconID}. Skipping.");
-                            }
                         }
-                        else
-                        {
-                            Plugin.PluginLog.Debug($"Invalid status icon ID {statusIconID} at Status ID {statusIcon.Value.RowId}. Skipping.");
-                        }
-                    }
-                    else
-                    {
-                        Plugin.PluginLog.Debug($"No valid status row found for icon ID {nextIconToLoad}. Skipping.");
                     }
                 }
                 catch (Exception ex)
                 {
-                    return;
+                    // Log but continue loading other icons
+                    Plugin.PluginLog.Debug($"Error loading status icon at index {statusIconLoadIndex}: {ex.Message}");
                 }
 
-                nextIconToLoad++;
+                statusIconLoadIndex++;
                 loadedThisFrame++;
             }
 
-            if (nextIconToLoad > maxIconId)
+            // Check if all status icons are loaded
+            if (statusIconLoadIndex >= statusIconIds.Count)
             {
-                iconsLoaded = true;
-                isLoadingIcons = false;
-                Plugin.PluginLog.Debug("Finished loading all status icons.");
+                statusIconsLoaded = true;
+                isLoadingStatusIcons = false;
+                Plugin.PluginLog.Debug($"Finished loading all {categorizedStatusIcons["Buffs"].Count} status icons.");
+            }
+            else
+            {
+                isLoadingStatusIcons = false; // Allow next frame to load more
             }
         }
 
@@ -546,40 +628,78 @@ namespace AbsoluteRP.Helpers
                 }
             }
         }
+        public static string statusIconSearchFilter = string.Empty;
+        public static int statusIconPage = 0;
+
         public static void RenderStatusIcons(Plugin Plugin, IconElement icon, trait personality = null)
         {
-            // Begin rendering the tab bar for status categories (you can adjust this as needed)
-            ImGui.Text($"Current Category: {currentStatusCategory}");
+            // Show loading indicator if icons are still loading
+            if (!statusIconsLoaded)
+            {
+                int loaded = categorizedStatusIcons["Buffs"].Count;
+                int total = statusIconIds.Count > 0 ? statusIconIds.Count : 1;
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), $"Loading status icons... ({loaded}/{total})");
+            }
+
+            // Search filter
+            ImGui.InputText("Search Status", ref statusIconSearchFilter, 100);
 
             // Check if the selected category has status icons
             if (!categorizedStatusIcons.ContainsKey(currentStatusCategory) || categorizedStatusIcons[currentStatusCategory].Count == 0)
             {
-                ImGui.Text($"No status icons available for category: {currentStatusCategory}");
+                if (!statusIconsLoaded)
+                {
+                    ImGui.Text("Please wait while icons load...");
+                }
+                else
+                {
+                    ImGui.Text($"No status icons available for category: {currentStatusCategory}");
+                }
                 return;
             }
 
-            // Render status icons for the current category and page
-            var icons = categorizedStatusIcons[currentStatusCategory];
-            int startIndex = currentPage * iconsPerPage;
-            int endIndex = Math.Min(startIndex + iconsPerPage, icons.Count);
+            // Filter icons based on search
+            var allIcons = categorizedStatusIcons[currentStatusCategory];
+            var filteredIcons = allIcons
+                .Where(pair =>
+                    string.IsNullOrEmpty(statusIconSearchFilter) ||
+                    (StatusIdToName.TryGetValue(pair.IconId, out var name) &&
+                     !string.IsNullOrEmpty(name) &&
+                     name.Contains(statusIconSearchFilter, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            // Render status icons for the current page
+            const int iconsPerPageStatus = 100;
+            int startIndex = statusIconPage * iconsPerPageStatus;
+            int endIndex = Math.Min(startIndex + iconsPerPageStatus, filteredIcons.Count);
 
             const int iconsPerRow = 10;
             int count = 0;
             for (int i = startIndex; i < endIndex; i++)
             {
-                var (statusIconId, texture) = icons[i];
+                var (statusIconId, texture) = filteredIcons[i];
 
                 float iconHeight = ImGui.GetIO().FontGlobalScale * texture.Height;
                 float iconWidth = ImGui.GetIO().FontGlobalScale * texture.Width;
-                if(texture != null && texture.Handle != IntPtr.Zero)
+                if (texture != null && texture.Handle != IntPtr.Zero)
                 {
                     ImGui.PushID((int)statusIconId);
 
                     if (ImGui.ImageButton(texture.Handle, new Vector2(iconWidth, iconHeight)))
                     {
-                        selectedStatusIcon = texture; // Handle status icon click
+                        selectedStatusIcon = texture;
                         selectedStatusIconID = (int)statusIconId;
                     }
+
+                    // Show tooltip with status name
+                    if (ImGui.IsItemHovered())
+                    {
+                        if (StatusIdToName.TryGetValue(statusIconId, out var name) && !string.IsNullOrEmpty(name))
+                        {
+                            ImGui.SetTooltip(name);
+                        }
+                    }
+
                     ImGui.PopID();
                 }
 
@@ -590,23 +710,27 @@ namespace AbsoluteRP.Helpers
                 }
             }
 
-            // Pagination controls for status icons
-            if (currentPage > 0 && ImGui.Button("Back"))
+            ImGui.NewLine();
+
+            // Pagination controls
+            ImGui.Separator();
+            if (statusIconPage > 0 && ImGui.Button("Back"))
             {
-                currentPage--;
+                statusIconPage--;
             }
-            if (currentPage > 0)
+            ImGui.SameLine();
+            int totalPages = Math.Max(1, (filteredIcons.Count + iconsPerPageStatus - 1) / iconsPerPageStatus);
+            ImGui.Text($"Page {statusIconPage + 1} / {totalPages} ({filteredIcons.Count} icons)");
+            ImGui.SameLine();
+            if (endIndex < filteredIcons.Count && ImGui.Button("Next"))
             {
-                ImGui.SameLine();
-            }
-            if (endIndex < icons.Count && ImGui.Button("Next"))
-            {
-                currentPage++;
+                statusIconPage++;
             }
 
             // Display the selected status icon, if any
             if (selectedStatusIcon != null)
             {
+                ImGui.Separator();
                 ImGui.Text("Selected Status Icon:");
                 ImGui.SameLine();
                 if (ImGui.Button("Set Icon"))
@@ -618,10 +742,17 @@ namespace AbsoluteRP.Helpers
                         personality.iconID = selectedStatusIconID;
                     }
                 }
-                
+
+                // Show selected icon name
+                if (StatusIdToName.TryGetValue((uint)selectedStatusIconID, out var selectedName))
+                {
+                    ImGui.SameLine();
+                    ImGui.Text($"({selectedName})");
+                }
+
                 float height = ImGui.GetIO().FontGlobalScale * selectedStatusIcon.Height;
                 float width = ImGui.GetIO().FontGlobalScale * selectedStatusIcon.Width;
-                if(selectedStatusIcon != null && selectedStatusIcon.Handle != IntPtr.Zero)
+                if (selectedStatusIcon != null && selectedStatusIcon.Handle != IntPtr.Zero)
                 {
                     ImGui.Image(selectedStatusIcon.Handle, new Vector2(width, height));
                 }

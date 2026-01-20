@@ -14,6 +14,7 @@ using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Game.Command;
 using Dalamud.Game.Gui.ContextMenu;
+using MenuItem = Dalamud.Game.Gui.ContextMenu.MenuItem;
 using Dalamud.Game.Gui.Dtr;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -42,7 +43,7 @@ namespace AbsoluteRP
     public partial class Plugin : IDalamudPlugin
     {
         private bool windowsInitialized = false;
-        private float fetchQuestsInRangeTimer = 0f;
+        private float playersInRangeTimer = 0f;
         private int lastObjectTableCount = -1;
         public static IGameObject? LastMouseOverTarget;
         public float tooltipAlpha;
@@ -109,7 +110,7 @@ namespace AbsoluteRP
         public Configuration Configuration { get; init; }
         public static bool tooltipLoaded = false;
         public static Plugin? Ui { get; private set; }
-        private readonly WindowSystem WindowSystem = new("Absolute Roleplay");
+        internal readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         public OptionsWindow? OptionsWindow { get; private set; }
         public NotesWindow? NotesWindow { get; private set; }
         private ModPanel? ModeratorPanel { get; set; }
@@ -128,6 +129,7 @@ namespace AbsoluteRP
         public static GroupInviteNotification? groupInviteNotification { get; set; }
         private ViewLikesWindow? ViewLikesWindow { get; set; }
         private LikeDetailsWindow? LikeDetailsWindow { get; set; }
+        // YouTubePlayerWindow is a WebView2 Forms window that runs on its own thread
 
         public float BlinkInterval = 0.5f;
         public bool newConnection = false;
@@ -173,6 +175,8 @@ namespace AbsoluteRP
             Plugin.HookProvider.InitializeFromAttributes(this);
             needsAsyncInit = true;
 
+            // Initialize CEF dependency manager for YouTube video playback
+            CefDependencyManager.Initialize();
 
             LoadConnection();
             
@@ -557,7 +561,10 @@ namespace AbsoluteRP
             SocialWindow?.Dispose();
             ModeratorPanel?.Dispose();
             SystemsWindow?.Dispose();
-            Misc.Jupiter?.Dispose(); 
+            YouTubePlayerWindow.ClosePlayer(); // Close WebView2 Forms window if open
+            Misc.CleanupAudioPlayers(); // Stop and dispose all audio players
+            Misc.Jupiter?.Dispose();
+
             foreach (IDalamudTextureWrap texture in UI.commonImageWraps.Values)
             {
                 texture.Dispose();
@@ -632,11 +639,38 @@ namespace AbsoluteRP
         }
 
         private bool avatarTextureSpawned = false;
+        private bool wasSocialWindowOpen = false;
+        private bool wasProfileWindowOpen = false;
+        private bool wasTargetWindowOpen = false;
 
         private void DrawUI()
         {
             try
             {
+                // Check if SocialWindow was just closed and cleanup audio
+                bool isSocialWindowOpen = SocialWindow?.IsOpen ?? false;
+                if (wasSocialWindowOpen && !isSocialWindowOpen)
+                {
+                    Misc.CleanupAudioPlayers();
+                }
+                wasSocialWindowOpen = isSocialWindowOpen;
+
+                // Check if ProfileWindow was just closed and cleanup audio
+                bool isProfileWindowOpen = ProfileWindow?.IsOpen ?? false;
+                if (wasProfileWindowOpen && !isProfileWindowOpen)
+                {
+                    Misc.CleanupAudioPlayers();
+                }
+                wasProfileWindowOpen = isProfileWindowOpen;
+
+                // Check if TargetWindow (TargetProfileWindow) was just closed and cleanup audio
+                bool isTargetWindowOpen = TargetWindow?.IsOpen ?? false;
+                if (wasTargetWindowOpen && !isTargetWindowOpen)
+                {
+                    Misc.CleanupAudioPlayers();
+                }
+                wasTargetWindowOpen = isTargetWindowOpen;
+
                 WindowSystem.Draw();
 
                 PlayerInteractions.DrawCompass();
@@ -774,6 +808,7 @@ namespace AbsoluteRP
                 groupInviteNotification = new GroupInviteNotification();
                 ViewLikesWindow = new ViewLikesWindow(this);
                 LikeDetailsWindow = new LikeDetailsWindow();
+                // YouTubePlayerWindow creates itself when OpenVideo is called
 
                 WindowSystem.AddWindow(OptionsWindow);
                 WindowSystem.AddWindow(MainPanel);
@@ -811,20 +846,14 @@ namespace AbsoluteRP
 
             if (IsOnline())
             {
-                fetchQuestsInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
-                if (fetchQuestsInRangeTimer >= 10f)
+                playersInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+                if (playersInRangeTimer >= 20f)
                 {
-                    if(MainPanel.loggedIn == false)
+                    if(MainPanel.loggedIn == true)
                     {
-                        DataSender.SendLogin();
-                    }
-                    else
-                    {
-                        fetchQuestsInRangeTimer = 0f;         
+                        playersInRangeTimer = 0f;         
                         DataSender.RequestCompassFromList(character, VisiblePlayers());
                         var visible = VisiblePlayers();
-                        // Replace the visible-players handling inside Update(...) with this improved block
-                        fetchQuestsInRangeTimer = 0f;
 
                         var playersInRange = VisiblePlayers();
                         DataSender.RequestCompassFromList(character, playersInRange);

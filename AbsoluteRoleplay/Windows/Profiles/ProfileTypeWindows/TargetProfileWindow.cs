@@ -628,8 +628,18 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
             return profileDataDefault && otherDefaults;
         }
+
+        public override void OnClose()
+        {
+            // Stop and dispose all audio players when closing the window
+            Misc.CleanupAudioPlayers();
+            base.OnClose();
+        }
+
         public void Dispose()
         {
+            // Stop and dispose all audio players
+            Misc.CleanupAudioPlayers();
 
             if (profileData != null)
             {

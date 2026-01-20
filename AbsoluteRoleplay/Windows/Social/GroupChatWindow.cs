@@ -31,6 +31,9 @@ namespace AbsoluteRP.Windows.Social
         // Message cache per channel
         private Dictionary<int, List<GroupChatMessage>> channelMessageCache = new Dictionary<int, List<GroupChatMessage>>();
 
+        // Track window open state for audio pause
+        private bool wasOpen = false;
+
         public GroupChatWindow(Plugin plugin, Group group) : base($"{group.name} - Group Chat###GroupChat_{group.groupID}")
         {
             this.plugin = plugin;
@@ -49,9 +52,19 @@ namespace AbsoluteRP.Windows.Social
             }
         }
 
+        public override void OnClose()
+        {
+            // Stop and dispose all audio players when closing the window
+            Misc.CleanupAudioPlayers();
+            base.OnClose();
+        }
+
         public void Dispose()
         {
+            // Stop and dispose all audio players
+            Misc.CleanupAudioPlayers();
             channelMessageCache.Clear();
+            Misc.ClearExpandedVideo(); // Clear any expanded video state
             if (CurrentInstance == this)
                 CurrentInstance = null;
         }
@@ -60,6 +73,17 @@ namespace AbsoluteRP.Windows.Social
         {
             currentGroup = group;
             WindowName = $"{group.name} - Group Chat###GroupChat_{group.groupID}";
+        }
+
+        public override void PreDraw()
+        {
+            // Check if window was just closed (IsOpen changed from true to false)
+            if (wasOpen && !IsOpen)
+            {
+                Misc.PauseAllAudio();
+            }
+            wasOpen = IsOpen;
+            base.PreDraw();
         }
 
         public override void Draw()
@@ -349,8 +373,8 @@ namespace AbsoluteRP.Windows.Social
                 ImGui.TextDisabled("(edited)");
             }
 
-            // Message content
-            ImGui.TextWrapped(message.messageContent);
+            // Message content - check for YouTube URLs
+            RenderMessageContent(message.messageContent);
 
             ImGui.EndGroup();
 
@@ -384,6 +408,81 @@ namespace AbsoluteRP.Windows.Social
             ImGui.Spacing();
 
             ImGui.PopID();
+        }
+
+        /// <summary>
+        /// Renders message content, detecting and embedding YouTube videos
+        /// </summary>
+        private void RenderMessageContent(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+                return;
+
+            // Regex to find URLs in the message
+            var urlRegex = new System.Text.RegularExpressions.Regex(
+                @"(https?:\/\/[^\s]+)",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            var matches = urlRegex.Matches(content);
+
+            if (matches.Count == 0)
+            {
+                // No URLs, just render as plain text
+                ImGui.TextWrapped(content);
+                return;
+            }
+
+            int lastIndex = 0;
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                // Render text before the URL
+                if (match.Index > lastIndex)
+                {
+                    string beforeText = content.Substring(lastIndex, match.Index - lastIndex);
+                    if (!string.IsNullOrWhiteSpace(beforeText))
+                    {
+                        ImGui.TextWrapped(beforeText);
+                    }
+                }
+
+                string url = match.Value;
+
+                // Check if it's a YouTube URL
+                if (Misc.TryGetYoutubeVideoId(url, out string videoId))
+                {
+                    // Render YouTube embed
+                    Misc.RenderYoutubeEmbed(url, videoId);
+                }
+                else
+                {
+                    // Render as regular clickable link
+                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.2f, 0.5f, 1f, 1f));
+                    ImGui.TextWrapped(url);
+                    ImGui.PopStyleColor();
+
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                        {
+                            Misc.LoadUrl = true;
+                            Misc.UrlToLoad = url;
+                        }
+                    }
+                }
+
+                lastIndex = match.Index + match.Length;
+            }
+
+            // Render any remaining text after the last URL
+            if (lastIndex < content.Length)
+            {
+                string afterText = content.Substring(lastIndex);
+                if (!string.IsNullOrWhiteSpace(afterText))
+                {
+                    ImGui.TextWrapped(afterText);
+                }
+            }
         }
 
         private void DrawMessageInput()
