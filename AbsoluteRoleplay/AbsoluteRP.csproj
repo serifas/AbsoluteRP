@@ -32,6 +32,8 @@
 
     <PropertyGroup>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <RuntimeFrameworkVersion>10.0.0</RuntimeFrameworkVersion>
+        <TargetLatestRuntimePatch>false</TargetLatestRuntimePatch>
     </PropertyGroup>
 
     <!-- Explicit dependencies -->
