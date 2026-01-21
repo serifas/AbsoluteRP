@@ -14,27 +14,25 @@
         <Platforms>x64</Platforms>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
 		<EnableWindowsTargeting>true</EnableWindowsTargeting>
-    </PropertyGroup>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<RuntimeFrameworkVersion>10.0.0</RuntimeFrameworkVersion>
+		<TargetLatestRuntimePatch>false</TargetLatestRuntimePatch>
+	</PropertyGroup>
 
-    <ItemGroup>
-        <Compile Remove="client\**" />
-        <Compile Remove="UI\common\**" />
-        <Compile Remove="UI\social\NewFolder\**" />
-        <Compile Remove="UI\targets\**" />
-        <Compile Remove="Windows\Listings\**" />
-        <EmbeddedResource Remove="client\**" />
-        <EmbeddedResource Remove="UI\common\**" />
-        <EmbeddedResource Remove="UI\social\NewFolder\**" />
-        <EmbeddedResource Remove="UI\targets\**" />
-        <EmbeddedResource Remove="Windows\Listings\**" />
-        <None Remove="client\**" />
-    </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="client\**" />
+		<Compile Remove="UI\common\**" />
+		<Compile Remove="UI\social\NewFolder\**" />
+		<Compile Remove="UI\targets\**" />
+		<Compile Remove="Windows\Listings\**" />
+		<EmbeddedResource Remove="client\**" />
+		<EmbeddedResource Remove="UI\common\**" />
+		<EmbeddedResource Remove="UI\social\NewFolder\**" />
+		<EmbeddedResource Remove="UI\targets\**" />
+		<EmbeddedResource Remove="Windows\Listings\**" />
+		<None Remove="client\**" />
+	</ItemGroup>
 
-    <PropertyGroup>
-        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <RuntimeFrameworkVersion>10.0.0</RuntimeFrameworkVersion>
-        <TargetLatestRuntimePatch>false</TargetLatestRuntimePatch>
-    </PropertyGroup>
 
     <!-- Explicit dependencies -->
     <ItemGroup>
