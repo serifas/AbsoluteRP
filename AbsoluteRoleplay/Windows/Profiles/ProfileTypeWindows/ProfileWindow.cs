@@ -923,13 +923,32 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     {
                                         if (tabToDeleteIndex >= 0 && tabToDeleteIndex < CurrentProfile.customTabs.Count)
                                         {
-                                            var tabTypeToSend = CurrentProfile.customTabs[tabToDeleteIndex].type;
+                                            var tabToDelete = CurrentProfile.customTabs[tabToDeleteIndex];
+                                            var tabTypeToSend = tabToDelete.type;
+
+                                            // Get the actual tabIndex from the layout, not the list position
+                                            int actualTabIndex = tabToDeleteIndex; // Default to list position
+                                            if (tabToDelete.Layout != null)
+                                            {
+                                                actualTabIndex = tabToDelete.Layout switch
+                                                {
+                                                    BioLayout bio => bio.tabIndex,
+                                                    DetailsLayout details => details.tabIndex,
+                                                    StoryLayout story => story.tabIndex,
+                                                    InfoLayout info => info.tabIndex,
+                                                    GalleryLayout gallery => gallery.tabIndex,
+                                                    InventoryLayout inv => inv.tabIndex,
+                                                    TreeLayout tree => tree.tabIndex,
+                                                    DynamicLayout dyn => dyn.tabIndex,
+                                                    _ => tabToDeleteIndex
+                                                };
+                                            }
 
                                             // Send delete request to server first
                                             try
                                             {
-                                                DataSender.DeleteTab(Plugin.character, CurrentProfile.index, tabToDeleteIndex, tabTypeToSend);
-                                                Plugin.PluginLog.Debug($"RenderCustomTabs: DeleteTab sent for profileIndex={CurrentProfile?.index} tabPos={tabToDeleteIndex} type={tabTypeToSend}");
+                                                DataSender.DeleteTab(Plugin.character, CurrentProfile.index, actualTabIndex, tabTypeToSend);
+                                                Plugin.PluginLog.Debug($"RenderCustomTabs: DeleteTab sent for profileIndex={CurrentProfile?.index} tabIndex={actualTabIndex} (listPos={tabToDeleteIndex}) type={tabTypeToSend}");
                                             }
                                             catch (Exception exDel)
                                             {

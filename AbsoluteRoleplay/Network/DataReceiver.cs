@@ -96,6 +96,7 @@ namespace Networking
         ReceiveTreeLayout = 79,
         RecConnectedPlayersInMap = 80,
         ReceiveGroup = 81,
+        RecFauxNameBroadcast = 82,
         SendGroupChatMessages = 83,
         SendGroupChatMessageBroadcast = 84,
         SendGroupCategories = 85,
@@ -257,6 +258,37 @@ namespace Networking
             catch (Exception ex)
             {
                 Plugin.PluginLog.Debug($"Debug handling Bookmark message: {ex}");
+            }
+        }
+        public static void ReceiveFauxName(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    string name = buffer.ReadString();
+                    string world = buffer.ReadString();
+                    string faux = buffer.ReadString();
+                    bool status = buffer.ReadBool();
+                    PlayerData playerData = new PlayerData { playername = name, worldname = world, fauxName = faux, fauxStatus = status };
+                    PlayerData existingMap = PlayerInteractions.playerDataMap.FirstOrDefault(x => x.playername == name && x.worldname == world);
+                    if (existingMap != null)
+                    {
+                        existingMap.fauxName = faux;
+                        existingMap.fauxStatus = status;
+                    }
+                    else
+                    {
+                        PlayerInteractions.playerDataMap.Add(playerData);
+                    }
+                    Plugin.SetFauxName(faux, name, world);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"Debug handling ReceiveFauxNames message: {ex}");
             }
         }
         public static void ReceiveGroupMemberships(byte[] data)

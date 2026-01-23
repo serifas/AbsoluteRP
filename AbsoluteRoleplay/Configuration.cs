@@ -27,7 +27,7 @@ public class Configuration : IPluginConfiguration
     //Config options
     public bool showKofi { get; set; } = true;
     public bool showDisc { get; set; } = true;
-    //public bool showWeb { get; set; } = true;
+    public bool showWeb { get; set; } = true;
     public bool showPatreon { get; set; } = true;
     public bool tooltip_DutyDisabled { get; set; } = true;
     public bool tooltip_PvPDisabled { get; set; } = true;
@@ -71,9 +71,23 @@ public class Configuration : IPluginConfiguration
     public float CompassPosX { get; set; } = 0f;
     public float CompassPosY { get; set; } = 0f;
 
+    public string fauxName { get; set; } = string.Empty;
+    public bool showFauxNames { get; set; } = false;
+    public List<string> savedFauxNames { get; set; } = new List<string>();
     // NSFW channel agreements - persisted so users don't have to agree every session
     public HashSet<int> agreedNsfwChannelIds { get; set; } = new HashSet<int>();
 
+    public void SetFauxName(ulong localContentId, string displayName, uint worldId = 0)
+    {
+        // Remove any existing faux name for this character
+        IdentifyAs.Remove(localContentId);
+
+        // Add the new faux name
+        IdentifyAs[localContentId] = (displayName, worldId);
+
+        Save();
+    }
+    public Dictionary<ulong, (string, uint)> IdentifyAs = new();
     public void Initialize(IDalamudPluginInterface pluginInterface)
     {
         PluginInterface = pluginInterface;

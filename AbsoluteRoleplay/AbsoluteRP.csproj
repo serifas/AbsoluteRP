@@ -2,7 +2,7 @@
 <Project Sdk="Dalamud.NET.Sdk/14.0.1">
     <PropertyGroup>
         <Authors>Lynie</Authors>
-        <Version>0.0.3.015</Version>
+        <Version>0.0.3.020</Version>
         <AssemblyName>AbsoluteRoleplay</AssemblyName>
         <Description>An all around Roleplay Plugin.</Description>
         <PackageProjectUrl>https://github.com/serifas/AbsoluteRP</PackageProjectUrl>
@@ -24,12 +24,10 @@
 		<Compile Remove="UI\common\**" />
 		<Compile Remove="UI\social\NewFolder\**" />
 		<Compile Remove="UI\targets\**" />
-		<Compile Remove="Windows\Listings\**" />
 		<EmbeddedResource Remove="client\**" />
 		<EmbeddedResource Remove="UI\common\**" />
 		<EmbeddedResource Remove="UI\social\NewFolder\**" />
 		<EmbeddedResource Remove="UI\targets\**" />
-		<EmbeddedResource Remove="Windows\Listings\**" />
 		<None Remove="client\**" />
 	</ItemGroup>
 

@@ -62,6 +62,7 @@ namespace AbsoluteRP
         private bool pendingFetchConnections = false;
         private ushort pendingTerritory = 0;
         private const string CommandName = "/arp";
+        private const string FauxNameCommand = "/arp-identify-as";
         public static Defines.Character character { get; set; } = null;
 
         public bool loginAttempted = false;
@@ -76,8 +77,19 @@ namespace AbsoluteRP
         public static HashSet<string> viewedPlayers = new HashSet<string>();
 
 
-    
-    
+        [Signature("40 53 55 57 41 56 48 81 EC ?? ?? ?? ?? 48 8B 84 24", DetourName = nameof(UpdateNameplate))]
+        private Hook<NameplateDelegate>? nameplateHook;
+
+        private unsafe delegate void* NameplateDelegate(
+            RaptureAtkModule* raptureAtkModule,
+            RaptureAtkModule.NamePlateInfo* namePlateInfo,
+            NumberArrayData* numArray,
+            StringArrayData* stringArray,
+            BattleChara* battleChara,
+            int numArrayIndex,
+            int stringArrayIndex);
+
+
 
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
@@ -87,6 +99,7 @@ namespace AbsoluteRP
         [PluginService] internal static ICondition Condition { get; private set; } = null;
         [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null;
         [PluginService] internal static IClientState ClientState { get; private set; } = null;
+        [PluginService] internal static IPlayerState PlayerState { get; private set; } = null;
         [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
         [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
         [PluginService] internal static IChatGui chatgui { get; private set; } = null;
@@ -129,6 +142,7 @@ namespace AbsoluteRP
         public static GroupInviteNotification? groupInviteNotification { get; set; }
         private ViewLikesWindow? ViewLikesWindow { get; set; }
         private LikeDetailsWindow? LikeDetailsWindow { get; set; }
+        private ListingsWindow? ListingsWindow { get; set; }
         // YouTubePlayerWindow is a WebView2 Forms window that runs on its own thread
 
         public float BlinkInterval = 0.5f;
@@ -154,6 +168,10 @@ namespace AbsoluteRP
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "opens the plugin window."
+            }); 
+            CommandManager.AddHandler(FauxNameCommand, new CommandInfo(SetFauxNameCommand)
+            {
+                HelpMessage = "Sets a faux name for your in game character."
             });
             Configuration.Initialize(PluginInterface);
 
@@ -173,6 +191,10 @@ namespace AbsoluteRP
             ClientState.TerritoryChanged += FetchConnectionsInMap;
             Framework.Update += Update;
             Plugin.HookProvider.InitializeFromAttributes(this);
+
+            // Enable the nameplate hook for faux names
+            nameplateHook?.Enable();
+
             needsAsyncInit = true;
 
             // Initialize CEF dependency manager for YouTube video playback
@@ -183,7 +205,7 @@ namespace AbsoluteRP
         }
         public static List<IPlayerCharacter> VisiblePlayers()
         {
-            var localPlayer = ClientState.LocalPlayer;
+            var localPlayer = ObjectTable.LocalPlayer;
             List<IPlayerCharacter> nearbyPlayers = ObjectTable
                 .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
                 .Cast<IPlayerCharacter>()
@@ -191,8 +213,256 @@ namespace AbsoluteRP
                 .ToList();
             return nearbyPlayers;
         }
+        public static string GetNameForPlate(
+        string originalName,
+        int objectIndex,
+        ulong localContentId,
+        IDictionary<ulong, (string, uint)> identifyAs,
+        string? altCode = null)
+        {
+            string? overrideName = null;
 
-       
+
+            if (objectIndex == 0 && identifyAs.TryGetValue(localContentId, out var identifyAsTuple))
+            {
+                overrideName = identifyAsTuple.Item1;
+                return overrideName;
+            }
+            else
+            {
+                return originalName;
+            }
+        }
+        private void SetFauxNameCommand(string command, string arguments)
+        {
+            displayName = arguments ?? string.Empty;
+
+            // Update local configuration immediately for self
+            if (PlayerState.ContentId != 0)
+            {
+                if (string.IsNullOrEmpty(displayName))
+                {
+                    // Clear the faux name
+                    Configuration.IdentifyAs.Remove(PlayerState.ContentId);
+                    Configuration.fauxName = string.Empty;
+                }
+                else
+                {
+                    Configuration.IdentifyAs[PlayerState.ContentId] = (displayName, 0);
+                    Configuration.fauxName = displayName;
+                }
+                Configuration.Save();
+                PluginLog.Information($"Faux name set locally to: {displayName}");
+            }
+
+            // Also broadcast to other players and server
+            DataSender.SendFauxNameBroadcast(character, displayName, !string.IsNullOrEmpty(displayName), VisiblePlayers());
+            DataSender.SendFauxNameBroadcast(character, displayName, !string.IsNullOrEmpty(displayName), new List<IPlayerCharacter>() { ClientState.LocalPlayer });
+        }
+
+        public static void SetFauxName(string displayName, string playername, string playerworld)
+        {
+
+                // Ensure all access to Dalamud client state happens on the framework/main thread.
+                try
+                {
+                    Framework.RunOnFrameworkThread(() =>
+                    {
+                        try
+                        {
+                            var localPlayer = ObjectTable.LocalPlayer;
+                            if (localPlayer == null)
+                                return;
+
+                            var localName = localPlayer.Name.ToString();
+                            var localWorld = localPlayer.HomeWorld.Value.Name.ToString();
+
+                            if (playername == localName && playerworld == localWorld)
+                            {
+                                // Update config for the character's faux name
+                                if (PlayerState.ContentId != 0)
+                                {
+                                    plugin.Configuration.IdentifyAs[PlayerState.ContentId] = (displayName, 0);
+                                    plugin.Configuration.Save();
+                                }
+
+                                plugin.Configuration.fauxName = displayName;
+                                plugin.Configuration.Save();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            PluginLog.Debug($"Exception in SetFauxName inner: {ex}");
+                        }
+                    });
+                }
+                catch (Exception ex)
+                {
+                    PluginLog.Debug($"Exception scheduling SetFauxName on framework thread: {ex}");
+                }
+            
+            
+        }
+        private static readonly Lazy<Lumina.Excel.ExcelSheet<Lumina.Excel.Sheets.World>?> WorldSheetLazy =
+        new(() => Plugin.DataManager?.GetExcelSheet<Lumina.Excel.Sheets.World>());
+
+        private unsafe void* UpdateNameplate(
+        RaptureAtkModule* raptureAtkModule,
+        RaptureAtkModule.NamePlateInfo* namePlateInfo,
+        NumberArrayData* numArray,
+        StringArrayData* stringArray,
+        BattleChara* battleChara,
+        int numArrayIndex,
+        int stringArrayIndex)
+        {
+           
+            try
+            {
+                // Validate all pointers before use
+                if (nameplateHook == null ||
+                    raptureAtkModule == null ||
+                    namePlateInfo == null ||
+                    numArray == null ||
+                    stringArray == null ||
+                    battleChara == null)
+                {
+                    return null;
+                }
+
+                var r = nameplateHook.Original(raptureAtkModule, namePlateInfo, numArray, stringArray, battleChara, numArrayIndex, stringArrayIndex);
+
+                if (!InNameCombatLock() && !InNameDutyLock() && !InNamePvPLock() && Configuration.showFauxNames)
+                {
+                    var gameObject = &battleChara->Character.GameObject;
+                    if (gameObject == null)
+                        return r;
+
+                    if (gameObject->ObjectKind == ObjectKind.Pc)
+                    {
+                        var chara = &battleChara->Character;
+                        if (chara == null)
+                            return r;
+
+                        // Defensive: Ensure Name array is not null and has expected length
+                        Span<byte> nameSpan;
+                        try
+                        {
+                            nameSpan = MemoryMarshal.CreateSpan(ref chara->Name[0], 32);
+                        }
+                        catch
+                        {
+                            return r;
+                        }
+
+                        int nameLength = nameSpan.IndexOf((byte)0);
+                        if (nameLength < 0 || nameLength > nameSpan.Length)
+                            nameLength = nameSpan.Length;
+
+                        string name;
+                        try
+                        {
+                            name = Encoding.UTF8.GetString(nameSpan.Slice(0, nameLength));
+                        }
+                        catch
+                        {
+                            name = string.Empty;
+                        }
+
+                        var homeWorld = chara->HomeWorld;
+                        var objectIndex = gameObject->ObjectIndex;
+
+                        // Defensive: Get world name safely, using cached sheet
+                        string worldName = string.Empty;
+                        try
+                        {
+                            var worldSheet = WorldSheetLazy.Value;
+                            var worldRow = worldSheet?.GetRowOrDefault((uint)homeWorld);
+                            if (worldRow != null)
+                            {
+                                // Replace 'Name' with the actual property if needed
+                                worldName = worldRow.Value.Name.ToString();
+                            }
+                        }
+                        catch
+                        {
+                            worldName = string.Empty;
+                        }
+
+                        // Get local player and check range
+                        var localPlayer = ObjectTable.LocalPlayer;
+                        float distance = float.MaxValue;
+                        if (localPlayer != null)
+                        {
+                            try
+                            {
+                                var targetPos = new Vector3(gameObject->Position.X, gameObject->Position.Y, gameObject->Position.Z);
+                                distance = Vector3.Distance(localPlayer.Position, targetPos);
+                            }
+                            catch
+                            {
+                                distance = float.MaxValue;
+                            }
+                        }
+
+                        if (distance <= 5000)
+                        {
+                            // Take a thread-safe snapshot of playerDataMap
+                            List<PlayerData> playerDataSnapshot;
+                            lock (PlayerInteractions.playerDataMap)
+                            {
+                                playerDataSnapshot = PlayerInteractions.playerDataMap.ToList();
+                            }
+
+                            var playerData = playerDataSnapshot
+                                .FirstOrDefault(pd =>
+                                    string.Equals(pd.playername?.Trim(), name.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                                    string.Equals(pd.worldname?.Trim(), worldName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                            if (playerData != null && playerData.fauxStatus && !string.IsNullOrEmpty(playerData.fauxName))
+                            {
+                                string displayName = GetNameForPlate(
+                                    playerData.fauxName,
+                                    objectIndex,
+                                    Plugin.PlayerState.ContentId,
+                                    Plugin.plugin.Configuration.IdentifyAs
+                                );
+                                namePlateInfo->Name.SetString(displayName);
+                                namePlateInfo->IsDirty = true;
+                                return r;
+                            }
+                        }
+
+                        // For self, check IdentifyAs
+                        if (objectIndex == 0)
+                        {
+                            if (Plugin.plugin.Configuration.IdentifyAs.TryGetValue(Plugin.PlayerState.ContentId, out var identifyAs))
+                            {
+                                string displayName = GetNameForPlate(
+                                    name,
+                                    objectIndex,
+                                    Plugin.PlayerState.ContentId,
+                                    Plugin.plugin.Configuration.IdentifyAs
+                                );
+                                namePlateInfo->Name.SetString(displayName);
+                                namePlateInfo->IsDirty = true;
+                            }
+                        }
+                        else
+                        {
+                            // Fallback: set real name
+                            namePlateInfo->Name.SetString(name);
+                            namePlateInfo->IsDirty = true;
+                        }
+                    }
+                }
+                return r;
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Debug($"Exception in UpdateNameplate: {ex}");
+                return null;
+            }
+        }
 
 
         private async Task InitializeAsync()
@@ -541,6 +811,7 @@ namespace AbsoluteRP
             groupInviteBarEntry?.Remove();
             groupInviteBarEntry = null;
             CommandManager.RemoveHandler(CommandName);
+            CommandManager.RemoveHandler(FauxNameCommand);
             ContextMenu.OnMenuOpened -= OnMenuOpened;
             PluginInterface.UiBuilder.Draw -= DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
@@ -561,9 +832,13 @@ namespace AbsoluteRP
             SocialWindow?.Dispose();
             ModeratorPanel?.Dispose();
             SystemsWindow?.Dispose();
+            nameplateHook?.Disable();
+            nameplateHook?.Dispose();
+            nameplateHook = null;
             YouTubePlayerWindow.ClosePlayer(); // Close WebView2 Forms window if open
             Misc.CleanupAudioPlayers(); // Stop and dispose all audio players
             Misc.Jupiter?.Dispose();
+
 
             foreach (IDalamudTextureWrap texture in UI.commonImageWraps.Values)
             {
@@ -623,7 +898,7 @@ namespace AbsoluteRP
 
             try
             {
-                var localPlayer = ClientState.LocalPlayer;
+                var localPlayer = ObjectTable.LocalPlayer;
                 if (localPlayer != null)
                 {
                     plugin.playername = localPlayer.Name.ToString();
@@ -759,6 +1034,7 @@ namespace AbsoluteRP
         public void CloseTradeWindow() => TradeWindow.IsOpen = false;
         public void ToggleSystemsWindow() => SystemsWindow.Toggle();
         public void ToggleViewLikesWindow() => ViewLikesWindow.Toggle();
+        public void OpenListingsWindow() => ListingsWindow.IsOpen = true;
         public void OpenLikeDetailsWindow(ProfileData profile)
         {
             LikeDetailsWindow.SetProfile(profile);
@@ -808,6 +1084,7 @@ namespace AbsoluteRP
                 groupInviteNotification = new GroupInviteNotification();
                 ViewLikesWindow = new ViewLikesWindow(this);
                 LikeDetailsWindow = new LikeDetailsWindow();
+                ListingsWindow = new ListingsWindow();
                 // YouTubePlayerWindow creates itself when OpenVideo is called
 
                 WindowSystem.AddWindow(OptionsWindow);
@@ -828,6 +1105,7 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(groupInviteNotification);
                 WindowSystem.AddWindow(ViewLikesWindow);
                 WindowSystem.AddWindow(LikeDetailsWindow);
+                WindowSystem.AddWindow(ListingsWindow);
 
                 LoadStatusBarEntry();
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
@@ -836,12 +1114,12 @@ namespace AbsoluteRP
 
             if (IsOnline() &&
                 (character == null
-                 || character.characterName != ClientState.LocalPlayer.Name.ToString()
-                 || character.characterWorld != ClientState.LocalPlayer.HomeWorld.Value.Name.ToString()))
+                 || character.characterName != ObjectTable.LocalPlayer.Name.ToString()
+                 || character.characterWorld != ObjectTable.LocalPlayer.HomeWorld.Value.Name.ToString()))
             {
                 character = Plugin.plugin.Configuration?.characters?.FirstOrDefault(
-                    x => x?.characterName == ClientState.LocalPlayer.Name.ToString()
-                      && x?.characterWorld == ClientState.LocalPlayer.HomeWorld.Value.Name.ToString());
+                    x => x?.characterName == ObjectTable.LocalPlayer.Name.ToString()
+                      && x?.characterWorld == ObjectTable.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
 
             if (IsOnline())
@@ -880,10 +1158,16 @@ namespace AbsoluteRP
                                 {
                                     continue;
                                 }
-                              
 
                                 // Mark seen and send broadcast only for this newly-seen player (single-item list)
                                 viewedPlayers.Add(playerKey);
+
+                                // If we have a faux name set, broadcast it to this newly-seen player
+                                if (Configuration.IdentifyAs.TryGetValue(PlayerState.ContentId, out var identifyAs) &&
+                                    !string.IsNullOrEmpty(identifyAs.Item1))
+                                {
+                                    DataSender.SendFauxNameBroadcast(character, identifyAs.Item1, true, new List<IPlayerCharacter> { player });
+                                }
                             }
                             catch (Exception ex)
                             {
