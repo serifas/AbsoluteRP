@@ -105,9 +105,7 @@ namespace Networking
         SendLodestoneURL = 77,
         SendCheckLodestoneEntry = 78,
         UnlinkAccount = 79,
-        SetFauxNameStatus = 80,
         SetCompassStatus = 81,
-        SendFauxNameBroadcast = 82,
         SaveGroup = 83,
         FetchGroups = 84,
         SendGroupChatMessage = 85,
@@ -300,7 +298,7 @@ namespace Networking
                     {
                         buffer.WriteInt((int)ClientPackets.CLogin);
                         buffer.WriteString(plugin.Configuration.account.accountKey);
-                        buffer.WriteString("0.2.25");
+                        buffer.WriteString("0.2.26");
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1867,56 +1865,8 @@ namespace Networking
                 }
             }
         }
-        internal static async void SendFauxNameBroadcast(Character character, string fauxName, bool status, List<IPlayerCharacter> players)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.SendFauxNameBroadcast);
-                        buffer.WriteString(plugin.Configuration.account.accountKey);
-                        buffer.WriteString(character.characterKey);
-                        buffer.WriteString(fauxName);
-                        buffer.WriteBool(status);
-                        buffer.WriteInt(players.Count);
-                        for (int i = 0; i < players.Count; i++)
-                        {
-                            buffer.WriteString(players[i].Name.ToString());
-                            buffer.WriteString(players[i].HomeWorld.Value.Name.ToString());
-                        }
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in SubmitTreeLayout: " + ex.ToString());
-                }
-            }
-        }
-        internal static async void SetFauxNameStatus(Character character, bool status, int profileIndex)
-        {
-            if (ClientTCP.IsConnected())
-            {
-                try
-                {
-                    using (var buffer = new ByteBuffer())
-                    {
-                        buffer.WriteInt((int)ClientPackets.SetFauxNameStatus);
-                        buffer.WriteString(plugin.Configuration.account.accountKey);
-                        buffer.WriteString(character.characterKey);
-                        buffer.WriteInt(profileIndex);
-                        buffer.WriteBool(status);
-                        await ClientTCP.SendDataAsync(buffer.ToArray());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Plugin.PluginLog.Debug("Debug in SetFauxNameStatus: " + ex.ToString());
-                }
-            }
-        }
+    
+      
         internal static async void SetGroupValues(Character character, Group group, bool update, int leaderProfileIndex, int groupProfileIndex)
         {
             if (group == null) return;

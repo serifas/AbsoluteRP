@@ -111,7 +111,9 @@ namespace Networking
             packets.Add((int)ServerPackets.SendJoinRequestResult, DataReceiver.HandleJoinRequestResult);
             packets.Add((int)ServerPackets.SendJoinRequestNotification, DataReceiver.HandleJoinRequestNotification);
 
-            packets.Add((int)ServerPackets.RecFauxNameBroadcast, DataReceiver.ReceiveFauxName);
+            // Character Sync
+            packets.Add((int)ServerPackets.SendVerifiedCharacters, DataReceiver.HandleVerifiedCharacters);
+
             //simple message back from server, simply for verification that the user is connected
         }
 

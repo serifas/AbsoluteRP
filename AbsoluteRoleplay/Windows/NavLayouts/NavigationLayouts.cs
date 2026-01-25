@@ -51,7 +51,7 @@ namespace AbsoluteRP.Windows.NavLayouts
                 () => {
                     if (Plugin.IsOnline())
                     {
-                        Plugin.plugin.OpenListingsWindow();
+                       // Plugin.plugin.OpenListingsWindow();
                     }
                 }
                 };

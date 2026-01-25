@@ -38,21 +38,7 @@ namespace AbsoluteRP.Helpers
 
         public static bool wasDraggingCompass = false;
         public static List<PlayerData> playerDataMap = new List<PlayerData>();
-        public static void SetFauxNameForPlayer(string name, string world, string fauxName)
-        {
-            var normalizedName = name.Trim();
-            var normalizedWorld = world.Trim();
-
-            var playerData = playerDataMap.FirstOrDefault(p =>
-                string.Equals(p.playername?.Trim(), normalizedName, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(p.worldname?.Trim(), normalizedWorld, StringComparison.OrdinalIgnoreCase));
-
-            if (playerData != null)
-            {
-                playerData.fauxName = fauxName;
-                playerData.fauxStatus = !string.IsNullOrEmpty(fauxName);
-            }
-        }
+        
 
         // This method should be added to PlayerInteractions
    

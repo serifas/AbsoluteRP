@@ -25,11 +25,6 @@ namespace AbsoluteRP.Windows
         private bool showCompassInCombat;
         private bool showCompassInDuty;
         private bool showCompassInPvP;
-        private bool showFauxNames;
-        private bool showFauxNamesInCombat;
-        private bool showFauxNamesInDuty;
-        private bool showFauxNamesInPvP;
-
         public OptionsWindow() : base("OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
             SizeConstraints = new WindowSizeConstraints
@@ -43,7 +38,6 @@ namespace AbsoluteRP.Windows
             showWeb = Plugin.plugin.Configuration.showWeb;
             autoLogin = Plugin.plugin.Configuration.autoLogin;
             showCompass = Plugin.plugin.Configuration.showCompass;
-            showFauxNames = Plugin.plugin.Configuration.showFauxNames;
             _fileDialogManager = new FileDialogManager();
         }
         public override void Draw()
@@ -139,35 +133,7 @@ namespace AbsoluteRP.Windows
 
 
 
-                if (ImGui.BeginTabItem("Faux Names"))
-                {
-                    showFauxNames = Plugin.plugin.Configuration.showFauxNames;
-                    if (ImGui.Checkbox("Show Faux Names", ref showFauxNames))
-                    {
-                        Plugin.plugin.Configuration.showFauxNames = showFauxNames;
-                        Plugin.plugin.Configuration.Save();
-                    }
-                    showFauxNamesInCombat = Plugin.plugin.Configuration.displayFauxNamesInCombat;
-                    if (ImGui.Checkbox("Show Faux Names in Combat", ref showFauxNamesInCombat))
-                    {
-                        Plugin.plugin.Configuration.displayFauxNamesInCombat = showFauxNamesInCombat;
-                        Plugin.plugin.Configuration.Save();
-                    }                
-                    showFauxNamesInDuty = Plugin.plugin.Configuration.displayFauxnamesInDuty;
-                    if (ImGui.Checkbox("Show Faux Names in Duty", ref showFauxNamesInDuty))
-                    {
-                        Plugin.plugin.Configuration.displayFauxnamesInDuty = showFauxNamesInDuty;
-                        Plugin.plugin.Configuration.Save();
-                    }
-                    showFauxNamesInPvP = Plugin.plugin.Configuration.displayFauxNamesInPvP;
-                    if (ImGui.Checkbox("Show Faux Names in PvP", ref showFauxNamesInPvP))
-                    {
-                        Plugin.plugin.Configuration.displayFauxNamesInPvP = showFauxNamesInPvP;
-                        Plugin.plugin.Configuration.Save();
-                    }
-                    //DrawAlertOptions();
-                    ImGui.EndTabItem();
-                }
+             
 
 
 

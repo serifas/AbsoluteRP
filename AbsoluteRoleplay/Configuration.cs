@@ -63,31 +63,15 @@ public class Configuration : IPluginConfiguration
     internal bool showCompassInDuty { get; set; } = false;
     public bool showCompassInCombat { get; set; } = false;
     public bool AutobackupEnabled { get; set; } = true; 
-    public bool displayFauxNamesInCombat { get; set; } = false;
-    public bool displayFauxNamesInPvP { get; set; } = false;
-    public bool displayFauxnamesInDuty { get; set; } = false;
     public string dataSavePath { get; set; }
     public float fontSize { get; set; } = 35; 
     public float CompassPosX { get; set; } = 0f;
     public float CompassPosY { get; set; } = 0f;
 
-    public string fauxName { get; set; } = string.Empty;
-    public bool showFauxNames { get; set; } = false;
-    public List<string> savedFauxNames { get; set; } = new List<string>();
     // NSFW channel agreements - persisted so users don't have to agree every session
     public HashSet<int> agreedNsfwChannelIds { get; set; } = new HashSet<int>();
 
-    public void SetFauxName(ulong localContentId, string displayName, uint worldId = 0)
-    {
-        // Remove any existing faux name for this character
-        IdentifyAs.Remove(localContentId);
-
-        // Add the new faux name
-        IdentifyAs[localContentId] = (displayName, worldId);
-
-        Save();
-    }
-    public Dictionary<ulong, (string, uint)> IdentifyAs = new();
+   
     public void Initialize(IDalamudPluginInterface pluginInterface)
     {
         PluginInterface = pluginInterface;

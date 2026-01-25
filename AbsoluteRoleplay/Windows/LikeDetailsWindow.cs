@@ -38,14 +38,12 @@ namespace AbsoluteRP.Windows
             ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), $"Likes for: {currentProfile.title}");
 
             // Debug: Log the number of likes received
-            Plugin.PluginLog.Debug($"[LikeDetails] Displaying {DataReceiver.currentProfileLikes.Count} like entries for profile {currentProfile.title}");
 
             // Calculate total likes (sum of all like_count)
             int totalLikes = 0;
             foreach (var like in DataReceiver.currentProfileLikes)
             {
                 totalLikes += like.likeCount;
-                Plugin.PluginLog.Debug($"[LikeDetails] Like from {like.likerName} (UserID: {like.likerUserID}): {like.likeCount} likes at {like.likedAt}");
             }
             ImGui.Text($"Total: {totalLikes} likes from {DataReceiver.currentProfileLikes.Count} user(s)");
             ImGui.SameLine();

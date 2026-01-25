@@ -96,7 +96,6 @@ namespace Networking
         ReceiveTreeLayout = 79,
         RecConnectedPlayersInMap = 80,
         ReceiveGroup = 81,
-        RecFauxNameBroadcast = 82,
         SendGroupChatMessages = 83,
         SendGroupChatMessageBroadcast = 84,
         SendGroupCategories = 85,
@@ -148,6 +147,8 @@ namespace Networking
         SendJoinRequests = 127,
         SendJoinRequestResult = 128,
         SendJoinRequestNotification = 129,
+        // Character Sync
+        SendVerifiedCharacters = 141,
     }
     class DataReceiver
     {
@@ -260,37 +261,7 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling Bookmark message: {ex}");
             }
         }
-        public static void ReceiveFauxName(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    string name = buffer.ReadString();
-                    string world = buffer.ReadString();
-                    string faux = buffer.ReadString();
-                    bool status = buffer.ReadBool();
-                    PlayerData playerData = new PlayerData { playername = name, worldname = world, fauxName = faux, fauxStatus = status };
-                    PlayerData existingMap = PlayerInteractions.playerDataMap.FirstOrDefault(x => x.playername == name && x.worldname == world);
-                    if (existingMap != null)
-                    {
-                        existingMap.fauxName = faux;
-                        existingMap.fauxStatus = status;
-                    }
-                    else
-                    {
-                        PlayerInteractions.playerDataMap.Add(playerData);
-                    }
-                    Plugin.SetFauxName(faux, name, world);
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.PluginLog.Error($"Debug handling ReceiveFauxNames message: {ex}");
-            }
-        }
+       
         public static void ReceiveGroupMemberships(byte[] data)
         {
             try
@@ -1205,7 +1176,6 @@ namespace Networking
                         ProfileWindow.CurrentProfile.TRIGGERING = TRIGGERING;
                         ProfileWindow.Sending = false;
                         ProfileWindow.Fetching = false;
-                        ProfileWindow.setFauxName = fauxName;
                         ProfileWindow.showOnCompass = showCompass;
                     }
                     else
@@ -5145,6 +5115,82 @@ namespace Networking
             catch (Exception ex)
             {
                 Plugin.PluginLog.Error($"HandleJoinRequestNotification error: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Character Sync
+
+        /// <summary>
+        /// Handles receiving verified characters from the server.
+        /// Syncs missing characters to the plugin configuration.
+        /// </summary>
+        public static void HandleVerifiedCharacters(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    var packetID = buffer.ReadInt();
+                    int characterCount = buffer.ReadInt();
+
+                    Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Received {characterCount} verified characters from server");
+
+                    bool configChanged = false;
+
+                    for (int i = 0; i < characterCount; i++)
+                    {
+                        string characterKey = buffer.ReadString();
+                        string characterName = buffer.ReadString();
+                        string characterWorld = buffer.ReadString();
+
+                        // Check if this character is already in the config
+                        bool exists = Plugin.plugin.Configuration.characters.Any(c =>
+                            c.characterName == characterName &&
+                            c.characterWorld == characterWorld);
+
+                        if (!exists && !string.IsNullOrEmpty(characterName) && !string.IsNullOrEmpty(characterWorld))
+                        {
+                            Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Adding missing character: {characterName}@{characterWorld}");
+
+                            var newCharacter = new Character
+                            {
+                                characterName = characterName,
+                                characterWorld = characterWorld,
+                                characterKey = characterKey
+                            };
+
+                            Plugin.plugin.Configuration.characters.Add(newCharacter);
+                            configChanged = true;
+                        }
+                        else if (exists)
+                        {
+                            // Update character key if it exists but key is missing/different
+                            var existingChar = Plugin.plugin.Configuration.characters.FirstOrDefault(c =>
+                                c.characterName == characterName &&
+                                c.characterWorld == characterWorld);
+
+                            if (existingChar != null && existingChar.characterKey != characterKey)
+                            {
+                                Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Updating character key for: {characterName}@{characterWorld}");
+                                existingChar.characterKey = characterKey;
+                                configChanged = true;
+                            }
+                        }
+                    }
+
+                    if (configChanged)
+                    {
+                        Plugin.plugin.Configuration.Save();
+                        Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Configuration saved with updated characters");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleVerifiedCharacters] Error: {ex.Message}");
             }
         }
 

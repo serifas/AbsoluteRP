@@ -27,7 +27,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         private bool openVerifyPopup;
         public static string lodeStoneKey = string.Empty;
         public static bool lodeStoneKeyVerified;
-        public static bool setFauxName = false;
         public static bool VerificationSucceeded { get; set; } = false;
         public static string LodeSUrl;
         public static string loading; 
