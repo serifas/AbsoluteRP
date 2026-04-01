@@ -68,6 +68,12 @@ public class Configuration : IPluginConfiguration
     public float CompassPosX { get; set; } = 0f;
     public float CompassPosY { get; set; } = 0f;
 
+    // Theme Settings (null = use default)
+    public Vector4? ThemeBorder { get; set; }
+    public Vector4? ThemeBackground { get; set; }
+    public Vector4? ThemeAccent { get; set; }
+    public Vector4? ThemeFont { get; set; }
+
     // NSFW channel agreements - persisted so users don't have to agree every session
     public HashSet<int> agreedNsfwChannelIds { get; set; } = new HashSet<int>();
 

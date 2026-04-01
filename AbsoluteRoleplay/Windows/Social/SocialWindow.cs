@@ -26,6 +26,11 @@ namespace AbsoluteRP.Windows.Listings
         public static string loading; //loading status string for loading the tooltipData gallery mainly
         public static float percentage = 0f; //loading base value
         public static int loaderInd = 0;
+
+        // Search loading state
+        public static bool isSearchLoading = false;
+        public static int searchLoadedCount = 0;
+        public static int searchTotalCount = 0;
         private FileDialogManager _fileDialogManager; //for banners only at the moment
         public static IDalamudTextureWrap banner;
         public static byte[] bannerBytes;
@@ -110,8 +115,8 @@ namespace AbsoluteRP.Windows.Listings
                 float buttonSize = ImGui.GetIO().FontGlobalScale * 45;
                 int buttonCount = 5;
                 float navHeight = buttonSize * buttonCount * 1.2f;
-                ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.2f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
-                ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.2f, navHeight), ImGuiCond.Always);
+                ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.5f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
+                ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.5f, navHeight), ImGuiCond.Always);
                 ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
                 Navigation nav = NavigationLayouts.SocialNavigation();
 
@@ -140,14 +145,6 @@ namespace AbsoluteRP.Windows.Listings
 
         public void Dispose()
         {
-            // Clean up group resources
-            GroupsData.ResetState();
-
-            foreach (Listing listing in listings)
-            {
-                WindowOperations.SafeDispose(listing.avatar);
-                listing.avatar = null;
-            }
         }
 
     }

@@ -34,11 +34,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             {
                 ImGui.Text("Forum Categories & Channels");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Add Category button
-                if (ImGui.Button("Add Forum Category", new Vector2(150, 0)))
+                if (ThemeManager.PillButton("Add Forum Category", new Vector2(150, 0)))
                 {
                     showAddCategory = true;
                     newCategoryName = string.Empty;
@@ -93,7 +93,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                                 }
 
                                 // Add Channel button
-                                if (ImGui.Button($"Add Forum Channel##{catIdx}", new Vector2(150, 0)))
+                                if (ThemeManager.PillButton($"Add Forum Channel##{catIdx}", new Vector2(150, 0)))
                                 {
                                     selectedCategoryIndex = catIdx;
                                     showAddChannel = true;
@@ -209,11 +209,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.InputTextMultiline("##ForumCategoryDesc", ref newCategoryDescription, 500, new Vector2(-1, 60));
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.BeginDisabled(string.IsNullOrWhiteSpace(newCategoryName));
-                if (ImGui.Button("Create", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Create", new Vector2(120, 0)))
                 {
                     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     var newCategory = new GroupForumCategory
@@ -243,7 +243,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showAddCategory = false;
@@ -300,11 +300,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.BeginDisabled(string.IsNullOrWhiteSpace(newChannelName) || selectedCategoryIndex < 0);
-                if (ImGui.Button("Create", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Create", new Vector2(120, 0)))
                 {
                     if (selectedCategoryIndex >= 0 && selectedCategoryIndex < forumCategories.Count)
                     {
@@ -345,7 +345,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showAddChannel = false;
@@ -401,14 +401,14 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0.2f, 0.2f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.3f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Delete", new Vector2(120, 0)))
+                if (ThemeManager.DangerButton("Delete", new Vector2(120, 0)))
                 {
                     if (deletingCategory)
                     {
@@ -439,7 +439,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showDeleteConfirmation = false;

@@ -198,6 +198,35 @@ namespace Networking
         FetchJoinRequests = 168,
         RespondToJoinRequest = 169,
         CancelJoinRequest = 170,
+
+        // Listings System
+        CCreateListing = 185,
+        CUpdateListing = 186,
+        CDeleteListing = 187,
+        CFetchListings = 188,
+        CFetchListingDetail = 189,
+        CFetchMyListings = 190,
+        CBookmarkListing = 191,
+        CInviteStaff = 192,
+        CAcceptStaffInvite = 193,
+        CRemoveStaffMember = 194,
+        CUpdateListingMenu = 195,
+        CUpdateListingServices = 196,
+        CUpdateListingRoster = 197,
+        CRSVPToEvent = 198,
+        CFetchListingRSVPs = 199,
+        CUpdateListingSchedule = 200,
+        CUploadListingImage = 201,
+        CUpdateListingSettings = 202,
+
+        CSaveStaffEntries = 225,
+
+        // Booking System
+        CSendBookingRequest = 220,
+        CFetchMyBookings = 221,
+        CRespondToBooking = 222,
+        CFetchIncomingBookings = 223,
+        CSaveBookableEntries = 224,
     }
     public class DataSender
     {
@@ -333,7 +362,7 @@ namespace Networking
             }
 
         }
-        public static async void SubmitGalleryLayout(Character character, int profileIndex, GalleryLayout layout)
+        public static async Task SubmitGalleryLayout(Character character, int profileIndex, GalleryLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -394,7 +423,7 @@ namespace Networking
                 }
             }
         }
-        public static async void SubmitStoryLayout(Character character, int profileIndex, StoryLayout layout)
+        public static async Task SubmitStoryLayout(Character character, int profileIndex, StoryLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -497,9 +526,8 @@ namespace Networking
                         DataReceiver.tabsCount = 0;
                         DataReceiver.loadedGalleryImages = 0;
                         DataReceiver.GalleryImagesToLoad = 0;
-
-                        //Reset tooltipData tabs
-
+                        ProfileWindow.Fetching = true;
+                        ProfileWindow.fetchStartedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
                     }
 
                     using (var buffer = new ByteBuffer())
@@ -617,7 +645,7 @@ namespace Networking
 
         }
 
-        public static async void SubmitProfileBio(Character character, int profileIndex, BioLayout layout)
+        public static async Task SubmitProfileBio(Character character, int profileIndex, BioLayout layout)
         {
 
             if (ClientTCP.IsConnected())
@@ -724,7 +752,7 @@ namespace Networking
             }
 
         }
-        public static async void SubmitProfileDetails(Character character, int profileIndex, DetailsLayout layout)
+        public static async Task SubmitProfileDetails(Character character, int profileIndex, DetailsLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -781,7 +809,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SubmitInfoLayout(Character character, int currentProfile, InfoLayout layout)
+        internal static async Task SubmitInfoLayout(Character character, int currentProfile, InfoLayout layout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -830,7 +858,7 @@ namespace Networking
         }
 
 
-        internal static async void SetProfileStatus(Character character, bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
+        internal static async Task SetProfileStatus(Character character, bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
         {
             if (ClientTCP.IsConnected())
             {
@@ -946,6 +974,514 @@ namespace Networking
                 }
             }
         }
+
+        // ============================
+        // Listing System Methods
+        // ============================
+
+        internal static async Task CreateListing(Character character, int profileId, int listingType, string name, string tagline, int category, string world, string datacenter, string district, int ward, int plot, bool isNSFW, string contactInfo, string tags, string discordLink, string websiteLink, byte[] bannerImage, byte[] logoImage, string schedulesJson)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CCreateListing);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(profileId);
+                        buffer.WriteInt(listingType);
+                        buffer.WriteString(name);
+                        buffer.WriteString(tagline);
+                        buffer.WriteInt(category);
+                        buffer.WriteString(world);
+                        buffer.WriteString(datacenter);
+                        buffer.WriteString(district);
+                        buffer.WriteInt(ward);
+                        buffer.WriteInt(plot);
+                        buffer.WriteBool(isNSFW);
+                        buffer.WriteString(contactInfo);
+                        buffer.WriteString(tags);
+                        buffer.WriteString(discordLink);
+                        buffer.WriteString(websiteLink);
+                        buffer.WriteInt(bannerImage != null ? bannerImage.Length : 0);
+                        if (bannerImage != null && bannerImage.Length > 0)
+                            buffer.WriteBytes(bannerImage);
+                        buffer.WriteInt(logoImage != null ? logoImage.Length : 0);
+                        if (logoImage != null && logoImage.Length > 0)
+                            buffer.WriteBytes(logoImage);
+                        buffer.WriteString(schedulesJson);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in CreateListing: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task UpdateListing(Character character, int listingId, string name, string tagline, string description, int category, string world, string district, int ward, int plot, bool isNSFW, bool isActive, string discordLink, string websiteLink, string contactInfo, string tags, bool bookingEnabled = false)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CUpdateListing);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteString(name);
+                        buffer.WriteString(tagline);
+                        buffer.WriteString(description);
+                        buffer.WriteInt(category);
+                        buffer.WriteString(world);
+                        buffer.WriteString(district);
+                        buffer.WriteInt(ward);
+                        buffer.WriteInt(plot);
+                        buffer.WriteBool(isNSFW);
+                        buffer.WriteBool(isActive);
+                        buffer.WriteString(discordLink);
+                        buffer.WriteString(websiteLink);
+                        buffer.WriteString(contactInfo);
+                        buffer.WriteString(tags);
+                        buffer.WriteBool(bookingEnabled);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UpdateListing: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task DeleteListing(int listingId)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CDeleteListing);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in DeleteListing: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task FetchListings(int listingType, int category, string world, string searchQuery, bool includeNSFW, bool openNow, int page, int pageSize, int sortBy)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchListings);
+                        buffer.WriteInt(listingType);
+                        buffer.WriteInt(category);
+                        buffer.WriteString(world);
+                        buffer.WriteString(searchQuery);
+                        buffer.WriteBool(includeNSFW);
+                        buffer.WriteBool(openNow);
+                        buffer.WriteInt(page);
+                        buffer.WriteInt(pageSize);
+                        buffer.WriteInt(sortBy);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchListings: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task FetchListingDetail(int listingId)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchListingDetail);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchListingDetail: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task FetchMyListings()
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchMyListings);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchMyListings: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task BookmarkListing(int listingId, bool bookmark)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CBookmarkListing);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteBool(bookmark);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in BookmarkListing: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task UpdateListingMenu(int listingId, List<MenuItemData> menuItems)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CUpdateListingMenu);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteInt(menuItems.Count);
+                        foreach (var item in menuItems)
+                        {
+                            buffer.WriteString(item.category ?? string.Empty);
+                            buffer.WriteString(item.itemName ?? string.Empty);
+                            buffer.WriteString(item.description ?? string.Empty);
+                            buffer.WriteString(item.price ?? string.Empty);
+                            buffer.WriteBool(item.isOOCPrice);
+                            buffer.WriteInt(item.sortOrder);
+                            var menuImages = item.images ?? new List<EntryImage>();
+                            buffer.WriteInt(menuImages.Count);
+                            foreach (var img in menuImages)
+                            {
+                                buffer.WriteInt(img.imageBytes?.Length ?? 0);
+                                if (img.imageBytes != null && img.imageBytes.Length > 0)
+                                    buffer.WriteBytes(img.imageBytes);
+                                buffer.WriteBool(img.isNSFW);
+                                buffer.WriteBool(img.isTriggering);
+                                buffer.WriteString(img.caption ?? string.Empty);
+                            }
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UpdateListingMenu: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task UpdateListingSchedule(int listingId, List<ListingSchedule> schedules)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CUpdateListingSchedule);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteInt(schedules.Count);
+                        foreach (var schedule in schedules)
+                        {
+                            buffer.WriteBool(schedule.isRecurring);
+                            if (schedule.isRecurring)
+                            {
+                                buffer.WriteInt(schedule.dayOfWeek);
+                                buffer.WriteInt((int)schedule.startTime.TotalMinutes);
+                                buffer.WriteInt((int)schedule.endTime.TotalMinutes);
+                            }
+                            else
+                            {
+                                buffer.WriteLong(schedule.specificDate.HasValue ? schedule.specificDate.Value.Ticks : 0);
+                                buffer.WriteLong(schedule.specificEndDate.HasValue ? schedule.specificEndDate.Value.Ticks : 0);
+                            }
+                            buffer.WriteString(schedule.eventName);
+                            buffer.WriteString(schedule.notes);
+                            buffer.WriteString(schedule.timezone);
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UpdateListingSchedule: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task UploadListingImage(Character character, int listingId, int imageType, byte[] imageBytes)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CUploadListingImage);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteInt(imageType);
+                        buffer.WriteInt(imageBytes.Length);
+                        buffer.WriteBytes(imageBytes);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in UploadListingImage: " + ex.ToString());
+                }
+            }
+        }
+
+        #region Booking System
+
+        internal static async Task SendBookingRequest(int listingId, int bookableEntryId, DateTime requestedDate, TimeSpan requestedTime, string timezone, string notes)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CSendBookingRequest);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteInt(bookableEntryId);
+                        buffer.WriteLong(requestedDate.Ticks);
+                        buffer.WriteInt((int)requestedTime.TotalMinutes);
+                        buffer.WriteString(timezone);
+                        buffer.WriteString(notes);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendBookingRequest: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task FetchMyBookings()
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchMyBookings);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchMyBookings: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task RespondToBooking(int bookingId, int status)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CRespondToBooking);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(bookingId);
+                        buffer.WriteInt(status);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in RespondToBooking: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task FetchIncomingBookings(int listingId)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CFetchIncomingBookings);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in FetchIncomingBookings: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task SaveBookableEntries(int listingId, List<BookableEntry> entries)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CSaveBookableEntries);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteInt(entries.Count);
+                        foreach (var entry in entries)
+                        {
+                            buffer.WriteString(entry.name);
+                            buffer.WriteString(entry.description);
+                            buffer.WriteString(entry.price);
+                            buffer.WriteBool(entry.isOOCPrice);
+                            buffer.WriteInt(entry.maxSlots);
+                            buffer.WriteBool(entry.isActive);
+                            buffer.WriteInt(entry.sortOrder);
+                            var bookableImages = entry.images ?? new List<EntryImage>();
+                            buffer.WriteInt(bookableImages.Count);
+                            foreach (var img in bookableImages)
+                            {
+                                buffer.WriteInt(img.imageBytes?.Length ?? 0);
+                                if (img.imageBytes != null && img.imageBytes.Length > 0)
+                                    buffer.WriteBytes(img.imageBytes);
+                                buffer.WriteBool(img.isNSFW);
+                                buffer.WriteBool(img.isTriggering);
+                                buffer.WriteString(img.caption ?? string.Empty);
+                            }
+                            buffer.WriteInt(entry.availableTimes.Count);
+                            foreach (var time in entry.availableTimes)
+                            {
+                                buffer.WriteBool(time.isRecurring);
+                                if (time.isRecurring)
+                                {
+                                    buffer.WriteInt(time.dayOfWeek);
+                                    buffer.WriteInt((int)time.startTime.TotalMinutes);
+                                    buffer.WriteInt((int)time.endTime.TotalMinutes);
+                                }
+                                else
+                                {
+                                    buffer.WriteLong(time.specificDate.HasValue ? time.specificDate.Value.Ticks : 0);
+                                    buffer.WriteLong(time.specificEndDate.HasValue ? time.specificEndDate.Value.Ticks : 0);
+                                }
+                            }
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveBookableEntries: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async Task SaveStaffEntries(int listingId, List<StaffEntry> entries)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.CSaveStaffEntries);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteInt(listingId);
+                        buffer.WriteInt(entries.Count);
+                        foreach (var entry in entries)
+                        {
+                            buffer.WriteString(entry.name ?? string.Empty);
+                            buffer.WriteString(entry.role ?? string.Empty);
+                            buffer.WriteString(entry.description ?? string.Empty);
+                            buffer.WriteInt(entry.sortOrder);
+                            buffer.WriteInt(entry.customFields?.Count ?? 0);
+                            if (entry.customFields != null)
+                            {
+                                foreach (var f in entry.customFields)
+                                {
+                                    buffer.WriteString(f.name ?? string.Empty);
+                                    buffer.WriteString(f.description ?? string.Empty);
+                                }
+                            }
+                            // Multi-image gallery (replaces old single image)
+                            var staffImages = entry.images ?? new List<EntryImage>();
+                            // If entry has old-style imageBytes but no images list, convert
+                            if (staffImages.Count == 0 && entry.imageBytes != null && entry.imageBytes.Length > 0)
+                                staffImages.Add(new EntryImage { imageBytes = entry.imageBytes, sortOrder = 0 });
+                            buffer.WriteInt(staffImages.Count);
+                            foreach (var img in staffImages)
+                            {
+                                buffer.WriteInt(img.imageBytes?.Length ?? 0);
+                                if (img.imageBytes != null && img.imageBytes.Length > 0)
+                                    buffer.WriteBytes(img.imageBytes);
+                                buffer.WriteBool(img.isNSFW);
+                                buffer.WriteBool(img.isTriggering);
+                                buffer.WriteString(img.caption ?? string.Empty);
+                            }
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SaveStaffEntries: " + ex.ToString());
+                }
+            }
+        }
+
+        #endregion
 
 
         internal static async void SendARPChatMessage(Character character, string message, bool isAnnouncement)
@@ -1090,7 +1626,7 @@ namespace Networking
             }
         }
 
-        internal static async void SendItemCreation(Character character, int currentProfile, int tabIndex, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality)
+        internal static async void SendItemCreation(Character character, int currentProfile, int tabIndex, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality, bool locked)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1112,6 +1648,7 @@ namespace Networking
                         buffer.WriteInt(itemSubType);
                         buffer.WriteInt((int)createItemIconID);
                         buffer.WriteInt(itemQuality);
+                        buffer.WriteBool(locked);
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
@@ -1147,6 +1684,7 @@ namespace Networking
                             buffer.WriteInt(slotContents[i].iconID);
                             buffer.WriteInt(slotContents[i].slot);
                             buffer.WriteInt(slotContents[i].quality);
+                            buffer.WriteBool(slotContents[i].locked);
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -1184,13 +1722,14 @@ namespace Networking
                             buffer.WriteInt(slotContents[i].iconID);
                             buffer.WriteInt(slotContents[i].slot);
                             buffer.WriteInt(slotContents[i].quality);
+                            buffer.WriteBool(slotContents[i].locked);
                         }
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Debug("Debug in SendItemOrder: " + ex.ToString());
+                    Plugin.PluginLog.Debug("Debug in SendTradeUpdate: " + ex.ToString());
                 }
             }
         }
@@ -1298,7 +1837,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void CreateTab(Character character, string name, int type, int profileIndex, int index)
+        internal static async Task CreateTab(Character character, string name, int type, int profileIndex, int index)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1520,7 +2059,7 @@ namespace Networking
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Debug in Request target trade: {ex}");
+                    Plugin.PluginLog.Debug($"Debug in Request target trade: {ex}");
                 }
                 finally
                 {
@@ -1545,26 +2084,25 @@ namespace Networking
                         buffer.WriteInt(layout.tradeSlotContents.Count);
                         buffer.WriteInt(layout.traderSlotContents.Count);
 
-
-                        for (int i = 0; i < layout.tradeSlotContents.Count; i++)
+                        foreach (var kvp in layout.tradeSlotContents)
                         {
-                            buffer.WriteString(layout.tradeSlotContents[i].name);
-                            buffer.WriteString(layout.tradeSlotContents[i].description);
-                            buffer.WriteInt(layout.tradeSlotContents[i].type);
-                            buffer.WriteInt(layout.tradeSlotContents[i].subtype);
-                            buffer.WriteInt(layout.tradeSlotContents[i].iconID);
-                            buffer.WriteInt(layout.tradeSlotContents[i].quality);
-                            Plugin.PluginLog.Debug($"Trade Slot {i}: {layout.tradeSlotContents[i].name}");
+                            buffer.WriteString(kvp.Value.name);
+                            buffer.WriteString(kvp.Value.description);
+                            buffer.WriteInt(kvp.Value.type);
+                            buffer.WriteInt(kvp.Value.subtype);
+                            buffer.WriteInt(kvp.Value.iconID);
+                            buffer.WriteInt(kvp.Value.quality);
+                            buffer.WriteBool(kvp.Value.locked);
                         }
-                        for (int i = 0; i < layout.traderSlotContents.Count; i++)
+                        foreach (var kvp in layout.traderSlotContents)
                         {
-                            buffer.WriteString(layout.traderSlotContents[i].name);
-                            buffer.WriteString(layout.traderSlotContents[i].description);
-                            buffer.WriteInt(layout.traderSlotContents[i].type);
-                            buffer.WriteInt(layout.traderSlotContents[i].subtype);
-                            buffer.WriteInt(layout.traderSlotContents[i].iconID);
-                            buffer.WriteInt(layout.traderSlotContents[i].quality);
-                            Plugin.PluginLog.Debug($"Trader Slot {i}: {layout.traderSlotContents[i].name}");
+                            buffer.WriteString(kvp.Value.name);
+                            buffer.WriteString(kvp.Value.description);
+                            buffer.WriteInt(kvp.Value.type);
+                            buffer.WriteInt(kvp.Value.subtype);
+                            buffer.WriteInt(kvp.Value.iconID);
+                            buffer.WriteInt(kvp.Value.quality);
+                            buffer.WriteBool(kvp.Value.locked);
                         }
 
                         await ClientTCP.SendDataAsync(buffer.ToArray());
@@ -1654,7 +2192,7 @@ namespace Networking
             }
         }
 
-        internal static async void SubmitTreeLayout(Character character, int profileIndex, TreeLayout treeLayout)
+        internal static async Task SubmitTreeLayout(Character character, int profileIndex, TreeLayout treeLayout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1748,7 +2286,7 @@ namespace Networking
                 }
             }
         }
-        internal static async void SubmitInventoryLayout(Character character, int profileIndex, InventoryLayout inventoryLayout)
+        internal static async Task SubmitInventoryLayout(Character character, int profileIndex, InventoryLayout inventoryLayout)
         {
             if (ClientTCP.IsConnected())
             {
@@ -1785,6 +2323,299 @@ namespace Networking
             }
         }
 
+
+        // ==================== Buffer Builders for Batch Sending ====================
+        // These build the raw byte[] for each packet without sending, so multiple
+        // packets can be batched into a single TCP write via ClientTCP.SendBatchAsync.
+
+        public static byte[] BuildCreateTabBuffer(Character character, string name, int type, int profileIndex, int index)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CreateTab);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteString(name);
+                    buffer.WriteInt(type);
+                    buffer.WriteInt(index);
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildCreateTabBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildProfileBioBuffer(Character character, int profileIndex, BioLayout layout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CCreateProfileBio);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteBool(layout.isTooltip);
+                    buffer.WriteInt(layout.tabIndex);
+                    buffer.WriteString(layout.name);
+                    buffer.WriteString(layout.race);
+                    buffer.WriteString(layout.gender);
+                    buffer.WriteString(layout.age);
+                    buffer.WriteString(layout.height);
+                    buffer.WriteString(layout.weight);
+                    buffer.WriteString(layout.afg);
+                    buffer.WriteInt(layout.alignment);
+                    buffer.WriteInt(layout.personality_1);
+                    buffer.WriteInt(layout.personality_2);
+                    buffer.WriteInt(layout.personality_3);
+                    buffer.WriteInt(layout.fields.Count);
+                    buffer.WriteInt(layout.descriptors.Count);
+                    buffer.WriteInt(layout.traits.Count);
+                    for (int i = 0; i < layout.fields.Count; i++)
+                    {
+                        buffer.WriteString(layout.fields[i].name);
+                        buffer.WriteString(layout.fields[i].description);
+                    }
+                    for (int i = 0; i < layout.descriptors.Count; i++)
+                    {
+                        buffer.WriteString(layout.descriptors[i].name);
+                        buffer.WriteString(layout.descriptors[i].description);
+                    }
+                    for (int i = 0; i < layout.traits.Count; i++)
+                    {
+                        buffer.WriteString(layout.traits[i].name);
+                        buffer.WriteString(layout.traits[i].description);
+                        buffer.WriteInt(layout.traits[i].iconID);
+                    }
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildProfileBioBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildProfileDetailsBuffer(Character character, int profileIndex, DetailsLayout layout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.SendProfileDetails);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteInt(layout.tabIndex);
+                    buffer.WriteInt(layout.details.Count);
+                    for (int i = 0; i < layout.details.Count; i++)
+                    {
+                        buffer.WriteInt(layout.details[i].id);
+                        buffer.WriteString(layout.details[i].name);
+                        buffer.WriteString(layout.details[i].content);
+                    }
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildProfileDetailsBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildGalleryLayoutBuffer(Character character, int profileIndex, GalleryLayout layout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSendGallery);
+                    buffer.WriteInt(layout.tabIndex);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteInt(layout.images.Count);
+                    for (int i = 0; i < layout.images.Count; i++)
+                    {
+                        buffer.WriteString(layout.images[i].url);
+                        buffer.WriteInt(layout.images[i].imageBytes.Length);
+                        buffer.WriteBytes(layout.images[i].imageBytes);
+                        buffer.WriteString(layout.images[i].tooltip);
+                        buffer.WriteBool(layout.images[i].nsfw);
+                        buffer.WriteBool(layout.images[i].trigger);
+                        buffer.WriteInt(layout.images[i].index);
+                    }
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildGalleryLayoutBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildStoryLayoutBuffer(Character character, int profileIndex, StoryLayout layout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSendStory);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteInt(layout.tabIndex);
+                    buffer.WriteInt(layout.chapters.Count);
+                    buffer.WriteString(layout.name);
+                    for (int i = 0; i < layout.chapters.Count; i++)
+                    {
+                        buffer.WriteString(layout.chapters[i].title);
+                        buffer.WriteString(layout.chapters[i].content);
+                    }
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildStoryLayoutBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildInfoLayoutBuffer(Character character, int profileIndex, InfoLayout layout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.SSendInfo);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteInt(layout.tabIndex);
+                    buffer.WriteString(layout.text);
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildInfoLayoutBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildInventoryLayoutBuffer(Character character, int profileIndex, InventoryLayout inventoryLayout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.SendInventoryLayout);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteInt(inventoryLayout.tabIndex);
+                    buffer.WriteInt(inventoryLayout.inventorySlotContents.Count);
+                    foreach (var item in inventoryLayout.inventorySlotContents.Values)
+                    {
+                        buffer.WriteString(item.name);
+                        buffer.WriteString(item.description);
+                        buffer.WriteInt(item.type);
+                        buffer.WriteInt(item.subtype);
+                        buffer.WriteInt(item.iconID);
+                        buffer.WriteInt(item.slot);
+                        buffer.WriteInt(item.quality);
+                    }
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildInventoryLayoutBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        public static byte[] BuildTreeLayoutBuffer(Character character, int profileIndex, TreeLayout treeLayout)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.SendTreeLayout);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(profileIndex);
+                    buffer.WriteInt(treeLayout.tabIndex);
+                    buffer.WriteInt(treeLayout.Paths.Count);
+                    foreach (var path in treeLayout.Paths)
+                    {
+                        buffer.WriteInt(path.Count);
+                        foreach (var slot in path)
+                        {
+                            buffer.WriteInt(slot.x);
+                            buffer.WriteInt(slot.y);
+                        }
+                    }
+                    buffer.WriteInt(treeLayout.PathConnections.Count);
+                    foreach (var pathConnections in treeLayout.PathConnections)
+                    {
+                        buffer.WriteInt(pathConnections.Count);
+                        foreach (var conn in pathConnections)
+                        {
+                            bool all0 = conn.from.x == 0 && conn.from.y == 0 && conn.to.x == 0 && conn.to.y == 0;
+                            buffer.WriteBool(all0);
+                            buffer.WriteInt(conn.from.x);
+                            buffer.WriteInt(conn.from.y);
+                            buffer.WriteInt(conn.to.x);
+                            buffer.WriteInt(conn.to.y);
+                        }
+                    }
+                    buffer.WriteInt(treeLayout.relationships.Count);
+                    foreach (var rel in treeLayout.relationships)
+                    {
+                        buffer.WriteString(rel.Name ?? "");
+                        buffer.WriteString(rel.Description ?? "");
+                        buffer.WriteInt(rel.IconID);
+                        buffer.WriteBool(rel.active);
+                        buffer.WriteBool(rel.Slot.HasValue);
+                        if (rel.Slot.HasValue)
+                        {
+                            buffer.WriteInt(rel.Slot.Value.x);
+                            buffer.WriteInt(rel.Slot.Value.y);
+                        }
+                        buffer.WriteInt(rel.Links?.Count ?? 0);
+                        if (rel.Links != null)
+                        {
+                            foreach (var link in rel.Links)
+                            {
+                                buffer.WriteInt(link.From.x);
+                                buffer.WriteInt(link.From.y);
+                                buffer.WriteInt(link.To.x);
+                                buffer.WriteInt(link.To.y);
+                            }
+                        }
+                    }
+                    return buffer.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in BuildTreeLayoutBuffer: " + ex.ToString());
+                return null;
+            }
+        }
+
+        // ==================== End Buffer Builders ====================
 
         internal static async void SendTabReorder(Character character, int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
         {

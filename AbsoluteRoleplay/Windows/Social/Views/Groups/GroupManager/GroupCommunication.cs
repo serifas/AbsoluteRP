@@ -40,11 +40,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 // Header with tabs
                 ImGui.Text("Communication Management");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Quick add chat category button
-                if (ImGui.Button("+ Chat Category", new Vector2(150, 30)))
+                if (ThemeManager.PillButton("+ Chat Category", new Vector2(150, 30)))
                 {
                     AddChatCategory = true;
                 }
@@ -53,7 +53,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                     GroupChannels.LoadGroupChannels(group);
                 }
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Content area - only show chat channels

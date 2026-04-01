@@ -6,6 +6,7 @@ using System.Linq;
 using System.Numerics;
 using Networking;
 using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
 
 namespace AbsoluteRP.Windows
 {
@@ -48,7 +49,7 @@ namespace AbsoluteRP.Windows
             ImGui.Text($"Total: {totalLikes} likes from {DataReceiver.currentProfileLikes.Count} user(s)");
             ImGui.SameLine();
             ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), " ♥");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             if (DataReceiver.currentProfileLikes.Count == 0)
@@ -143,7 +144,7 @@ namespace AbsoluteRP.Windows
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.PopID();

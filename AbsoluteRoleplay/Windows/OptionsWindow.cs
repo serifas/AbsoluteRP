@@ -153,7 +153,7 @@ namespace AbsoluteRP.Windows
                     ImGui.Text("Enable Auto Backup");
                     string customPath = Plugin.plugin.Configuration.dataSavePath ?? string.Empty;
                     ImGui.Text($"Auto Backup Dir: {customPath}" );
-                    if(ImGui.Button("Change Path"))
+                    if(ThemeManager.GhostButton("Change Path"))
                     {
                         ChangeDataPath = true;
                     }
@@ -280,6 +280,12 @@ namespace AbsoluteRP.Windows
                     ImGui.EndTabItem();
                 }
 
+                if (ImGui.BeginTabItem("Theme"))
+                {
+                    DrawThemeTab();
+                    ImGui.EndTabItem();
+                }
+
                 ImGui.EndTabBar();
             }
             catch (Exception ex)
@@ -287,6 +293,192 @@ namespace AbsoluteRP.Windows
                 Plugin.PluginLog.Debug("OptionsWindow Draw Debug: " + ex.Message);
             }
         }
+        private void DrawThemeTab()
+        {
+            var config = Plugin.plugin.Configuration;
+
+            ThemeManager.SectionHeader("Theme Customization");
+            ThemeManager.SubtitleText("Customize the look of all Absolute Roleplay windows. Changes preview live.");
+            ImGui.Spacing();
+
+            ThemeManager.GradientSeparator();
+
+            // Color pickers in a card
+            if (ThemeManager.BeginCard("##colorpickers", new System.Numerics.Vector2(0, 160)))
+            {
+                ImGui.Spacing();
+
+                // Border color
+                var border = config.ThemeBorder ?? ThemeManager.DefaultBorder;
+                if (ThemeManager.DrawColorPicker("Border", ref border, ThemeManager.DefaultBorder))
+                {
+                    config.ThemeBorder = border;
+                    config.Save();
+                }
+
+                // Background color
+                var bg = config.ThemeBackground ?? ThemeManager.DefaultBackground;
+                if (ThemeManager.DrawColorPicker("Background", ref bg, ThemeManager.DefaultBackground))
+                {
+                    config.ThemeBackground = bg;
+                    config.Save();
+                }
+
+                // Accent color
+                var accent = config.ThemeAccent ?? ThemeManager.DefaultAccent;
+                if (ThemeManager.DrawColorPicker("Accent", ref accent, ThemeManager.DefaultAccent))
+                {
+                    config.ThemeAccent = accent;
+                    config.Save();
+                }
+
+                // Font color
+                var font = config.ThemeFont ?? ThemeManager.DefaultFont;
+                if (ThemeManager.DrawColorPicker("Font Color", ref font, ThemeManager.DefaultFont))
+                {
+                    config.ThemeFont = font;
+                    config.Save();
+                }
+
+                ImGui.Spacing();
+            }
+            ThemeManager.EndCard();
+
+            ImGui.Spacing();
+            ThemeManager.SectionHeader("Presets");
+            ImGui.Spacing();
+
+            // Preset buttons using pill style
+            if (ThemeManager.PillButton("Default Dark"))
+            {
+                config.ThemeBorder = null;
+                config.ThemeBackground = null;
+                config.ThemeAccent = null;
+                config.ThemeFont = null;
+                config.Save();
+            }
+
+            ImGui.SameLine();
+            if (ThemeManager.PillButton("Deep Purple", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.35f, 0.25f, 0.50f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.60f, 0.35f, 0.85f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.88f, 0.85f, 0.95f, 1.00f);
+                config.Save();
+            }
+
+            ImGui.SameLine();
+            if (ThemeManager.PillButton("Crimson", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.40f, 0.20f, 0.20f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.85f, 0.25f, 0.30f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.95f, 0.88f, 0.88f, 1.00f);
+                config.Save();
+            }
+
+            if (ThemeManager.PillButton("Ocean", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.20f, 0.30f, 0.40f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.20f, 0.60f, 0.85f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.85f, 0.92f, 0.98f, 1.00f);
+                config.Save();
+            }
+
+            ImGui.SameLine();
+            if (ThemeManager.PillButton("Emerald", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.20f, 0.35f, 0.25f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.25f, 0.75f, 0.45f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.88f, 0.95f, 0.90f, 1.00f);
+                config.Save();
+            }
+
+            ImGui.SameLine();
+            if (ThemeManager.PillButton("Sunset", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.40f, 0.28f, 0.20f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.90f, 0.55f, 0.20f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.98f, 0.92f, 0.85f, 1.00f);
+                config.Save();
+            }
+
+            if (ThemeManager.PillButton("Rose Gold", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.38f, 0.25f, 0.30f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.85f, 0.45f, 0.55f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.96f, 0.90f, 0.91f, 1.00f);
+                config.Save();
+            }
+
+            ImGui.SameLine();
+            if (ThemeManager.PillButton("Midnight", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.18f, 0.18f, 0.28f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.45f, 0.45f, 0.90f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.82f, 0.82f, 0.95f, 1.00f);
+                config.Save();
+            }
+
+            ImGui.SameLine();
+            if (ThemeManager.PillButton("Frost", primary: false))
+            {
+                config.ThemeBorder = new System.Numerics.Vector4(0.30f, 0.38f, 0.42f, 0.65f);
+                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                config.ThemeAccent = new System.Numerics.Vector4(0.50f, 0.80f, 0.95f, 1.00f);
+                config.ThemeFont = new System.Numerics.Vector4(0.88f, 0.94f, 0.98f, 1.00f);
+                config.Save();
+            }
+
+            ImGui.Spacing();
+            ThemeManager.GradientSeparator();
+
+            // Widget preview section
+            ThemeManager.SectionHeader("Preview");
+            ImGui.Spacing();
+
+            if (ThemeManager.BeginCard("##preview", new System.Numerics.Vector2(0, 140)))
+            {
+                // Show sample widgets so user can preview theme in real time
+                ThemeManager.StatusDot("Online", ThemeManager.Success);
+                ImGui.SameLine();
+                ImGui.Dummy(new System.Numerics.Vector2(12, 0));
+                ImGui.SameLine();
+                ThemeManager.StatusDot("Away", ThemeManager.Warning);
+                ImGui.SameLine();
+                ImGui.Dummy(new System.Numerics.Vector2(12, 0));
+                ImGui.SameLine();
+                ThemeManager.StatusDot("Offline", ThemeManager.FontDim);
+
+                ImGui.Spacing();
+
+                ThemeManager.Badge("Verified");
+                ImGui.SameLine();
+                ThemeManager.Badge("Premium", ThemeManager.Warning);
+                ImGui.SameLine();
+                ThemeManager.Badge("New", ThemeManager.Success);
+
+                ImGui.Spacing();
+
+                ThemeManager.StyledProgressBar(0.65f, new System.Numerics.Vector2(-1, 16), "65% Complete");
+
+                ImGui.Spacing();
+
+                ThemeManager.PillButton("Primary");
+                ImGui.SameLine();
+                ThemeManager.GhostButton("Secondary");
+                ImGui.SameLine();
+                ThemeManager.DangerButton("Delete");
+            }
+            ThemeManager.EndCard();
+        }
+
         public void Dispose()
         {
 

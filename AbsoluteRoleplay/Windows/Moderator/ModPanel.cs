@@ -43,7 +43,7 @@ namespace AbsoluteRP.Windows.Moderator
                     ImGui.Text("Message to user:");
                     ImGui.InputTextMultiline("##message", ref moderatorMessage, 4000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 4));
 
-                    if (ImGui.Button("Add Notes"))
+                    if (ThemeManager.GhostButton("Add Notes"))
                     {
                         addNotes = true;
                     }
@@ -83,7 +83,7 @@ namespace AbsoluteRP.Windows.Moderator
             if (confirmed)
             {
                 ImGui.SameLine();
-                if(ImGui.Button("Confirm Submition"))
+                if(ThemeManager.PillButton("Confirm Submition"))
                 {
                     DataSender.SubmitModeratorAction(Plugin.character, capturedAuthor, capturedMessage, moderatorMessage, moderatorNotes, currentAction);
                     status = "Please stand by...";

@@ -61,43 +61,48 @@ namespace AbsoluteRP.Windows.Profiles
                     ItemGrid.DrawGrid(Plugin.plugin, inventoryLayout, tradeTargetName, tradeTargetWorld, true);
                 }
             }
+            // Inventory tab selector for choosing which inventory to use / receive into
+            ImGui.Text("Your Inventory:");
             AddTabSelection(false);
-            float centeredX = (ImGui.GetWindowSize().X - ImGui.CalcTextSize("Confirm Trade").X) / 2.5f;
-            if (Misc.DrawCenteredButton( "Confirm Trade"))
+            ImGui.Spacing();
+
+            if (Misc.DrawCenteredButton("Confirm Trade"))
             {
-                if(inventoryLayout.tradeSlotContents.Count > 0)
-                {
-                    showConfirmTradePopup = true;
-                    ImGui.OpenPopup("ConfirmTradePopup");
-                }
-                else
-                {
-                    DataSender.SendTradeStatus(Plugin.character, -1 ,inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
-                }
+                showConfirmTradePopup = true;
+                ImGui.OpenPopup("ConfirmTradePopup");
             }
             ImGui.SameLine();
             if (Misc.DrawCenteredButton("Cancel Trade"))
             {
                 DataSender.SendTradeStatus(Plugin.character, -1, inventoryLayout, tradeTargetName, tradeTargetWorld, false, true);
             }
-            
+
             // Confirmation Popup
             if (showConfirmTradePopup)
             {
-                ImGui.SetNextWindowSize(new Vector2(350, 120), ImGuiCond.Always);
+                ImGui.SetNextWindowSize(new Vector2(400, 180), ImGuiCond.Always);
                 if (ImGui.BeginPopupModal("ConfirmTradePopup", ref showConfirmTradePopup, ImGuiWindowFlags.AlwaysAutoResize))
                 {
-                    ImGui.Text("Please choose an inventory to receive the items.");
-                    ImGui.Spacing();
-
-                    if (ImGui.Button("Confirm", new Vector2(120, 0)))
+                    if (inventoryTabs.Count == 0)
                     {
-                        DataSender.SendTradeStatus(Plugin.character, inventoryTabs[selectedTab].Item1, inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
-                        showConfirmTradePopup = false;
-                        ImGui.CloseCurrentPopup();
+                        ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), "You have no inventory tabs. Create an inventory tab on your profile first.");
                     }
-                    ImGui.SameLine();
-                    if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                    else
+                    {
+                        ImGui.Text("Choose which inventory will receive traded items:");
+                        ImGui.Spacing();
+                        AddTabSelection(true);
+                        ImGui.Spacing();
+
+                        if (ThemeManager.PillButton("Confirm Trade", new Vector2(140, 0)))
+                        {
+                            DataSender.SendTradeStatus(Plugin.character, inventoryTabs[selectedTab].Item1, inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
+                            showConfirmTradePopup = false;
+                            ImGui.CloseCurrentPopup();
+                        }
+                        ImGui.SameLine();
+                    }
+                    if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                     {
                         showConfirmTradePopup = false;
                         ImGui.CloseCurrentPopup();

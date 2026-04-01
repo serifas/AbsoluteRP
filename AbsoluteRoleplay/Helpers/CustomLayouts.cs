@@ -1,4 +1,4 @@
-﻿using Dalamud.Bindings.ImGui;
+using Dalamud.Bindings.ImGui;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,20 +36,26 @@ namespace AbsoluteRP.Helpers
                 var size = ImGui.GetWindowSize();
                 var max = new Vector2(min.X + size.X, min.Y + size.Y);
 
-                // Colors
-                Vector4 black = new Vector4(0f, 0f, 0f, 1f);
-                Vector4 blueOutline = new Vector4(0.25f, 0.45f, 0.85f, 1f);
-                float outlineThickness = 2.0f;
+                // Use theme colors
+                var bgColor = ThemeManager.Background;
+                var borderColor = ThemeManager.Accent;
+                float outlineThickness = 1.5f;
                 float rounding = navRounding;
 
-                // Draw main window background (black with rounded corners and blue outline)
-                drawList.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(black), rounding);
-                drawList.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(blueOutline), rounding, 0, outlineThickness);
+                // Draw main window background with rounded corners and accent outline
+                drawList.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(bgColor), rounding);
+                drawList.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(borderColor.X, borderColor.Y, borderColor.Z, 0.5f)), rounding, 0, outlineThickness);
 
-                // Draw header background (black with rounded top corners and blue outline)
+                // Draw header with subtle gradient effect
                 var headerMax = new Vector2(min.X + size.X, min.Y + headerHeight);
-                drawList.AddRectFilled(min, headerMax, ImGui.ColorConvertFloat4ToU32(black), rounding, ImDrawFlags.RoundCornersTop);
-                drawList.AddRect(min, headerMax, ImGui.ColorConvertFloat4ToU32(blueOutline), rounding, ImDrawFlags.RoundCornersTop, outlineThickness);
+                var headerBg = ThemeManager.Darken(ThemeManager.Background, 0.02f);
+                drawList.AddRectFilled(min, headerMax, ImGui.ColorConvertFloat4ToU32(headerBg), rounding, ImDrawFlags.RoundCornersTop);
+
+                // Header bottom separator — subtle accent line
+                drawList.AddLine(
+                    new Vector2(min.X + 8, headerMax.Y),
+                    new Vector2(headerMax.X - 8, headerMax.Y),
+                    ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentMuted), 1f);
 
                 // Center and draw header text with custom font
                 if (!HeaderFont.Equals(default) && !string.IsNullOrEmpty(headerText))
@@ -79,8 +85,6 @@ namespace AbsoluteRP.Helpers
                     // Move cursor below header if no navigation
                     ImGui.SetCursorScreenPos(new Vector2(min.X, min.Y + headerHeight + 8f));
                 }
-
-                // Your window content here...
             }
             finally
             {
@@ -104,8 +108,10 @@ namespace AbsoluteRP.Helpers
             var navStart = new Vector2(windowPos.X, windowPos.Y);
             var navEnd = new Vector2(windowPos.X + navWidthScaled, windowPos.Y + imageButtons.Length * buttonHeightScaled);
 
+            // Nav panel background — uses theme
+            var navBg = ThemeManager.Lighten(ThemeManager.Background, 0.04f);
             ImGui.GetWindowDrawList().AddRectFilled(navStart, navEnd,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.13f, 0.15f, 0.18f, 1.0f)),
+                ImGui.ColorConvertFloat4ToU32(navBg),
                 roundingScaled, ImDrawFlags.RoundCornersLeft);
 
             ImGui.SetCursorScreenPos(navStart);
@@ -117,10 +123,31 @@ namespace AbsoluteRP.Helpers
 
                 if (i == selectedIndex)
                 {
+                    // Selected nav item — accent color with slight transparency
                     ImGui.GetWindowDrawList().AddRectFilled(
                         btnPos, btnEnd,
-                        ImGui.ColorConvertFloat4ToU32(new Vector4(0.25f, 0.45f, 0.85f, 1.0f)),
+                        ImGui.ColorConvertFloat4ToU32(ThemeManager.Darken(ThemeManager.Accent, 0.08f)),
                         roundingScaled, ImDrawFlags.RoundCornersLeft);
+
+                    // Active indicator bar on the right edge
+                    ImGui.GetWindowDrawList().AddRectFilled(
+                        new Vector2(btnEnd.X - 3f, btnPos.Y + 6f),
+                        new Vector2(btnEnd.X, btnEnd.Y - 6f),
+                        ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent),
+                        2f);
+                }
+                else
+                {
+                    // Hover effect
+                    var mousePos = ImGui.GetMousePos();
+                    if (mousePos.X >= btnPos.X && mousePos.X <= btnEnd.X &&
+                        mousePos.Y >= btnPos.Y && mousePos.Y <= btnEnd.Y)
+                    {
+                        ImGui.GetWindowDrawList().AddRectFilled(
+                            btnPos, btnEnd,
+                            ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentSubtle),
+                            roundingScaled, ImDrawFlags.RoundCornersLeft);
+                    }
                 }
 
                 ImGui.SetCursorScreenPos(btnPos);
@@ -141,9 +168,14 @@ namespace AbsoluteRP.Helpers
             Vector2 pos = ImGui.GetCursorScreenPos();
             bool pressed = ImGui.InvisibleButton($"##imgbtn_{textureId}_{pos.X}_{pos.Y}", size);
 
-            Vector4 tint = (ImGui.IsItemHovered() || ImGui.IsItemActive())
-                ? new Vector4(1,1,1, 1.0f)
-                : new Vector4(1f, 1f, 1f, 0.8f);
+            // Brighter on hover, with smooth accent tint
+            Vector4 tint;
+            if (ImGui.IsItemActive())
+                tint = new Vector4(ThemeManager.Accent.X * 0.8f + 0.2f, ThemeManager.Accent.Y * 0.8f + 0.2f, ThemeManager.Accent.Z * 0.8f + 0.2f, 1.0f);
+            else if (ImGui.IsItemHovered())
+                tint = new Vector4(1, 1, 1, 1.0f);
+            else
+                tint = new Vector4(0.85f, 0.85f, 0.85f, 0.75f);
 
             ImGui.GetWindowDrawList().AddImage(
                 textureId,

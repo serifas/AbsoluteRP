@@ -78,12 +78,12 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             ImGui.Text("Group Ranks");
             ImGui.SameLine();
             ImGui.SetCursorPosX(ImGui.GetContentRegionMax().X - 100);
-            if (ImGui.Button("Create Rank", new Vector2(100, 0)))
+            if (ThemeManager.PillButton("Create Rank", new Vector2(100, 0)))
             {
                 OpenCreateDialog(group);
             }
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Rank list
@@ -300,7 +300,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             // Rank name
             ImGui.Text("Rank Name:");
             ImGui.SetNextItemWidth(-1);
-            ImGui.InputText("##RankName", ref rankName, 100);
+            ThemeManager.StyledInput("##RankName", ref rankName, 100);
 
             ImGui.Spacing();
 
@@ -323,7 +323,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("When checked, new members joining the group will be assigned this rank automatically");
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Permissions
@@ -340,14 +340,14 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             ImGui.Spacing();
 
             // Buttons
-            if (ImGui.Button(isEdit ? "Save Changes" : "Create Rank", new Vector2(120, 0)))
+            if (ThemeManager.PillButton(isEdit ? "Save Changes" : "Create Rank", new Vector2(120, 0)))
             {
                 SaveRank(group, isEdit);
             }
 
             ImGui.SameLine();
 
-            if (ImGui.Button("Cancel", new Vector2(120, 0)))
+            if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
             {
                 showCreateDialog = false;
                 showEditDialog = false;
@@ -593,7 +593,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), "Members with this rank will have their rank set to none.");
             ImGui.Spacing();
 
-            if (ImGui.Button("Delete", new Vector2(120, 0)))
+            if (ThemeManager.DangerButton("Delete", new Vector2(120, 0)))
             {
                 var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
                 if (character != null && deletingRank != null)
@@ -614,7 +614,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
             ImGui.SameLine();
 
-            if (ImGui.Button("Cancel", new Vector2(120, 0)))
+            if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
             {
                 showDeleteConfirm = false;
                 deletingRank = null;

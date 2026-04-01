@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Networking;
@@ -46,7 +47,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                     ImGui.TextWrapped(targetGroupDescription);
                 }
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Info text
@@ -59,18 +60,18 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1f), $"{requestMessage.Length}/500 characters");
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Action buttons
-                if (ImGui.Button("Send Request", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Send Request", new Vector2(120, 0)))
                 {
                     SendRequest();
                 }
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     isOpen = false;
                 }

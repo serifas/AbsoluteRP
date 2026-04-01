@@ -40,7 +40,7 @@ namespace AbsoluteRP.Windows
         public override void Draw()
         {
             ImGui.Text("Your Profiles and Their Likes:");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Show loading state while profiles are being fetched
@@ -90,7 +90,7 @@ namespace AbsoluteRP.Windows
 
                 ImGui.TextColored(new Vector4(1f, 0.3f, 0.3f, 1f), $"♥ {likeCount} likes");
 
-                if (ImGui.Button($"View Likes##{profile.id}"))
+                if (ThemeManager.GhostButton($"View Likes##{profile.id}"))
                 {
                     DataSender.FetchProfileLikes(profile.id);
                     plugin.OpenLikeDetailsWindow(profile);
@@ -98,7 +98,7 @@ namespace AbsoluteRP.Windows
 
                 ImGui.EndGroup();
                 ImGui.EndGroup();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.PopID();

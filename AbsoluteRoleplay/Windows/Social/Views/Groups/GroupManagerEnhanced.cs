@@ -40,7 +40,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             // Header with group logo and name
             DrawGroupHeader(group);
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Tabbed interface
@@ -142,7 +142,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
         {
             ImGui.BeginChild("GeneralSettings", new Vector2(-1, -1), false);
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Basic Information");
 
             // Group Name
@@ -162,7 +162,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Appearance");
 
             // Logo
@@ -180,7 +180,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Visibility & Access");
 
             // Visibility
@@ -200,7 +200,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             UIHelpers.SelectableHelpMarker("If enabled, anyone can join without approval");
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             // Save button
             if (Misc.DrawCenteredButton("Save General Settings"))
@@ -290,7 +290,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.EndChild();
 
             // Add category button
-            if (ImGui.Button("+ New Category", new Vector2(-1, 0)))
+            if (ThemeManager.PillButton("+ New Category", new Vector2(-1, 0)))
             {
                 var newCategory = new GroupCategory
                 {
@@ -332,7 +332,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
 
         private static void DrawCategoryEditorFields(Group group, GroupCategory category)
         {
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Category Settings");
 
             // Category Name
@@ -352,7 +352,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Channels in this Category");
 
             // List channels
@@ -368,7 +368,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.Spacing();
 
             // Add channel button
-            if (ImGui.Button("+ Add Channel"))
+            if (ThemeManager.PillButton("+ Add Channel"))
             {
                 var newChannel = new GroupChannel
                 {
@@ -388,16 +388,16 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.SameLine();
 
             // Delete category button
-            if (ImGui.Button("Delete Category"))
+            if (ThemeManager.DangerButton("Delete Category"))
             {
                 group.categories.Remove(category);
                 editingCategory = null;
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
-            if (ImGui.Button("Save Categories", new Vector2(-1, 0)))
+            if (ThemeManager.PillButton("Save Categories", new Vector2(-1, 0)))
             {
                 DataSender.SaveGroupCategories(Plugin.character, group.groupID, group.categories);
             }
@@ -405,7 +405,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
 
         private static void DrawChannelEditor(Group group, GroupChannel channel)
         {
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Channel Settings");
 
             // Channel Name
@@ -436,7 +436,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.Spacing();
 
             // Delete channel button
-            if (ImGui.Button("Delete Channel"))
+            if (ThemeManager.DangerButton("Delete Channel"))
             {
                 if (editingCategory != null && editingCategory.channels != null)
                 {
@@ -565,7 +565,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
         {
             ImGui.BeginChild("AdvancedSettings", new Vector2(-1, -1), false);
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Text("Roster Custom Fields");
 
             ImGui.Text("Define custom fields for your group roster");
@@ -575,10 +575,10 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             DrawRosterFieldsList(group);
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             // Add new field button
-            if (ImGui.Button("+ Add Custom Field"))
+            if (ThemeManager.PillButton("+ Add Custom Field"))
             {
                 var newField = new GroupRosterField
                 {
@@ -595,7 +595,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
 
             ImGui.SameLine();
 
-            if (ImGui.Button("Save Roster Fields"))
+            if (ThemeManager.PillButton("Save Roster Fields"))
             {
                 DataSender.SaveGroupRosterFields(Plugin.character, group.groupID, rosterFields);
             }
@@ -683,7 +683,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
 
             // Refresh button
-            if (ImGui.Button("Refresh"))
+            if (ThemeManager.GhostButton("Refresh"))
             {
                 var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                     x.characterName == Plugin.plugin.playername &&
@@ -695,7 +695,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Get pending requests

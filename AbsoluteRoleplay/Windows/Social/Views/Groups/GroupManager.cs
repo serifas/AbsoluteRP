@@ -88,7 +88,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 // Group name input (owner only)
                 ImGui.Text("Group Name");
                 ImGui.SetNextItemWidth(-1);
-                if (ImGui.InputText("##group_name", ref groupNameInput, 100))
+                if (ThemeManager.StyledInput("##group_name", ref groupNameInput, 100))
                 {
                     group.name = groupNameInput;
                 }
@@ -116,7 +116,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Transfer Ownership button (only for owners)
@@ -161,7 +161,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             if (isOwner)
             {
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
             }
 
@@ -383,7 +383,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "WARNING: This action cannot be undone!");
                 ImGui.TextWrapped("All group data including members, ranks, messages, and settings will be permanently deleted.");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - 240) * 0.5f);
@@ -392,7 +392,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.3f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Delete Permanently", new Vector2(120, 0)))
+                if (ThemeManager.DangerButton("Delete Permanently", new Vector2(120, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                         x.characterName == Plugin.plugin.playername &&
@@ -423,7 +423,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                 }
@@ -451,7 +451,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.4f, 1.0f), "You will lose access to all group content.");
                 ImGui.TextWrapped("You can be re-invited by a member with invite permissions.");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - 240) * 0.5f);
@@ -460,7 +460,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.7f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.9f, 0.5f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Leave Group", new Vector2(120, 0)))
+                if (ThemeManager.DangerButton("Leave Group", new Vector2(120, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                         x.characterName == Plugin.plugin.playername &&
@@ -483,7 +483,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                 }
@@ -512,7 +512,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "WARNING: You will lose owner privileges!");
                 ImGui.TextWrapped("The new owner will have full control over the group, including the ability to remove you.");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Member selection list
@@ -547,7 +547,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Transfer button
@@ -557,7 +557,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.7f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.9f, 0.5f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Transfer Ownership", new Vector2(150, 0)))
+                if (ThemeManager.DangerButton("Transfer Ownership", new Vector2(150, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                         x.characterName == Plugin.plugin.playername &&
@@ -585,7 +585,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                 }
@@ -618,7 +618,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             bool canManageInvites = currentMember?.owner == true || currentMember?.rank?.permissions?.canInvite == true;
 
             ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), $"Pending Invites ({group.invites.Count})");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Filter to only show pending invites (status = 0)
@@ -673,7 +673,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.8f, 0.3f, 0.3f, 1f));
                         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0.1f, 0.1f, 1f));
 
-                        if (ImGui.Button($"Cancel##invite_{invite.inviteID}", new Vector2(-1, 0)))
+                        if (ThemeManager.GhostButton($"Cancel##invite_{invite.inviteID}", new Vector2(-1, 0)))
                         {
                             inviteToCancel = invite.inviteID;
                         }
@@ -710,11 +710,11 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
         private static void DrawBansTab(Group group)
         {
             // Refresh button at the top
-            if (ImGui.Button("Refresh Bans"))
+            if (ThemeManager.GhostButton("Refresh Bans"))
             {
                 DataSender.FetchGroupBans(Plugin.character, group.groupID);
             }
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             if (group.bans == null || group.bans.Count == 0)
@@ -729,7 +729,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             bool canBan = isOwner || currentMember?.rank?.permissions?.canBan == true;
 
             ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), $"Banned Members ({group.bans.Count})");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Display bans in a table
@@ -777,7 +777,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.7f, 0.3f, 1f));
                         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.1f, 0.5f, 0.1f, 1f));
 
-                        if (ImGui.Button($"Unban##ban_{ban.id}", new Vector2(-1, 0)))
+                        if (ThemeManager.DangerButton($"Unban##ban_{ban.id}", new Vector2(-1, 0)))
                         {
                             banToRemove = ban.id;
                         }
@@ -814,11 +814,11 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
         private static void DrawJoinRequestsTab(Group group)
         {
             // Refresh button at the top
-            if (ImGui.Button("Refresh Requests"))
+            if (ThemeManager.GhostButton("Refresh Requests"))
             {
                 DataSender.FetchJoinRequests(Plugin.character, group.groupID);
             }
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Get current user to check permissions
@@ -842,7 +842,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             }
 
             ImGui.TextColored(new Vector4(0.3f, 0.8f, 1f, 1f), $"Pending Join Requests ({pendingRequests.Count})");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Display requests in a table
@@ -907,7 +907,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.7f, 0.3f, 1f));
                         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.1f, 0.5f, 0.1f, 1f));
 
-                        if (ImGui.Button($"Accept##req_{request.requestID}", new Vector2(65, 0)))
+                        if (ThemeManager.PillButton($"Accept##req_{request.requestID}", new Vector2(65, 0)))
                         {
                             requestToAccept = request.requestID;
                         }
@@ -921,7 +921,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
                         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.8f, 0.3f, 0.3f, 1f));
                         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0.1f, 0.1f, 1f));
 
-                        if (ImGui.Button($"Decline##req_{request.requestID}", new Vector2(65, 0)))
+                        if (ThemeManager.DangerButton($"Decline##req_{request.requestID}", new Vector2(65, 0)))
                         {
                             requestToDecline = request.requestID;
                         }
@@ -982,7 +982,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             {
                 ImGui.TextColored(new Vector4(1f, 0.5f, 0.5f, 1f), "Only the group owner can modify access settings.");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Show current settings as read-only
@@ -994,7 +994,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             }
 
             ImGui.Text("Group Access Settings");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Visible checkbox
@@ -1023,7 +1023,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
 
             ImGui.Spacing();
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Save button
@@ -1031,7 +1031,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             using (ImRaii.PushColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.6f, 0.3f, 1f)))
             using (ImRaii.PushColor(ImGuiCol.ButtonActive, new Vector4(0.15f, 0.4f, 0.15f, 1f)))
             {
-                if (ImGui.Button("Save Access Settings", new Vector2(200, 0)))
+                if (ThemeManager.PillButton("Save Access Settings", new Vector2(200, 0)))
                 {
                     // Save the group settings
                     DataSender.SetGroupValues(Plugin.character, group, true, leadProfileIndex, profileIndex);

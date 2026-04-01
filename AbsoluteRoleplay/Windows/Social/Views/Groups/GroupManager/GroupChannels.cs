@@ -44,11 +44,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.Text("Chat Categories & Channels");
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Add Category button
-                if (ImGui.Button("Add Category", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Add Category", new Vector2(120, 0)))
                 {
                     showAddCategory = true;
                     newCategoryName = string.Empty;
@@ -103,7 +103,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                                 }
 
                                 // Add Channel button
-                                if (ImGui.Button($"Add Channel##{catIdx}", new Vector2(120, 0)))
+                                if (ThemeManager.PillButton($"Add Channel##{catIdx}", new Vector2(120, 0)))
                                 {
                                     selectedCategoryIndex = catIdx;
                                     showAddChannel = true;
@@ -162,7 +162,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                                                 showEditChannel = true;
                                             }
 
-                                            ImGui.Separator();
+                                            ThemeManager.GradientSeparator();
 
                                             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1f, 0.4f, 0.4f, 1f));
                                             if (ImGui.MenuItem("Delete Channel"))
@@ -258,11 +258,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.InputTextMultiline("##CategoryDesc", ref newCategoryDescription, 500, new Vector2(-1, 60));
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.BeginDisabled(string.IsNullOrWhiteSpace(newCategoryName));
-                if (ImGui.Button("Create", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Create", new Vector2(120, 0)))
                 {
                     var newCategory = new GroupCategory
                     {
@@ -285,7 +285,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showAddCategory = false;
@@ -330,7 +330,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.Combo("##ChannelType", ref channelType, channelTypes, channelTypes.Length);
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Permission settings
@@ -353,11 +353,11 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.BeginDisabled(string.IsNullOrWhiteSpace(newChannelName) || selectedCategoryIndex < 0);
-                if (ImGui.Button("Create", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Create", new Vector2(120, 0)))
                 {
                     if (selectedCategoryIndex >= 0 && selectedCategoryIndex < group.categories.Count)
                     {
@@ -395,7 +395,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showAddChannel = false;
@@ -428,7 +428,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 if (channelBeingEdited == null)
                 {
                     ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), "Error: No channel selected");
-                    if (ImGui.Button("Close"))
+                    if (ThemeManager.GhostButton("Close"))
                     {
                         ImGui.CloseCurrentPopup();
                         showEditChannel = false;
@@ -454,7 +454,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.Combo("##EditChannelType", ref editChannelType, channelTypes, channelTypes.Length);
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Permission settings
@@ -478,7 +478,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 // Show current allowed members/ranks/roles if permissions are restricted
                 if (!editEveryoneCanView || !editEveryoneCanPost)
                 {
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
                     ImGui.TextColored(new Vector4(1f, 0.9f, 0.5f, 1.0f), "Specific Permissions");
                     ImGui.TextWrapped("Members, ranks, and roles with access to this channel can be managed after saving.");
@@ -506,7 +506,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Save button
@@ -515,7 +515,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.7f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.1f, 0.5f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Save Changes", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Save Changes", new Vector2(120, 0)))
                 {
                     // Apply changes to the channel
                     channelBeingEdited.name = editChannelName.Trim();
@@ -536,7 +536,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showEditChannel = false;
@@ -594,14 +594,14 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.8f, 0.2f, 0.2f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(1.0f, 0.3f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.9f, 0.1f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Delete", new Vector2(120, 0)))
+                if (ThemeManager.DangerButton("Delete", new Vector2(120, 0)))
                 {
                     if (deletingCategory)
                     {
@@ -632,7 +632,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     showDeleteConfirmation = false;

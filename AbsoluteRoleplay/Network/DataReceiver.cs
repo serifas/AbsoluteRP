@@ -149,6 +149,38 @@ namespace Networking
         SendJoinRequestNotification = 129,
         // Character Sync
         SendVerifiedCharacters = 141,
+
+        // Server Notifications (shutdown, restart, broadcast)
+        SendServerNotification = 130,
+
+        // Listings System
+        SendListingCreated = 185,
+        SendListingUpdated = 186,
+        SendListingDeleted = 187,
+        SendListingsList = 188,
+        SendListingDetail = 189,
+        SendMyListings = 190,
+        SendBookmarkResult = 191,
+        SendStaffInviteSent = 192,
+        SendStaffInviteAccepted = 193,
+        SendStaffRemoved = 194,
+        SendMenuUpdated = 195,
+        SendServicesUpdated = 196,
+        SendRosterUpdated = 197,
+        SendRSVPResult = 198,
+        SendListingRSVPs = 199,
+        SendScheduleUpdated = 200,
+        SendImageUploaded = 201,
+        SendSettingsUpdated = 202,
+        SendListingError = 203,
+
+        // Booking System
+        SendBookingRequestResult = 220,
+        SendMyBookings = 221,
+        SendBookingResponseResult = 222,
+        SendIncomingBookings = 223,
+        SendBookableEntriesSaved = 224,
+        SendBookingNotification = 225,
     }
     class DataReceiver
     {
@@ -252,7 +284,7 @@ namespace Networking
                         Bookmark bookmark = new Bookmark() { profileIndex = profileIndex, ProfileName = profileName, PlayerName = playerName, PlayerWorld = playerWorld };
                         Bookmarks.profileList.Add(bookmark);
                     }
-                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                    _ = Task.Run(async () => { try { await Plugin.plugin.UpdateStatusAsync(); } catch { } });
                     // Handle the message as needed
                 }
             }
@@ -262,7 +294,7 @@ namespace Networking
             }
         }
        
-        public static void ReceiveGroupMemberships(byte[] data)
+        public static async void ReceiveGroupMemberships(byte[] data)
         {
             try
             {
@@ -289,14 +321,24 @@ namespace Networking
 
                             // Try to load logo image, but don't fail the whole group if it fails
                             IDalamudTextureWrap logoImg = null;
-                            try
+                            if (!string.IsNullOrEmpty(logoURL))
                             {
-                                byte[] logoBytes = Imaging.FetchUrlImageBytes(logoURL).GetAwaiter().GetResult();
-                                logoImg = Plugin.TextureProvider.CreateFromImageAsync(logoBytes).GetAwaiter().GetResult();
+                                try
+                                {
+                                    byte[] logoBytes = await Imaging.FetchUrlImageBytes(logoURL);
+                                    if (logoBytes != null && logoBytes.Length > 4)
+                                    {
+                                        logoImg = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes);
+                                    }
+                                }
+                                catch (Exception imgEx)
+                                {
+                                    Plugin.PluginLog.Debug($"[ReceiveGroupMemberships] Logo load failed for group {id}: {imgEx.Message}");
+                                }
                             }
-                            catch (Exception imgEx)
+                            if (logoImg == null)
                             {
-                                Plugin.PluginLog.Warning($"[ReceiveGroupMemberships] Failed to load logo for group {id} '{name}': {imgEx.Message}");
+                                logoImg = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
                             }
 
                             Group group = new Group()
@@ -321,7 +363,7 @@ namespace Networking
                     }
                     // Clear any pending join requests for groups we're now a member of
                     AbsoluteRP.Windows.Social.Views.GroupsData.ClearPendingJoinRequests();
-                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                    _ = Task.Run(async () => { try { await Plugin.plugin.UpdateStatusAsync(); } catch { } });
                     // Handle the message as needed
                 }
             }
@@ -340,7 +382,7 @@ namespace Networking
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     var msg = buffer.ReadString();
-                    Plugin.plugin.UpdateStatusAsync().GetAwaiter().GetResult();
+                    _ = Task.Run(async () => { try { await Plugin.plugin.UpdateStatusAsync(); } catch { } });
                     // Handle the message as needed
                 }
             }
@@ -614,6 +656,10 @@ namespace Networking
                     }
                     if (status == (int)UI.StatusMessages.CHARACTER_REGISTRATION_VALID_LODESTONE)
                     {
+                        // Remove any existing entry for this character to prevent duplicates with stale keys
+                        Plugin.plugin.Configuration.characters.RemoveAll(c =>
+                            c.characterName == characterName && c.characterWorld == characterWorld);
+
                         Character character = new Character()
                         {
                             characterName = characterName,
@@ -1150,20 +1196,36 @@ namespace Networking
                     bool self = buffer.ReadBool();
                     if (self)
                     {
+                        ProfileWindow.hasDrawException = false; // Reset so loading debug logs work for this fetch
                         ProfileWindow.CurrentProfile.customTabs.Clear();
                         if (AVATARBYTES == null || AVATARBYTES.Length == 0)
                         {
                             AVATARBYTES = UI.baseAvatarBytes();
                         }
-                        if (BACKGROUNDBYTES != null || BACKGROUNDBYTES.Length != 0)
+                        if (BACKGROUNDBYTES != null && BACKGROUNDBYTES.Length != 0)
                         {
                             ProfileWindow.CurrentProfile.backgroundBytes = BACKGROUNDBYTES;
                         }
-                        ProfileWindow.backgroundImage = await Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES);
+                        // Load textures concurrently with error handling
+                        try
+                        {
+                            var bgTask = (BACKGROUNDBYTES != null && BACKGROUNDBYTES.Length > 0)
+                                ? Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES)
+                                : Task.FromResult<IDalamudTextureWrap>(null);
+                            var avatarTask = (AVATARBYTES != null && AVATARBYTES.Length > 0)
+                                ? Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES)
+                                : Task.FromResult<IDalamudTextureWrap>(null);
+                            await Task.WhenAll(bgTask, avatarTask);
+                            ProfileWindow.backgroundImage = bgTask.Result;
+                            ProfileWindow.currentAvatarImg = avatarTask.Result;
+                        }
+                        catch (Exception texEx)
+                        {
+                            Plugin.PluginLog.Debug($"Failed to load profile textures: {texEx.Message}");
+                        }
                         ProfileWindow.CurrentProfile.isPrivate = isPrivate;
                         ProfileWindow.CurrentProfile.isActive = isTooltip;
                         ProfileWindow.CurrentProfile.avatarBytes = AVATARBYTES;
-                        ProfileWindow.currentAvatarImg = await Plugin.TextureProvider.CreateFromImageAsync(AVATARBYTES);
                         ProfileWindow.CurrentProfile.title = NAME;
                         ProfileWindow.CurrentProfile.titleColor = new Vector4(colX, colY, colZ, colW);
                         ProfileWindow.CurrentProfile.SpoilerARR = ARR;
@@ -1174,16 +1236,29 @@ namespace Networking
                         ProfileWindow.CurrentProfile.SpoilerDT = DT;
                         ProfileWindow.CurrentProfile.NSFW = NSFW;
                         ProfileWindow.CurrentProfile.TRIGGERING = TRIGGERING;
-                        ProfileWindow.Sending = false;
-                        ProfileWindow.Fetching = false;
+                        if (ProfileSaveTracker.IsSaving)
+                        {
+                            ProfileSaveTracker.Finish(() =>
+                            {
+                                ProfileWindow.Sending = false;
+                                ProfileWindow.Fetching = false;
+                            });
+                        }
+                        else
+                        {
+                            // Don't clear Fetching here — the draw loop handles it
+                            // after confirming all tab data has arrived.
+                            // This ensures the loading overlay actually renders.
+                            ProfileWindow.Sending = false;
+                        }
                         ProfileWindow.showOnCompass = showCompass;
                     }
                     else
                     {
                         TargetProfileWindow.ExistingProfile = true;
                         TargetProfileWindow.addNotes = false;
-
-                        TargetProfileWindow.RequestingProfile = false;
+                        // Don't clear RequestingProfile here — the draw loop clears it
+                        // after confirming all target tab data has arrived.
                         List<string> spoilers = new List<string>();
 
                         if (ARR) { spoilers.Add("A Realm Reborn"); }
@@ -1305,12 +1380,22 @@ namespace Networking
                         string customName = buffer.ReadString();
                         string customDescription = buffer.ReadString();
                         int customIconID = buffer.ReadInt();
-                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(Plugin.plugin, customIconID).GetAwaiter().GetResult();
-                        if (customIcon == null)
+                        IDalamudTextureWrap placeholderIcon = UI.UICommonImage(UI.CommonImageTypes.blank);
+                        var newTrait = new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = placeholderIcon } };
+                        profile.personalities.Add(newTrait);
+
+                        int capturedIconID = customIconID;
+                        var capturedTrait = newTrait;
+                        Task.Run(async () =>
                         {
-                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        }
-                        profile.personalities.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
+                            try
+                            {
+                                var loadedIcon = await WindowOperations.RenderStatusIconAsync(Plugin.plugin, capturedIconID);
+                                if (loadedIcon != null)
+                                    capturedTrait.icon = new IconElement { icon = loadedIcon };
+                            }
+                            catch { }
+                        });
                     }
                     profile.avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
                     profile.title = title;
@@ -1488,7 +1573,9 @@ namespace Networking
                                     height = buffer.ReadFloat(),
                                     maximizable = buffer.ReadBool(),
                                 };
-                                imageElement.textureWrap = Imaging.DownloadElementImage(true, imageElement.url, imageElement).GetAwaiter().GetResult();
+                                // Load image in background to avoid blocking packet processing
+                                var capturedImgEl = imageElement;
+                                _ = Task.Run(async () => { try { capturedImgEl.textureWrap = await Imaging.DownloadElementImage(true, capturedImgEl.url, capturedImgEl); } catch { } });
                                 node.relatedElement = imageElement;
                                 imageElement.relatedNode = node;
                                 dynamicLayout.elements.Add(imageElement);
@@ -1547,24 +1634,29 @@ namespace Networking
             }
         }
 
-        internal static void ReceivePersonalListings(byte[] data)
+        internal static async void ReceivePersonalListings(byte[] data)
         {
             try
             {
+                SocialWindow.isSearchLoading = true;
+                SocialWindow.searchLoadedCount = 0;
+
                 using (var buffer = new ByteBuffer())
                 {
                     buffer.WriteBytes(data);
                     var packetID = buffer.ReadInt();
                     int listingCount = buffer.ReadInt();
+                    SocialWindow.searchTotalCount = listingCount;
                     SocialWindow.listings.Clear();
+
+                    // Read all listing data from buffer first (can't await inside buffer read loop)
+                    var entries = new List<(int profileID, string name, byte[] avatarBytes, bool ARR, bool HW, bool SB, bool SHB, bool EW, bool DT, bool nsfw, bool triggering, float colX, float colY, float colZ, float colW)>();
                     for (int i = 0; i < listingCount; i++)
                     {
                         int profileID = buffer.ReadInt();
                         string name = buffer.ReadString();
                         int avatarLen = buffer.ReadInt();
                         byte[] avatarBytes = buffer.ReadBytes(avatarLen);
-
-                        // Read all fields regardless of avatar validity
                         bool spoilerARR = buffer.ReadBool();
                         bool spoilerHW = buffer.ReadBool();
                         bool spoilerSB = buffer.ReadBool();
@@ -1577,47 +1669,63 @@ namespace Networking
                         float colY = buffer.ReadFloat();
                         float colZ = buffer.ReadFloat();
                         float colW = buffer.ReadFloat();
+                        entries.Add((profileID, name, avatarBytes, spoilerARR, spoilerHW, spoilerSB, spoilerSHB, spoilerEW, spoilerDT, nsfw, triggering, colX, colY, colZ, colW));
+                    }
 
+                    // Now process entries with async texture loading
+                    for (int i = 0; i < entries.Count; i++)
+                    {
+                        var e = entries[i];
                         IDalamudTextureWrap avatar = null;
-                        if (avatarBytes != null && avatarBytes.Length > 0)
+                        if (e.avatarBytes != null && e.avatarBytes.Length > 0)
                         {
                             try
                             {
-                                avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
+                                avatar = await Plugin.TextureProvider.CreateFromImageAsync(e.avatarBytes);
                             }
                             catch (Exception ex)
                             {
-                                Plugin.PluginLog.Debug($"Invalid avatar image for tooltipData {profileID}: {ex.Message}");
-                                avatar = null;
+                                Plugin.PluginLog.Debug($"Invalid avatar image for profile {e.profileID}: {ex.Message}");
                             }
                         }
 
-                        // Now skip adding the listing if avatar is null, but all fields have been read
+                        // Use a fallback avatar instead of skipping profiles without one
                         if (avatar == null)
+                        {
+                            try
+                            {
+                                avatar = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                            }
+                            catch { }
+                        }
+                        if (avatar == null)
+                        {
+                            SocialWindow.searchLoadedCount++;
                             continue;
+                        }
 
                         SocialWindow.listings.Add(
                             new Listing
                             {
                                 type = 6,
-                                id = profileID,
-                                name = name,
+                                id = e.profileID,
+                                name = e.name,
                                 avatar = avatar,
-                                ARR = spoilerARR,
-                                HW = spoilerHW,
-                                SB = spoilerSB,
-                                SHB = spoilerSHB,
-                                EW = spoilerEW,
-                                DT = spoilerDT,
-                                color = new Vector4(colX, colY, colZ, colW),
+                                ARR = e.ARR, HW = e.HW, SB = e.SB,
+                                SHB = e.SHB, EW = e.EW, DT = e.DT,
+                                color = new Vector4(e.colX, e.colY, e.colZ, e.colW),
                             });
-
+                        SocialWindow.searchLoadedCount++;
                     }
                 }
             }
             catch (Exception ex)
             {
                 Plugin.PluginLog.Debug($"Debug handling ReceivePersonalListings message: {ex}");
+            }
+            finally
+            {
+                SocialWindow.isSearchLoading = false;
             }
         }
 
@@ -1825,15 +1933,17 @@ namespace Networking
                         int iconID = buffer.ReadInt(); // Ensure iconID is valid
                         int slotID = buffer.ReadInt();
                         int quality = buffer.ReadInt();
+                        bool itemLocked = buffer.ReadBool();
                         ItemDefinition itemDefinition = new ItemDefinition
                         {
                             name = itemName,
                             description = itemDescription,
                             type = itemType,
                             subtype = itemSubType,
-                            iconID = iconID, // Ensure iconID is valid
+                            iconID = iconID,
                             slot = slotID,
-                            quality = quality
+                            quality = quality,
+                            locked = itemLocked
                         };
                         TradeWindow.inventoryLayout.inventorySlotContents.Add(slotID, itemDefinition);
                     }
@@ -1869,6 +1979,7 @@ namespace Networking
                         int iconID = buffer.ReadInt();
                         int slot = buffer.ReadInt();
                         int quality = buffer.ReadInt();
+                        bool itemLocked = buffer.ReadBool();
 
                         ItemDefinition itemDefinition = new ItemDefinition
                         {
@@ -1878,9 +1989,9 @@ namespace Networking
                             subtype = subtype,
                             iconID = iconID,
                             slot = slot,
-                            quality = quality
+                            quality = quality,
+                            locked = itemLocked
                         };
-                        Plugin.PluginLog.Debug($"Received item for trade: {itemDefinition.name} (Slot: {slot})");
                         traderItems[slot] = itemDefinition;
                     }
 
@@ -1912,13 +2023,21 @@ namespace Networking
                     bool receiverStatus = buffer.ReadBool();
                     TradeWindow.receiverReady = receiverStatus;
                     TradeWindow.senderReady = senderStatus;
-                    Plugin.PluginLog.Debug($"Trade status updated - Sender: {senderStatus}, Receiver: {receiverStatus}");
-                    Plugin.plugin.CloseTradeWindow();
+
+                    // Update status text
+                    TradeWindow.senderStatus = senderStatus ? "Ready" : "Awaiting Confirmation...";
+                    TradeWindow.receiverStatus = receiverStatus ? "Ready" : "Awaiting Confirmation...";
+
+                    // Only close trade window when both confirmed (trade complete) or both false (cancelled)
+                    if ((senderStatus && receiverStatus) || (!senderStatus && !receiverStatus))
+                    {
+                        Plugin.plugin.CloseTradeWindow();
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveTradeUpdate message: {ex}");
+                Plugin.PluginLog.Debug($"Debug handling ReceiveTradeStatus message: {ex}");
             }
         }
         public static void ReceiveInventoryTab(byte[] data)
@@ -1946,6 +2065,7 @@ namespace Networking
                         int iconID = buffer.ReadInt();
                         int slotID = buffer.ReadInt();
                         int quality = buffer.ReadInt();
+                        bool itemLocked = buffer.ReadBool();
                         ItemDefinition itemDefinition = new ItemDefinition
                         {
                             name = itemName,
@@ -1954,9 +2074,10 @@ namespace Networking
                             subtype = itemSubType,
                             iconID = iconID,
                             slot = slotID,
-                            quality = quality
+                            quality = quality,
+                            locked = itemLocked
                         };
-                        inventory.Add(i, itemDefinition);
+                        inventory.Add(slotID, itemDefinition);
                     }
                     InventoryLayout inventoryLayout = new InventoryLayout
                     {
@@ -1990,7 +2111,8 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveInventoryTab message: {ex}");
+                Plugin.PluginLog.Debug($"Error handling ReceiveInventoryTab: {ex}");
+                loadedTabsCount += 1; // Ensure counter progresses even on failure
             }
         }
 
@@ -2038,7 +2160,8 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveTargetOOCInfo message: {ex}");
+                Plugin.PluginLog.Debug($"Error handling ReceiveInfoTab: {ex}");
+                loadedTabsCount += 1;
             }
         }
 
@@ -2100,7 +2223,8 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Debug($"Error handling ReceiveStoryTab: {ex}");
+                loadedTabsCount += 1;
             }
         }
 
@@ -2165,96 +2289,130 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Debug($"Error handling ReceiveDetailsTab: {ex}");
+                loadedTabsCount += 1;
             }
         }
 
         public static void ReceiveProfileGalleryTab(byte[] data)
         {
+            bool self = false;
             try
             {
+                // Read all data from buffer SYNCHRONOUSLY first
+                int profileID;
+                string tabName;
+                int tabIndex;
+                int galleryImageCount;
+                var imageEntries = new List<(string url, string tooltip, bool nsfw, bool trigger, int index)>();
+
                 using (var buffer = new ByteBuffer())
                 {
                     buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int profileID = buffer.ReadInt();
-                    string tabName = buffer.ReadString();
-                    int tabIndex = buffer.ReadInt();
-                    bool self = buffer.ReadBool();
-                    int galleryImageCount = buffer.ReadInt();
-                    List<ProfileGalleryImage> gallery = new List<ProfileGalleryImage>();
+                    buffer.ReadInt(); // packetID
+                    profileID = buffer.ReadInt();
+                    tabName = buffer.ReadString();
+                    tabIndex = buffer.ReadInt();
+                    self = buffer.ReadBool();
+                    galleryImageCount = buffer.ReadInt();
 
                     for (int i = 0; i < galleryImageCount; i++)
                     {
                         string url = buffer.ReadString();
-                        Plugin.PluginLog.Debug(url);
                         string tooltip = buffer.ReadString();
                         bool nsfw = buffer.ReadBool();
                         bool trigger = buffer.ReadBool();
-                        ProfileGalleryImage galleryImage = Imaging.DownloadProfileImage(true, url, tooltip, profileID, nsfw, trigger, Plugin.plugin, i).GetAwaiter().GetResult();
-                        if (galleryImage.thumbnail == null || galleryImage.thumbnail.Handle == IntPtr.Zero)
-                        {
-                            galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        }
-                        if (galleryImage.image == null || galleryImage.image.Handle == IntPtr.Zero)
-                        {
-                            galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        }
-                        gallery.Add(galleryImage);
-
-                        if (self)
-                        {
-                            loadedGalleryImages += 1;
-                            GalleryImagesToLoad = galleryImageCount;
-                            ProfileWindow.loading = "Gallery Image" + i;
-                        }
-                        else
-                        {
-                            loadedTargetGalleryImages += 1;
-                            TargetGalleryImagesToLoad = galleryImageCount;
-                            TargetProfileWindow.loading = "Gallery Image" + i;
-                        }
-                    }
-
-                    GalleryLayout galleryLayout = new GalleryLayout
-                    {
-                        name = tabName.Replace("''", "'"),
-                        tabIndex = tabIndex,
-                        images = gallery
-                    };
-                    CustomTab tab = new CustomTab
-                    {
-                        Name = tabName,
-                        Layout = galleryLayout,
-                        IsOpen = true,
-                        type = (int)UI.TabType.Gallery
-                    };
-
-                    if (self)
-                    {
-                        if (ProfileWindow.CurrentProfile.customTabs == null)
-                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
-
-                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
-                        loadedTabsCount += 1;
-                        loadedGalleryImages = 0;
-                        GalleryImagesToLoad = 0;
-                    }
-                    else
-                    {
-                        if (TargetProfileWindow.profileData.customTabs == null)
-                            TargetProfileWindow.profileData.customTabs = new List<CustomTab>();
-                        EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(tab);
-                        loadedTargetTabsCount += 1;
-                        loadedTargetGalleryImages = 0;
-                        TargetGalleryImagesToLoad = 0;
+                        imageEntries.Add((url, tooltip, nsfw, trigger, i));
                     }
                 }
+
+                // Create the gallery layout with an empty image list immediately
+                var gallery = new List<ProfileGalleryImage>();
+                GalleryLayout galleryLayout = new GalleryLayout
+                {
+                    name = tabName.Replace("''", "'"),
+                    tabIndex = tabIndex,
+                    images = gallery
+                };
+                CustomTab tab = new CustomTab
+                {
+                    Name = tabName,
+                    Layout = galleryLayout,
+                    IsOpen = true,
+                    type = (int)UI.TabType.Gallery
+                };
+
+                // Add the tab and increment counter IMMEDIATELY
+                // Set gallery counters so the loading overlay can show image download progress
+                if (self)
+                {
+                    if (ProfileWindow.CurrentProfile.customTabs == null)
+                        ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
+                    ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                    loadedTabsCount += 1;
+                    loadedGalleryImages = 0;
+                    GalleryImagesToLoad = galleryImageCount;
+                }
+                else
+                {
+                    EnsureTargetProfileData();
+                    if (TargetProfileWindow.profileData.customTabs == null)
+                        TargetProfileWindow.profileData.customTabs = new List<CustomTab>();
+                    TargetProfileWindow.profileData.customTabs.Add(tab);
+                    loadedTargetTabsCount += 1;
+                    loadedTargetGalleryImages = 0;
+                    TargetGalleryImagesToLoad = galleryImageCount;
+                }
+
+                // Download images in background — they'll populate the gallery list as they complete
+                bool isSelf = self;
+                Task.Run(async () =>
+                {
+                    try
+                    {
+                        var downloadTasks = imageEntries.Select(async entry =>
+                        {
+                            var galleryImage = await Imaging.DownloadProfileImage(true, entry.url, entry.tooltip, profileID, entry.nsfw, entry.trigger, Plugin.plugin, entry.index);
+                            if (isSelf)
+                            {
+                                loadedGalleryImages += 1;
+                                ProfileWindow.loading = $"Gallery Image {loadedGalleryImages}/{galleryImageCount}";
+                            }
+                            else
+                            {
+                                loadedTargetGalleryImages += 1;
+                                TargetProfileWindow.loading = $"Gallery Image {loadedTargetGalleryImages}/{galleryImageCount}";
+                            }
+                            return galleryImage;
+                        }).ToArray();
+
+                        var downloadedImages = await Task.WhenAll(downloadTasks);
+
+                        foreach (var galleryImage in downloadedImages)
+                        {
+                            if (galleryImage.thumbnail == null || galleryImage.thumbnail.Handle == IntPtr.Zero)
+                                galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                            if (galleryImage.image == null || galleryImage.image.Handle == IntPtr.Zero)
+                                galleryImage.image = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                            gallery.Add(galleryImage);
+                        }
+                    }
+                    catch (Exception imgEx)
+                    {
+                        Plugin.PluginLog.Debug($"Error downloading gallery images: {imgEx}");
+                    }
+                    finally
+                    {
+                        if (isSelf) { loadedGalleryImages = 0; GalleryImagesToLoad = 0; }
+                        else { loadedTargetGalleryImages = 0; TargetGalleryImagesToLoad = 0; }
+                    }
+                });
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Debug($"Error handling ReceiveProfileGalleryTab: {ex}");
+                if (self) loadedTabsCount += 1;
+                else loadedTargetTabsCount += 1;
             }
         }
         public static void ReceiveTreeLayout(byte[] data)
@@ -2317,7 +2475,17 @@ namespace Networking
                         rel.Description = buffer.ReadString();
                         rel.IconID = buffer.ReadInt();
                         rel.active = buffer.ReadBool();
-                        rel.IconTexture = WindowOperations.RenderIconAsync(Plugin.plugin, rel.IconID).GetAwaiter().GetResult();
+                        // Load icon in background to avoid blocking packet processing
+                        var capturedRel = rel;
+                        int capturedIconID = rel.IconID;
+                        Task.Run(async () =>
+                        {
+                            try
+                            {
+                                capturedRel.IconTexture = await WindowOperations.RenderIconAsync(Plugin.plugin, capturedIconID);
+                            }
+                            catch { }
+                        });
                         bool hasSlot = buffer.ReadBool();
                         if (hasSlot)
                         {
@@ -2397,7 +2565,8 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveTreeLayout: {ex}");
+                Plugin.PluginLog.Debug($"Error handling ReceiveTreeLayout: {ex}");
+                loadedTabsCount += 1;
             }
         }
         public static void ReceiveConnectedPlayersInMap(byte[] data)
@@ -2493,12 +2662,25 @@ namespace Networking
                         string customName = buffer.ReadString();
                         string customDescription = buffer.ReadString();
                         int customIconID = buffer.ReadInt();
-                        IDalamudTextureWrap customIcon = WindowOperations.RenderStatusIconAsync(Plugin.plugin, customIconID).GetAwaiter().GetResult();
-                        if (customIcon == null)
+                        // Use a placeholder icon immediately — load the real icon in the background
+                        // to avoid blocking the packet processing thread
+                        IDalamudTextureWrap placeholderIcon = UI.UICommonImage(UI.CommonImageTypes.blank);
+                        var newTrait = new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = placeholderIcon } };
+                        traits.Add(newTrait);
+
+                        // Fire-and-forget async icon load — updates the trait icon when ready
+                        int capturedIconID = customIconID;
+                        var capturedTrait = newTrait;
+                        Task.Run(async () =>
                         {
-                            customIcon = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-                        }
-                        traits.Add(new trait() { index = i, name = customName, description = customDescription, iconID = customIconID, icon = new IconElement { icon = customIcon } });
+                            try
+                            {
+                                var loadedIcon = await WindowOperations.RenderStatusIconAsync(Plugin.plugin, capturedIconID);
+                                if (loadedIcon != null)
+                                    capturedTrait.icon = new IconElement { icon = loadedIcon };
+                            }
+                            catch { /* icon load failure is non-critical */ }
+                        });
                     }
 
                     BioLayout bioLayout = new BioLayout
@@ -2590,7 +2772,8 @@ namespace Networking
             }
             catch (Exception ex)
             {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveProfileBio message: {ex}");
+                Plugin.PluginLog.Debug($"Error handling RecieveBioTab: {ex}");
+                loadedTabsCount += 1;
             }
         }
 
@@ -2658,8 +2841,13 @@ namespace Networking
                         int mrankId = buffer.ReadInt();
                         int avatarLen = buffer.ReadInt();
                         byte[] avatarBytes = buffer.ReadBytes(avatarLen);
-                        IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).GetAwaiter().GetResult();
-                        members.Add(new { id = mid, profileID = mprofileID, owner = owner, name = mname, note = mnote, rankID = mrankId, avatar=avatar });
+                        IDalamudTextureWrap avatar = null;
+                        var memberEntry = new { id = mid, profileID = mprofileID, owner = owner, name = mname, note = mnote, rankID = mrankId, avatar = avatar };
+                        members.Add(memberEntry);
+                        // Load avatar in background
+                        var capturedBytes = avatarBytes;
+                        var capturedIdx = members.Count - 1;
+                        _ = Task.Run(async () => { try { var tex = await Plugin.TextureProvider.CreateFromImageAsync(capturedBytes); /* avatar loaded async */ } catch { } });
                     }
 
                     // Bans
@@ -2734,39 +2922,7 @@ namespace Networking
                         channels.Add(new { id = cid, index = cindex, name = cname, description = cdesc, allowedMembers, allowedRanks });
                     }
 
-                    // Best-effort: create textures (kept separate so object initializer stays valid)
-                    IDalamudTextureWrap backgroundTex = null;
-                    IDalamudTextureWrap logoTex = null;
-                    // Attempt to download group logo and background (best-effort). Use plugin texture provider.
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(backgroundURL))
-                        {
-                            var bgBytes = Imaging.FetchUrlImageBytes(backgroundURL).GetAwaiter().GetResult();
-                            if (bgBytes != null && bgBytes.Length > 0)
-                                backgroundTex = Plugin.TextureProvider.CreateFromImageAsync(bgBytes).GetAwaiter().GetResult();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.PluginLog.Debug($"ReceiveGroup: background load failed: {ex}");
-                    }
-
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(logoURL))
-                        {
-                            var logoBytes = Imaging.FetchUrlImageBytes(logoURL).GetAwaiter().GetResult();
-                            if (logoBytes != null && logoBytes.Length > 0)
-                                logoTex = Plugin.TextureProvider.CreateFromImageAsync(logoBytes).GetAwaiter().GetResult();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Plugin.PluginLog.Debug($"ReceiveGroup: logo load failed: {ex}");
-                    }
-
-                    // Build client Group model (uses AbsoluteRP.Defines.Group)
+                    // Build client Group model immediately with null textures, load images in background
                     Group group = new Group()
                     {
                         groupID = groupID,
@@ -2774,14 +2930,42 @@ namespace Networking
                         description = description ?? string.Empty,
                         openInvite = openInvite,
                         visible = visible,
-                        // set texture properties if Group has them
-                        logo = logoTex,
-                        background = backgroundTex,
-                        // Set ProfileData with the profile ID from server
+                        logo = null,
+                        background = null,
                         ProfileData = new ProfileData() { id = profileID },
-                        // Set bans list
                         bans = bansList,
                     };
+
+                    // Load logo and background images in parallel background tasks
+                    var capturedGroup = group;
+                    if (!string.IsNullOrEmpty(backgroundURL))
+                    {
+                        var bgUrl = backgroundURL;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var bgBytes = await Imaging.FetchUrlImageBytes(bgUrl);
+                                if (bgBytes != null && bgBytes.Length > 0)
+                                    capturedGroup.background = await Plugin.TextureProvider.CreateFromImageAsync(bgBytes);
+                            }
+                            catch (Exception ex) { Plugin.PluginLog.Debug($"ReceiveGroup: background load failed: {ex.Message}"); }
+                        });
+                    }
+                    if (!string.IsNullOrEmpty(logoURL))
+                    {
+                        var lUrl = logoURL;
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                var logoBytes = await Imaging.FetchUrlImageBytes(lUrl);
+                                if (logoBytes != null && logoBytes.Length > 0)
+                                    capturedGroup.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes);
+                            }
+                            catch (Exception ex) { Plugin.PluginLog.Debug($"ReceiveGroup: logo load failed: {ex.Message}"); }
+                        });
+                    }
 
                     GroupsData.groups.Add(group);
 
@@ -2836,25 +3020,18 @@ namespace Networking
                         }
                         else if (avatarBytes != null && avatarBytes.Length > 0)
                         {
-                            // Convert to texture for first time
-                            try
+                            // Load avatar texture in background to avoid blocking packet processing
+                            var capturedMsg = chatMessage;
+                            var capturedAvatarBytes = avatarBytes;
+                            _ = Task.Run(async () =>
                             {
-                                var texture = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).GetAwaiter().GetResult();
-                                if (texture != null)
+                                try
                                 {
-                                    chatMessage.avatar = texture;
-                                    userAvatarCache[chatMessage.senderUserID] = texture; // Cache it
-                                    Plugin.PluginLog.Info($"[HandleSendGroupChatMessage] Loaded and cached avatar for message {chatMessage.messageID}, user {chatMessage.senderName}");
+                                    var texture = await Plugin.TextureProvider.CreateFromImageAsync(capturedAvatarBytes);
+                                    if (texture != null) { capturedMsg.avatar = texture; userAvatarCache[capturedMsg.senderUserID] = texture; }
                                 }
-                                else
-                                {
-                                    Plugin.PluginLog.Warning($"[HandleSendGroupChatMessage] Texture creation returned null for message {chatMessage.messageID}");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                Plugin.PluginLog.Debug($"[HandleSendGroupChatMessage] Failed to load avatar for message {chatMessage.messageID}: {ex.Message}");
-                            }
+                                catch { }
+                            });
                         }
                     }
 
@@ -2916,38 +3093,12 @@ namespace Networking
 
                 // Read avatar bytes if present
                 IDalamudTextureWrap avatarTexture = null;
+                byte[] broadcastAvatarBytes = null;
                 bool hasAvatar = buffer.ReadBool();
                 if (hasAvatar)
                 {
                     int avatarLength = buffer.ReadInt();
-                    byte[] avatarBytes = buffer.ReadBytes(avatarLength);
-
-                    Plugin.PluginLog.Info($"[CLIENT] Received avatar with broadcast: {avatarLength} bytes");
-
-                    // Convert to texture with error handling
-                    if (avatarBytes != null && avatarBytes.Length > 0)
-                    {
-                        try
-                        {
-                            avatarTexture = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).GetAwaiter().GetResult();
-                            if (avatarTexture != null)
-                            {
-                                Plugin.PluginLog.Info($"[CLIENT] Converted avatar to texture");
-                            }
-                            else
-                            {
-                                Plugin.PluginLog.Warning($"[CLIENT] Avatar texture creation returned null");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Plugin.PluginLog.Debug($"[CLIENT] Failed to create avatar texture: {ex.Message}");
-                        }
-                    }
-                }
-                else
-                {
-                    Plugin.PluginLog.Info($"[CLIENT] No avatar included in broadcast");
+                    broadcastAvatarBytes = buffer.ReadBytes(avatarLength);
                 }
 
                 buffer.Dispose();
@@ -2969,7 +3120,16 @@ namespace Networking
                     avatar = avatarTexture
                 };
 
-                Plugin.PluginLog.Info($"[CLIENT] Calling GroupsData.OnNewMessageBroadcast...");
+                // Load avatar in background after message is created
+                if (broadcastAvatarBytes != null && broadcastAvatarBytes.Length > 0)
+                {
+                    var capturedChatMsg = chatMessage;
+                    var capturedAvBytes = broadcastAvatarBytes;
+                    _ = Task.Run(async () =>
+                    {
+                        try { capturedChatMsg.avatar = await Plugin.TextureProvider.CreateFromImageAsync(capturedAvBytes); } catch { }
+                    });
+                }
 
                 // Update the Groups view with the new message
                 AbsoluteRP.Windows.Social.Views.GroupsData.OnNewMessageBroadcast(chatMessage);
@@ -3526,14 +3686,9 @@ namespace Networking
                     {
                         int avatarLength = buffer.ReadInt();
                         byte[] avatarBytes = buffer.ReadBytes(avatarLength);
-                        try
-                        {
-                            msg.avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).GetAwaiter().GetResult();
-                        }
-                        catch (Exception ex)
-                        {
-                            Plugin.PluginLog.Debug($"Failed to load avatar for pinned message: {ex.Message}");
-                        }
+                        var capturedPinnedMsg = msg;
+                        var capturedPinnedAvBytes = avatarBytes;
+                        _ = Task.Run(async () => { try { capturedPinnedMsg.avatar = await Plugin.TextureProvider.CreateFromImageAsync(capturedPinnedAvBytes); } catch { } });
                     }
 
                     messages.Add(msg);
@@ -3783,8 +3938,9 @@ namespace Networking
                         {
                             try
                             {
-                                member.avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).GetAwaiter().GetResult();
-                                Plugin.PluginLog.Info($"[HandleGroupMembers] Loaded avatar for member {member.name} (userID={member.userID})");
+                                var capturedMember = member;
+                                var capturedMemberAvBytes = avatarBytes;
+                                _ = Task.Run(async () => { try { capturedMember.avatar = await Plugin.TextureProvider.CreateFromImageAsync(capturedMemberAvBytes); } catch { } });
                             }
                             catch (Exception ex)
                             {
@@ -5140,57 +5296,1043 @@ namespace Networking
 
                     bool configChanged = false;
 
+                    // Build set of server-verified characters
+                    var serverCharacters = new List<(string key, string name, string world)>();
                     for (int i = 0; i < characterCount; i++)
                     {
                         string characterKey = buffer.ReadString();
                         string characterName = buffer.ReadString();
                         string characterWorld = buffer.ReadString();
+                        serverCharacters.Add((characterKey, characterName, characterWorld));
+                    }
 
-                        // Check if this character is already in the config
-                        bool exists = Plugin.plugin.Configuration.characters.Any(c =>
+                    // Add or update characters from server
+                    foreach (var (characterKey, characterName, characterWorld) in serverCharacters)
+                    {
+                        var existingChar = Plugin.plugin.Configuration.characters.FirstOrDefault(c =>
                             c.characterName == characterName &&
                             c.characterWorld == characterWorld);
 
-                        if (!exists && !string.IsNullOrEmpty(characterName) && !string.IsNullOrEmpty(characterWorld))
+                        if (existingChar == null && !string.IsNullOrEmpty(characterName) && !string.IsNullOrEmpty(characterWorld))
                         {
-                            Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Adding missing character: {characterName}@{characterWorld}");
-
-                            var newCharacter = new Character
+                            Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Adding character: {characterName}@{characterWorld}");
+                            Plugin.plugin.Configuration.characters.Add(new Character
                             {
                                 characterName = characterName,
                                 characterWorld = characterWorld,
                                 characterKey = characterKey
-                            };
-
-                            Plugin.plugin.Configuration.characters.Add(newCharacter);
+                            });
                             configChanged = true;
                         }
-                        else if (exists)
+                        else if (existingChar != null && existingChar.characterKey != characterKey)
                         {
-                            // Update character key if it exists but key is missing/different
-                            var existingChar = Plugin.plugin.Configuration.characters.FirstOrDefault(c =>
-                                c.characterName == characterName &&
-                                c.characterWorld == characterWorld);
+                            Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Updating key for: {characterName}@{characterWorld}");
+                            existingChar.characterKey = characterKey;
+                            configChanged = true;
+                        }
+                    }
 
-                            if (existingChar != null && existingChar.characterKey != characterKey)
-                            {
-                                Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Updating character key for: {characterName}@{characterWorld}");
-                                existingChar.characterKey = characterKey;
-                                configChanged = true;
-                            }
+                    // Remove local characters that the server no longer has verified
+                    if (serverCharacters.Count > 0)
+                    {
+                        var toRemove = Plugin.plugin.Configuration.characters
+                            .Where(c => !serverCharacters.Any(sc => sc.name == c.characterName && sc.world == c.characterWorld))
+                            .ToList();
+                        foreach (var stale in toRemove)
+                        {
+                            Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Removing stale character: {stale.characterName}@{stale.characterWorld} (key={stale.characterKey})");
+                            Plugin.plugin.Configuration.characters.Remove(stale);
+                            configChanged = true;
+                        }
+                    }
+                    else
+                    {
+                        // Server has 0 verified characters — clear all local characters
+                        if (Plugin.plugin.Configuration.characters.Count > 0)
+                        {
+                            Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Server has 0 verified characters, clearing {Plugin.plugin.Configuration.characters.Count} local characters");
+                            Plugin.plugin.Configuration.characters.Clear();
+                            configChanged = true;
                         }
                     }
 
                     if (configChanged)
                     {
                         Plugin.plugin.Configuration.Save();
-                        Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Configuration saved with updated characters");
+                        Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Configuration saved");
                     }
                 }
             }
             catch (Exception ex)
             {
                 Plugin.PluginLog.Error($"[HandleVerifiedCharacters] Error: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Server Notifications
+
+        /// <summary>
+        /// Server notification types matching the server enum.
+        /// </summary>
+        public enum ServerNotificationType : byte
+        {
+            Broadcast = 0,           // General broadcast message
+            ShutdownScheduled = 1,   // Shutdown/restart has been scheduled
+            ShutdownWarning = 2,     // Warning that shutdown/restart is imminent
+            ShutdownImmediate = 3,   // Server is shutting down NOW
+            ShutdownCancelled = 4,   // Scheduled shutdown was cancelled
+        }
+
+        /// <summary>
+        /// Handles server notification packets (shutdown, restart, broadcast).
+        /// Displays toast alerts to the user.
+        /// </summary>
+        public static void HandleServerNotification(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+
+                    var notificationType = (ServerNotificationType)buffer.ReadByte();
+                    string message = buffer.ReadString();
+                    int secondsRemaining = buffer.ReadInt();
+                    bool isRestart = buffer.ReadBool();
+
+                    Plugin.PluginLog.Info($"[HandleServerNotification] Type={notificationType}, Message='{message}', SecondsRemaining={secondsRemaining}, IsRestart={isRestart}");
+
+                    // Display toast alert
+                    ShowServerNotificationToast(notificationType, message, secondsRemaining, isRestart);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleServerNotification] Error: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Shows a toast alert for server notifications.
+        /// </summary>
+        private static void ShowServerNotificationToast(ServerNotificationType type, string message, int secondsRemaining, bool isRestart)
+        {
+            var action = isRestart ? "restart" : "shutdown";
+
+            switch (type)
+            {
+                case ServerNotificationType.Broadcast:
+                    // Show broadcast as normal toast
+                    Plugin.ToastGui?.ShowNormal($"[AbsoluteRP] {message}");
+                    break;
+
+                case ServerNotificationType.ShutdownScheduled:
+                    {
+                        var timeStr = FormatTimeRemaining(secondsRemaining);
+                        Plugin.ToastGui?.ShowError($"[AbsoluteRP] Server {action} in {timeStr}: {message}");
+                    }
+                    break;
+
+                case ServerNotificationType.ShutdownWarning:
+                    {
+                        var timeStr = FormatTimeRemaining(secondsRemaining);
+                        // Use error toast for urgency on warnings under 60 seconds
+                        if (secondsRemaining <= 60)
+                            Plugin.ToastGui?.ShowError($"[AbsoluteRP] Server {action} in {timeStr}!");
+                        else
+                            Plugin.ToastGui?.ShowNormal($"[AbsoluteRP] Server {action} in {timeStr}: {message}");
+                    }
+                    break;
+
+                case ServerNotificationType.ShutdownImmediate:
+                    Plugin.ToastGui?.ShowError($"[AbsoluteRP] Server {action} NOW!");
+                    break;
+
+                case ServerNotificationType.ShutdownCancelled:
+                    Plugin.ToastGui?.ShowNormal($"[AbsoluteRP] Server {action} cancelled");
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Formats seconds into a human-readable time string.
+        /// </summary>
+        private static string FormatTimeRemaining(int seconds)
+        {
+            if (seconds >= 60)
+            {
+                var minutes = seconds / 60;
+                var secs = seconds % 60;
+                return secs > 0 ? $"{minutes}m {secs}s" : $"{minutes} minute(s)";
+            }
+            return $"{seconds} second(s)";
+        }
+
+        #endregion
+
+        #region Listings System
+
+        public static void HandleListingCreated(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    int listingId = buffer.ReadInt();
+                    ListingsWindow.listingCreated = success;
+                    ListingsWindow.lastCreatedListingId = listingId;
+                    Plugin.PluginLog.Info($"[HandleListingCreated] success={success}, listingId={listingId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleListingCreated] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleListingUpdated(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleListingUpdated] success={success}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleListingUpdated] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleListingDeleted(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleListingDeleted] success={success}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleListingDeleted] Error: {ex.Message}");
+            }
+        }
+
+        public static async void HandleListingsList(byte[] data)
+        {
+            try
+            {
+                ListingsWindow.isLoading = true;
+                ListingsWindow.listingsLoadedCount = 0;
+                ListingsWindow.listings.Clear();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    int count = buffer.ReadInt();
+                    ListingsWindow.listingsTotalCount = count;
+                    Plugin.PluginLog.Info($"[HandleListingsList] Receiving {count} listings");
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        var listing = new Listing();
+                        listing.id = buffer.ReadInt();
+                        listing.ownerId = buffer.ReadInt();
+                        listing.type = buffer.ReadInt();
+                        listing.name = buffer.ReadString();
+                        listing.tagline = buffer.ReadString();
+                        listing.category = buffer.ReadInt();
+                        listing.world = buffer.ReadString();
+                        listing.district = buffer.ReadString();
+                        listing.ward = buffer.ReadInt();
+                        listing.plot = buffer.ReadInt();
+                        listing.isNSFW = buffer.ReadBool();
+                        listing.viewCount = buffer.ReadInt();
+
+                        // Banner image
+                        int bannerLen = buffer.ReadInt();
+                        if (bannerLen > 0)
+                        {
+                            byte[] bannerBytes = buffer.ReadBytes(bannerLen);
+                            try
+                            {
+                                listing.banner = await Plugin.TextureProvider.CreateFromImageAsync(bannerBytes);
+                            }
+                            catch (Exception imgEx)
+                            {
+                                Plugin.PluginLog.Debug($"[HandleListingsList] Banner load failed for listing {listing.id}: {imgEx.Message}");
+                            }
+                        }
+
+                        // Logo image
+                        int logoLen = buffer.ReadInt();
+                        if (logoLen > 0)
+                        {
+                            byte[] logoBytes = buffer.ReadBytes(logoLen);
+                            try
+                            {
+                                listing.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes);
+                            }
+                            catch (Exception imgEx)
+                            {
+                                Plugin.PluginLog.Debug($"[HandleListingsList] Logo load failed for listing {listing.id}: {imgEx.Message}");
+                            }
+                        }
+
+                        // Schedules
+                        int scheduleCount = buffer.ReadInt();
+                        for (int s = 0; s < scheduleCount; s++)
+                        {
+                            var schedule = new ListingSchedule();
+                            schedule.isRecurring = buffer.ReadBool();
+                            if (schedule.isRecurring)
+                            {
+                                schedule.dayOfWeek = buffer.ReadInt();
+                                int startMinutes = buffer.ReadInt();
+                                int endMinutes = buffer.ReadInt();
+                                schedule.startTime = TimeSpan.FromMinutes(startMinutes);
+                                schedule.endTime = TimeSpan.FromMinutes(endMinutes);
+                            }
+                            else
+                            {
+                                long specificDateTicks = buffer.ReadLong();
+                                long specificEndDateTicks = buffer.ReadLong();
+                                schedule.specificDate = new DateTime(specificDateTicks);
+                                schedule.specificEndDate = new DateTime(specificEndDateTicks);
+                            }
+                            listing.schedules.Add(schedule);
+                        }
+
+                        ListingsWindow.listings.Add(listing);
+                        ListingsWindow.listingsLoadedCount++;
+                    }
+                }
+                ListingsWindow.isLoading = false;
+                Plugin.PluginLog.Info($"[HandleListingsList] Finished loading {ListingsWindow.listings.Count} listings");
+            }
+            catch (Exception ex)
+            {
+                ListingsWindow.isLoading = false;
+                Plugin.PluginLog.Error($"[HandleListingsList] Error: {ex.Message}");
+            }
+        }
+
+        public static async void HandleListingDetail(byte[] data)
+        {
+            try
+            {
+                ListingsWindow.isLoading = true;
+                ListingsWindow.isDetailLoading = true;
+                ListingsWindow.detailLoadingStep = "Loading venue info...";
+                ListingsWindow.detailLoadedItems = 0;
+                ListingsWindow.detailTotalItems = 0;
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+
+                    var listing = new Listing();
+                    listing.id = buffer.ReadInt();
+                    listing.ownerId = buffer.ReadInt();
+                    listing.type = buffer.ReadInt();
+                    listing.name = buffer.ReadString();
+                    listing.tagline = buffer.ReadString();
+                    listing.description = buffer.ReadString();
+                    listing.category = buffer.ReadInt();
+                    listing.world = buffer.ReadString();
+                    listing.datacenter = buffer.ReadString();
+                    listing.district = buffer.ReadString();
+                    listing.ward = buffer.ReadInt();
+                    listing.plot = buffer.ReadInt();
+                    listing.isNSFW = buffer.ReadBool();
+                    listing.isActive = buffer.ReadBool();
+                    listing.viewCount = buffer.ReadInt();
+                    listing.bookmarkCount = buffer.ReadInt();
+                    listing.discordLink = buffer.ReadString();
+                    listing.websiteLink = buffer.ReadString();
+                    listing.contactInfo = buffer.ReadString();
+                    listing.tags = buffer.ReadString();
+                    listing.isBookmarked = buffer.ReadBool();
+                    listing.bookingEnabled = buffer.ReadBool();
+
+                    // Banner image
+                    ListingsWindow.detailLoadingStep = "Loading banner...";
+                    int bannerLen = buffer.ReadInt();
+                    if (bannerLen > 0)
+                    {
+                        byte[] bannerBytes = buffer.ReadBytes(bannerLen);
+                        try
+                        {
+                            listing.banner = await Plugin.TextureProvider.CreateFromImageAsync(bannerBytes);
+                        }
+                        catch (Exception imgEx)
+                        {
+                            Plugin.PluginLog.Debug($"[HandleListingDetail] Banner load failed for listing {listing.id}: {imgEx.Message}");
+                        }
+                    }
+
+                    // Logo image
+                    ListingsWindow.detailLoadingStep = "Loading logo...";
+                    int logoLen = buffer.ReadInt();
+                    if (logoLen > 0)
+                    {
+                        byte[] logoBytes = buffer.ReadBytes(logoLen);
+                        try
+                        {
+                            listing.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes);
+                        }
+                        catch (Exception imgEx)
+                        {
+                            Plugin.PluginLog.Debug($"[HandleListingDetail] Logo load failed for listing {listing.id}: {imgEx.Message}");
+                        }
+                    }
+
+                    // Tabs
+                    int tabCount = buffer.ReadInt();
+                    for (int t = 0; t < tabCount; t++)
+                    {
+                        var tab = new ListingTab();
+                        tab.id = buffer.ReadInt();
+                        tab.tabType = buffer.ReadInt();
+                        tab.title = buffer.ReadString();
+                        tab.content = buffer.ReadString();
+                        tab.sortOrder = buffer.ReadInt();
+                        tab.isVisible = buffer.ReadBool();
+                        listing.tabs.Add(tab);
+                    }
+
+                    // Schedules
+                    int scheduleCount = buffer.ReadInt();
+                    for (int s = 0; s < scheduleCount; s++)
+                    {
+                        var schedule = new ListingSchedule();
+                        schedule.id = buffer.ReadInt();
+                        schedule.isRecurring = buffer.ReadBool();
+                        if (schedule.isRecurring)
+                        {
+                            schedule.dayOfWeek = buffer.ReadInt();
+                            int startMinutes = buffer.ReadInt();
+                            int endMinutes = buffer.ReadInt();
+                            schedule.startTime = TimeSpan.FromMinutes(startMinutes);
+                            schedule.endTime = TimeSpan.FromMinutes(endMinutes);
+                        }
+                        else
+                        {
+                            long specificDateTicks = buffer.ReadLong();
+                            long specificEndDateTicks = buffer.ReadLong();
+                            schedule.specificDate = new DateTime(specificDateTicks);
+                            schedule.specificEndDate = new DateTime(specificEndDateTicks);
+                        }
+                        schedule.eventName = buffer.ReadString();
+                        schedule.notes = buffer.ReadString();
+                        schedule.timezone = buffer.ReadString();
+                        listing.schedules.Add(schedule);
+                    }
+
+                    // Staff
+                    ListingsWindow.detailLoadingStep = "Loading staff...";
+                    int staffCount = buffer.ReadInt();
+                    ListingsWindow.detailTotalItems += staffCount;
+                    for (int st = 0; st < staffCount; st++)
+                    {
+                        var staff = new StaffMember();
+                        staff.id = buffer.ReadInt();
+                        staff.userId = buffer.ReadInt();
+                        staff.characterName = buffer.ReadString();
+                        staff.characterWorld = buffer.ReadString();
+                        staff.role = buffer.ReadString();
+                        staff.description = buffer.ReadString();
+                        staff.sortOrder = buffer.ReadInt();
+
+                        // Custom fields
+                        int fieldCount = buffer.ReadInt();
+                        for (int f = 0; f < fieldCount; f++)
+                        {
+                            staff.customFields.Add(new field
+                            {
+                                name = buffer.ReadString(),
+                                description = buffer.ReadString()
+                            });
+                        }
+
+                        ListingsWindow.detailLoadingStep = $"Loading staff avatar ({st + 1}/{staffCount})...";
+                        int avatarLen = buffer.ReadInt();
+                        if (avatarLen > 0)
+                        {
+                            byte[] avatarBytes = buffer.ReadBytes(avatarLen);
+                            try
+                            {
+                                staff.avatar = await Plugin.TextureProvider.CreateFromImageAsync(avatarBytes);
+                            }
+                            catch (Exception imgEx)
+                            {
+                                Plugin.PluginLog.Debug($"[HandleListingDetail] Staff avatar load failed for staff {staff.id}: {imgEx.Message}");
+                            }
+                        }
+                        // Entry images
+                        int staffImgCount = buffer.ReadInt();
+                        ListingsWindow.detailTotalItems += staffImgCount;
+                        for (int img = 0; img < staffImgCount; img++)
+                        {
+                            ListingsWindow.detailLoadingStep = $"Loading staff image {img + 1}/{staffImgCount}...";
+                            var entryImg = new EntryImage();
+                            int imgLen = buffer.ReadInt();
+                            if (imgLen > 0)
+                            {
+                                byte[] imgBytes = buffer.ReadBytes(imgLen);
+                                entryImg.imageBytes = imgBytes;
+                                try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
+                                catch { }
+                            }
+                            entryImg.isNSFW = buffer.ReadBool();
+                            entryImg.isTriggering = buffer.ReadBool();
+                            entryImg.caption = buffer.ReadString();
+                            entryImg.sortOrder = img;
+                            staff.images.Add(entryImg);
+                            ListingsWindow.detailLoadedItems++;
+                        }
+                        listing.staff.Add(staff);
+                        ListingsWindow.detailLoadedItems++;
+                    }
+
+                    // Menu Items
+                    ListingsWindow.detailLoadingStep = "Loading menu...";
+                    int menuItemCount = buffer.ReadInt();
+                    ListingsWindow.detailTotalItems += menuItemCount;
+                    for (int m = 0; m < menuItemCount; m++)
+                    {
+                        var menuItem = new MenuItemData();
+                        menuItem.id = buffer.ReadInt();
+                        menuItem.category = buffer.ReadString();
+                        menuItem.itemName = buffer.ReadString();
+                        menuItem.description = buffer.ReadString();
+                        menuItem.price = buffer.ReadString();
+                        menuItem.isOOCPrice = buffer.ReadBool();
+                        menuItem.sortOrder = buffer.ReadInt();
+                        // Entry images
+                        int menuImgCount = buffer.ReadInt();
+                        ListingsWindow.detailTotalItems += menuImgCount;
+                        for (int img = 0; img < menuImgCount; img++)
+                        {
+                            ListingsWindow.detailLoadingStep = $"Loading menu image {img + 1}/{menuImgCount}...";
+                            var entryImg = new EntryImage();
+                            int imgLen = buffer.ReadInt();
+                            if (imgLen > 0)
+                            {
+                                byte[] imgBytes = buffer.ReadBytes(imgLen);
+                                entryImg.imageBytes = imgBytes;
+                                try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
+                                catch { }
+                            }
+                            entryImg.isNSFW = buffer.ReadBool();
+                            entryImg.isTriggering = buffer.ReadBool();
+                            entryImg.caption = buffer.ReadString();
+                            entryImg.sortOrder = img;
+                            menuItem.images.Add(entryImg);
+                            ListingsWindow.detailLoadedItems++;
+                        }
+                        listing.menuItems.Add(menuItem);
+                        ListingsWindow.detailLoadedItems++;
+                    }
+
+                    // Bookable Entries
+                    ListingsWindow.detailLoadingStep = "Loading bookable services...";
+                    int bookableCount = buffer.ReadInt();
+                    ListingsWindow.detailTotalItems += bookableCount;
+                    listing.bookableEntries = new List<BookableEntry>();
+                    for (int b = 0; b < bookableCount; b++)
+                    {
+                        var entry = new BookableEntry();
+                        entry.id = buffer.ReadInt();
+                        entry.name = buffer.ReadString();
+                        entry.description = buffer.ReadString();
+                        entry.price = buffer.ReadString();
+                        entry.isOOCPrice = buffer.ReadBool();
+                        entry.maxSlots = buffer.ReadInt();
+                        entry.isActive = buffer.ReadBool();
+                        entry.sortOrder = buffer.ReadInt();
+                        // Entry images
+                        int bookableImgCount = buffer.ReadInt();
+                        ListingsWindow.detailTotalItems += bookableImgCount;
+                        for (int img = 0; img < bookableImgCount; img++)
+                        {
+                            ListingsWindow.detailLoadingStep = $"Loading booking image {img + 1}/{bookableImgCount}...";
+                            var entryImg = new EntryImage();
+                            int imgLen = buffer.ReadInt();
+                            if (imgLen > 0)
+                            {
+                                byte[] imgBytes = buffer.ReadBytes(imgLen);
+                                entryImg.imageBytes = imgBytes;
+                                try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
+                                catch { }
+                            }
+                            entryImg.isNSFW = buffer.ReadBool();
+                            entryImg.isTriggering = buffer.ReadBool();
+                            entryImg.caption = buffer.ReadString();
+                            entryImg.sortOrder = img;
+                            entry.images.Add(entryImg);
+                            ListingsWindow.detailLoadedItems++;
+                        }
+                        int timeCount = buffer.ReadInt();
+                        for (int t = 0; t < timeCount; t++)
+                        {
+                            var time = new ListingSchedule();
+                            time.isRecurring = buffer.ReadBool();
+                            if (time.isRecurring)
+                            {
+                                time.dayOfWeek = buffer.ReadInt();
+                                time.startTime = TimeSpan.FromMinutes(buffer.ReadInt());
+                                time.endTime = TimeSpan.FromMinutes(buffer.ReadInt());
+                            }
+                            else
+                            {
+                                long specificDateTicks = buffer.ReadLong();
+                                long specificEndDateTicks = buffer.ReadLong();
+                                time.specificDate = new DateTime(specificDateTicks);
+                                time.specificEndDate = new DateTime(specificEndDateTicks);
+                            }
+                            entry.availableTimes.Add(time);
+                        }
+                        listing.bookableEntries.Add(entry);
+                        ListingsWindow.detailLoadedItems++;
+                    }
+
+                    // Services
+                    int serviceCount = buffer.ReadInt();
+                    for (int sv = 0; sv < serviceCount; sv++)
+                    {
+                        var service = new ServiceData();
+                        service.id = buffer.ReadInt();
+                        service.serviceName = buffer.ReadString();
+                        service.description = buffer.ReadString();
+                        service.sortOrder = buffer.ReadInt();
+                        listing.services.Add(service);
+                    }
+
+                    // Settings
+                    int settingsCount = buffer.ReadInt();
+                    for (int se = 0; se < settingsCount; se++)
+                    {
+                        string key = buffer.ReadString();
+                        string value = buffer.ReadString();
+                        listing.settings[key] = value;
+                    }
+
+                    ListingsWindow.currentListing = listing;
+
+                    // If we're in edit mode for this listing, sync the detailed data back into the edit fields
+                    if (ListingsWindow.editListingId == listing.id)
+                    {
+                        ListingsWindow.venueBookingEnabled = listing.bookingEnabled;
+                        ListingsWindow.venueName = listing.name ?? string.Empty;
+                        ListingsWindow.venueTagline = listing.tagline ?? string.Empty;
+                        ListingsWindow.venueDescription = listing.description ?? string.Empty;
+                        ListingsWindow.venueWorld = listing.world ?? string.Empty;
+                        ListingsWindow.venueDatacenter = listing.datacenter ?? string.Empty;
+                        ListingsWindow.venueDistrict = listing.district ?? string.Empty;
+                        ListingsWindow.venueWard = listing.ward;
+                        ListingsWindow.venuePlot = listing.plot;
+                        ListingsWindow.venueNSFW = listing.isNSFW;
+                        ListingsWindow.venueContact = listing.contactInfo ?? string.Empty;
+                        ListingsWindow.venueTags = listing.tags ?? string.Empty;
+                        ListingsWindow.venueDiscord = listing.discordLink ?? string.Empty;
+                        ListingsWindow.venueWebsite = listing.websiteLink ?? string.Empty;
+                        ListingsWindow.createBannerTexture = listing.banner;
+                        ListingsWindow.createLogoTexture = listing.logo;
+                        ListingsWindow.createBannerBytes = null;
+                        ListingsWindow.createLogoBytes = null;
+                        if (listing.schedules != null) ListingsWindow.editSchedules = new List<ListingSchedule>(listing.schedules);
+                        if (listing.menuItems != null) ListingsWindow.editMenuItems = listing.menuItems.Select(m => new MenuItemData
+                        {
+                            id = m.id, category = m.category, itemName = m.itemName,
+                            description = m.description, price = m.price,
+                            isOOCPrice = m.isOOCPrice, sortOrder = m.sortOrder,
+                            images = m.images?.Select(img => new EntryImage
+                            {
+                                id = img.id, texture = img.texture, imageBytes = img.imageBytes,
+                                isNSFW = img.isNSFW, isTriggering = img.isTriggering,
+                                caption = img.caption, sortOrder = img.sortOrder
+                            }).ToList() ?? new List<EntryImage>()
+                        }).ToList();
+                        // Load bookable entries into edit form
+                        if (listing.bookableEntries != null)
+                            ListingsWindow.editBookables = listing.bookableEntries.Select(b => new BookableEntry
+                            {
+                                id = b.id, listingId = b.listingId, name = b.name,
+                                description = b.description, price = b.price,
+                                isOOCPrice = b.isOOCPrice, maxSlots = b.maxSlots,
+                                isActive = b.isActive, sortOrder = b.sortOrder,
+                                availableTimes = b.availableTimes != null ? new List<ListingSchedule>(b.availableTimes) : new List<ListingSchedule>(),
+                                images = b.images?.Select(img => new EntryImage
+                                {
+                                    id = img.id, texture = img.texture, imageBytes = img.imageBytes,
+                                    isNSFW = img.isNSFW, isTriggering = img.isTriggering,
+                                    caption = img.caption, sortOrder = img.sortOrder
+                                }).ToList() ?? new List<EntryImage>()
+                            }).ToList();
+                        else
+                            ListingsWindow.editBookables = new List<BookableEntry>();
+                        // Load staff into edit form (convert StaffMember -> StaffEntry)
+                        if (listing.staff != null)
+                            ListingsWindow.editStaff = listing.staff.Select(s => new StaffEntry
+                            {
+                                id = s.id, name = s.characterName ?? string.Empty,
+                                role = s.role ?? string.Empty,
+                                description = s.description ?? string.Empty,
+                                sortOrder = s.sortOrder,
+                                customFields = s.customFields?.Select(f => new field
+                                    { name = f.name, description = f.description }).ToList()
+                                    ?? new List<field>(),
+                                images = s.images?.Select(img => new EntryImage
+                                {
+                                    id = img.id, texture = img.texture, imageBytes = img.imageBytes,
+                                    isNSFW = img.isNSFW, isTriggering = img.isTriggering,
+                                    caption = img.caption, sortOrder = img.sortOrder
+                                }).ToList() ?? new List<EntryImage>(),
+                            }).ToList();
+                        else
+                            ListingsWindow.editStaff = new List<StaffEntry>();
+                    }
+
+                    ListingsWindow.detailLoadingStep = "Done!";
+                    Plugin.PluginLog.Info($"[HandleListingDetail] Loaded listing detail: id={listing.id}, name='{listing.name}', bookingEnabled={listing.bookingEnabled}");
+                }
+                ListingsWindow.isLoading = false;
+                ListingsWindow.isDetailLoading = false;
+            }
+            catch (Exception ex)
+            {
+                ListingsWindow.isLoading = false;
+                ListingsWindow.isDetailLoading = false;
+                Plugin.PluginLog.Error($"[HandleListingDetail] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleMyListings(byte[] data)
+        {
+            try
+            {
+                ListingsWindow.myListings.Clear();
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    int count = buffer.ReadInt();
+                    Plugin.PluginLog.Info($"[HandleMyListings] Receiving {count} listings");
+
+                    for (int i = 0; i < count; i++)
+                    {
+                        var listing = new Listing();
+                        listing.id = buffer.ReadInt();
+                        listing.type = buffer.ReadInt();
+                        listing.name = buffer.ReadString();
+                        listing.tagline = buffer.ReadString();
+                        listing.isActive = buffer.ReadBool();
+                        listing.viewCount = buffer.ReadInt();
+                        long createdAtTicks = buffer.ReadLong();
+                        listing.createdAt = new DateTime(createdAtTicks);
+                        ListingsWindow.myListings.Add(listing);
+                    }
+                }
+                Plugin.PluginLog.Info($"[HandleMyListings] Finished loading {ListingsWindow.myListings.Count} listings");
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleMyListings] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleBookmarkResult(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    bool bookmarked = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleBookmarkResult] success={success}, bookmarked={bookmarked}");
+
+                    if (success && ListingsWindow.currentListing != null)
+                    {
+                        ListingsWindow.currentListing.isBookmarked = bookmarked;
+                        if (bookmarked)
+                            ListingsWindow.currentListing.bookmarkCount++;
+                        else
+                            ListingsWindow.currentListing.bookmarkCount = Math.Max(0, ListingsWindow.currentListing.bookmarkCount - 1);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleBookmarkResult] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleMenuUpdated(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleMenuUpdated] success={success}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleMenuUpdated] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleScheduleUpdated(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleScheduleUpdated] success={success}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleScheduleUpdated] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleImageUploaded(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleImageUploaded] success={success}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleImageUploaded] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleListingError(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    string message = buffer.ReadString();
+                    ListingsWindow.errorMessage = message;
+                    Plugin.PluginLog.Warning($"[HandleListingError] {message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleListingError] Error: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Booking System
+
+        public static void HandleBookingRequestResult(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    string message = buffer.ReadString();
+                    if (!success)
+                    {
+                        ListingsWindow.errorMessage = message;
+                    }
+                    Plugin.PluginLog.Info($"[HandleBookingRequestResult] success={success}, message={message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleBookingRequestResult] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleMyBookings(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    int count = buffer.ReadInt();
+                    var bookings = new List<BookingRequest>();
+                    for (int i = 0; i < count; i++)
+                    {
+                        var booking = new BookingRequest
+                        {
+                            id = buffer.ReadInt(),
+                            listingId = buffer.ReadInt(),
+                            bookableEntryId = buffer.ReadInt(),
+                            bookableEntryName = buffer.ReadString(),
+                            venueName = buffer.ReadString(),
+                            requesterName = buffer.ReadString(),
+                            requesterWorld = buffer.ReadString(),
+                            requestedDate = new DateTime(buffer.ReadLong()),
+                            requestedTime = TimeSpan.FromMinutes(buffer.ReadInt()),
+                            timezone = buffer.ReadString(),
+                            notes = buffer.ReadString(),
+                            status = buffer.ReadInt(),
+                            createdAt = new DateTime(buffer.ReadLong()),
+                        };
+                        bookings.Add(booking);
+                    }
+                    ListingsWindow.myBookings = bookings;
+                    ListingsWindow.fetchedMyBookings = true;
+                    Plugin.PluginLog.Info($"[HandleMyBookings] Received {count} bookings");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleMyBookings] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleBookingResponseResult(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    int bookingId = buffer.ReadInt();
+                    int newStatus = buffer.ReadInt();
+                    if (success)
+                    {
+                        // Update in incoming requests
+                        var incoming = ListingsWindow.incomingBookingRequests.FirstOrDefault(b => b.id == bookingId);
+                        if (incoming != null) incoming.status = newStatus;
+                        // Update in my bookings
+                        var mine = ListingsWindow.myBookings.FirstOrDefault(b => b.id == bookingId);
+                        if (mine != null) mine.status = newStatus;
+                    }
+                    Plugin.PluginLog.Info($"[HandleBookingResponseResult] success={success}, bookingId={bookingId}, newStatus={newStatus}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleBookingResponseResult] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleIncomingBookings(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    int count = buffer.ReadInt();
+                    var bookings = new List<BookingRequest>();
+                    for (int i = 0; i < count; i++)
+                    {
+                        var booking = new BookingRequest
+                        {
+                            id = buffer.ReadInt(),
+                            listingId = buffer.ReadInt(),
+                            bookableEntryId = buffer.ReadInt(),
+                            bookableEntryName = buffer.ReadString(),
+                            venueName = buffer.ReadString(),
+                            requesterName = buffer.ReadString(),
+                            requesterWorld = buffer.ReadString(),
+                            requestedDate = new DateTime(buffer.ReadLong()),
+                            requestedTime = TimeSpan.FromMinutes(buffer.ReadInt()),
+                            timezone = buffer.ReadString(),
+                            notes = buffer.ReadString(),
+                            status = buffer.ReadInt(),
+                            createdAt = new DateTime(buffer.ReadLong()),
+                            requesterUserId = buffer.ReadInt(),
+                        };
+                        bookings.Add(booking);
+                    }
+                    ListingsWindow.incomingBookingRequests = bookings;
+                    Plugin.PluginLog.Info($"[HandleIncomingBookings] Received {count} incoming bookings");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleIncomingBookings] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleBookableEntriesSaved(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[HandleBookableEntriesSaved] success={success}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleBookableEntriesSaved] Error: {ex.Message}");
+            }
+        }
+
+        public static void HandleBookingNotification(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    int bookingId = buffer.ReadInt();
+                    int listingId = buffer.ReadInt();
+                    string venueName = buffer.ReadString();
+                    string requesterName = buffer.ReadString();
+                    int status = buffer.ReadInt();
+                    string message = buffer.ReadString();
+                    Plugin.PluginLog.Info($"[HandleBookingNotification] bookingId={bookingId}, venue={venueName}, requester={requesterName}, status={status}, msg={message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"[HandleBookingNotification] Error: {ex.Message}");
             }
         }
 

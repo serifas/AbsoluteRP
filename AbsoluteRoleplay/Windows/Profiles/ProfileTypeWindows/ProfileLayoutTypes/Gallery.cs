@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Ect;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
@@ -51,7 +52,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                             {
                                 ImGui.BeginTooltip();
                                 Misc.RenderHtmlElements(image.tooltip, false, true, true, true, null, true);
-                                ImGui.Separator();
+                                ThemeManager.GradientSeparator();
                                 ImGui.Text("Click to enlarge");
                                 ImGui.EndTooltip();
                             }
@@ -85,7 +86,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
             }*/
 
-            if (ImGui.Button("Add Image"))
+            if (ThemeManager.PillButton("Add Image"))
             {
                 byte[] baseImageBytes = new byte[0];
                 if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } imagePath })
@@ -174,14 +175,14 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 ImagePreview.PreviewImage = image.image;
                 loadPreview = true;
             }
-            if(ImGui.Button("Upload##" + i))
+            if(ThemeManager.GhostButton("Upload##" + i))
             {
                 Misc.EditImage(plugin, ProfileWindow._fileDialogManager, layout, false, false, i);
             }
             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
             {
                 //button to remove the gallery image
-                if (ImGui.Button("Remove##" + "gallery_remove" + i))
+                if (ThemeManager.DangerButton("Remove##" + "gallery_remove" + i))
                 {
                     layout.images.RemoveAt(i); 
                     for (int j = 0; j < layout.images.Count; j++)

@@ -125,8 +125,8 @@ public class MainPanel : Window, IDisposable
         Navigation extraNav = NavigationLayouts.ExtraNavigation();
         UIHelpers.DrawExtraNav(extraNav, ref extraNavIndex);
         // Position navigation window to the left of MainPanel, just below the header
-        ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.2f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
-        ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.2f, navHeight), ImGuiCond.Always);
+        ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.5f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.5f, navHeight), ImGuiCond.Always);
 
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
         Navigation nav = NavigationLayouts.MainUINavigation();
@@ -151,7 +151,7 @@ public class MainPanel : Window, IDisposable
                 Misc.SetTitle(Plugin.plugin, true, Plugin.plugin.Configuration.account.accountName, new Vector4(0, 1, 0, 0));
                 using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                 {
-                    if (ImGui.Button("Remove Account", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                    if (ThemeManager.DangerButton("Remove Account", new Vector2(buttonWidth * 2.18f, buttonHeight / 1.4f)))
                     {
                         openRemoveAccountPopup = true;
                         ImGui.OpenPopup("Remove Account?");
@@ -162,7 +162,7 @@ public class MainPanel : Window, IDisposable
                     ImGui.SetTooltip("Hold Ctrl to enable");
                 }
                 // Faux Name Section
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
               
                 
 
@@ -173,11 +173,11 @@ public class MainPanel : Window, IDisposable
                     ImGui.SetNextWindowSize(new Vector2(350, 0), ImGuiCond.Always);
                     if (ImGui.BeginPopupModal("Remove Account?", ref openRemoveAccountPopup, ImGuiWindowFlags.AlwaysAutoResize))
                     {
-                        ImGui.TextColored(new Vector4(1, 0.2f, 0.2f, 1), "Are you sure you want to remove this account?");
+                        ImGui.TextColored(ThemeManager.Error, "Are you sure you want to remove this account?");
                         ImGui.Spacing();
                         using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                         {
-                            if (ImGui.Button("Confirm", new Vector2(120, 0)))
+                            if (ThemeManager.DangerButton("Confirm", new Vector2(120, 0)))
                             {
                                 DataSender.UnlinkAccount();
                                 Plugin.plugin.Configuration.account.accountName = string.Empty;
@@ -196,7 +196,7 @@ public class MainPanel : Window, IDisposable
                             ImGui.SetTooltip("Hold Ctrl to enable");
                         }
                         ImGui.SameLine();
-                        if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                        if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                         {
                             openRemoveAccountPopup = false;
                             ImGui.CloseCurrentPopup();
@@ -207,12 +207,12 @@ public class MainPanel : Window, IDisposable
             }
             if (Plugin.plugin?.Configuration.account.accountKey != string.Empty && Plugin.plugin?.Configuration.account.accountName != string.Empty)
             {
-                if (ImGui.Button("View Likes", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                if (ThemeManager.PillButton("View Likes", new Vector2(buttonWidth * 2.18f, buttonHeight / 1.4f)))
                 {
                     Plugin.plugin.ToggleViewLikesWindow();
                 }
 
-                if (ImGui.Button("Export for Website", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                if (ThemeManager.GhostButton("Export for Website", new Vector2(buttonWidth * 2.18f, buttonHeight / 1.4f)))
                 {
                     _fileDialogManager.SaveFileDialog("Export Account Data", "JSON{.json}",
                         $"AbsoluteRP_Plugin_{Plugin.plugin.Configuration.account.accountName}.json", ".json",
@@ -258,25 +258,25 @@ public class MainPanel : Window, IDisposable
                     ImGui.SetTooltip("Export account data to import on the website");
                 }
 
-                if (ImGui.Button("Options", new Vector2(buttonWidth * 2.18f, buttonHeight / 2f)))
+                if (ThemeManager.GhostButton("Options", new Vector2(buttonWidth * 2.18f, buttonHeight / 1.4f)))
                 {
                     Plugin.plugin.OpenOptionsWindow();
                 }
 
-                
 
-                ImGui.Separator();
+
+                ThemeManager.GradientSeparator();
             }
             else
             {
-                if (ImGui.Button("Get Started!", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.8f)))
+                if (ThemeManager.PillButton("Get Started!", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.2f)))
                 {
                     openTagPopup = true;
                     ImGui.OpenPopup("Register Account");
                 }
 
                 // Import Account button - below Get Started
-                if (ImGui.Button("Import Account", new Vector2(buttonWidth * 2.14f, buttonHeight / 2f)))
+                if (ThemeManager.GhostButton("Import Account", new Vector2(buttonWidth * 2.14f, buttonHeight / 1.4f)))
                 {
                     _fileDialogManager.OpenFileDialog("Import Account Data", "JSON{.json}", (success, files) =>
                     {
@@ -367,13 +367,17 @@ public class MainPanel : Window, IDisposable
                 ImGui.SetNextWindowSize(new Vector2(350, 0), ImGuiCond.Always);
                 if (ImGui.BeginPopupModal("Register Account", ref openTagPopup, ImGuiWindowFlags.AlwaysAutoResize))
                 {
-                    ImGui.Text("Please specify a unique user name");
-                    ImGui.InputText("User Name", ref tempTagName, 25);
+                    ThemeManager.SectionHeader("Create Your Account");
+                    ImGui.Spacing();
+                    ThemeManager.SubtitleText("Please specify a unique user name");
+                    ImGui.Spacing();
+                    ThemeManager.StyledInput("##UserName", ref tempTagName, 25);
 
+                    ImGui.Spacing();
                     using (ImRaii.Disabled(tempTagName == string.Empty))
                     {
 
-                        if (ImGui.Button("Okay", new Vector2(120, 0)))
+                        if (ThemeManager.PillButton("Okay", new Vector2(120, 0)))
                         {
                             tagName = tempTagName;
                             DataSender.CreateUserTag(tagName);
@@ -382,7 +386,7 @@ public class MainPanel : Window, IDisposable
                         }
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                    if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                     {
                         ImGui.CloseCurrentPopup();
                         openTagPopup = false;
@@ -398,8 +402,10 @@ public class MainPanel : Window, IDisposable
 
 
             float xpos = ImGui.GetCursorPosX();
-            ImGui.SetCursorPosX(xpos + 10);
-            ImGui.TextColored(serverStatusColor, serverStatus);
+            ImGui.SetCursorPosX(xpos + 4);
+            // Use themed status dot for connection status
+            var dotColor = ClientTCP.Connected ? ThemeManager.Success : ThemeManager.Error;
+            ThemeManager.StatusDot(serverStatus, dotColor);
             ImGui.SameLine();
 
             if (!ClientTCP.Connected)

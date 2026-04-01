@@ -70,8 +70,8 @@ namespace AbsoluteRP.Windows.Listings
 
             DrawSystemCreation();
 
-            ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.2f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
-            ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.2f, navHeight), ImGuiCond.Always);
+            ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.5f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
+            ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.5f, navHeight), ImGuiCond.Always);
 
             ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
             Navigation nav = NavigationLayouts.SystemNavigation();
@@ -81,7 +81,7 @@ namespace AbsoluteRP.Windows.Listings
         public static void DrawSystemCreation()
         {
             // Create new system
-            if (ImGui.Button("Create System"))
+            if (ThemeManager.PillButton("Create System"))
             {
                 systemData.Add(new SystemData() { name = "New System", description = string.Empty, StatsData = new SortedList<int, StatData>() });
                 currentSystemIndex = systemData.Count - 1;

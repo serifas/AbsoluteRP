@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Social.Views;
 using AbsoluteRP.Windows.Social.Views.Groups;
 using AbsoluteRP.Windows.Social.Views.Groups.GroupManager;
@@ -56,7 +57,7 @@ namespace AbsoluteRP.Windows.Social
                     ImGui.TextWrapped("You don't have permission to invite members to any groups, or you're not in any groups.");
                     ImGui.Spacing();
 
-                    if (ImGui.Button("Close", new Vector2(120, 0)))
+                    if (ThemeManager.GhostButton("Close", new Vector2(120, 0)))
                     {
                         isOpen = false;
                     }
@@ -65,7 +66,7 @@ namespace AbsoluteRP.Windows.Social
                 {
                     ImGui.TextWrapped($"Select a group to invite {targetName}@{targetWorld}:");
                     ImGui.Spacing();
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
 
                     // Group selection list
@@ -101,12 +102,12 @@ namespace AbsoluteRP.Windows.Social
                     ImGui.InputTextMultiline("##InviteMessage", ref inviteMessage, 500, new Vector2(-1, 60));
 
                     ImGui.Spacing();
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
 
                     // Action buttons
                     ImGui.BeginDisabled(selectedGroupID == -1);
-                    if (ImGui.Button("Send Invite", new Vector2(120, 0)))
+                    if (ThemeManager.PillButton("Send Invite", new Vector2(120, 0)))
                     {
                         SendInvite();
                     }
@@ -114,7 +115,7 @@ namespace AbsoluteRP.Windows.Social
 
                     ImGui.SameLine();
 
-                    if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                    if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                     {
                         isOpen = false;
                     }

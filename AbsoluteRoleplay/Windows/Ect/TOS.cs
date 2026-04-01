@@ -61,7 +61,7 @@ namespace AbsoluteRP.Windows.Ect
                 using (ImRaii.Disabled(!Agreed))
                 {
                     ImGui.SetCursorPosX(xPos);
-                    if (ImGui.Button("Submit"))
+                    if (ThemeManager.PillButton("Submit"))
                     {
                         Plugin.plugin.Configuration.TOSVersion = version;
                         Plugin.plugin.Configuration.Save();

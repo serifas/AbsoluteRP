@@ -865,18 +865,18 @@ namespace AbsoluteRP
             //Connection Button
             reconnect = 24,
             //listings
-            listingsCampaign = 25,
-            listingsEvent = 26,
-            listingsFC = 27,
-            listingsGroup = 28,
+            venues = 25,
+            events = 26,
+            freecompanies = 27,
+            campaigns = 28,
             listingsPersonal = 29,
             listingsVenue = 30,
-            listingsCampaignBig = 31,
-            listingsEventBig = 32,
-            listingsFCBig = 33,
-            listingsGroupBig = 34,
-            listingsPersonalBig = 35,
-            listingsVenueBig = 36,
+          //  listingsCampaignBig = 31,
+          //  listingsEventBig = 32,
+         //   listingsFCBig = 33,
+         //   listingsGroupBig = 34,
+         //   listingsPersonalBig = 35,
+         //   listingsVenueBig = 36,
             blank = 37,
             inventoryTab = 38,
             patreonBtn = 39,
@@ -906,6 +906,11 @@ namespace AbsoluteRP
             create = 63,
             socialGroupSettings = 64,
             websiteBtn = 65,
+            quests = 66,
+            systems = 67,
+            listings = 68,
+            personal = 69,
+            groups = 70,
         }
         public enum ListingCategory
         {
@@ -1034,17 +1039,15 @@ namespace AbsoluteRP
                         CommonImageTypes.profileBookmarkProfile => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/profile_bookmarks.png"))).Result,
                         CommonImageTypes.profileBookmarkNPC => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/profiles/npc_bookmarks.png"))).Result,
                         CommonImageTypes.reconnect => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/connect.png"))).Result,
-                        CommonImageTypes.listingsCampaign => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/campaign.png"))).Result,
-                        CommonImageTypes.listingsEvent => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/event.png"))).Result,
-                        CommonImageTypes.listingsGroup => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/group.png"))).Result,
-                        CommonImageTypes.listingsPersonal => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/personal.png"))).Result,
-                        CommonImageTypes.listingsVenue => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/venue.png"))).Result,
-                        CommonImageTypes.listingsCampaignBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/campaign_big.png"))).Result,
-                        CommonImageTypes.listingsEventBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/event_big.png"))).Result,
-                        CommonImageTypes.listingsFCBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/fc_big.png"))).Result,
-                        CommonImageTypes.listingsGroupBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/group_big.png"))).Result,
-                        CommonImageTypes.listingsPersonalBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/personal_big.png"))).Result,
-                        CommonImageTypes.listingsVenueBig => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/venue_big.png"))).Result,
+                        CommonImageTypes.personal => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/personal.png"))).Result,
+                        CommonImageTypes.listings => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings.png"))).Result,
+                        CommonImageTypes.groups => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/group.png"))).Result,
+                        CommonImageTypes.quests => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/quests.png"))).Result,
+                        CommonImageTypes.systems => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems.png"))).Result,
+                        CommonImageTypes.venues => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/venue.png"))).Result,
+                        CommonImageTypes.campaigns => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/campaign.png"))).Result,
+                        CommonImageTypes.events => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/event.png"))).Result,
+                        CommonImageTypes.freecompanies => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/fc.png"))).Result,
                         CommonImageTypes.listingsQuests => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/quests.png"))).Result,
                         CommonImageTypes.listingsSystem => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems.png"))).Result,
                         CommonImageTypes.blank => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/blank.png"))).Result,
@@ -1509,9 +1512,9 @@ namespace AbsoluteRP
         public static readonly (string, string)[] ListingCategoryVals =
         {
 
-            ("Event",     "Parts of a campaign or short term RPs."),
+            ("Event",     "Parts of a campaigns or short term RPs."),
 
-            ("Campaign",    "For an ongoing roleplay campaign, used for advertising long term Rps or a list of events."),
+            ("Campaign",    "For an ongoing roleplay campaigns, used for advertising long term Rps or a list of events."),
 
             ("Venue",    "Mostly for RP held at estates."),
 
@@ -1528,9 +1531,9 @@ namespace AbsoluteRP
 
             ("All",     "All categories."),
 
-            ("Event",     "For advertising parts of a campaign or short term RPs."),
+            ("Event",     "For advertising parts of a campaigns or short term RPs."),
 
-            ("Campaign",    "For an ongoing roleplay campaign, long term Rps or a list of events."),
+            ("Campaign",    "For an ongoing roleplay campaigns, long term Rps or a list of events."),
 
             ("Venue",    "RP held at estates or a persistant location."),
 
@@ -1686,29 +1689,275 @@ namespace AbsoluteRP
         public string name { get; set; }
     }
 
+    // ============================
+    // Listings System Data Models
+    // ============================
+
+    public enum ListingType
+    {
+        Venue = 1,
+        Events = 2,
+        Campaign = 3,
+        FC = 4
+    }
+
+    public enum ListingTabType
+    {
+        About = 0,
+        Menu = 1,
+        Staff = 2,
+        Services = 3,
+        Schedule = 4,
+        Roster = 5,
+        Details = 6,
+        Recruitment = 7,
+        Housing = 8,
+        Activities = 9,
+        Custom = 99
+    }
+
+    public enum RSVPStatus
+    {
+        Going = 1,
+        Interested = 2,
+        NotGoing = 3
+    }
+
     public class Listing
     {
+        internal IDalamudTextureWrap avatar { get; set; } = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+
         public int id { get; set; } = 0;
+        public int ownerId { get; set; } = 0;
+        public int type { get; set; } = 0; // ListingType enum: 1=Venue, 2=Event, 3=Campaign, 4=FC
         public string name { get; set; } = string.Empty;
-        public IDalamudTextureWrap avatar { get; set; } = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+        public string tagline { get; set; } = string.Empty;
         public string description { get; set; } = string.Empty;
-        public string rules { get; set; } = string.Empty;
-        public int category { get; set; } = 0;
-        public int type { get; set; } = 0; // 0 = all, 1 = personals
-        public int focus { get; set; } = 0;
-        public int setting { get; set; } = 0;
+
+        // Images (TextureWrap for rendering)
         public IDalamudTextureWrap banner { get; set; } = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
-        public int inclusion { get; set; } = 0;
-        public string startDate { get; set; } = string.Empty;
-        public string endDate { get; set; } = string.Empty;
-        public bool ARR { get; set; } = false;
-        public bool HW { get; set; } = false;
-        public bool SB { get; set; } = false;
-        public bool SHB { get; set; } = false;
-        public bool EW { get; set; } = false;
-        public bool DT { get; set; } = false;
-        public Vector4 color { get; set; } = new Vector4(1, 1, 1, 1); // Default white color
+        public IDalamudTextureWrap logo { get; set; } = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+
+        // Location
+        public int category { get; set; } = 0;
+        public string world { get; set; } = string.Empty;
+        public string datacenter { get; set; } = string.Empty;
+        public string district { get; set; } = string.Empty;
+        public int ward { get; set; } = 0;
+        public int plot { get; set; } = 0;
+        public int apartment { get; set; } = 0;
+        public string room { get; set; } = string.Empty;
+
+        // Metadata
+        public bool isActive { get; set; } = true;
+        public bool isNSFW { get; set; } = false;
+        public bool isFeatured { get; set; } = false;
+        public int viewCount { get; set; } = 0;
+        public int bookmarkCount { get; set; } = 0;
+
+        // Social links
+        public string discordLink { get; set; } = string.Empty;
+        public string websiteLink { get; set; } = string.Empty;
+        public string contactInfo { get; set; } = string.Empty;
+        public string tags { get; set; } = string.Empty;
+
+        // Timestamps
+        public DateTime createdAt { get; set; } = DateTime.Now;
+        public DateTime updatedAt { get; set; } = DateTime.Now;
+
+        // Related data
+        public List<ListingTab> tabs { get; set; } = new List<ListingTab>();
+        public List<ListingSchedule> schedules { get; set; } = new List<ListingSchedule>();
+        public List<StaffMember> staff { get; set; } = new List<StaffMember>();
+        public List<MenuItemData> menuItems { get; set; } = new List<MenuItemData>();
+        public List<ServiceData> services { get; set; } = new List<ServiceData>();
+        public Dictionary<string, string> settings { get; set; } = new Dictionary<string, string>();
+        public List<BookableEntry> bookableEntries { get; set; } = new List<BookableEntry>();
+        public bool bookingEnabled { get; set; } = false;
+
+        // Client-side only
+        public bool isBookmarked { get; set; } = false;
+        public bool isOpenNow { get; set; } = false; // Calculated from schedules
+        public Vector4 color { get; set; } = new Vector4(1, 1, 1, 1);
+        public bool ARR { get; internal set; }
+        public bool HW { get; internal set; }
+        public bool SB { get; internal set; }
+        public bool SHB { get; internal set; }
+        public bool EW { get; internal set; }
+        public bool DT { get; internal set; }
     }
+
+    public class ListingTab
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public int tabType { get; set; } = 0; // ListingTabType enum
+        public string title { get; set; } = string.Empty;
+        public string content { get; set; } = string.Empty;
+        public int sortOrder { get; set; } = 0;
+        public bool isVisible { get; set; } = true;
+    }
+
+    public class StaffMember
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public int userId { get; set; } = 0;
+        public string characterName { get; set; } = string.Empty;
+        public string characterWorld { get; set; } = string.Empty;
+        public string role { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public IDalamudTextureWrap avatar { get; set; } = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+        public int sortOrder { get; set; } = 0;
+        public DateTime invitedAt { get; set; } = DateTime.Now;
+        public bool accepted { get; set; } = false;
+        public string notes { get; set; } = string.Empty;
+        public List<field> customFields { get; set; } = new List<field>();
+        public List<EntryImage> images { get; set; } = new List<EntryImage>();
+        public int mainImageIndex { get; set; } = 0;
+    }
+
+    public class MenuItemData
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public string category { get; set; } = string.Empty; // Drinks, Food, Specials, etc.
+        public string itemName { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public string price { get; set; } = string.Empty;
+        public bool isOOCPrice { get; set; } = false; // true = OOC (real gil), false = IC (roleplay)
+        public int sortOrder { get; set; } = 0;
+        public bool isAvailable { get; set; } = true;
+        public IDalamudTextureWrap imageTexture { get; set; } = null; // Optional dish image
+        public byte[] imageBytes { get; set; } = null; // For upload
+        public List<EntryImage> images { get; set; } = new List<EntryImage>();
+        public int mainImageIndex { get; set; } = 0;
+    }
+
+    public class ServiceData
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public string serviceName { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public string icon { get; set; } = string.Empty;
+        public int sortOrder { get; set; } = 0;
+        public bool isActive { get; set; } = true;
+    }
+
+    public class StaffEntry
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public string name { get; set; } = string.Empty;
+        public string role { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public List<field> customFields { get; set; } = new List<field>();
+        public IDalamudTextureWrap imageTexture { get; set; } = null;
+        public byte[] imageBytes { get; set; } = null;
+        public int sortOrder { get; set; } = 0;
+        public List<EntryImage> images { get; set; } = new List<EntryImage>();
+        public int mainImageIndex { get; set; } = 0;
+    }
+
+    public class BookableEntry
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public string name { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public string price { get; set; } = string.Empty;
+        public bool isOOCPrice { get; set; } = false;
+        public int maxSlots { get; set; } = 1;
+        public int bookedSlots { get; set; } = 0;
+        public List<ListingSchedule> availableTimes { get; set; } = new List<ListingSchedule>();
+        public IDalamudTextureWrap imageTexture { get; set; } = null;
+        public byte[] imageBytes { get; set; } = null;
+        public bool isActive { get; set; } = true;
+        public int sortOrder { get; set; } = 0;
+        public List<EntryImage> images { get; set; } = new List<EntryImage>();
+        public int mainImageIndex { get; set; } = 0;
+    }
+
+    public class EntryImage
+    {
+        public int id { get; set; }
+        public IDalamudTextureWrap texture { get; set; }
+        public byte[] imageBytes { get; set; }
+        public bool isNSFW { get; set; }
+        public bool isTriggering { get; set; }
+        public string caption { get; set; } = string.Empty;
+        public int sortOrder { get; set; }
+        public bool revealed { get; set; } = false; // For NSFW reveal toggle
+    }
+
+    public class BookingRequest
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public int bookableEntryId { get; set; } = 0;
+        public string bookableEntryName { get; set; } = string.Empty;
+        public string venueName { get; set; } = string.Empty;
+        public int requesterUserId { get; set; } = 0;
+        public string requesterName { get; set; } = string.Empty;
+        public string requesterWorld { get; set; } = string.Empty;
+        public DateTime requestedDate { get; set; } = DateTime.Now;
+        public TimeSpan requestedTime { get; set; } = TimeSpan.Zero;
+        public string timezone { get; set; } = "UTC";
+        public string notes { get; set; } = string.Empty;
+        public int status { get; set; } = 0; // 0=Pending, 1=Accepted, 2=Declined, 3=DeclinedRepeat
+        public DateTime createdAt { get; set; } = DateTime.Now;
+    }
+
+    public class ListingSchedule
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public bool isRecurring { get; set; } = true;
+
+        // For recurring schedules
+        public int dayOfWeek { get; set; } = 0; // 0=Sunday, 6=Saturday
+        public TimeSpan startTime { get; set; } = TimeSpan.Zero;
+        public TimeSpan endTime { get; set; } = TimeSpan.Zero;
+
+        // For one-time events
+        public DateTime? specificDate { get; set; } = null;
+        public DateTime? specificEndDate { get; set; } = null;
+
+        public string eventName { get; set; } = string.Empty;
+        public string notes { get; set; } = string.Empty;
+        public string timezone { get; set; } = "UTC";
+    }
+
+    public class ListingRSVP
+    {
+        public int id { get; set; } = 0;
+        public int listingId { get; set; } = 0;
+        public int scheduleId { get; set; } = 0;
+        public int userId { get; set; } = 0;
+        public string characterName { get; set; } = string.Empty;
+        public string characterWorld { get; set; } = string.Empty;
+        public int status { get; set; } = 0; // RSVPStatus enum
+        public string notes { get; set; } = string.Empty;
+        public DateTime rsvpAt { get; set; } = DateTime.Now;
+    }
+
+    public class ListingSearchCriteria
+    {
+        public int listingType { get; set; } = 0; // 0 = all types
+        public int category { get; set; } = 0; // 0 = all categories
+        public string world { get; set; } = string.Empty; // empty = all worlds
+        public string searchQuery { get; set; } = string.Empty;
+        public bool includeNSFW { get; set; } = false;
+        public bool openNow { get; set; } = false;
+        public int page { get; set; } = 1;
+        public int pageSize { get; set; } = 20;
+        public int sortBy { get; set; } = 1; // 1=Recent, 2=Popular, 3=Alphabetical
+    }
+
+    // ============================
+    // End Listings System
+    // ============================
 }
 
 public class SpellDefinition
@@ -1737,6 +1986,7 @@ public class ItemDefinition
     public IDalamudTextureWrap iconTexture { get; set; } = null; // Texture for the item icon
     public int slot { get; set; }
     public int quality { get; set; }
+    public bool locked { get; set; } = false; // If true, item cannot be edited after creation
 }
 
 public class Relationship

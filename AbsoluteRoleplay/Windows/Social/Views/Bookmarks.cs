@@ -38,7 +38,7 @@ namespace AbsoluteRP.Windows.Social.Views
                                 if (DisableBookmarkSelection)
                                     ImGui.BeginDisabled();
 
-                                if (ImGui.Button(profileList[i].ProfileName))
+                                if (ThemeManager.GhostButton(profileList[i].ProfileName))
                                 {
                                     Plugin.plugin.OpenTargetWindow();
                                     ReportWindow.reportCharacterName = profileList[i].PlayerName;
@@ -54,7 +54,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                                 using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                                 {
-                                    if (ImGui.Button("Remove##Removal" + i))
+                                    if (ThemeManager.DangerButton("Remove##Removal" + i))
                                     {
                                         DataSender.RemoveBookmarkedPlayer(Plugin.character, profileList[i].PlayerName, profileList[i].profileIndex);
                                     }

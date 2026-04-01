@@ -45,8 +45,8 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             bool Visible = group.visible;
             bool OpenInvite = group.openInvite;
             // Header
-            ImGui.Text("Group Creator");
-            ImGui.Separator();
+            ThemeManager.SectionHeader("Group Creator");
+            ThemeManager.GradientSeparator();
 
             ImGui.Text("Group Leader");
             AddGroupLeaderSelection();
@@ -100,7 +100,7 @@ namespace AbsoluteRP.Windows.Social.Views.SubViews
             }
 
             // Buttons
-            if (ImGui.Button("Save"))
+            if (ThemeManager.PillButton("Save"))
             {
                 DataSender.SetGroupValues(Plugin.character, group, false, leadProfileIndex, profileIndex);
             }

@@ -117,7 +117,7 @@ namespace AbsoluteRP.Windows.Social
 
             // Group name header
             ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1f), currentGroup.name);
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             if (currentGroup.categories == null || currentGroup.categories.Count == 0)
             {
@@ -404,7 +404,7 @@ namespace AbsoluteRP.Windows.Social
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             ImGui.PopID();
@@ -515,7 +515,7 @@ namespace AbsoluteRP.Windows.Social
             ImGui.SameLine();
 
             // Send button
-            if (ImGui.Button(editingMessage != null ? "Save" : "Send", new Vector2(70f * ImGui.GetIO().FontGlobalScale, 50f * ImGui.GetIO().FontGlobalScale)))
+            if (ThemeManager.PillButton(editingMessage != null ? "Save" : "Send", new Vector2(70f * ImGui.GetIO().FontGlobalScale, 50f * ImGui.GetIO().FontGlobalScale)))
             {
                 SendOrEditMessage();
             }

@@ -114,6 +114,30 @@ namespace Networking
             // Character Sync
             packets.Add((int)ServerPackets.SendVerifiedCharacters, DataReceiver.HandleVerifiedCharacters);
 
+            // Server Notifications (shutdown, restart, broadcast)
+            packets.Add((int)ServerPackets.SendServerNotification, DataReceiver.HandleServerNotification);
+
+            // Listings System
+            packets.Add((int)ServerPackets.SendListingCreated, DataReceiver.HandleListingCreated);
+            packets.Add((int)ServerPackets.SendListingUpdated, DataReceiver.HandleListingUpdated);
+            packets.Add((int)ServerPackets.SendListingDeleted, DataReceiver.HandleListingDeleted);
+            packets.Add((int)ServerPackets.SendListingsList, DataReceiver.HandleListingsList);
+            packets.Add((int)ServerPackets.SendListingDetail, DataReceiver.HandleListingDetail);
+            packets.Add((int)ServerPackets.SendMyListings, DataReceiver.HandleMyListings);
+            packets.Add((int)ServerPackets.SendBookmarkResult, DataReceiver.HandleBookmarkResult);
+            packets.Add((int)ServerPackets.SendMenuUpdated, DataReceiver.HandleMenuUpdated);
+            packets.Add((int)ServerPackets.SendScheduleUpdated, DataReceiver.HandleScheduleUpdated);
+            packets.Add((int)ServerPackets.SendImageUploaded, DataReceiver.HandleImageUploaded);
+            packets.Add((int)ServerPackets.SendListingError, DataReceiver.HandleListingError);
+
+            // Booking System
+            packets.Add((int)ServerPackets.SendBookingRequestResult, DataReceiver.HandleBookingRequestResult);
+            packets.Add((int)ServerPackets.SendMyBookings, DataReceiver.HandleMyBookings);
+            packets.Add((int)ServerPackets.SendBookingResponseResult, DataReceiver.HandleBookingResponseResult);
+            packets.Add((int)ServerPackets.SendIncomingBookings, DataReceiver.HandleIncomingBookings);
+            packets.Add((int)ServerPackets.SendBookableEntriesSaved, DataReceiver.HandleBookableEntriesSaved);
+            packets.Add((int)ServerPackets.SendBookingNotification, DataReceiver.HandleBookingNotification);
+
             //simple message back from server, simply for verification that the user is connected
         }
 

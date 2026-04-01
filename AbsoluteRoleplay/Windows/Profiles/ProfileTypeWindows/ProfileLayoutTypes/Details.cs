@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
@@ -27,7 +28,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
             }*/
 
-            if (ImGui.Button("Add"))
+            if (ThemeManager.PillButton("Add"))
             {
                 Detail detail = new Detail
                 {
@@ -74,7 +75,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                         {
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Remove##" + "detail" + detail.id))
+                                if (ThemeManager.DangerButton("Remove##" + "detail" + detail.id))
                                 {
                                     Detail toRemove = layout.details.Find(d => d.id == detail.id);
                                     layout.details.Remove(toRemove);

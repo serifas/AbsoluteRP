@@ -38,9 +38,9 @@ namespace AbsoluteRP.Windows.Social.Views
         public static void LoadSearch()
         {
             DrawFFXIVLocationSelectors();
-            ImGui.Text("Profile Name");
+            ThemeManager.SubtitleText("Profile Name");
             ImGui.SameLine();
-            ImGui.InputText("##ProfileName", ref profileSearchQuery, 100, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll);
+            ThemeManager.StyledInput("##ProfileName", ref profileSearchQuery, 100);
             DrawListingCategorySelection();
             DrawPageCountSelection();
             using (ImRaii.Child($"ProfileNavigation", new Vector2(ImGui.GetWindowSize().X, ImGui.GetIO().FontGlobalScale * 32), true))
@@ -64,54 +64,198 @@ namespace AbsoluteRP.Windows.Social.Views
                     DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
                 }
             }
-            if (ImGui.Button("Search"))
+            if (ThemeManager.PillButton("Search"))
             {
                 if (profileSearchQuery == string.Empty)
                 {
                     profileSearchQuery = "ALL PROFILES";
                 }
+                SocialWindow.isSearchLoading = true;
+                SocialWindow.searchLoadedCount = 0;
+                SocialWindow.searchTotalCount = 0;
+                SocialWindow.listings.Clear();
                 DataSender.RequestPersonals(Plugin.character, worldSearchQuery, currentIndex, currentViewCount, profileSearchQuery, currentCategory);
             }
+
+            // Loading bar while profiles are being fetched
+            if (SocialWindow.isSearchLoading)
+            {
+                ImGui.Spacing(); ImGui.Spacing();
+                float progress = SocialWindow.searchTotalCount > 0
+                    ? (float)SocialWindow.searchLoadedCount / SocialWindow.searchTotalCount
+                    : 0f;
+                string progressLabel = SocialWindow.searchTotalCount > 0
+                    ? $"Loading profiles... {SocialWindow.searchLoadedCount}/{SocialWindow.searchTotalCount}"
+                    : "Searching...";
+                ThemeManager.StyledProgressBar(progress, new Vector2(ImGui.GetContentRegionAvail().X, 22), progressLabel, null);
+                return;
+            }
+
             if (SocialWindow.listings.Count == 0)
             {
                 ImGui.TextUnformatted("No listings loaded.");
                 return;
             }
 
-
-            using var table = ImRaii.Table("Personal Listings", 2, ImGuiTableFlags.ScrollY | ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.RowBg);
-            if (!table)
-                return;
-
-            ImGui.TableSetupColumn("Profile", ImGuiTableColumnFlags.WidthFixed, 200);
-            ImGui.TableSetupColumn("Controls", ImGuiTableColumnFlags.WidthStretch);
-
-            foreach (var listing in SocialWindow.listings.Where(l => l.type == type))
-                {
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-                    if (listing.avatar.Handle != null && listing.avatar.Handle != nint.Zero)
-                    {
-                        ImGui.Image(listing.avatar.Handle, new Vector2(100, 100));
-                    }
-                    ImGui.TextColored(listing.color, listing.name);
-
-                    if (ImGui.Button($"View##{listing.id}"))
-                    {
-                        Plugin.plugin.OpenTargetWindow();
-                        TargetProfileWindow.RequestingProfile = true;
-                        TargetProfileWindow.ResetAllData();
-                        DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
-                    }
-                    ImGui.SameLine();
-                    if (ImGui.Button($"Bookmark##{listing.id}"))
-                    {
-                        DataSender.BookmarkPlayer(Plugin.character, string.Empty, string.Empty, listing.id);
-                    }
-                    ImGui.TableSetColumnIndex(1);
-                    //description here
-                }
+            ImGui.Spacing();
+            DrawProfileCardGrid();
         }
+        private static void DrawProfileCardGrid()
+        {
+            float windowWidth = ImGui.GetContentRegionAvail().X;
+            float cardWidth = 300f;
+            float cardSpacing = 10f;
+            float cardHeight = 230f;
+            float rowSpacing = 10f;
+            int columns = Math.Max(1, (int)((windowWidth) / (cardWidth + cardSpacing)));
+
+            var filtered = SocialWindow.listings.Where(l => l.type == type).ToList();
+            if (filtered.Count == 0) return;
+
+            // Calculate total height needed for all rows
+            int rows = (int)Math.Ceiling((double)filtered.Count / columns);
+            float totalHeight = rows * (cardHeight + rowSpacing);
+
+            // Scrollable region that encompasses all cards
+            if (ImGui.BeginChild("##ProfileGrid", new Vector2(windowWidth, ImGui.GetContentRegionAvail().Y), false, ImGuiWindowFlags.AlwaysVerticalScrollbar))
+            {
+                // Reserve the full content height so the scrollbar works
+                var startPos = ImGui.GetCursorPos();
+
+                for (int i = 0; i < filtered.Count; i++)
+                {
+                    int col = i % columns;
+                    int row = i / columns;
+                    float x = startPos.X + col * (cardWidth + cardSpacing);
+                    float y = startPos.Y + row * (cardHeight + rowSpacing);
+
+                    ImGui.SetCursorPos(new Vector2(x, y));
+                    DrawProfileCard(filtered[i], cardWidth);
+                }
+
+                // Move cursor to the end so ImGui knows the full content size
+                ImGui.SetCursorPos(new Vector2(startPos.X, startPos.Y + totalHeight));
+                ImGui.Dummy(new Vector2(0, 0));
+            }
+            ImGui.EndChild();
+        }
+
+        private static void DrawProfileCard(Listing listing, float cardWidth)
+        {
+            float cardHeight = 230f;
+            float avatarSize = 80f;
+            float avatarY = 16f;
+            float rounding = 8f;
+
+            // Use BeginGroup + Dummy + DrawList instead of BeginCard (which uses BeginChild).
+            // BeginChild creates nested scroll regions that don't contribute to parent scroll height.
+            // BeginGroup properly extends the parent's content area.
+            ImGui.BeginGroup();
+            var cardPos = ImGui.GetCursorScreenPos();
+            var dl = ImGui.GetWindowDrawList();
+            float centerX = cardPos.X + cardWidth / 2f;
+
+            // Card background
+            var cardBg = ThemeManager.Lighten(ThemeManager.Background, 0.03f);
+            var cardBorder = new Vector4(ThemeManager.Border.X, ThemeManager.Border.Y, ThemeManager.Border.Z, ThemeManager.Border.W * 0.6f);
+            var cardMax = new Vector2(cardPos.X + cardWidth, cardPos.Y + cardHeight);
+            dl.AddRectFilled(cardPos, cardMax, ImGui.ColorConvertFloat4ToU32(cardBg), rounding);
+            dl.AddRect(cardPos, cardMax, ImGui.ColorConvertFloat4ToU32(cardBorder), rounding, ImDrawFlags.None, 1f);
+
+            // Accent color strip at top of card
+            uint accentCol = ImGui.ColorConvertFloat4ToU32(new Vector4(listing.color.X, listing.color.Y, listing.color.Z, 0.6f));
+            dl.AddRectFilled(cardPos, new Vector2(cardPos.X + cardWidth, cardPos.Y + 4), accentCol, rounding, ImDrawFlags.RoundCornersTop);
+
+            // Avatar circle (centered)
+            float avX = centerX - avatarSize / 2f;
+            float avY = cardPos.Y + avatarY;
+            Vector2 avCenter = new Vector2(avX + avatarSize / 2f, avY + avatarSize / 2f);
+
+            // Glow ring in profile color
+            uint glowCol = ImGui.ColorConvertFloat4ToU32(new Vector4(listing.color.X, listing.color.Y, listing.color.Z, 0.35f));
+            dl.AddCircleFilled(avCenter, avatarSize / 2f + 4, glowCol);
+
+            // White border
+            dl.AddCircleFilled(avCenter, avatarSize / 2f + 2, 0xFFFFFFFF);
+
+            // Avatar image
+            if (listing.avatar != null && listing.avatar.Handle != IntPtr.Zero)
+            {
+                dl.AddImageRounded(listing.avatar.Handle,
+                    new Vector2(avX, avY),
+                    new Vector2(avX + avatarSize, avY + avatarSize),
+                    Vector2.Zero, Vector2.One,
+                    0xFFFFFFFF, avatarSize / 2f);
+            }
+            else
+            {
+                dl.AddCircleFilled(avCenter, avatarSize / 2f,
+                    ImGui.ColorConvertFloat4ToU32(ThemeManager.BgDark));
+            }
+
+            // Name (centered, in profile color) — truncate to fit card inner width
+            float nameY = avY + avatarSize + 8;
+            float cardInner = cardWidth - 32;
+            string displayName = listing.name;
+            float nameWidth = ImGui.CalcTextSize(displayName).X;
+            if (nameWidth > cardInner)
+            {
+                while (displayName.Length > 3 && ImGui.CalcTextSize(displayName + "..").X > cardInner)
+                    displayName = displayName.Substring(0, displayName.Length - 1);
+                displayName += "..";
+                nameWidth = ImGui.CalcTextSize(displayName).X;
+            }
+            ImGui.SetCursorScreenPos(new Vector2(centerX - nameWidth / 2f, nameY));
+            ImGui.TextColored(listing.color, displayName);
+
+            // Spoiler badges row
+            float badgeY = nameY + ImGui.GetTextLineHeightWithSpacing() + 2;
+            List<string> spoilerTags = new List<string>();
+            if (listing.ARR) spoilerTags.Add("ARR");
+            if (listing.HW) spoilerTags.Add("HW");
+            if (listing.SB) spoilerTags.Add("SB");
+            if (listing.SHB) spoilerTags.Add("SHB");
+            if (listing.EW) spoilerTags.Add("EW");
+            if (listing.DT) spoilerTags.Add("DT");
+            if (spoilerTags.Count > 0)
+            {
+                string spoilerStr = string.Join("  ", spoilerTags);
+                float spoilerW = ImGui.CalcTextSize(spoilerStr).X;
+                ImGui.SetCursorScreenPos(new Vector2(centerX - spoilerW / 2f, badgeY));
+                ThemeManager.SubtitleText(spoilerStr);
+            }
+
+            // View + Bookmark buttons (auto-sized to text, centered at bottom)
+            float btnY = badgeY + ImGui.GetTextLineHeightWithSpacing() + 4;
+            float btnPadX = 32f;
+            float btnH = ImGui.GetTextLineHeight() + 18f;
+            string viewLabel = $"View Profile##{listing.id}";
+            string bookmarkLabel = $"Bookmark##{listing.id}";
+            float viewBtnW = ImGui.CalcTextSize("View Profile").X + btnPadX;
+            float bookmarkBtnW = ImGui.CalcTextSize("Bookmark").X + btnPadX;
+            float btnGap = 8f;
+            float totalBtnW = viewBtnW + bookmarkBtnW + btnGap;
+            ImGui.SetCursorScreenPos(new Vector2(centerX - totalBtnW / 2f, btnY));
+
+            if (ThemeManager.PillButton(viewLabel, new Vector2(viewBtnW, btnH)))
+            {
+                Plugin.plugin.OpenTargetWindow();
+                TargetProfileWindow.RequestingProfile = true;
+                TargetProfileWindow.ResetAllData();
+                DataSender.FetchProfile(Plugin.character, false, -1, string.Empty, string.Empty, listing.id);
+            }
+            ImGui.SameLine(0, btnGap);
+            if (ThemeManager.GhostButton(bookmarkLabel, new Vector2(bookmarkBtnW, btnH)))
+            {
+                DataSender.BookmarkPlayer(Plugin.character, string.Empty, string.Empty, listing.id);
+            }
+
+            // Reserve the full card height so ImGui knows how tall this group is
+            ImGui.SetCursorScreenPos(new Vector2(cardPos.X, cardPos.Y + cardHeight));
+            ImGui.Dummy(new Vector2(cardWidth, 0));
+            ImGui.EndGroup();
+        }
+
         public static void DrawPageCountSelection()
         {
             using var combo = ImRaii.Combo("##PageCount", currentViewCount.ToString());

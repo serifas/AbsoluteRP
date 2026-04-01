@@ -79,7 +79,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             if (pendingInvites.Count > 1)
             {
                 ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"Invite {currentInviteIndex + 1} of {pendingInvites.Count}");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
             }
 
             // Group icon - render using RenderHtmlElements if URL is available
@@ -119,7 +119,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), groupName);
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Inviter info
@@ -147,7 +147,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 ImGui.Spacing();
             }
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Action buttons (centered)
@@ -160,7 +160,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.8f, 0.3f, 1f));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.1f, 0.6f, 0.1f, 1f));
 
-            if (ImGui.Button("Accept", new Vector2(buttonWidth, 0)))
+            if (ThemeManager.PillButton("Accept", new Vector2(buttonWidth, 0)))
             {
                 AcceptInvite();
             }
@@ -173,7 +173,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.8f, 0.3f, 0.3f, 1f));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.6f, 0.1f, 0.1f, 1f));
 
-            if (ImGui.Button("Decline", new Vector2(buttonWidth, 0)))
+            if (ThemeManager.DangerButton("Decline", new Vector2(buttonWidth, 0)))
             {
                 DeclineInvite();
             }
@@ -184,14 +184,14 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             if (pendingInvites.Count > 1)
             {
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float navButtonWidth = 80f;
                 float navTotalWidth = navButtonWidth * 2 + ImGui.GetStyle().ItemSpacing.X;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - navTotalWidth) * 0.5f);
 
-                if (ImGui.Button("< Previous", new Vector2(navButtonWidth, 0)))
+                if (ThemeManager.GhostButton("< Previous", new Vector2(navButtonWidth, 0)))
                 {
                     currentInviteIndex = (currentInviteIndex - 1 + pendingInvites.Count) % pendingInvites.Count;
                     currentInvite = pendingInvites[currentInviteIndex];
@@ -199,7 +199,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Next >", new Vector2(navButtonWidth, 0)))
+                if (ThemeManager.GhostButton("Next >", new Vector2(navButtonWidth, 0)))
                 {
                     currentInviteIndex = (currentInviteIndex + 1) % pendingInvites.Count;
                     currentInvite = pendingInvites[currentInviteIndex];

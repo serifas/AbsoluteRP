@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Listings;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRP.Windows.Social.Views;
@@ -208,7 +209,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.BeginGroup();
 
             // Assign Rank Button
-            if (ImGui.Button($"Assign Rank##AssignRank{member.id}"))
+            if (ThemeManager.GhostButton($"Assign Rank##AssignRank{member.id}"))
             {
                 selectedMemberForRank = member.id;
                 selectedRankToAssign = member.rank?.id ?? -1;
@@ -218,7 +219,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             ImGui.SameLine();
 
             // Remove Rank Button
-            if (ImGui.Button($"Remove Rank##RemoveRank{member.id}"))
+            if (ThemeManager.DangerButton($"Remove Rank##RemoveRank{member.id}"))
             {
                 DataSender.RemoveMemberRank(character, member.id, group.groupID);
             }
@@ -226,7 +227,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             ImGui.SameLine();
 
             // Kick Button
-            if (ImGui.Button($"Kick##Kick{member.id}"))
+            if (ThemeManager.DangerButton($"Kick##Kick{member.id}"))
             {
                 selectedMemberForKick = member.id;
                 showKickConfirmDialog = true;
@@ -235,7 +236,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
             ImGui.SameLine();
 
             // Ban Button
-            if (ImGui.Button($"Ban##Ban{member.id}"))
+            if (ThemeManager.DangerButton($"Ban##Ban{member.id}"))
             {
                 selectedMemberForBan = member.id;
                 showBanConfirmDialog = true;
@@ -270,7 +271,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 }
 
                 ImGui.Text($"Manage ranks for: {member.name}");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Show current ranks
@@ -305,7 +306,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                     ImGui.Spacing();
                 }
 
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Get available ranks (sorted by hierarchy)
@@ -350,7 +351,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                     ImGui.Spacing();
 
-                    if (ImGui.Button("Add Rank", new Vector2(120, 0)))
+                    if (ThemeManager.PillButton("Add Rank", new Vector2(120, 0)))
                     {
                         if (selectedRankToAssign > 0)
                         {
@@ -365,7 +366,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                     ImGui.SameLine();
 
-                    if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                    if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                     {
                         showAssignRankDialog = false;
                     }
@@ -402,7 +403,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.TextColored(new Vector4(1f, 0.5f, 0f, 1f), "This action will remove them from the group.");
                 ImGui.Spacing();
 
-                if (ImGui.Button("Kick", new Vector2(120, 0)))
+                if (ThemeManager.DangerButton("Kick", new Vector2(120, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
                     if (character != null)
@@ -414,7 +415,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     showKickConfirmDialog = false;
                 }
@@ -450,7 +451,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
                 ImGui.TextColored(new Vector4(1f, 0f, 0f, 1f), "This action will remove them and prevent them from rejoining.");
                 ImGui.Spacing();
 
-                if (ImGui.Button("Ban", new Vector2(120, 0)))
+                if (ThemeManager.DangerButton("Ban", new Vector2(120, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
                     if (character != null)
@@ -475,7 +476,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     showBanConfirmDialog = false;
                 }

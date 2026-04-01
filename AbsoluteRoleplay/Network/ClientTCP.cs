@@ -24,7 +24,7 @@ namespace Networking
         public static SslStream sslStream;
         private static byte[] recBuffer = new byte[8192];
         private static readonly string server = "join.absolute-roleplay.net";
-        private static readonly int port = 53921;
+        private static readonly int port = 53923;
         public static Plugin Plugin;
 
         // Ensure all access to recBuffer is on the same thread and always copy before use.
@@ -411,6 +411,55 @@ namespace Networking
             catch (Exception ex)
             {
                 Plugin.PluginLog.Debug("Debug sending data: " + ex);
+            }
+            finally
+            {
+                writeSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Sends multiple packets in a single batch under one semaphore acquire and one flush.
+        /// Much faster than calling SendDataAsync for each packet individually.
+        /// </summary>
+        public static async Task SendBatchAsync(IList<byte[]> packets)
+        {
+            if (packets == null || packets.Count == 0) return;
+
+            await writeSemaphore.WaitAsync();
+            try
+            {
+                if (sslStream != null && sslStream.IsAuthenticated && sslStream.CanWrite)
+                {
+                    // Calculate total size needed
+                    int totalSize = 0;
+                    foreach (var data in packets)
+                        totalSize += 4 + data.Length; // 4 bytes for length prefix
+
+                    // Build one combined buffer for all packets
+                    byte[] combined = new byte[totalSize];
+                    int offset = 0;
+                    foreach (var data in packets)
+                    {
+                        byte[] lengthPrefix = BitConverter.GetBytes(data.Length);
+                        Buffer.BlockCopy(lengthPrefix, 0, combined, offset, 4);
+                        offset += 4;
+                        Buffer.BlockCopy(data, 0, combined, offset, data.Length);
+                        offset += data.Length;
+                    }
+
+                    // Single write + single flush for all packets
+                    await sslStream.WriteAsync(combined, 0, combined.Length);
+                    await sslStream.FlushAsync();
+                }
+                else
+                {
+                    Plugin.PluginLog.Debug("Debug: SSL/TLS stream is not authenticated or writable.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug sending batch data: " + ex);
             }
             finally
             {

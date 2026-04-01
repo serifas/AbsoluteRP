@@ -98,7 +98,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 {
                     RequestingProfile = false;
                     ImGui.Text("This player either does not have an active tooltipData or has not granted you permission to view it.");
-                    if (ImGui.Button("Request Access"))
+                    if (ThemeManager.PillButton("Request Access"))
                     {
                         DataSender.SendProfileAccessUpdate(Plugin.character, Plugin.plugin.username, Plugin.plugin.playername, Plugin.plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
                     }
@@ -108,8 +108,81 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                     if (RequestingProfile)
                     {
-                        Misc.SetTitle(Plugin.plugin, true, "Requesting Profile Data...", new Vector4(1, 1, 0, 1));
-                        return; // Skip drawing the rest of the window while sending data
+                        // Check if all target tabs AND gallery images loaded
+                        bool allTargetTabsLoaded = DataReceiver.tabsTargetCount > 0
+                            && DataReceiver.loadedTargetTabsCount >= DataReceiver.tabsTargetCount;
+                        bool galleryDone = DataReceiver.TargetGalleryImagesToLoad == 0
+                            || DataReceiver.loadedTargetGalleryImages >= DataReceiver.TargetGalleryImagesToLoad;
+
+                        if (allTargetTabsLoaded && galleryDone)
+                        {
+                            RequestingProfile = false;
+                        }
+                        else
+                        {
+                            // Show loading overlay
+                            var windowPos = ImGui.GetWindowPos();
+                            var windowSize = ImGui.GetWindowSize();
+                            var dl = ImGui.GetWindowDrawList();
+                            dl.AddRectFilled(windowPos,
+                                new Vector2(windowPos.X + windowSize.X, windowPos.Y + windowSize.Y),
+                                ImGui.ColorConvertFloat4ToU32(new Vector4(
+                                    ThemeManager.Background.X, ThemeManager.Background.Y, ThemeManager.Background.Z, 0.9f)));
+
+                            float cardWidth = Math.Min(windowSize.X - 40, 340);
+                            int lineCount = 1; // title
+                            bool isTabsLoading = DataReceiver.tabsTargetCount > 0
+                                && DataReceiver.loadedTargetTabsCount < DataReceiver.tabsTargetCount;
+                            bool isGalleryLoading = DataReceiver.TargetGalleryImagesToLoad > 0
+                                && DataReceiver.loadedTargetGalleryImages < DataReceiver.TargetGalleryImagesToLoad;
+                            if (isTabsLoading) lineCount += 2;
+                            if (isGalleryLoading) lineCount += 2;
+                            if (!isTabsLoading && !isGalleryLoading) lineCount += 1; // "Requesting..."
+                            float cardHeight = 40 + lineCount * 28;
+
+                            float cardX = windowPos.X + (windowSize.X - cardWidth) / 2;
+                            float cardY = windowPos.Y + (windowSize.Y - cardHeight) / 2;
+                            var cardMin = new Vector2(cardX, cardY);
+                            var cardMax = new Vector2(cardX + cardWidth, cardY + cardHeight);
+                            dl.AddRectFilled(cardMin, cardMax, ImGui.ColorConvertFloat4ToU32(ThemeManager.BgLight), 10f);
+                            dl.AddRect(cardMin, cardMax, ImGui.ColorConvertFloat4ToU32(ThemeManager.Border), 10f, ImDrawFlags.None, 1f);
+
+                            float yPos = cardY + 14;
+                            ImGui.SetCursorScreenPos(new Vector2(cardX + 16, yPos));
+                            ThemeManager.AccentText("Loading Profile...");
+                            yPos += 28;
+
+                            if (isTabsLoading)
+                            {
+                                ImGui.SetCursorScreenPos(new Vector2(cardX + 16, yPos));
+                                ThemeManager.SubtitleText($"Loading tabs ({DataReceiver.loadedTargetTabsCount}/{DataReceiver.tabsTargetCount})...");
+                                yPos += 24;
+                                ImGui.SetCursorScreenPos(new Vector2(cardX + 16, yPos));
+                                float tabProgress = (float)DataReceiver.loadedTargetTabsCount / DataReceiver.tabsTargetCount;
+                                ThemeManager.StyledProgressBar(tabProgress, new Vector2(cardWidth - 32, 20),
+                                    $"{DataReceiver.loadedTargetTabsCount}/{DataReceiver.tabsTargetCount}", null);
+                                yPos += 28;
+                            }
+
+                            if (isGalleryLoading)
+                            {
+                                ImGui.SetCursorScreenPos(new Vector2(cardX + 16, yPos));
+                                ThemeManager.SubtitleText($"Loading images ({DataReceiver.loadedTargetGalleryImages}/{DataReceiver.TargetGalleryImagesToLoad})...");
+                                yPos += 24;
+                                ImGui.SetCursorScreenPos(new Vector2(cardX + 16, yPos));
+                                float imgProgress = (float)DataReceiver.loadedTargetGalleryImages / DataReceiver.TargetGalleryImagesToLoad;
+                                ThemeManager.StyledProgressBar(imgProgress, new Vector2(cardWidth - 32, 20),
+                                    $"{DataReceiver.loadedTargetGalleryImages}/{DataReceiver.TargetGalleryImagesToLoad}", null);
+                                yPos += 28;
+                            }
+
+                            if (!isTabsLoading && !isGalleryLoading)
+                            {
+                                ImGui.SetCursorScreenPos(new Vector2(cardX + 16, yPos));
+                                ThemeManager.SubtitleText("Requesting profile data...");
+                            }
+                            return;
+                        }
                     }
                     if (profileData.background == null || profileData.background.Handle == IntPtr.Zero)
                     {
@@ -159,13 +232,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             {
                                 ImGui.Text(warningMessage ?? "Warning");
                                 ImGui.TextColored(new Vector4(1, 0, 0, 1), "Do you agree to view the tooltipData anyway?");
-                                if (ImGui.Button("Agree"))
+                                if (ThemeManager.PillButton("Agree"))
                                 {
                                     warning = false;
                                     ImGui.CloseCurrentPopup();
                                 }
                                 ImGui.SameLine();
-                                if (ImGui.Button("Go back"))
+                                if (ThemeManager.GhostButton("Go back"))
                                 {
                                     warning = false;
                                     ImGui.CloseCurrentPopup();
@@ -257,7 +330,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             if (dialogOpen)
                             {
                                 ImGui.TextColored(new Vector4(1f, 0.8f, 0.3f, 1f), $"Liking: {profileData.title}");
-                                ImGui.Separator();
+                                ThemeManager.GradientSeparator();
                                 ImGui.Spacing();
 
                                 // Like count input with validation
@@ -279,7 +352,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                                 ImGui.Spacing();
 
-                                if (ImGui.Button($"Send {likeCountInput} Like(s)", new Vector2(150, 30)))
+                                if (ThemeManager.PillButton($"Send {likeCountInput} Like(s)", new Vector2(150, 30)))
                                 {
                                     if (Plugin.character != null && profileData != null && likeCountInput > 0)
                                     {
@@ -292,7 +365,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                                 ImGui.SameLine();
 
-                                if (ImGui.Button("Cancel", new Vector2(120, 30)))
+                                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 30)))
                                 {
                                     likeCommentBuffer = string.Empty;
                                     likeCountInput = 1;
@@ -347,13 +420,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                     // Controls
                     ImGui.Text("Controls");
-                    if (ImGui.Button("Notes")) { addNotes = true; }
+                    if (ThemeManager.GhostButton("Notes")) { addNotes = true; }
                     if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this Profile."); }
 
                     ImGui.SameLine();
                     Misc.RenderAlignmentToRight("Report");
 
-                    if (ImGui.Button("Report"))
+                    if (ThemeManager.DangerButton("Report"))
                     {
                         ReportWindow.reportCharacterName = characterName;
                         ReportWindow.reportCharacterWorld = characterWorld;

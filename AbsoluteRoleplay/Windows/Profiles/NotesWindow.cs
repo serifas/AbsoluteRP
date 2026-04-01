@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
 using Networking;
@@ -39,7 +40,7 @@ namespace AbsoluteRP.Windows.Profiles
                     1000,
                     new Vector2(ImGui.GetContentRegionAvail().X, 200) // 200 pixels tall, full width
                 );
-                if (ImGui.Button("Add Notes"))
+                if (ThemeManager.PillButton("Add Notes"))
                 {
                     if (Plugin.IsOnline())
                     {

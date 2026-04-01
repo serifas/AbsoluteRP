@@ -33,7 +33,7 @@ namespace AbsoluteRP.Windows.Ect
             {
 
                 (var scaledWidth, var scaledHeight) = CalculateScaledDimensions();
-                if(PreviewImage.Handle != null && PreviewImage.Handle != IntPtr.Zero)
+                if(PreviewImage != null && PreviewImage.Handle != IntPtr.Zero)
                 {
                     // Here you would render the texture at the calculated width and height
                     ImGui.Image(PreviewImage.Handle, new Vector2(scaledWidth, scaledHeight));
@@ -55,9 +55,14 @@ namespace AbsoluteRP.Windows.Ect
         {
             GetImGuiWindowDimensions(out var windowWidth, out var windowHeight);
 
+            // Use actual texture dimensions, falling back to static width/height
+            int texW = (PreviewImage != null) ? PreviewImage.Width : width;
+            int texH = (PreviewImage != null) ? PreviewImage.Height : height;
+            if (texW <= 0 || texH <= 0) return (windowWidth, windowHeight);
+
             // Calculate the aspect ratios
             var windowAspect = (float)windowWidth / windowHeight;
-            var textureAspect = (float)width / height;
+            var textureAspect = (float)texW / texH;
 
             // Determine the scale factor
             int newWidth, newHeight;

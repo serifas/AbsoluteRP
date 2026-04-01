@@ -46,7 +46,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             {
                 Misc.SetTitle(Plugin.plugin, true, name, titleColor);
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
             }
             const float containerPadding = 25f;
             var drawList = ImGui.GetWindowDrawList();
@@ -227,7 +227,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 
                                     // Now use editingName/Description for ImGui input
                                     ImGui.Text("NAME:");
-                                    if (ImGui.InputText("##RelationshipName", ref editingName, 200))
+                                    if (ThemeManager.StyledInput("##RelationshipName", ref editingName, 200))
                                     {
                                         if (rel != null) rel.Name = editingName;
                                     }
@@ -239,7 +239,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                                         if (rel != null) rel.Description = editingDescription;
                                     }
                                     ImGui.Text("ICON:");
-                                    if (ImGui.Button("Choose Icon"))
+                                    if (ThemeManager.GhostButton("Choose Icon"))
                                     {
                                         IconSelection = true;
                                     }
@@ -259,7 +259,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                                         ImGui.Image(rel.IconTexture.Handle, new Vector2(32, 32));
                                     }
 
-                                    if (ImGui.Button("Accept"))
+                                    if (ThemeManager.PillButton("Accept"))
                                     {
                                         // Always update the rel object with the latest editing buffer and slot
                                         rel.Name = editingName;
@@ -284,12 +284,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                                         rel.active = learnedToggle;
                                     }
                                     ImGui.SameLine();
-                                    if (ImGui.Button("Cancel"))
+                                    if (ThemeManager.GhostButton("Cancel"))
                                     {
                                         showRelationshipInputWindow = false;
                                     }
 
-                                    ImGui.Separator();
+                                    ThemeManager.GradientSeparator();
                                     ImGui.Text("Preview:");
                                     if (rel.IconTexture != null && rel.IconTexture.Handle != IntPtr.Zero)
                                     {
@@ -372,19 +372,19 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                         if (isEditing)
                         {
                             Misc.RenderHtmlElements(editingName, false, true, true, true, null, true);
-                            ImGui.Separator();
+                            ThemeManager.GradientSeparator();
                             Misc.RenderHtmlElements(editingDescription, false, true, true, true, null, true);
                         }
                         else if (relAtSlot != null)
                         {
                             Misc.RenderHtmlElements(relAtSlot.Name, false, true, true, true, null, true);
-                            ImGui.Separator();
+                            ThemeManager.GradientSeparator();
                             Misc.RenderHtmlElements(relAtSlot.Description, false, true, true, true, null, true);
                         }
                         else
                         {
                             ImGui.Text("Empty Node");
-                            ImGui.Separator();
+                            ThemeManager.GradientSeparator();
                             ImGui.Text("Click to assign");
                         }
 
@@ -426,7 +426,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     {
                         if (ImGui.BeginPopup(btnId + "_action"))
                         {
-                            if (ImGui.Button("Create"))
+                            if (ThemeManager.PillButton("Create"))
                             {
                                 showRelationshipInputWindow = true;
                                 layout.CurrentAction = RelationshipAction.None;
@@ -438,7 +438,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                             var hasRelationship = layout.relationships.Any(r => r.Slot.HasValue && r.Slot.Value == (x, y));
                             if (hasRelationship)
                             {
-                                if (ImGui.Button("Connect"))
+                                if (ThemeManager.GhostButton("Connect"))
                                 {
                                     layout.CurrentAction = RelationshipAction.Create;
                                     layout.ActionSourceSlot = (x, y);
@@ -448,7 +448,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 
                                 if (!hasConnection)
                                     ImGui.BeginDisabled();
-                                if (ImGui.Button("Break"))
+                                if (ThemeManager.DangerButton("Break"))
                                 {
                                     layout.CurrentAction = RelationshipAction.Break;
                                     ImGui.CloseCurrentPopup();
@@ -457,7 +457,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                                     ImGui.EndDisabled();
 
                                 ImGui.SameLine();
-                                if (ImGui.Button("Remove"))
+                                if (ThemeManager.DangerButton("Remove"))
                                 {
                                     var currentPath = layout.Paths[layout.CurrentPathIndex];
                                     var toRemove = (x, y);

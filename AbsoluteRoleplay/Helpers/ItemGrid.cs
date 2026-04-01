@@ -2,6 +2,7 @@ using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
+using InventoryTab;
 using Networking;
 using System;
 using System.Collections.Generic;
@@ -312,9 +313,28 @@ namespace AbsoluteRP.Helpers
                         }
                         if (ImGui.BeginPopup($"##contextMenu{slotIndex}"))
                         {
+                            bool isLocked = layout.inventorySlotContents[slotIndex].locked;
+                            if (!isLocked && ImGui.MenuItem("Edit"))
+                            {
+                                InvTab.BeginEditItem(layout, slotIndex);
+                            }
+                            if (isLocked)
+                            {
+                                ImGui.TextDisabled("(Locked - cannot edit)");
+                            }
                             if (ImGui.MenuItem("Delete"))
                             {
                                 layout.inventorySlotContents.Remove(slotIndex);
+                                // Persist deletion to server
+                                List<ItemDefinition> newItemList = new List<ItemDefinition>();
+                                for (int i = 0; i < TotalSlots; i++)
+                                {
+                                    if (layout.inventorySlotContents.ContainsKey(i) && !string.IsNullOrEmpty(layout.inventorySlotContents[i].name))
+                                    {
+                                        newItemList.Add(layout.inventorySlotContents[i]);
+                                    }
+                                }
+                                DataSender.SendItemOrder(Plugin.character, ProfileWindow.profileIndex, layout, newItemList);
                             }
                             if (ImGui.MenuItem("Duplicate"))
                             {
@@ -340,7 +360,8 @@ namespace AbsoluteRP.Helpers
                                     iconID = itemToDuplicate.iconID,
                                     slot = firstEmptySlotIndex,
                                     quality = itemToDuplicate.quality,
-                                    iconTexture = itemToDuplicate.iconTexture
+                                    iconTexture = itemToDuplicate.iconTexture,
+                                    locked = itemToDuplicate.locked
                                 };
                             }
                             ImGui.EndPopup();

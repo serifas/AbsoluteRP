@@ -67,7 +67,7 @@ namespace AbsoluteRP.Windows.Systems.Stats
                 ImGui.SameLine();
 
             // --- Add Stat ---
-            if (ImGui.Button("Add Stat##upStat"))
+            if (ThemeManager.PillButton("Add Stat##upStat"))
             {
                 // Store previous polygon points before change
                 previousPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
@@ -102,7 +102,7 @@ namespace AbsoluteRP.Windows.Systems.Stats
                     selectedStat.color = statColor;
                 }
                 ImGui.SameLine();
-                if (ImGui.Button($"Remove Stat##removeStat{currentStatIndex}"))
+                if (ThemeManager.DangerButton($"Remove Stat##removeStat{currentStatIndex}"))
                 {
                     // Store previous polygon points before change
                     previousPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);

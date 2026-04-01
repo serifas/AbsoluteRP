@@ -643,7 +643,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 if (groupToLeave != null)
                 {
                     ImGui.TextDisabled(groupToLeave.name ?? "Group");
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     if (ImGui.MenuItem("Leave Group"))
                     {
                         showLeaveGroupConfirmation = true;
@@ -753,7 +753,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 // Group Categories and Channels
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 DrawGroupChannelsAndChat();
@@ -873,7 +873,7 @@ namespace AbsoluteRP.Windows.Social.Views
             bool isCurrentUserOwner = currentUserMember?.owner == true;
 
             ImGui.Text($"Members ({currentGroup.members.Count})");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             float availableHeight = ImGui.GetContentRegionAvail().Y;
@@ -990,7 +990,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     }
                     if (member.selfAssignedRoles != null && member.selfAssignedRoles.Count > 0)
                     {
-                        ImGui.Separator();
+                        ThemeManager.GradientSeparator();
                         ImGui.Text("Roles:");
                         foreach (var role in member.selfAssignedRoles)
                         {
@@ -1006,7 +1006,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 if (!isOwnMember && !member.owner && ImGui.BeginPopupContextItem($"memberContext_{member.id}"))
                 {
                     ImGui.TextDisabled(member.name ?? "Member");
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
 
                     // Check permissions
                     int currentUserHierarchy = isCurrentUserOwner ? int.MaxValue : (currentUserMember?.rank?.hierarchy ?? 0);
@@ -1156,7 +1156,7 @@ namespace AbsoluteRP.Windows.Social.Views
         {
             ImGui.BeginGroup();
             ImGui.Text("CHANNELS");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             // Get current member's permissions (needed for context menu even when empty)
             var currentMember = currentGroup.members?.FirstOrDefault(m => m.userID == Plugin.plugin.Configuration.account.userID);
@@ -1266,7 +1266,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             createChannelCategoryId = category.id;
                             showCreateChannelPopup = true;
                         }
-                        ImGui.Separator();
+                        ThemeManager.GradientSeparator();
                         if (canEditCategory && ImGui.MenuItem("Rename Category"))
                         {
                             renamingCategory = true;
@@ -1675,7 +1675,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.Text($"Are you sure you want to delete the channel '{channelToDelete?.name}'?");
                 ImGui.Text("This will delete all messages in this channel.");
                 ImGui.Text("This action cannot be undone.");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float buttonWidth = 80f;
@@ -1683,7 +1683,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float totalWidth = (buttonWidth * 2) + spacing;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - totalWidth) * 0.5f);
 
-                if (ImGui.Button("Delete", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.DangerButton("Delete", new Vector2(buttonWidth, 0)))
                 {
                     if (channelToDelete != null)
                     {
@@ -1714,7 +1714,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(buttonWidth, 0)))
                 {
                     channelToDelete = null;
                     channelToDeleteCategoryIndex = -1;
@@ -1746,7 +1746,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.Text($"Are you sure you want to delete the category '{categoryToDelete?.name}'?");
                 ImGui.Text("This will delete all channels and messages in this category.");
                 ImGui.Text("This action cannot be undone.");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float buttonWidthCat = 80f;
@@ -1754,7 +1754,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float totalWidthCat = (buttonWidthCat * 2) + spacingCat;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - totalWidthCat) * 0.5f);
 
-                if (ImGui.Button("Delete##Category", new Vector2(buttonWidthCat, 0)))
+                if (ThemeManager.DangerButton("Delete##Category", new Vector2(buttonWidthCat, 0)))
                 {
                     if (categoryToDelete != null)
                     {
@@ -1785,7 +1785,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel##Category", new Vector2(buttonWidthCat, 0)))
+                if (ThemeManager.GhostButton("Cancel##Category", new Vector2(buttonWidthCat, 0)))
                 {
                     categoryToDelete = null;
                     categoryToDeleteIndex = -1;
@@ -1818,7 +1818,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 if (channelBeingEdited == null)
                 {
                     ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), "Error: No channel selected");
-                    if (ImGui.Button("Close"))
+                    if (ThemeManager.GhostButton("Close"))
                     {
                         ResetEditChannelState();
                         ImGui.CloseCurrentPopup();
@@ -1828,19 +1828,19 @@ namespace AbsoluteRP.Windows.Social.Views
                 else
                 {
                     ImGui.Text("Edit channel");
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
 
                     // Basic channel info
                     ImGui.Text("Channel Name:");
                     ImGui.SetNextItemWidth(-1);
-                    ImGui.InputText("##EditChannelName", ref editChannelName, 100);
+                    ThemeManager.StyledInput("##EditChannelName", ref editChannelName, 100);
 
                     ImGui.Spacing();
 
                     ImGui.Text("Description (optional):");
                     ImGui.SetNextItemWidth(-1);
-                    ImGui.InputText("##EditChannelDescription", ref editChannelDescription, 500);
+                    ThemeManager.StyledInput("##EditChannelDescription", ref editChannelDescription, 500);
 
                     ImGui.Spacing();
 
@@ -1925,7 +1925,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     }
 
                     ImGui.Spacing();
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
 
                     // Channel Permissions Section
@@ -1943,7 +1943,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     // Search box for adding members/ranks
                     ImGui.Text("Search members or ranks:");
                     ImGui.SetNextItemWidth(-1);
-                    if (ImGui.InputText("##EditPermissionSearch", ref editChannelPermissionSearchQuery, 100))
+                    if (ThemeManager.StyledInput("##EditPermissionSearch", ref editChannelPermissionSearchQuery, 100))
                     {
                         // Filter as user types
                     }
@@ -2045,7 +2045,7 @@ namespace AbsoluteRP.Windows.Social.Views
                                 ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "Post");
                                 ImGui.SameLine(300);
                                 ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "");
-                                ImGui.Separator();
+                                ThemeManager.GradientSeparator();
 
                                 // Show selected ranks with permission toggles
                                 for (int i = editChannelPermissionSelectedRanks.Count - 1; i >= 0; i--)
@@ -2112,7 +2112,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     }
 
                     ImGui.Spacing();
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
 
                     // Action buttons
@@ -2124,7 +2124,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     bool canSave = !string.IsNullOrWhiteSpace(editChannelName);
                     if (!canSave) ImGui.BeginDisabled();
 
-                    if (ImGui.Button("Save##EditCh", new Vector2(buttonWidth2, 0)))
+                    if (ThemeManager.PillButton("Save##EditCh", new Vector2(buttonWidth2, 0)))
                     {
                         var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                             x.characterName == Plugin.plugin.playername &&
@@ -2178,7 +2178,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                     ImGui.SameLine();
 
-                    if (ImGui.Button("Cancel##EditCh", new Vector2(buttonWidth2, 0)))
+                    if (ThemeManager.GhostButton("Cancel##EditCh", new Vector2(buttonWidth2, 0)))
                     {
                         ResetEditChannelState();
                         ImGui.CloseCurrentPopup();
@@ -2208,7 +2208,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.TextUnformatted("WARNING: NSFW Content");
                 ImGui.PopStyleColor();
 
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.TextWrapped("This channel contains sensitive and adult themes including but not limited to nudity and other mature content.");
@@ -2221,9 +2221,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float totalWidth = (buttonWidth * 2) + spacing;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - totalWidth) * 0.5f);
 
-                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.6f, 0.2f, 0.2f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.7f, 0.3f, 0.3f, 1f));
-                if (ImGui.Button("I Agree", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.DangerButton("I Agree", new Vector2(buttonWidth, 0)))
                 {
                     if (pendingNsfwChannel != null)
                     {
@@ -2253,11 +2251,10 @@ namespace AbsoluteRP.Windows.Social.Views
                     showNsfwWarning = false;
                     ImGui.CloseCurrentPopup();
                 }
-                ImGui.PopStyleColor(2);
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(buttonWidth, 0)))
                 {
                     pendingNsfwChannel = null;
                     pendingNsfwCategoryIndex = -1;
@@ -2301,15 +2298,15 @@ namespace AbsoluteRP.Windows.Social.Views
             if (ImGui.BeginPopupModal("Create Category##CreateCatPopup", ref createCatPopupOpen, ImGuiWindowFlags.AlwaysAutoResize))
             {
                 ImGui.Text("Create a new category");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.Text("Category Name:");
                 ImGui.SetNextItemWidth(250);
-                ImGui.InputText("##CategoryName", ref newCategoryName, 100);
+                ThemeManager.StyledInput("##CategoryName", ref newCategoryName, 100);
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float buttonWidthCat = 80f;
@@ -2320,7 +2317,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 bool canCreateCat = !string.IsNullOrWhiteSpace(newCategoryName);
                 if (!canCreateCat) ImGui.BeginDisabled();
 
-                if (ImGui.Button("Create##CreateCat", new Vector2(buttonWidthCat, 0)))
+                if (ThemeManager.PillButton("Create##CreateCat", new Vector2(buttonWidthCat, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                         x.characterName == Plugin.plugin.playername &&
@@ -2339,7 +2336,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel##CancelCat", new Vector2(buttonWidthCat, 0)))
+                if (ThemeManager.GhostButton("Cancel##CancelCat", new Vector2(buttonWidthCat, 0)))
                 {
                     newCategoryName = "";
                     showCreateCategoryPopup = false;
@@ -2368,7 +2365,7 @@ namespace AbsoluteRP.Windows.Social.Views
             if (ImGui.BeginPopupModal("Create Channel##CreateChPopup", ref createPopupOpen, ImGuiWindowFlags.None))
             {
                 ImGui.Text("Create a new channel");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Display error message if there is one
@@ -2381,13 +2378,13 @@ namespace AbsoluteRP.Windows.Social.Views
                 // Basic channel info
                 ImGui.Text("Channel Name:");
                 ImGui.SetNextItemWidth(-1);
-                ImGui.InputText("##ChannelName", ref newChannelName, 100);
+                ThemeManager.StyledInput("##ChannelName", ref newChannelName, 100);
 
                 ImGui.Spacing();
 
                 ImGui.Text("Description (optional):");
                 ImGui.SetNextItemWidth(-1);
-                ImGui.InputText("##ChannelDescription", ref newChannelDescription, 500);
+                ThemeManager.StyledInput("##ChannelDescription", ref newChannelDescription, 500);
 
                 ImGui.Spacing();
 
@@ -2472,7 +2469,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Channel Permissions Section
@@ -2490,7 +2487,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 // Search box for adding members/ranks
                 ImGui.Text("Search members or ranks:");
                 ImGui.SetNextItemWidth(-1);
-                if (ImGui.InputText("##PermissionSearch", ref channelPermissionSearchQuery, 100))
+                if (ThemeManager.StyledInput("##PermissionSearch", ref channelPermissionSearchQuery, 100))
                 {
                     // Filter as user types
                 }
@@ -2592,7 +2589,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "Post");
                             ImGui.SameLine(300);
                             ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "");
-                            ImGui.Separator();
+                            ThemeManager.GradientSeparator();
 
                             // Show selected ranks with permission toggles
                             for (int i = channelPermissionSelectedRanks.Count - 1; i >= 0; i--)
@@ -2659,7 +2656,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Action buttons
@@ -2671,7 +2668,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 bool canCreate = !string.IsNullOrWhiteSpace(newChannelName);
                 if (!canCreate) ImGui.BeginDisabled();
 
-                if (ImGui.Button("Create##CreateCh", new Vector2(buttonWidth2, 0)))
+                if (ThemeManager.PillButton("Create##CreateCh", new Vector2(buttonWidth2, 0)))
                 {
                     var character = Plugin.plugin.Configuration.characters.FirstOrDefault(x =>
                         x.characterName == Plugin.plugin.playername &&
@@ -2725,7 +2722,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel##CancelCh", new Vector2(buttonWidth2, 0)))
+                if (ThemeManager.GhostButton("Cancel##CancelCh", new Vector2(buttonWidth2, 0)))
                 {
                     ResetCreateChannelState();
                     ImGui.CloseCurrentPopup();
@@ -2792,7 +2789,7 @@ namespace AbsoluteRP.Windows.Social.Views
             {
                 ImGui.Text($"Are you sure you want to kick '{memberToManage?.name}'?");
                 ImGui.Text("They will be removed from the group but can be re-invited.");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float kickButtonWidth = 80f;
@@ -2800,7 +2797,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float kickTotalWidth = (kickButtonWidth * 2) + kickSpacing;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - kickTotalWidth) * 0.5f);
 
-                if (ImGui.Button("Kick", new Vector2(kickButtonWidth, 0)))
+                if (ThemeManager.DangerButton("Kick", new Vector2(kickButtonWidth, 0)))
                 {
                     if (memberToManage != null)
                     {
@@ -2820,7 +2817,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel##Kick", new Vector2(kickButtonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel##Kick", new Vector2(kickButtonWidth, 0)))
                 {
                     memberToManage = null;
                     showKickMemberConfirmation = false;
@@ -2849,7 +2846,7 @@ namespace AbsoluteRP.Windows.Social.Views
             {
                 ImGui.Text($"Are you sure you want to ban '{memberToManage?.name}'?");
                 ImGui.TextColored(new Vector4(1f, 0.5f, 0.5f, 1f), "This member will be permanently banned from the group.");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float banButtonWidth = 80f;
@@ -2857,7 +2854,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float banTotalWidth = (banButtonWidth * 2) + banSpacing;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - banTotalWidth) * 0.5f);
 
-                if (ImGui.Button("Ban", new Vector2(banButtonWidth, 0)))
+                if (ThemeManager.DangerButton("Ban", new Vector2(banButtonWidth, 0)))
                 {
                     if (memberToManage != null)
                     {
@@ -2885,7 +2882,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel##Ban", new Vector2(banButtonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel##Ban", new Vector2(banButtonWidth, 0)))
                 {
                     memberToManage = null;
                     showBanMemberConfirmation = false;
@@ -2913,7 +2910,7 @@ namespace AbsoluteRP.Windows.Social.Views
             if (ImGui.BeginPopupModal("Change Member Rank", ref promotePopupOpen, ImGuiWindowFlags.AlwaysAutoResize))
             {
                 ImGui.Text($"Change rank for '{memberToManage?.name}'");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Get current user's hierarchy to filter available ranks
@@ -2961,7 +2958,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                     // Option to remove rank
                     ImGui.Spacing();
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                     if (ImGui.Selectable("Remove Rank"))
                     {
                         if (memberToManage != null)
@@ -2986,13 +2983,13 @@ namespace AbsoluteRP.Windows.Social.Views
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float promoteButtonWidth = 80f;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - promoteButtonWidth) * 0.5f);
 
-                if (ImGui.Button("Cancel##Promote", new Vector2(promoteButtonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel##Promote", new Vector2(promoteButtonWidth, 0)))
                 {
                     memberToManage = null;
                     showPromoteMemberPopup = false;
@@ -3021,7 +3018,7 @@ namespace AbsoluteRP.Windows.Social.Views
             {
                 ImGui.Text($"Are you sure you want to leave '{groupToLeave?.name}'?");
                 ImGui.TextColored(new Vector4(1f, 0.7f, 0.3f, 1f), "You will need to be re-invited to rejoin this group.");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 float leaveButtonWidth = 80f;
@@ -3029,7 +3026,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float leaveTotalWidth = (leaveButtonWidth * 2) + leaveSpacing;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - leaveTotalWidth) * 0.5f);
 
-                if (ImGui.Button("Leave", new Vector2(leaveButtonWidth, 0)))
+                if (ThemeManager.DangerButton("Leave", new Vector2(leaveButtonWidth, 0)))
                 {
                     if (groupToLeave != null)
                     {
@@ -3057,7 +3054,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel##Leave", new Vector2(leaveButtonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel##Leave", new Vector2(leaveButtonWidth, 0)))
                 {
                     groupToLeave = null;
                     showLeaveGroupConfirmation = false;
@@ -3129,7 +3126,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.TextDisabled($"- {selectedChannel.description}");
             }
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             // Handle special channel types
             if (selectedChannel.channelType == 2)
@@ -3291,7 +3288,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                         if (senderMember.selfAssignedRoles != null && senderMember.selfAssignedRoles.Count > 0)
                         {
-                            ImGui.Separator();
+                            ThemeManager.GradientSeparator();
                             ImGui.Text("Roles:");
                             foreach (var role in senderMember.selfAssignedRoles)
                             {
@@ -3446,7 +3443,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     // Member management options (only for other members' messages)
                     if (!isOwnMessage && targetMember != null && (canKick || canBan || canPromote || canDemote))
                     {
-                        ImGui.Separator();
+                        ThemeManager.GradientSeparator();
                         ImGui.TextDisabled($"Member: {message.senderName}");
 
                         if ((canPromote || canDemote) && ImGui.MenuItem("Change Rank"))
@@ -3472,7 +3469,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 ImGui.PopID();
@@ -3509,7 +3506,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     {
                         // Owner view - can edit rules
                         ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.3f, 1f), "Group Rules (Owner View)");
-                        ImGui.Separator();
+                        ThemeManager.GradientSeparator();
 
                         if (!isEditingRules)
                         {
@@ -3526,7 +3523,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.Spacing();
                             ImGui.Spacing();
 
-                            if (ImGui.Button("Edit Rules"))
+                            if (ThemeManager.GhostButton("Edit Rules"))
                             {
                                 rulesEditContent = rulesContent ?? string.Empty;
                                 isEditingRules = true;
@@ -3550,13 +3547,13 @@ namespace AbsoluteRP.Windows.Social.Views
 
                             ImGui.Spacing();
 
-                            if (ImGui.Button("Save Rules"))
+                            if (ThemeManager.PillButton("Save Rules"))
                             {
                                 DataSender.SaveGroupRules(character, currentGroup.groupID, rulesEditContent);
                                 isEditingRules = false;
                             }
                             ImGui.SameLine();
-                            if (ImGui.Button("Cancel"))
+                            if (ThemeManager.GhostButton("Cancel"))
                             {
                                 isEditingRules = false;
                                 rulesEditContent = string.Empty;
@@ -3567,7 +3564,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     {
                         // Member view - show rules and agree button
                         ImGui.TextColored(new Vector4(0.9f, 0.9f, 0.3f, 1f), "Group Rules");
-                        ImGui.Separator();
+                        ThemeManager.GradientSeparator();
 
                         if (!string.IsNullOrEmpty(rulesContent))
                         {
@@ -3580,7 +3577,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                         ImGui.Spacing();
                         ImGui.Spacing();
-                        ImGui.Separator();
+                        ThemeManager.GradientSeparator();
 
                         if (hasAgreed)
                         {
@@ -3591,7 +3588,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.TextColored(new Vector4(1f, 0.5f, 0.2f, 1f), "You must agree to the rules to access other channels.");
                             ImGui.Spacing();
 
-                            if (ImGui.Button("I Agree to These Rules", new Vector2(200, 30)))
+                            if (ThemeManager.PillButton("I Agree to These Rules", new Vector2(200, 30)))
                             {
                                 DataSender.AgreeToGroupRules(character, currentGroup.groupID, rulesVersion);
                             }
@@ -3681,7 +3678,7 @@ namespace AbsoluteRP.Windows.Social.Views
         {
             ImGui.TextColored(new Vector4(0.2f, 0.6f, 1f, 1f), "Form Editor");
             ImGui.TextDisabled("Create and manage form fields that members will fill out.");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Settings
@@ -3695,7 +3692,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.SetTooltip("When enabled, submissions can contain images, colored text, etc.");
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Existing fields
@@ -3716,7 +3713,7 @@ namespace AbsoluteRP.Windows.Social.Views
                     {
                         // Edit mode
                         ImGui.SetNextItemWidth(200);
-                        ImGui.InputText("Title##Edit", ref editFormFieldTitle, 255);
+                        ThemeManager.StyledInput("Title##Edit", ref editFormFieldTitle, 255);
                         ImGui.SameLine();
                         ImGui.SetNextItemWidth(120);
                         string[] types = { "Single Line", "Multi Line" };
@@ -3724,13 +3721,13 @@ namespace AbsoluteRP.Windows.Social.Views
                         ImGui.SameLine();
                         ImGui.Checkbox("Optional##Edit", ref editFormFieldOptional);
                         ImGui.SameLine();
-                        if (ImGui.Button("Save##EditField"))
+                        if (ThemeManager.PillButton("Save##EditField"))
                         {
                             DataSender.UpdateFormField(character, field.id, editFormFieldTitle, editFormFieldType, editFormFieldOptional, field.sortOrder);
                             editingFormFieldId = null;
                         }
                         ImGui.SameLine();
-                        if (ImGui.Button("Cancel##EditField"))
+                        if (ThemeManager.GhostButton("Cancel##EditField"))
                         {
                             editingFormFieldId = null;
                         }
@@ -3786,13 +3783,13 @@ namespace AbsoluteRP.Windows.Social.Views
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Add new field
             ImGui.Text("Add New Field:");
             ImGui.SetNextItemWidth(200);
-            ImGui.InputText("Title##New", ref newFormFieldTitle, 255);
+            ThemeManager.StyledInput("Title##New", ref newFormFieldTitle, 255);
             ImGui.SameLine();
             ImGui.SetNextItemWidth(120);
             string[] fieldTypes = { "Single Line", "Multi Line" };
@@ -3803,7 +3800,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
             bool canAdd = !string.IsNullOrWhiteSpace(newFormFieldTitle);
             if (!canAdd) ImGui.BeginDisabled();
-            if (ImGui.Button("+ Add Field"))
+            if (ThemeManager.GhostButton("+ Add Field"))
             {
                 int nextSortOrder = fields.Count > 0 ? fields.Max(f => f.sortOrder) + 1 : 0;
                 DataSender.CreateFormField(character, selectedChannel.id, newFormFieldTitle, newFormFieldType, newFormFieldOptional, nextSortOrder);
@@ -3821,7 +3818,7 @@ namespace AbsoluteRP.Windows.Social.Views
             {
                 ImGui.TextDisabled(selectedChannel.description);
             }
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             if (fields.Count == 0)
@@ -3850,7 +3847,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 {
                     // Single line
                     ImGui.SetNextItemWidth(-1);
-                    if (ImGui.InputText($"##{field.id}", ref value, 1000))
+                    if (ThemeManager.StyledInput($"##{field.id}", ref value, 1000))
                     {
                         formInputValues[field.id] = value;
                     }
@@ -3869,7 +3866,7 @@ namespace AbsoluteRP.Windows.Social.Views
             ImGui.Spacing();
 
             // Submit button
-            if (ImGui.Button("Submit", new Vector2(100, 30)))
+            if (ThemeManager.PillButton("Submit", new Vector2(100, 30)))
             {
                 // Validate required fields
                 bool valid = true;
@@ -3918,7 +3915,7 @@ namespace AbsoluteRP.Windows.Social.Views
         {
             ImGui.TextColored(new Vector4(0.9f, 0.7f, 0.2f, 1f), "Form Submissions");
             ImGui.TextDisabled($"{submissions.Count} submission(s)");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             if (submissions.Count == 0)
@@ -4034,14 +4031,14 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.Text("This will remove the role from all members who have it.");
                 ImGui.Spacing();
 
-                if (ImGui.Button("Delete", new Vector2(100, 0)))
+                if (ThemeManager.DangerButton("Delete", new Vector2(100, 0)))
                 {
                     DataSender.DeleteSelfAssignRole(character, currentGroup.groupID, roleToDelete.id);
                     showDeleteRoleConfirmation = false;
                     roleToDelete = null;
                 }
                 ImGui.SameLine();
-                if (ImGui.Button("Cancel", new Vector2(100, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(100, 0)))
                 {
                     showDeleteRoleConfirmation = false;
                     roleToDelete = null;
@@ -4061,14 +4058,14 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.Text("This will delete all roles in this section as well.");
                 ImGui.Spacing();
 
-                if (ImGui.Button("Delete", new Vector2(100, 0)))
+                if (ThemeManager.DangerButton("Delete", new Vector2(100, 0)))
                 {
                     DataSender.DeleteRoleSection(character, currentGroup.groupID, sectionToDelete.id);
                     showDeleteSectionConfirmation = false;
                     sectionToDelete = null;
                 }
                 ImGui.SameLine();
-                if (ImGui.Button("Cancel", new Vector2(100, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(100, 0)))
                 {
                     showDeleteSectionConfirmation = false;
                     sectionToDelete = null;
@@ -4081,7 +4078,7 @@ namespace AbsoluteRP.Windows.Social.Views
         {
             ImGui.TextColored(new Vector4(0.3f, 0.9f, 0.9f, 1f), "Self-Assign Roles");
             ImGui.TextDisabled("Toggle roles to add or remove them from your profile.");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Use data from DataReceiver
@@ -4118,7 +4115,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 // Display section header
                 ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.3f, 1f), sectionName);
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
 
                 foreach (var role in sectionGroup.OrderBy(r => r.sortOrder))
                 {
@@ -4163,7 +4160,7 @@ namespace AbsoluteRP.Windows.Social.Views
         private static void DrawRoleManagement(Character character)
         {
             ImGui.TextColored(new Vector4(0.9f, 0.9f, 0.3f, 1f), "Manage Self-Assign Roles");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             var sections = DataReceiver.roleSections ?? new List<GroupRoleSection>();
@@ -4171,11 +4168,11 @@ namespace AbsoluteRP.Windows.Social.Views
             // Section management
             ImGui.Text("Role Sections:");
             ImGui.SetNextItemWidth(200);
-            ImGui.InputText("##NewSectionName", ref newSectionName, 50);
+            ThemeManager.StyledInput("##NewSectionName", ref newSectionName, 50);
             ImGui.SameLine();
             bool canCreateSection = !string.IsNullOrWhiteSpace(newSectionName);
             if (!canCreateSection) ImGui.BeginDisabled();
-            if (ImGui.Button("Create Section"))
+            if (ThemeManager.PillButton("Create Section"))
             {
                 DataSender.CreateRoleSection(character, currentGroup.groupID, newSectionName);
                 newSectionName = string.Empty;
@@ -4202,18 +4199,18 @@ namespace AbsoluteRP.Windows.Social.Views
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Create new role section
             ImGui.Text("Create New Role:");
             ImGui.SetNextItemWidth(200);
-            ImGui.InputText("Name##NewRole", ref newRoleName, 50);
+            ThemeManager.StyledInput("Name##NewRole", ref newRoleName, 50);
             ImGui.SameLine();
             ImGui.ColorEdit4("Color##NewRole", ref newRoleColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha);
 
             ImGui.SetNextItemWidth(300);
-            ImGui.InputText("Description##NewRole", ref newRoleDescription, 200);
+            ThemeManager.StyledInput("Description##NewRole", ref newRoleDescription, 200);
 
             // Section dropdown for new role
             ImGui.SetNextItemWidth(200);
@@ -4243,7 +4240,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
             bool canCreate = !string.IsNullOrWhiteSpace(newRoleName);
             if (!canCreate) ImGui.BeginDisabled();
-            if (ImGui.Button("Create Role"))
+            if (ThemeManager.PillButton("Create Role"))
             {
                 string hexColor = ColorToHex(newRoleColor);
                 DataSender.CreateSelfAssignRole(character, currentGroup.groupID, newRoleName, hexColor, newRoleDescription, newRoleSectionID);
@@ -4255,7 +4252,7 @@ namespace AbsoluteRP.Windows.Social.Views
             if (!canCreate) ImGui.EndDisabled();
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             // Existing roles list
@@ -4280,12 +4277,12 @@ namespace AbsoluteRP.Windows.Social.Views
                 {
                     // Edit mode for this role
                     ImGui.SetNextItemWidth(150);
-                    ImGui.InputText("##EditName", ref editRoleName, 50);
+                    ThemeManager.StyledInput("##EditName", ref editRoleName, 50);
                     ImGui.SameLine();
                     ImGui.ColorEdit4("##EditColor", ref editRoleColor, ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoAlpha);
                     ImGui.SameLine();
                     ImGui.SetNextItemWidth(200);
-                    ImGui.InputText("##EditDesc", ref editRoleDescription, 200);
+                    ThemeManager.StyledInput("##EditDesc", ref editRoleDescription, 200);
 
                     // Section dropdown for edit role
                     ImGui.SetNextItemWidth(150);
@@ -4516,13 +4513,13 @@ namespace AbsoluteRP.Windows.Social.Views
             {
                 ImGui.TextColored(new Vector4(1f, 0.8f, 0.2f, 1f), "Editing...");
                 // Cancel button on top
-                if (ImGui.Button("Cancel"))
+                if (ThemeManager.GhostButton("Cancel"))
                 {
                     CancelEditing();
                 }
                 ImGui.SameLine();
                 // Save button below
-                if (ImGui.Button("Save") || shouldSend)
+                if (ThemeManager.PillButton("Save") || shouldSend)
                 {
                     SaveEditedMessage();
                     if (shouldSend)
@@ -4534,7 +4531,7 @@ namespace AbsoluteRP.Windows.Social.Views
             else
             {
                 // Just Send button when not editing
-                if (ImGui.Button("Send", new Vector2(buttonWidth, 45)) || shouldSend)
+                if (ThemeManager.PillButton("Send", new Vector2(buttonWidth, 45)) || shouldSend)
                 {
                     SendMessage();
                     if (shouldSend)
@@ -4564,7 +4561,7 @@ namespace AbsoluteRP.Windows.Social.Views
             {
                 ImGui.Text("Are you sure you want to delete this message?");
                 ImGui.Text("This action cannot be undone.");
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Center buttons
@@ -4572,7 +4569,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 float totalWidth = (buttonWidth * 2) + spacing;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - totalWidth) * 0.5f);
 
-                if (ImGui.Button("Delete", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.DangerButton("Delete", new Vector2(buttonWidth, 0)))
                 {
                     if (messageToDelete != null)
                     {
@@ -4585,7 +4582,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(buttonWidth, 0)))
                 {
                     messageToDelete = null;
                     showDeleteConfirmation = false;
@@ -4622,7 +4619,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 if (selectedChannel != null)
                 {
                     ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), $"Pinned messages in #{selectedChannel.name}");
-                    ImGui.Separator();
+                    ThemeManager.GradientSeparator();
                 }
 
                 if (!DataReceiver.pinnedMessagesLoaded)
@@ -4705,7 +4702,7 @@ namespace AbsoluteRP.Windows.Social.Views
                                     ImGui.SetTooltip("Scroll to this message in chat");
                                 }
 
-                                ImGui.Separator();
+                                ThemeManager.GradientSeparator();
                                 ImGui.PopID();
                             }
                         }
@@ -4717,7 +4714,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 // Close button
                 float buttonWidth = 100f;
                 ImGui.SetCursorPosX((ImGui.GetWindowWidth() - buttonWidth) * 0.5f);
-                if (ImGui.Button("Close", new Vector2(buttonWidth, 0)))
+                if (ThemeManager.GhostButton("Close", new Vector2(buttonWidth, 0)))
                 {
                     showPinnedMessagesPopup = false;
                     ImGui.CloseCurrentPopup();
@@ -5376,7 +5373,7 @@ namespace AbsoluteRP.Windows.Social.Views
         private static void DrawSlashCommandList(ref bool handledEnter, bool enterPressed)
         {
             ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "Slash Commands");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             var filtered = slashCommands
                 .Select((cmd, idx) => new { Command = cmd, Description = slashCommandDescriptions[idx], Index = idx })
@@ -5462,7 +5459,7 @@ namespace AbsoluteRP.Windows.Social.Views
         private static void DrawProfileSelection(ref bool handledEnter, bool enterPressed)
         {
             ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "Select a Profile");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             ImGui.SetNextItemWidth(-1);
             ImGui.InputTextWithHint("##ProfileSearch", "Search profiles...", ref slashCommandSelectionSearch, 100);
@@ -5490,7 +5487,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 {
                     // slashCommandSelectionIndex used as profile ID here
                 }
-                if (ImGui.Button("Add by ID") || (enterPressed && slashCommandSelectionIndex > 0))
+                if (ThemeManager.PillButton("Add by ID") || (enterPressed && slashCommandSelectionIndex > 0))
                 {
                     InsertProfileEmbed(slashCommandSelectionIndex);
                     CloseSlashCommandPopup();
@@ -5527,7 +5524,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 handledEnter = true;
             }
 
-            if (ImGui.Button("Cancel"))
+            if (ThemeManager.GhostButton("Cancel"))
             {
                 CloseSlashCommandPopup();
             }
@@ -5536,7 +5533,7 @@ namespace AbsoluteRP.Windows.Social.Views
         private static void DrawGroupInviteSelection(ref bool handledEnter, bool enterPressed)
         {
             ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1f), "Select a Group to Invite To");
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             ImGui.SetNextItemWidth(-1);
             ImGui.InputTextWithHint("##GroupSearch", "Search groups...", ref slashCommandSelectionSearch, 100);
@@ -5555,7 +5552,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1f), "No groups available for invites");
                 ImGui.TextWrapped("You need invite permission in at least one group.");
 
-                if (ImGui.Button("Cancel"))
+                if (ThemeManager.GhostButton("Cancel"))
                 {
                     CloseSlashCommandPopup();
                 }
@@ -5590,7 +5587,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 handledEnter = true;
             }
 
-            if (ImGui.Button("Cancel"))
+            if (ThemeManager.GhostButton("Cancel"))
             {
                 CloseSlashCommandPopup();
             }
@@ -5886,7 +5883,7 @@ namespace AbsoluteRP.Windows.Social.Views
             ImGui.SameLine();
 
             // Search button
-            bool searchClicked = ImGui.Button("Search", new Vector2(70, 0));
+            bool searchClicked = ThemeManager.PillButton("Search", new Vector2(70, 0));
 
             if ((enterPressed || searchClicked) && !string.IsNullOrWhiteSpace(groupSearchQuery))
             {
@@ -5900,7 +5897,7 @@ namespace AbsoluteRP.Windows.Social.Views
                 DrawGroupSearchResults();
             }
 
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
         }
 
         /// <summary>

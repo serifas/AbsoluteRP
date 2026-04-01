@@ -137,7 +137,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
 
             // Group name header
             ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1f), currentGroup.name);
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
 
             if (currentGroup.categories == null || currentGroup.categories.Count == 0)
             {
@@ -444,7 +444,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             }
 
             ImGui.Spacing();
-            ImGui.Separator();
+            ThemeManager.GradientSeparator();
             ImGui.Spacing();
 
             ImGui.PopID();
@@ -547,7 +547,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
             ImGui.SameLine();
 
             // Send button
-            if (ImGui.Button(editingMessage != null ? "Save" : "Send", new Vector2(70f * ImGui.GetIO().FontGlobalScale, scaledHeight)))
+            if (ThemeManager.PillButton(editingMessage != null ? "Save" : "Send", new Vector2(70f * ImGui.GetIO().FontGlobalScale, scaledHeight)))
             {
                 SendOrEditMessage();
             }
@@ -799,7 +799,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 if (channelBeingEdited == null)
                 {
                     ImGui.TextColored(new Vector4(1f, 0.4f, 0.4f, 1f), "Error: No channel selected");
-                    if (ImGui.Button("Close"))
+                    if (ThemeManager.GhostButton("Close"))
                     {
                         ImGui.CloseCurrentPopup();
                     }
@@ -824,7 +824,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 ImGui.Combo("##EditChannelType", ref editChannelType, channelTypes, channelTypes.Length);
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Permission settings
@@ -844,7 +844,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 }
 
                 ImGui.Spacing();
-                ImGui.Separator();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
 
                 // Save button
@@ -853,7 +853,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.3f, 0.7f, 0.3f, 1.0f));
                 ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.1f, 0.5f, 0.1f, 1.0f));
 
-                if (ImGui.Button("Save Changes", new Vector2(120, 0)))
+                if (ThemeManager.PillButton("Save Changes", new Vector2(120, 0)))
                 {
                     // Apply changes to the channel
                     channelBeingEdited.name = editChannelName.Trim();
@@ -883,7 +883,7 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
 
                 ImGui.SameLine();
 
-                if (ImGui.Button("Cancel", new Vector2(120, 0)))
+                if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
                 {
                     ImGui.CloseCurrentPopup();
                     channelBeingEdited = null;

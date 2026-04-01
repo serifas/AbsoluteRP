@@ -105,6 +105,7 @@ namespace AbsoluteRP
         [PluginService] public static IChatGui Chat { get; private set; } = null!;
         [PluginService] public static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
         [PluginService] public static INamePlateGui NamePlateGui { get; private set; } = null!;
+        [PluginService] public static IToastGui ToastGui { get; private set; } = null!;
 
         [LibraryImport("user32")]
         internal static partial short GetKeyState(int nVirtKey);
@@ -143,6 +144,7 @@ namespace AbsoluteRP
 
         private bool needsAsyncInit = true;
         private string displayName = string.Empty;
+
 
         public Plugin()
         {
@@ -183,6 +185,7 @@ namespace AbsoluteRP
 
             // Initialize CEF dependency manager for YouTube video playback
             CefDependencyManager.Initialize();
+
 
             LoadConnection();
             
@@ -344,6 +347,7 @@ namespace AbsoluteRP
                     GroupInviteDialog.Open(name, worldname);
                 },
             });
+
         }
 
         private void ObjectContext(IMenuOpenedArgs args, uint objectId)
@@ -360,7 +364,7 @@ namespace AbsoluteRP
                 PrefixColor = 56,
                 Prefix = SeIconChar.BoxedLetterB,
                 OnClicked = _ => {
-                    DataSender.BookmarkPlayer(Plugin.character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                    DataSender.BookmarkPlayer(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -374,7 +378,7 @@ namespace AbsoluteRP
                     TargetProfileWindow.characterWorld = chara.HomeWorld.Value.Name.ToString();
                     TargetProfileWindow.RequestingProfile = true;
                     TargetProfileWindow.ResetAllData();
-                    DataSender.FetchProfile(Plugin.character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                    DataSender.FetchProfile(character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
                 },
             });
             args.AddMenuItem(new MenuItem
@@ -384,6 +388,15 @@ namespace AbsoluteRP
                 Prefix = SeIconChar.BoxedPlus,
                 OnClicked = _ => {
                     GroupInviteDialog.Open(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Open ARP Trade",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+                    DataSender.RequestTargetTrade(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
                 },
             });
             /*
@@ -697,7 +710,19 @@ namespace AbsoluteRP
                 }
                 wasTargetWindowOpen = isTargetWindowOpen;
 
-                WindowSystem.Draw();
+                Helpers.ThemeManager.PushTheme(Configuration);
+                try
+                {
+                    WindowSystem.Draw();
+                }
+                catch (Exception ex)
+                {
+                    PluginLog.Debug("Exception in WindowSystem.Draw: " + ex.Message);
+                }
+                finally
+                {
+                    Helpers.ThemeManager.PopTheme();
+                }
 
                 PlayerInteractions.DrawCompass();
 

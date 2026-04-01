@@ -46,7 +46,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Decline##Decline" + i))
+                                if (ThemeManager.GhostButton("Decline##Decline" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
                                 }
@@ -58,7 +58,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Accept##Accept" + i))
+                                if (ThemeManager.PillButton("Accept##Accept" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
                                 }
@@ -70,7 +70,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Block##Block" + i))
+                                if (ThemeManager.DangerButton("Block##Block" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
                                 }
@@ -96,7 +96,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Remove##Remove" + i))
+                                if (ThemeManager.DangerButton("Remove##Remove" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
                                 }
@@ -108,7 +108,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Block##Block" + i))
+                                if (ThemeManager.DangerButton("Block##Block" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
                                 }
@@ -136,7 +136,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Cancel##Cancel" + i))
+                                if (ThemeManager.GhostButton("Cancel##Cancel" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
                                 }
@@ -162,7 +162,7 @@ namespace AbsoluteRP.Windows.Social.Views
                             ImGui.SameLine();
                             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                             {
-                                if (ImGui.Button("Unblock##Unblock" + i))
+                                if (ThemeManager.PillButton("Unblock##Unblock" + i))
                                 {
                                     DataSender.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
                                 }

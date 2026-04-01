@@ -74,7 +74,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             {
                 currentChapter = 0; // Reset to first chapter if current exceeds available chapters
             }
-            if (ImGui.InputText($"##storyTitle_{profileIndex}_{uniqueID}", ref title, 35))
+            if (ThemeManager.StyledInput($"##storyTitle_{profileIndex}_{uniqueID}", ref title, 35))
             {
                 layout.name = title; // Update the title if changed
             }
@@ -83,7 +83,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             {
                 AddChapterSelection(layout);
                 ImGui.SameLine();
-                if (ImGui.Button("Add Chapter"))
+                if (ThemeManager.PillButton("Add Chapter"))
                 {
                     CreateChapter(layout);
                 }
@@ -94,7 +94,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             }
             else
             {
-                if (ImGui.Button("Add Chapter"))
+                if (ThemeManager.PillButton("Add Chapter"))
                 {
                     CreateChapter(layout);
                 }
@@ -149,7 +149,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 ImGui.TextUnformatted("Chapter Name:");
                 ImGui.SameLine();
                 string chapterTitle = chapter.title;
-                if (ImGui.InputText($"##ChapterTitle_{safeId}_{i}", ref chapterTitle, 100))
+                if (ThemeManager.StyledInput($"##ChapterTitle_{safeId}_{i}", ref chapterTitle, 100))
                 {
                     chapter.title = chapterTitle; // Update the title if changed
                 }
@@ -165,7 +165,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 {
                     using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                     {
-                        if (ImGui.Button($"Remove##{safeId}_chapter_{i}"))
+                        if (ThemeManager.DangerButton($"Remove##{safeId}_chapter_{i}"))
                         {
                             layout.chapters.Remove(chapter);
                         }

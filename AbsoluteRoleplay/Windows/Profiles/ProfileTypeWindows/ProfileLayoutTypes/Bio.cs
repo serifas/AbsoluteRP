@@ -312,7 +312,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             }
             if (ImGui.CollapsingHeader("Custom Info", ImGuiTreeNodeFlags.None))
             {
-                if (ImGui.Button("Add Field##CustomDescriptor"))
+                if (ThemeManager.PillButton("Add Field##CustomDescriptor"))
                 {
                     layout.descriptors.Add(new descriptor()
                     {
@@ -326,7 +326,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     string descriptorName = descriptor.name;
                     string descriptorDescription = descriptor.description;
                     ImGui.PushItemWidth(ImGui.GetWindowSize().X / 8);
-                    if (ImGui.InputText($"##DescriptorName{descriptor.index}", ref descriptorName, 75))
+                    if (ThemeManager.StyledInput($"##DescriptorName{descriptor.index}", ref descriptorName, 75))
                     {
                         descriptor.name = descriptorName;
                     }
@@ -334,12 +334,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     ImGui.SameLine();
                     ImGui.Text(":");
                     ImGui.SameLine();
-                    if (ImGui.InputText($"##DescriptorDescription{descriptor.index}", ref descriptorDescription, 500))
+                    if (ThemeManager.StyledInput($"##DescriptorDescription{descriptor.index}", ref descriptorDescription, 500))
                     {
                         descriptor.description = descriptorDescription;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button($"Remove##RemoveDescriptor{descriptor.index}"))
+                    if (ThemeManager.DangerButton($"Remove##RemoveDescriptor{descriptor.index}"))
                     {
                         layout.descriptors.RemoveAll(p => p.index == descriptor.index);
                     }
@@ -357,7 +357,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             //simple for loop to get through our bio text fields
             if (ImGui.CollapsingHeader("Custom Details", ImGuiTreeNodeFlags.None))
             {
-                if (ImGui.Button("Add Field##CustomFieldBtn"))
+                if (ThemeManager.PillButton("Add Field##CustomFieldBtn"))
                 {
                     layout.fields.Add(new field()
                     {
@@ -371,12 +371,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 {
                     string fieldName = field.name;
                     string fieldDescription = field.description;
-                    if (ImGui.InputText($"##FieldName{field.index}", ref fieldName, 75))
+                    if (ThemeManager.StyledInput($"##FieldName{field.index}", ref fieldName, 75))
                     {
                         field.name = fieldName;
                     }
                     ImGui.SameLine();
-                    if (ImGui.Button($"Remove##RemoveField{field.index}"))
+                    if (ThemeManager.DangerButton($"Remove##RemoveField{field.index}"))
                     {
                         layout.fields.RemoveAll(p => p.index == field.index);
                     }
@@ -402,7 +402,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             }
             if (ImGui.CollapsingHeader("Custom Traits", ImGuiTreeNodeFlags.None))
             {
-                if (ImGui.Button("Add Custom Trait##AddPersonality"))
+                if (ThemeManager.PillButton("Add Custom Trait##AddPersonality"))
                 {
                     layout.traits.Add(new trait()
                     {
@@ -463,7 +463,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button($"Set Icon##{personality.index}"))
+                if (ThemeManager.GhostButton($"Set Icon##{personality.index}"))
                 {
                     foreach (trait p in layout.traits)
                     {
@@ -473,13 +473,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 }
 
                 ImGui.SameLine();
-                if (ImGui.Button($"Remove##RemovePersonality{personality.index}"))
+                if (ThemeManager.DangerButton($"Remove##RemovePersonality{personality.index}"))
                 {
                     layout.traits.RemoveAll(p => p.index == personality.index);
                     return;
                 }
 
-                if (ImGui.InputText($"##Name{personality.index}", ref name, 75))
+                if (ThemeManager.StyledInput($"##Name{personality.index}", ref name, 75))
                 {
                     personality.name = name;
                 }

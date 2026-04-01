@@ -29,9 +29,17 @@ namespace AbsoluteRP.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static bool DrawTextButton(string text, Vector2 size, uint buttonColor)
         {
-            using var color = ImRaii.PushColor(ImGuiCol.Button, buttonColor)
-                .Push(ImGuiCol.ButtonActive, buttonColor)
-                .Push(ImGuiCol.ButtonHovered, buttonColor);
+            // Use theme-derived transparent button when color is 0 (transparent)
+            uint bgColor = buttonColor;
+            uint hoverColor = buttonColor;
+            if (buttonColor == 0)
+            {
+                bgColor = 0;
+                hoverColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentSubtle);
+            }
+            using var color = ImRaii.PushColor(ImGuiCol.Button, bgColor)
+                .Push(ImGuiCol.ButtonActive, bgColor)
+                .Push(ImGuiCol.ButtonHovered, hoverColor);
             return ImGui.Button(text, size);
         }
         public static void DrawPolygonFromPoints(List<Vector2> points, List<Vector4> colors, float thickness = 2.0f, int gradientSteps = 20)

@@ -1,3 +1,4 @@
+using AbsoluteRP.Helpers;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Windowing;
 using FFXIVClientStructs.FFXIV.Common.Math;
@@ -30,7 +31,7 @@ namespace AbsoluteRP.Windows.Profiles
                 ImGui.Text("Reason for report");
                 ImGui.InputTextMultiline("##info", ref reportInfo, 5000, new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y - ImGui.GetWindowSize().Y / 2));
 
-                if (ImGui.Button("Report!"))
+                if (ThemeManager.DangerButton("Report!"))
                 {
                     if (reportInfo.Length > 15)
                     {

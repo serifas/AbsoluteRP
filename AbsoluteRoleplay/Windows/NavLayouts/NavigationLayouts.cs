@@ -24,7 +24,7 @@ namespace AbsoluteRP.Windows.NavLayouts
             "Social",
             "Systems - WIP",
             "Quests - WIP",
-            "Events - WIP"
+            "Listings"
             };
             // Define actions for each button
             navigation.actions = new Action[]
@@ -51,16 +51,16 @@ namespace AbsoluteRP.Windows.NavLayouts
                 () => {
                     if (Plugin.IsOnline())
                     {
-                       // Plugin.plugin.OpenListingsWindow();
+                        Plugin.plugin.OpenListingsWindow();
                     }
                 }
                 };
             navigation.textureIDs = new ImTextureID[]{
-                UI.UICommonImage(UI.CommonImageTypes.listingsPersonal).Handle,
-                UI.UICommonImage(UI.CommonImageTypes.listingsGroup).Handle,
-                UI.UICommonImage(UI.CommonImageTypes.listingsSystem).Handle,
-                UI.UICommonImage(UI.CommonImageTypes.listingsQuests).Handle,
-                UI.UICommonImage(UI.CommonImageTypes.listingsEvent).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.personal).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.groups).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.systems).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.quests).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.listings).Handle
             };
             return navigation;
         }
@@ -202,6 +202,46 @@ namespace AbsoluteRP.Windows.NavLayouts
                 UI.UICommonImage(UI.CommonImageTypes.socialConnections).Handle,
                 UI.UICommonImage(UI.CommonImageTypes.socialBookmarks).Handle,
                 UI.UICommonImage(UI.CommonImageTypes.socialGroups).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.socialSearch).Handle,
+            };
+            return navigation;
+        }
+        public static Navigation ListingsNavigation()
+        {
+
+            Navigation navigation = new Navigation();
+            navigation.names = new[]
+            {
+            "Venues",
+            "Events",
+            "Campaigns",
+            "Free Companies",
+            "Search"
+            };
+            // Define actions for each button
+            navigation.actions = new Action[]
+            {
+                () => {
+                    ListingsWindow.view = ListingsWindow.venues;
+                },
+                () => {
+                    ListingsWindow.view = ListingsWindow.events;
+                },
+                () => {
+                    ListingsWindow.view = ListingsWindow.campaigns;
+                },
+                () => {
+                    ListingsWindow.view = ListingsWindow.freecompanies;
+                },
+                () => {
+                    ListingsWindow.view = ListingsWindow.search;
+                }
+                };
+            navigation.textureIDs = new ImTextureID[]{
+                UI.UICommonImage(UI.CommonImageTypes.venues).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.events).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.campaigns).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.freecompanies).Handle,
                 UI.UICommonImage(UI.CommonImageTypes.socialSearch).Handle,
             };
             return navigation;

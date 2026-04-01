@@ -53,6 +53,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="UI\listings.png" />
       <None Include="UI\social\groups\Settings.png" />
     </ItemGroup>
 

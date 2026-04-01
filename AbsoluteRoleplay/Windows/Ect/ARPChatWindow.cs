@@ -127,7 +127,7 @@ namespace AbsoluteRP.Windows.Ect
                                                 if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
                                                 {
                                                     // Moderate Button
-                                                    if (ImGui.Button($"Moderate##{i}"))
+                                                    if (ThemeManager.GhostButton($"Moderate##{i}"))
                                                     {
                                                         ModPanel.capturedAuthor = messages[i].authorUserID;
                                                         ModPanel.capturedMessage = messages[i].message;
@@ -177,7 +177,7 @@ namespace AbsoluteRP.Windows.Ect
                                             if (DataReceiver.permissions.rank >= (int)Rank.Moderator && messages[i].authorUserID != 0)
                                             {
                                                 // Moderate Button
-                                                if (ImGui.Button($"Moderate##{i}"))
+                                                if (ThemeManager.GhostButton($"Moderate##{i}"))
                                                 {
                                                     ModPanel.capturedAuthor = messages[i].authorUserID;
                                                     ModPanel.capturedMessage = messages[i].message;
@@ -241,9 +241,9 @@ namespace AbsoluteRP.Windows.Ect
                 }
                 // Input field and send button
                 ImGui.SetCursorPosY(ImGui.GetWindowSize().Y - 50);
-                ImGui.Text("Message:");
+                ThemeManager.SubtitleText("Message:");
                 ImGui.SameLine();
-                ImGui.InputText("##message", ref messageInput, 5000);
+                ThemeManager.StyledInput("##message", ref messageInput, 5000);
                 if (ImGui.IsItemFocused())
                 {
                     canSend = true;
@@ -260,7 +260,7 @@ namespace AbsoluteRP.Windows.Ect
                     }
                 }
                 ImGui.SameLine();
-                if (ImGui.Button("Send"))
+                if (ThemeManager.PillButton("Send"))
                 {
                     SendMessage(messageInput, isAnnouncement);
                 }

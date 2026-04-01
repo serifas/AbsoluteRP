@@ -125,6 +125,7 @@ namespace AbsoluteRP.Helpers
                 return galleryImage;
             }
 
+            Plugin.PluginLog.Info($"[DownloadProfileImage] Starting download for URL: {url} (index={index})");
             for (int attempt = 1; attempt <= maxRetries; attempt++)
             {
                 try
@@ -135,14 +136,20 @@ namespace AbsoluteRP.Helpers
                     })
                     using (var client = new HttpClient(handler))
                     {
+                        client.Timeout = TimeSpan.FromSeconds(15);
+                        client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AbsoluteRP/1.0");
+                        Plugin.PluginLog.Debug($"[DownloadProfileImage] Attempt {attempt}/{maxRetries} for {url}");
                         HttpResponseMessage response = await client.GetAsync(url);
+                        Plugin.PluginLog.Info($"[DownloadProfileImage] Response status: {response.StatusCode} for {url}");
                         if (response.IsSuccessStatusCode)
                         {
                             byte[] imageBytes = await response.Content.ReadAsByteArrayAsync();
+                            Plugin.PluginLog.Info($"[DownloadProfileImage] Downloaded {imageBytes.Length} bytes from {url}");
 
                             using (var ms = new MemoryStream(imageBytes))
                             using (var baseImage = Image.FromStream(ms))
                             {
+                                Plugin.PluginLog.Debug($"[DownloadProfileImage] Image decoded: {baseImage.Width}x{baseImage.Height}");
                                 // Convert scaled image to byte array
                                 byte[] scaledImageBytes = ImageToByteArray(baseImage);
 
@@ -167,6 +174,7 @@ namespace AbsoluteRP.Helpers
 
                                     galleryImage.thumbnail = thumbTexture ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
                                 }
+                                Plugin.PluginLog.Info($"[DownloadProfileImage] Successfully created textures for {url}");
                                 return galleryImage;
                             }
                         }
@@ -207,6 +215,7 @@ namespace AbsoluteRP.Helpers
                 }
             }
 
+            Plugin.PluginLog.Error($"[DownloadProfileImage] All {maxRetries} attempts FAILED for URL: {url}");
             // If we reach here, loading failed. Ensure safe fallbacks.
             galleryImage.image = galleryImage.image ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
             galleryImage.thumbnail = galleryImage.thumbnail ?? UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
@@ -259,8 +268,8 @@ namespace AbsoluteRP.Helpers
                 })
                 using (HttpClient client = new HttpClient(handler))
                 {
-                    client.Timeout = TimeSpan.FromSeconds(10); // Set a timeout of 10 seconds
-                    // Download the image as a byte array
+                    client.Timeout = TimeSpan.FromSeconds(15);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AbsoluteRP/1.0");
                     byte[] imageBytes = await client.GetByteArrayAsync(url);
                     return imageBytes;
                 }

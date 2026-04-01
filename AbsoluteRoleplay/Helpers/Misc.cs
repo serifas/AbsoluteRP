@@ -2943,8 +2943,7 @@ namespace AbsoluteRP
         {
             Jupiter = Plugin.PluginInterface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Jupiter, 35));
 
-
-
+            // Use the passed borderColor for the title border
             using var col = ImRaii.PushColor(ImGuiCol.Border, borderColor);
             using var style = ImRaii.PushStyle(ImGuiStyleVar.FrameBorderSize, 2 * ImGuiHelpers.GlobalScale);
             using var font = Jupiter.Push();
@@ -2958,7 +2957,12 @@ namespace AbsoluteRP
                 float xPos = (windowSize.X - size.X - 15) / 2 + offset; // Center horizontally
                 ImGui.SetCursorPosX(xPos);
             }
-            UIHelpers.DrawTextButton(title, Vector2.Zero, 0);
+            // Black background, no hover effect for titles
+            uint black = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 1));
+            using var btnCol = ImRaii.PushColor(ImGuiCol.Button, black)
+                .Push(ImGuiCol.ButtonActive, black)
+                .Push(ImGuiCol.ButtonHovered, black);
+            ImGui.Button(title, Vector2.Zero);
 
             using var defInfFontDen = ImRaii.DefaultFont();
             using var defCol = ImRaii.DefaultColors();
