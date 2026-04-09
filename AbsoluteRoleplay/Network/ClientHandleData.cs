@@ -142,11 +142,17 @@ namespace Networking
             packets.Add((int)ServerPackets.SendSystemCreated, DataReceiver.HandleSystemCreated);
             packets.Add((int)ServerPackets.SendSystemDeleted, DataReceiver.HandleSystemDeleted);
             packets.Add((int)ServerPackets.SendMySystems, DataReceiver.HandleMySystems);
+            packets.Add((int)ServerPackets.SendSystemData, DataReceiver.HandleSystemData);
             packets.Add((int)ServerPackets.SendStatsSaved, DataReceiver.HandleStatsSaved);
             packets.Add((int)ServerPackets.SendCombatConfigSaved, DataReceiver.HandleCombatConfigSaved);
             packets.Add((int)ServerPackets.SendSkillClassesSaved, DataReceiver.HandleSkillClassesSaved);
             packets.Add((int)ServerPackets.SendSkillsSaved, DataReceiver.HandleSkillsSaved);
             packets.Add((int)ServerPackets.SendSystemError, DataReceiver.HandleSystemError);
+
+            // Sheet submission & roster
+            packets.Add((int)ServerPackets.SendSubmitSheetResult, DataReceiver.HandleSubmitSheetResult);
+            packets.Add((int)ServerPackets.SendSystemRoster, DataReceiver.HandleSystemRoster);
+            packets.Add((int)ServerPackets.SendSheetResponse, DataReceiver.HandleSheetResponse);
 
             //simple message back from server, simply for verification that the user is connected
         }

@@ -199,6 +199,12 @@ namespace Networking
         SendCharacterSheet = 253,
         SendCharacterSheets = 254,
         SendSystemError = 255,
+
+        // Systems Phase 2 — Sheet submission, roster, public fetch
+        SendSubmitSheetResult = 260,
+        SendSystemRoster = 261,
+        SendSheetResponse = 262,
+        SendPublicSystemData = 263,
     }
     class DataReceiver
     {
@@ -6423,12 +6429,23 @@ namespace Networking
                         int id = buffer.ReadInt();
                         string name = buffer.ReadString();
                         string code = buffer.ReadString();
+                        int bpa = buffer.ReadInt();
+                        bool ra = buffer.ReadBool();
                         AbsoluteRP.Windows.Listings.SystemsWindow.systemData.Add(new SystemData
                         {
                             id = id,
                             name = name,
                             shareCode = code,
+                            basePointsAvailable = bpa,
+                            requireApproval = ra,
                         });
+                    }
+
+                    // Also add to View Systems available list
+                    foreach (var sys in AbsoluteRP.Windows.Listings.SystemsWindow.systemData)
+                    {
+                        if (sys.id > 0 && !AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.availableSystems.Exists(s => s.id == sys.id))
+                            AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.availableSystems.Add(sys);
                     }
 
                     if (AbsoluteRP.Windows.Listings.SystemsWindow.systemData.Count > 0)
@@ -6436,10 +6453,238 @@ namespace Networking
                         AbsoluteRP.Windows.Listings.SystemsWindow.currentSystemIndex = 0;
                         AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem =
                             AbsoluteRP.Windows.Listings.SystemsWindow.systemData[0];
+
+                        // Auto-fetch full data for the first system
+                        if (Plugin.character != null)
+                        {
+                            var firstSystem = AbsoluteRP.Windows.Listings.SystemsWindow.systemData[0];
+                            if (firstSystem.id > 0)
+                                Networking.DataSender.FetchSystem(Plugin.character, firstSystem.id);
+                        }
                     }
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleMySystems Error: {ex.Message}"); }
+        }
+
+        public static void HandleSystemData(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet id
+
+                    int systemId = buffer.ReadInt();
+                    string name = buffer.ReadString();
+                    string shareCode = buffer.ReadString();
+                    int basePointsAvailable = buffer.ReadInt();
+                    bool requireApproval = buffer.ReadBool();
+                    string rules = buffer.ReadString();
+
+                    Plugin.PluginLog.Info($"[Systems] Received full data for system {systemId} ({name})");
+
+                    // Find matching system in the list
+                    var systemsList = AbsoluteRP.Windows.Listings.SystemsWindow.systemData;
+                    SystemData target = null;
+                    int targetIndex = -1;
+                    for (int i = 0; i < systemsList.Count; i++)
+                    {
+                        if (systemsList[i].id == systemId)
+                        {
+                            target = systemsList[i];
+                            targetIndex = i;
+                            break;
+                        }
+                    }
+                    bool isImport = false;
+                    if (target == null)
+                    {
+                        // System not in managed list — this is an import via share code
+                        target = new SystemData { id = systemId };
+                        isImport = true;
+                    }
+
+                    target.name = name;
+                    target.shareCode = shareCode;
+                    target.basePointsAvailable = basePointsAvailable;
+                    target.requireApproval = requireApproval;
+                    target.rules = rules;
+
+                    // Stats
+                    int statCount = buffer.ReadInt();
+                    target.StatsData.Clear();
+                    for (int i = 0; i < statCount; i++)
+                    {
+                        int sid = buffer.ReadInt();
+                        int sortOrder = buffer.ReadInt();
+                        string sname = buffer.ReadString();
+                        string sdesc = buffer.ReadString();
+                        float cr = buffer.ReadFloat();
+                        float cg = buffer.ReadFloat();
+                        float cb = buffer.ReadFloat();
+                        float ca = buffer.ReadFloat();
+                        int bmin = buffer.ReadInt();
+                        int bmax = buffer.ReadInt();
+                        bool canAdd = buffer.ReadBool();
+                        bool canRem = buffer.ReadBool();
+                        bool canNeg = buffer.ReadBool();
+                        bool negGives = buffer.ReadBool();
+
+                        target.StatsData[sortOrder] = new StatData()
+                        {
+                            id = sid,
+                            name = sname,
+                            description = sdesc,
+                            color = new System.Numerics.Vector4(cr, cg, cb, ca),
+                            baseMin = bmin,
+                            baseMax = bmax,
+                            canAddPoints = canAdd,
+                            canRemovePoints = canRem,
+                            canGoNegative = canNeg,
+                            negativeGivesPoint = negGives,
+                        };
+                    }
+
+                    // Combat config
+                    target.CombatConfig = new CombatConfigData()
+                    {
+                        healthEnabled = buffer.ReadBool(),
+                        healthBase = buffer.ReadInt(),
+                        healthMax = buffer.ReadInt(),
+                        healthLinkedStatId = buffer.ReadInt(),
+                        healthStatMultiplier = buffer.ReadFloat(),
+                        healthRegenAmount = buffer.ReadInt(),
+                        healthRegenEveryNTurns = buffer.ReadInt(),
+                        turnCount = buffer.ReadInt(),
+                        diceType = buffer.ReadInt(),
+                        diceCount = buffer.ReadInt(),
+                        diceModifier = buffer.ReadInt(),
+                    };
+
+                    // Resources
+                    int resCount = buffer.ReadInt();
+                    target.Resources.Clear();
+                    for (int i = 0; i < resCount; i++)
+                    {
+                        target.Resources.Add(new ResourceData()
+                        {
+                            id = buffer.ReadInt(),
+                            name = buffer.ReadString(),
+                            description = buffer.ReadString(),
+                            baseValue = buffer.ReadInt(),
+                            maxValue = buffer.ReadInt(),
+                            color = new System.Numerics.Vector4(buffer.ReadFloat(), buffer.ReadFloat(), buffer.ReadFloat(), buffer.ReadFloat()),
+                            linkedStatId = buffer.ReadInt(),
+                            statMultiplier = buffer.ReadFloat(),
+                            regenAmount = buffer.ReadInt(),
+                            regenEveryNTurns = buffer.ReadInt(),
+                        });
+                    }
+
+                    // Skill classes
+                    int classCount = buffer.ReadInt();
+                    target.SkillClasses.Clear();
+                    for (int i = 0; i < classCount; i++)
+                    {
+                        target.SkillClasses.Add(new SkillClassData()
+                        {
+                            id = buffer.ReadInt(),
+                            name = buffer.ReadString(),
+                            description = buffer.ReadString(),
+                            sortOrder = buffer.ReadInt(),
+                            allowCustomSkills = buffer.ReadBool(),
+                            iconId = buffer.ReadInt(),
+                        });
+                    }
+
+                    // Skills
+                    int skillCount = buffer.ReadInt();
+                    target.Skills.Clear();
+                    for (int i = 0; i < skillCount; i++)
+                    {
+                        target.Skills.Add(new SkillData()
+                        {
+                            id = buffer.ReadInt(),
+                            classId = buffer.ReadInt(),
+                            treeIndex = buffer.ReadInt(),
+                            name = buffer.ReadString(),
+                            description = buffer.ReadString(),
+                            iconId = buffer.ReadInt(),
+                            gridX = buffer.ReadInt(),
+                            gridY = buffer.ReadInt(),
+                            isCastable = buffer.ReadBool(),
+                            cooldownTurns = buffer.ReadInt(),
+                            resourceId = buffer.ReadInt(),
+                            resourceCost = buffer.ReadInt(),
+                            maxTiers = buffer.ReadInt(),
+                        });
+                    }
+
+                    // Skill connections
+                    int connCount = buffer.ReadInt();
+                    target.SkillConnections.Clear();
+                    for (int i = 0; i < connCount; i++)
+                    {
+                        target.SkillConnections.Add(new SkillConnectionData()
+                        {
+                            fromSkillId = buffer.ReadInt(),
+                            toSkillId = buffer.ReadInt(),
+                            requiredPoints = buffer.ReadInt(),
+                        });
+                    }
+
+                    // If this is the currently selected system, refresh the UI references
+                    if (AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem != null
+                        && AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem.id == systemId)
+                    {
+                        AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem = target;
+                        AbsoluteRP.Windows.Listings.SystemsWindow.drawStatLayout = true;
+                    }
+
+                    // If this was an import, send to ViewSystems
+                    if (isImport)
+                        AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.OnPublicSystemReceived(target);
+
+                    // Load icon textures for classes and skills
+                    _ = LoadSystemIconsAsync(target);
+
+                    Plugin.PluginLog.Info($"[Systems] Loaded system {systemId}: {statCount} stats, {resCount} resources, {classCount} classes, {skillCount} skills, {connCount} connections");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemData Error: {ex.Message}"); }
+        }
+
+        private static async System.Threading.Tasks.Task LoadSystemIconsAsync(SystemData system)
+        {
+            try
+            {
+                // Load class icons (these are game icons from the icon picker, not status effects)
+                foreach (var cls in system.SkillClasses)
+                {
+                    if (cls.iconId > 0 && (cls.iconTexture == null || cls.iconTexture.Handle == IntPtr.Zero))
+                    {
+                        var tex = await LoadGameIconAsync((uint)cls.iconId);
+                        if (tex != null) cls.iconTexture = tex;
+                    }
+                }
+                // Load skill icons
+                foreach (var skill in system.Skills)
+                {
+                    if (skill.iconId > 0 && (skill.iconTexture == null || skill.iconTexture.Handle == IntPtr.Zero))
+                    {
+                        var tex = await LoadGameIconAsync((uint)skill.iconId);
+                        if (tex != null) skill.iconTexture = tex;
+                    }
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"LoadSystemIconsAsync Error: {ex.Message}"); }
+        }
+
+        private static async System.Threading.Tasks.Task<Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap> LoadGameIconAsync(uint iconId)
+        {
+            return await WindowOperations.LoadGameIconAsync(iconId);
         }
 
         public static void HandleStatsSaved(byte[] data)
@@ -6501,6 +6746,10 @@ namespace Networking
                     int systemId = buffer.ReadInt();
                     bool success = buffer.ReadBool();
                     Plugin.PluginLog.Info($"[Systems] Skills saved for system {systemId}: {success}");
+
+                    // Re-fetch full system data to get server-assigned IDs for classes/skills
+                    if (success && Plugin.character != null && systemId > 0)
+                        Networking.DataSender.FetchSystem(Plugin.character, systemId);
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleSkillsSaved Error: {ex.Message}"); }
@@ -6519,6 +6768,92 @@ namespace Networking
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemError Error: {ex.Message}"); }
+        }
+
+        public static void HandleSubmitSheetResult(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    bool success = buffer.ReadBool();
+                    int sheetId = buffer.ReadInt();
+                    string message = buffer.ReadString();
+                    Plugin.PluginLog.Info($"[Systems] Sheet submit result: {success} - {message}");
+                    AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.OnSubmitResult(success, message);
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSubmitSheetResult Error: {ex.Message}"); }
+        }
+
+        public static void HandleSystemRoster(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    int count = buffer.ReadInt();
+                    var sheets = new List<CharacterSheetData>();
+                    for (int i = 0; i < count; i++)
+                    {
+                        var sheet = new CharacterSheetData
+                        {
+                            id = buffer.ReadInt(),
+                            classId = buffer.ReadInt(),
+                            characterName = buffer.ReadString(),
+                            characterWorld = buffer.ReadString(),
+                            systemId = systemId,
+                        };
+                        // Parse stat values JSON
+                        string statJson = buffer.ReadString();
+                        try
+                        {
+                            sheet.statValues = System.Text.Json.JsonSerializer.Deserialize<Dictionary<int, int>>(statJson) ?? new Dictionary<int, int>();
+                        }
+                        catch { sheet.statValues = new Dictionary<int, int>(); }
+
+                        // Parse learned skills JSON
+                        string skillJson = buffer.ReadString();
+                        try
+                        {
+                            sheet.learnedSkills = System.Text.Json.JsonSerializer.Deserialize<List<int>>(skillJson) ?? new List<int>();
+                        }
+                        catch { sheet.learnedSkills = new List<int>(); }
+
+                        sheet.status = buffer.ReadInt();
+                        sheet.revisionReason = buffer.ReadString();
+                        sheet.createdAt = buffer.ReadLong();
+                        sheets.Add(sheet);
+                    }
+                    Plugin.PluginLog.Info($"[Systems] Received roster for system {systemId}: {count} sheets");
+                    AbsoluteRP.Windows.Systems.Roster.Roster.OnRosterReceived(sheets);
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemRoster Error: {ex.Message}"); }
+        }
+
+        public static void HandleSheetResponse(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int sheetId = buffer.ReadInt();
+                    int newStatus = buffer.ReadInt();
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[Systems] Sheet {sheetId} response: status={newStatus}, success={success}");
+                    if (success)
+                        AbsoluteRP.Windows.Systems.Roster.Roster.OnSheetResponseReceived(sheetId, newStatus);
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSheetResponse Error: {ex.Message}"); }
         }
 
         #endregion

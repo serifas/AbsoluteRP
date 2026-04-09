@@ -249,6 +249,12 @@ namespace Networking
         CSaveCharacterSheet = 252,
         CFetchCharacterSheet = 253,
         CFetchCharacterSheets = 254,
+
+        // Systems Phase 2 — Sheet submission, roster, public fetch
+        CSubmitCharacterSheet = 260,
+        CFetchSystemRoster = 261,
+        CRespondToSheet = 262,
+        CFetchPublicSystem = 263,
     }
     public class DataSender
     {
@@ -5231,6 +5237,27 @@ buffer.WriteFloat(emptyElement.color.W);
             catch (Exception ex) { Plugin.PluginLog.Debug($"DeleteSystem error: {ex.Message}"); }
         }
 
+        public static async Task UpdateSystemSettings(Character character, int systemId, string name, int basePointsAvailable, bool requireApproval, string rules)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CUpdateSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteString(name);
+                    buffer.WriteInt(basePointsAvailable);
+                    buffer.WriteBool(requireApproval);
+                    buffer.WriteString(rules ?? "");
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"UpdateSystemSettings error: {ex.Message}"); }
+        }
+
         public static async Task ImportSystemByCode(Character character, string shareCode)
         {
             if (!ClientTCP.IsConnected()) return;
@@ -5350,6 +5377,7 @@ buffer.WriteFloat(emptyElement.color.W);
                         buffer.WriteString(c.description ?? "");
                         buffer.WriteInt(c.sortOrder);
                         buffer.WriteBool(c.allowCustomSkills);
+                        buffer.WriteInt(c.iconId);
                     }
                     await ClientTCP.SendDataAsync(buffer.ToArray());
                 }
@@ -5397,6 +5425,74 @@ buffer.WriteFloat(emptyElement.color.W);
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Debug($"SaveSkills error: {ex.Message}"); }
+        }
+
+        public static async Task SubmitCharacterSheet(Character character, int systemId, int classId,
+            Dictionary<int, int> statAllocations, List<int> selectedSkills)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSubmitCharacterSheet);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteInt(classId);
+                    buffer.WriteString(character.characterName);
+                    buffer.WriteString(character.characterWorld);
+                    // Stat values
+                    buffer.WriteInt(statAllocations.Count);
+                    foreach (var kvp in statAllocations)
+                    {
+                        buffer.WriteInt(kvp.Key);
+                        buffer.WriteInt(kvp.Value);
+                    }
+                    // Skills
+                    buffer.WriteInt(selectedSkills.Count);
+                    foreach (var skillId in selectedSkills)
+                        buffer.WriteInt(skillId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"SubmitCharacterSheet error: {ex.Message}"); }
+        }
+
+        public static async Task FetchSystemRoster(Character character, int systemId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CFetchSystemRoster);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"FetchSystemRoster error: {ex.Message}"); }
+        }
+
+        public static async Task RespondToSheet(Character character, int sheetId, int status, string reason)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CRespondToSheet);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(sheetId);
+                    buffer.WriteInt(status);
+                    buffer.WriteString(reason ?? "");
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"RespondToSheet error: {ex.Message}"); }
         }
 
         #endregion

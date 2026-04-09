@@ -104,10 +104,11 @@ namespace AbsoluteRP.Windows.Systems.Combat
                     config.healthLinkedStatId = DrawStatCombo("##HPLinkedStat", config.healthLinkedStatId, system);
                     if (config.healthLinkedStatId >= 0)
                     {
+                        ImGui.Text("Stat Multiplier:");
                         ImGui.SameLine();
-                        ImGui.SetNextItemWidth(80);
+                        ImGui.SetNextItemWidth(150);
                         float hsm = config.healthStatMultiplier;
-                        if (ImGui.InputFloat("Multiplier##hpMult", ref hsm, 0.1f))
+                        if (ImGui.InputFloat("##hpMult", ref hsm, 0.1f, 1.0f, "%.2f"))
                             config.healthStatMultiplier = hsm;
                     }
 
@@ -190,10 +191,11 @@ namespace AbsoluteRP.Windows.Systems.Combat
                     r.linkedStatId = DrawStatCombo($"##resLinked{i}", r.linkedStatId, system);
                     if (r.linkedStatId >= 0)
                     {
+                        ImGui.Text("Stat Multiplier:");
                         ImGui.SameLine();
-                        ImGui.SetNextItemWidth(80);
+                        ImGui.SetNextItemWidth(150);
                         float sm = r.statMultiplier;
-                        if (ImGui.InputFloat($"Multiplier##resMult{i}", ref sm, 0.1f))
+                        if (ImGui.InputFloat($"##resMult{i}", ref sm, 0.1f, 1.0f, "%.2f"))
                             r.statMultiplier = sm;
                     }
 

@@ -1,4 +1,4 @@
-﻿using AbsoluteRP.Defines;
+using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Ect;
 using AbsoluteRP.Windows.NavLayouts;
@@ -34,11 +34,14 @@ namespace AbsoluteRP.Windows.Listings
         public static bool uiSelected = false;
         private static bool fetchedSystems = false;
 
-        // Section tabs: 0=Stats, 1=Classes, 2=Combat, 3=Rules
+        // Top-level mode: 0=View Systems, 1=Manage Systems
+        public static int systemMode = 1;
+
+        // Section tabs: 0=Stats, 1=Classes, 2=Combat, 3=Rules, 4=Roster
         public static int systemSectionIndex = 0;
-        private static readonly string[] SectionNames = { "Stats", "Classes", "Combat", "Rules" };
+        private static readonly string[] SectionNames = { "Stats", "Classes", "Combat", "Rules", "Roster" };
         public SystemsWindow() : base(
-            "SYSTEMS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+            "SYSTEMS")
         {
             SizeConstraints = new WindowSizeConstraints
             {
@@ -76,7 +79,25 @@ namespace AbsoluteRP.Windows.Listings
             int buttonCount = 5;
             float navHeight = buttonSize * buttonCount * 1.2f;
 
-            DrawSystemCreation();
+            // Top-level mode tabs
+            if (ImGui.BeginTabBar("##SystemModeBar"))
+            {
+                if (ImGui.BeginTabItem("View Systems"))
+                {
+                    systemMode = 0;
+                    ImGui.Spacing();
+                    AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.DrawViewSystems();
+                    ImGui.EndTabItem();
+                }
+                if (ImGui.BeginTabItem("Manage Systems"))
+                {
+                    systemMode = 1;
+                    ImGui.Spacing();
+                    DrawSystemCreation();
+                    ImGui.EndTabItem();
+                }
+                ImGui.EndTabBar();
+            }
 
             ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.5f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
             ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.5f, navHeight), ImGuiCond.Always);
@@ -153,6 +174,9 @@ namespace AbsoluteRP.Windows.Listings
                 case 3:
                     AbsoluteRP.Windows.Systems.Rules.Rules.DrawRulesEditor();
                     break;
+                case 4:
+                    AbsoluteRP.Windows.Systems.Roster.Roster.DrawRoster();
+                    break;
             }
         }
 
@@ -165,6 +189,7 @@ namespace AbsoluteRP.Windows.Listings
             if (system == null || system.id <= 0 || Plugin.character == null) return;
 
             var character = Plugin.character;
+            Networking.DataSender.UpdateSystemSettings(character, system.id, system.name, system.basePointsAvailable, system.requireApproval, system.rules);
             Networking.DataSender.SaveSystemStats(character, system.id, system.StatsData);
             Networking.DataSender.SaveCombatConfig(character, system.id, system.CombatConfig, system.Resources);
             Networking.DataSender.SaveSkillClasses(character, system.id, system.SkillClasses);
@@ -197,12 +222,15 @@ namespace AbsoluteRP.Windows.Listings
                     bool isSelected = idx == currentSystemIndex;
                     if (ImGui.Selectable(label + $"##{idx}", isSelected))
                     {
-
                         currentSystemIndex = idx;
                         currentSystem = systemData[idx];
                         drawStatLayout = true;
                         Stats.currentStatIndex = -1;
                         Stats.selectedStat = null;
+
+                        // Fetch full system data from server when selecting a different system
+                        if (Plugin.character != null && systemData[idx].id > 0)
+                            Networking.DataSender.FetchSystem(Plugin.character, systemData[idx].id);
                     }
                     if (isSelected)
                         ImGui.SetItemDefaultFocus();
@@ -227,6 +255,25 @@ namespace AbsoluteRP.Windows.Listings
             else if (currentSystem != null && currentSystem.id <= 0)
             {
                 ImGui.TextColored(ThemeManager.FontMuted, "Creating...");
+            }
+
+            // Share code display
+            if (currentSystem != null && !string.IsNullOrEmpty(currentSystem.shareCode))
+            {
+                ImGui.Text("Share Code:");
+                ImGui.SameLine();
+                ImGui.TextColored(ThemeManager.Accent, currentSystem.shareCode);
+                ImGui.SameLine();
+                if (ThemeManager.GhostButton("Copy##copyCode", new Vector2(50, 0)))
+                    ImGui.SetClipboardText(currentSystem.shareCode);
+            }
+
+            // Require approval toggle
+            if (currentSystem != null)
+            {
+                bool reqApproval = currentSystem.requireApproval;
+                if (ImGui.Checkbox("Require approval for character sheets", ref reqApproval))
+                    currentSystem.requireApproval = reqApproval;
             }
         }
         private static List<Vector2> CalculatePolygonPoints(Vector2 center, float radius, int count)

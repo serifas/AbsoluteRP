@@ -436,6 +436,18 @@ namespace AbsoluteRP.Helpers
         }
 
 
+        public static async Task<IDalamudTextureWrap?> LoadGameIconAsync(uint iconId)
+        {
+            try
+            {
+                var icon = Plugin.DataManager.GameData.GetIcon(iconId);
+                if (icon != null && !string.IsNullOrEmpty(icon.FilePath))
+                    return await LoadTextureAsync(icon.FilePath);
+            }
+            catch { }
+            return null;
+        }
+
         public static async Task<IDalamudTextureWrap?> LoadTextureAsync(string gameTexturePath)
         {
             try

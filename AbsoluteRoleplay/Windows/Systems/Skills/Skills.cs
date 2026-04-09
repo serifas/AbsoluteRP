@@ -36,6 +36,12 @@ namespace AbsoluteRP.Windows.Systems.Skills
         // Connection mode: when set, next skill click creates a parent→child link
         private static int? connectingFromSkillId = null;
 
+        // Monotonic counter for temporary skill IDs (avoids collisions after deletions)
+        private static int nextTempSkillId = -1;
+
+        // Monotonic counter for temporary class IDs (avoids collisions between unsaved classes)
+        private static int nextTempClassId = -1;
+
         // Icon picker
         private static bool showIconPicker = false;
 
@@ -97,10 +103,35 @@ namespace AbsoluteRP.Windows.Systems.Skills
             DrawIconPickerPopup(system);
         }
 
+        // Class icon picker state
+        private static bool showClassIconPicker = false;
+
         // ── Class Details Sub-Tab ──
         private static void DrawClassDetails(SystemData system, SkillClassData cls)
         {
             ThemeManager.SectionHeader(cls.name);
+            ImGui.Spacing();
+
+            // Class icon
+            ImGui.Text("Class Icon:");
+            ImGui.SameLine();
+            if (cls.iconTexture != null && cls.iconTexture.Handle != IntPtr.Zero)
+            {
+                ImGui.Image(cls.iconTexture.Handle, new Vector2(32, 32));
+                ImGui.SameLine();
+            }
+            if (ThemeManager.PillButton("Change Icon##classIcon", new Vector2(100, 28)))
+                showClassIconPicker = true;
+            if (cls.iconId > 0)
+            {
+                ImGui.SameLine();
+                if (ThemeManager.GhostButton("Clear##clearClassIcon", new Vector2(50, 28)))
+                {
+                    cls.iconId = 0;
+                    cls.iconTexture = null;
+                }
+            }
+
             ImGui.Spacing();
 
             // Class name
@@ -138,6 +169,31 @@ namespace AbsoluteRP.Windows.Systems.Skills
                     Networking.DataSender.SaveSkillClasses(Plugin.character, system.id, system.SkillClasses);
                 }
             }
+
+            // Class icon picker popup
+            DrawClassIconPickerPopup(cls);
+        }
+
+        private static void DrawClassIconPickerPopup(SkillClassData cls)
+        {
+            if (!showClassIconPicker) return;
+
+            ImGui.SetNextWindowSize(new Vector2(420, 350), ImGuiCond.FirstUseEver);
+            if (ImGui.Begin("Class Icon Picker##classIconPicker", ref showClassIconPicker))
+            {
+                IDalamudTextureWrap dummyTex = null;
+                WindowOperations.RenderIcons(Plugin.plugin, false, true, null, null, ref dummyTex);
+
+                if (WindowOperations.selectedTreeIconId.HasValue && WindowOperations.selectedIcon != null)
+                {
+                    cls.iconId = (int)WindowOperations.selectedTreeIconId.Value;
+                    cls.iconTexture = WindowOperations.selectedIcon;
+                    WindowOperations.selectedTreeIconId = null;
+                    WindowOperations.selectedIcon = null;
+                    showClassIconPicker = false;
+                }
+            }
+            ImGui.End();
         }
 
         // ── Skill Trees Sub-Tab ──
@@ -199,7 +255,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             {
                 system.Skills.Add(new SkillData
                 {
-                    id = -(system.Skills.Count + 1),
+                    id = nextTempSkillId--,
                     name = "New Passive",
                     classId = classId,
                     isCastable = false,
@@ -277,7 +333,9 @@ namespace AbsoluteRP.Windows.Systems.Skills
                         selectedTreeIndex = 0;
                         selectedSlot = null;
                         selectedSkillIndex = -1;
-                        selectedTreeIndex = 0;
+                        classSubTab = 0;
+                        editClassDesc = "";
+                        connectingFromSkillId = null;
                     }
                 }
                 ImGui.EndCombo();
@@ -296,6 +354,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 {
                     var newClass = new SkillClassData
                     {
+                        id = nextTempClassId--,
                         name = newClassName.Trim(),
                         sortOrder = system.SkillClasses.Count,
                     };
@@ -583,7 +642,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
                             var newSkill = new SkillData
                             {
-                                id = -(system.Skills.Count + 1),
+                                id = nextTempSkillId--,
                                 name = "New Skill",
                                 gridX = x,
                                 gridY = y,
@@ -920,7 +979,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             drawList.AddText(pos, textColor, text);
         }
 
-        private static Vector2[] GetOctagonPoints(Vector2 center, float radius)
+        public static Vector2[] GetOctagonPoints(Vector2 center, float radius)
         {
             var pts = new Vector2[8];
             float startAngle = -MathF.PI / 2f;
@@ -938,7 +997,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
         /// with the background color. Draws a triangle fan from each square corner to its
         /// two nearest octagon vertices, plus fills the edge strips between.
         /// </summary>
-        private static void MaskSquareToOctagon(ImDrawListPtr drawList, Vector2 center, float radius, Vector2[] oct)
+        public static void MaskSquareToOctagon(ImDrawListPtr drawList, Vector2 center, float radius, Vector2[] oct)
         {
             if (oct.Length < 8) return;
             uint bg = ImGui.ColorConvertFloat4ToU32(ThemeManager.BgDark);
@@ -979,7 +1038,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             drawList.AddTriangleFilled(oct[7], tl, tm, bg);
         }
 
-        private static void DrawFilledOctagon(ImDrawListPtr drawList, Vector2[] points, uint color)
+        public static void DrawFilledOctagon(ImDrawListPtr drawList, Vector2[] points, uint color)
         {
             if (points.Length < 3) return;
             Vector2 center = Vector2.Zero;

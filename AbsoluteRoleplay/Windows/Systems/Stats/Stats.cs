@@ -20,6 +20,9 @@ namespace AbsoluteRP.Windows.Systems.Stats
         public static int currentStatIndex = -1;
         public static StatData? selectedStat = null;
         public static int statCount = -1;
+
+        // Monotonic counter for temporary stat IDs (avoids collisions when stats share default id=-1)
+        private static int nextTempStatId = -1;
         private static List<Vector2> CalculatePolygonPoints(Vector2 center, float radius, int count)
         {
             var points = new List<Vector2>();
@@ -54,7 +57,20 @@ namespace AbsoluteRP.Windows.Systems.Stats
             if (SystemsWindow.currentSystem == null)
                 return;
 
-            var stats = SystemsWindow.currentSystem.StatsData;
+            var system = SystemsWindow.currentSystem;
+            var stats = system.StatsData;
+
+            // Base points available (system-level setting)
+            int bpa = system.basePointsAvailable;
+            ImGui.Text("Base Points Available:");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(100);
+            if (ImGui.InputInt("##basePointsAvail", ref bpa))
+                system.basePointsAvailable = Math.Max(0, bpa);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Total stat points players can distribute when creating a character sheet.");
+
+            ImGui.Spacing();
 
             // Calculate center
             var windowPos = ImGui.GetWindowPos();
@@ -72,7 +88,7 @@ namespace AbsoluteRP.Windows.Systems.Stats
                 // Store previous polygon points before change
                 previousPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
                 int nextKey = stats.Count == 0 ? 0 : stats.Keys.Max() + 1;
-                stats.Add(nextKey, new StatData() { name = "New Stat", description = string.Empty, color = new Vector4(1, 1, 1, 1) });
+                stats.Add(nextKey, new StatData() { id = nextTempStatId--, name = "New Stat", description = string.Empty, color = new Vector4(1, 1, 1, 1) });
                 currentStatIndex = stats.Count - 1;
                 selectedStat = stats.Values[currentStatIndex];
                 // Store target polygon points after change
@@ -233,7 +249,6 @@ namespace AbsoluteRP.Windows.Systems.Stats
             ImGui.Spacing();
             if (ThemeManager.PillButton("Save Stats##saveStats", new Vector2(140, 32)))
             {
-                var system = SystemsWindow.currentSystem;
                 if (system != null && system.id > 0 && Plugin.character != null)
                 {
                     Networking.DataSender.SaveSystemStats(Plugin.character, system.id, system.StatsData);

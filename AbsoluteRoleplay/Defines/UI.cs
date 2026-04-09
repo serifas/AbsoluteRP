@@ -452,12 +452,15 @@ namespace AbsoluteRP
         public string name { get; set; } = string.Empty;
         public string description { get; set; } = string.Empty;
         public string shareCode { get; set; } = string.Empty;
+        public int basePointsAvailable { get; set; } = 10;
+        public bool requireApproval { get; set; } = false;
         public SortedList<int, StatData> StatsData { get; set; } = new SortedList<int, StatData>();
         public List<ResourceData> Resources { get; set; } = new List<ResourceData>();
         public CombatConfigData CombatConfig { get; set; } = new CombatConfigData();
         public List<SkillClassData> SkillClasses { get; set; } = new List<SkillClassData>();
         public List<SkillData> Skills { get; set; } = new List<SkillData>();
         public List<SkillConnectionData> SkillConnections { get; set; } = new List<SkillConnectionData>();
+        public string rules { get; set; } = string.Empty;
     }
 
     public class StatData
@@ -511,6 +514,8 @@ namespace AbsoluteRP
         public string description { get; set; } = string.Empty;
         public int sortOrder { get; set; } = 0;
         public bool allowCustomSkills { get; set; } = false;
+        public int iconId { get; set; } = 0;
+        public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap iconTexture { get; set; } = null;
         public List<SkillTreeData> SkillTrees { get; set; } = new List<SkillTreeData>();
     }
 
@@ -550,6 +555,7 @@ namespace AbsoluteRP
     {
         public int id { get; set; } = -1;
         public int systemId { get; set; } = -1;
+        public int classId { get; set; } = -1;
         public string characterName { get; set; } = string.Empty;
         public string characterWorld { get; set; } = string.Empty;
         public Dictionary<int, int> statValues { get; set; } = new Dictionary<int, int>();
@@ -557,6 +563,9 @@ namespace AbsoluteRP
         public Dictionary<int, int> resourceValues { get; set; } = new Dictionary<int, int>();
         public int currentHealth { get; set; } = 0;
         public int unspentPoints { get; set; } = 0;
+        public int status { get; set; } = 0; // 0=pending, 1=approved, 2=declined, 3=revision_requested
+        public string revisionReason { get; set; } = string.Empty;
+        public long createdAt { get; set; } = 0;
     }
 
     public class IconData 
