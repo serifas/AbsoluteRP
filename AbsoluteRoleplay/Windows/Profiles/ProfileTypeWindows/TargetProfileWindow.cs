@@ -5,6 +5,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
+using FFXIVClientStructs;
 using Networking;
 using System.Numerics;
 
@@ -79,7 +80,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public override void Draw()
         {
             // Draw like button at top right if viewing someone else's profile
-           
+            
 
             DrawProfile();
         }
@@ -241,6 +242,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                 if (ThemeManager.GhostButton("Go back"))
                                 {
                                     warning = false;
+                                    Plugin.plugin.CloseTargetWindow();
                                     ImGui.CloseCurrentPopup();
                                 }
                             }

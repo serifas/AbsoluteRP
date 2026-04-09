@@ -152,10 +152,15 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
             ImGui.Spacing();
 
-            // Allow custom skills toggle
-            bool custom = cls.allowCustomSkills;
-            if (ImGui.Checkbox("Allow players to create custom skills", ref custom))
-                cls.allowCustomSkills = custom;
+            // Initial skill points
+            ImGui.Text("Initial Skill Points:");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(100);
+            int isp = cls.initialSkillPoints;
+            if (ImGui.InputInt("##initSkillPtsDetail", ref isp))
+                cls.initialSkillPoints = Math.Max(0, isp);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Initial skill points players receive for this class.\n0 = unlimited (all skills available).");
 
             ImGui.Spacing();
             ThemeManager.GradientSeparator();
@@ -375,18 +380,29 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 if (ThemeManager.DangerButton("X##delClass", new Vector2(24, 24)))
                 {
                     int classId = system.SkillClasses[selectedClassIndex].id;
-                    foreach (var skill in system.Skills.Where(s => s.classId == classId).ToList())
-                        skill.classId = -1;
+                    // Remove skills belonging to this class
+                    system.Skills.RemoveAll(s => s.classId == classId);
+                    // Remove connections referencing those skills
+                    system.SkillConnections.RemoveAll(c =>
+                        !system.Skills.Exists(s => s.id == c.fromSkillId) ||
+                        !system.Skills.Exists(s => s.id == c.toSkillId));
                     system.SkillClasses.RemoveAt(selectedClassIndex);
                     selectedClassIndex = -1;
                     selectedTreeIndex = 0;
+                    connectingFromSkillId = null;
+                    return; // Exit early — class list changed
                 }
 
                 ImGui.SameLine();
                 var cls = system.SkillClasses[selectedClassIndex];
-                bool custom = cls.allowCustomSkills;
-                if (ImGui.Checkbox("Allow Custom Skills", ref custom))
-                    cls.allowCustomSkills = custom;
+                ImGui.Text("Skill Points:");
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(80);
+                int isp = cls.initialSkillPoints;
+                if (ImGui.InputInt("##initSkillPts", ref isp))
+                    cls.initialSkillPoints = Math.Max(0, isp);
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Initial skill points players can spend on this class's skill trees.");
             }
         }
 
@@ -489,11 +505,15 @@ namespace AbsoluteRP.Windows.Systems.Skills
             int filterClassId = selectedClassIndex >= 0 && selectedClassIndex < system.SkillClasses.Count
                 ? system.SkillClasses[selectedClassIndex].id : -999;
 
-            // Draw connections with direction arrows and required points
+            // Draw connections with direction arrows and required points (filtered to current class + tree)
             foreach (var conn in system.SkillConnections)
             {
-                var fromSkill = system.Skills.FirstOrDefault(s => s.id == conn.fromSkillId);
-                var toSkill = system.Skills.FirstOrDefault(s => s.id == conn.toSkillId);
+                var fromSkill = system.Skills.FirstOrDefault(s => s.id == conn.fromSkillId
+                    && (filterClassId == -999 || s.classId == filterClassId)
+                    && s.treeIndex == selectedTreeIndex);
+                var toSkill = system.Skills.FirstOrDefault(s => s.id == conn.toSkillId
+                    && (filterClassId == -999 || s.classId == filterClassId)
+                    && s.treeIndex == selectedTreeIndex);
                 if (fromSkill != null && toSkill != null)
                 {
                     Vector2 from = origin + new Vector2(fromSkill.gridX * cellSize + cellSize / 2, fromSkill.gridY * cellSize + cellSize / 2);

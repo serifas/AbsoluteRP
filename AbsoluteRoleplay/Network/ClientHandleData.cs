@@ -153,6 +153,7 @@ namespace Networking
             packets.Add((int)ServerPackets.SendSubmitSheetResult, DataReceiver.HandleSubmitSheetResult);
             packets.Add((int)ServerPackets.SendSystemRoster, DataReceiver.HandleSystemRoster);
             packets.Add((int)ServerPackets.SendSheetResponse, DataReceiver.HandleSheetResponse);
+            packets.Add((int)ServerPackets.SendSystemBans, DataReceiver.HandleSystemBans);
 
             //simple message back from server, simply for verification that the user is connected
         }

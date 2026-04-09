@@ -190,61 +190,6 @@ namespace AbsoluteRP.Windows.Systems.Stats
 
             }
 
-            // Draw stat bars
-            float statWidth = 120f;
-            float statHeight = 10f;
-            float spacing = 30f;
-            float polygonRadius = 50f;
-            float polygonPadding = 150f;
-            float startY = center.Y + polygonRadius + polygonPadding;
-
-            var statKeys = stats.Keys.ToList();
-            for (int idx = 0; idx < statKeys.Count; idx++)
-            {
-                int key = statKeys[idx];
-                var drawList = ImGui.GetWindowDrawList();
-                string statBarName = stats[key].name;
-
-                Vector2 rectCenter = new Vector2(center.X, startY + idx * (statHeight + spacing));
-                Vector2 rectMin = rectCenter - new Vector2(statWidth / 2f, statHeight / 2f);
-                Vector2 rectMax = rectCenter + new Vector2(statWidth / 2f, statHeight / 2f);
-
-                uint color = ImGui.ColorConvertFloat4ToU32(stats[key].color);
-
-                var textSize = ImGui.CalcTextSize(statBarName);
-                Vector2 textPos = new Vector2(
-                    rectCenter.X - textSize.X / 2f,
-                    rectMin.Y - textSize.Y - 4f
-                );
-                drawList.AddText(textPos, ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 1)), statBarName);
-
-                drawList.AddRectFilled(rectMin, rectMax, color);
-            }
-
-            // --- Polygon Morph Animation (Outline Only) ---
-            var statColors = stats.Values.Select(s => s.color).ToList();
-            if (stats.Count >= 3)
-            {
-                if (morphProgress < 1f && previousPolygonPoints.Count == targetPolygonPoints.Count && targetPolygonPoints.Count >= 3)
-                {
-                    morphProgress = (float)((DateTime.Now - morphStartTime).TotalSeconds / morphDuration);
-                    morphProgress = Math.Clamp(morphProgress, 0f, 1f);
-                    var animatedPoints = LerpPolygonPoints(previousPolygonPoints, targetPolygonPoints, morphProgress);
-                    UIHelpers.DrawPolygonFromPoints(animatedPoints, statColors);
-                    if (morphProgress >= 1f)
-                    {
-                        previousPolygonPoints.Clear();
-                        targetPolygonPoints.Clear();
-                    }
-                }
-                else
-                {
-                    // Draw static polygon outline
-                    var staticPoints = CalculatePolygonPoints(center, 100, stats.Count);
-                    UIHelpers.DrawPolygonFromPoints(staticPoints, statColors);
-                }
-            }
-
             // Save button
             ImGui.Spacing();
             if (ThemeManager.PillButton("Save Stats##saveStats", new Vector2(140, 32)))

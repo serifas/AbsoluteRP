@@ -255,6 +255,11 @@ namespace Networking
         CFetchSystemRoster = 261,
         CRespondToSheet = 262,
         CFetchPublicSystem = 263,
+        CUpdateSheetLevelPoints = 264,
+        CUploadSystemImage = 265,
+        CBanFromSystem = 266,
+        CUnbanFromSystem = 267,
+        CFetchSystemBans = 268,
     }
     public class DataSender
     {
@@ -5378,6 +5383,20 @@ buffer.WriteFloat(emptyElement.color.W);
                         buffer.WriteInt(c.sortOrder);
                         buffer.WriteBool(c.allowCustomSkills);
                         buffer.WriteInt(c.iconId);
+                        buffer.WriteInt(c.initialSkillPoints);
+                    }
+                    // Skill trees (per class)
+                    int totalTrees = 0;
+                    foreach (var c in classes) totalTrees += c.SkillTrees.Count;
+                    buffer.WriteInt(totalTrees);
+                    foreach (var c in classes)
+                    {
+                        foreach (var t in c.SkillTrees)
+                        {
+                            buffer.WriteInt(c.id);
+                            buffer.WriteString(t.name ?? "Skill Tree");
+                            buffer.WriteInt(t.sortOrder);
+                        }
                     }
                     await ClientTCP.SendDataAsync(buffer.ToArray());
                 }
@@ -5428,7 +5447,7 @@ buffer.WriteFloat(emptyElement.color.W);
         }
 
         public static async Task SubmitCharacterSheet(Character character, int systemId, int classId,
-            Dictionary<int, int> statAllocations, List<int> selectedSkills)
+            Dictionary<int, int> statAllocations, List<int> selectedSkills, int profileId = -1)
         {
             if (!ClientTCP.IsConnected()) return;
             try
@@ -5453,6 +5472,7 @@ buffer.WriteFloat(emptyElement.color.W);
                     buffer.WriteInt(selectedSkills.Count);
                     foreach (var skillId in selectedSkills)
                         buffer.WriteInt(skillId);
+                    buffer.WriteInt(profileId);
                     await ClientTCP.SendDataAsync(buffer.ToArray());
                 }
             }
@@ -5493,6 +5513,103 @@ buffer.WriteFloat(emptyElement.color.W);
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Debug($"RespondToSheet error: {ex.Message}"); }
+        }
+
+        /// <summary>
+        /// Upload a banner or logo image for a system. imageType: 0=banner, 1=logo
+        /// </summary>
+        public static async Task BanFromSystem(Character character, int systemId, string charName, string charWorld, string reason)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CBanFromSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteString(charName);
+                    buffer.WriteString(charWorld);
+                    buffer.WriteString(reason ?? "");
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"BanFromSystem error: {ex.Message}"); }
+        }
+
+        public static async Task UnbanFromSystem(Character character, int systemId, int banId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CUnbanFromSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteInt(banId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"UnbanFromSystem error: {ex.Message}"); }
+        }
+
+        public static async Task FetchSystemBans(Character character, int systemId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CFetchSystemBans);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"FetchSystemBans error: {ex.Message}"); }
+        }
+
+        public static async Task UploadSystemImage(Character character, int systemId, int imageType, byte[] imageBytes)
+        {
+            if (!ClientTCP.IsConnected() || imageBytes == null) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CUploadSystemImage);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteInt(imageType); // 0=banner, 1=logo
+                    buffer.WriteInt(imageBytes.Length);
+                    buffer.WriteBytes(imageBytes);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"UploadSystemImage error: {ex.Message}"); }
+        }
+
+        public static async Task UpdateSheetLevelPoints(Character character, int sheetId, int level, int bonusSkillPoints)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CUpdateSheetLevelPoints);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(sheetId);
+                    buffer.WriteInt(level);
+                    buffer.WriteInt(bonusSkillPoints);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"UpdateSheetLevelPoints error: {ex.Message}"); }
         }
 
         #endregion

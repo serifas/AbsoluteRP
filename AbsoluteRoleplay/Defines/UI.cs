@@ -461,6 +461,11 @@ namespace AbsoluteRP
         public List<SkillData> Skills { get; set; } = new List<SkillData>();
         public List<SkillConnectionData> SkillConnections { get; set; } = new List<SkillConnectionData>();
         public string rules { get; set; } = string.Empty;
+        public int ownerUserId { get; set; } = 0;
+        public byte[] bannerBytes { get; set; } = null;
+        public byte[] logoBytes { get; set; } = null;
+        public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap bannerTexture { get; set; } = null;
+        public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap logoTexture { get; set; } = null;
     }
 
     public class StatData
@@ -514,6 +519,7 @@ namespace AbsoluteRP
         public string description { get; set; } = string.Empty;
         public int sortOrder { get; set; } = 0;
         public bool allowCustomSkills { get; set; } = false;
+        public int initialSkillPoints { get; set; } = 0;
         public int iconId { get; set; } = 0;
         public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap iconTexture { get; set; } = null;
         public List<SkillTreeData> SkillTrees { get; set; } = new List<SkillTreeData>();
@@ -563,6 +569,11 @@ namespace AbsoluteRP
         public Dictionary<int, int> resourceValues { get; set; } = new Dictionary<int, int>();
         public int currentHealth { get; set; } = 0;
         public int unspentPoints { get; set; } = 0;
+        public int level { get; set; } = 1;
+        public int bonusSkillPoints { get; set; } = 0;
+        public int profileId { get; set; } = -1;
+        public string profileName { get; set; } = string.Empty;
+        public IDalamudTextureWrap profileAvatar { get; set; } = null;
         public int status { get; set; } = 0; // 0=pending, 1=approved, 2=declined, 3=revision_requested
         public string revisionReason { get; set; } = string.Empty;
         public long createdAt { get; set; } = 0;

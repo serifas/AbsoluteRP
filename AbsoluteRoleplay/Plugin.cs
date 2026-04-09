@@ -800,6 +800,7 @@ namespace AbsoluteRP
         public void OpenProfileWindow() => ProfileWindow.IsOpen = true;
         public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
         public void OpenTargetWindow() => TargetWindow.IsOpen = true;
+        public void CloseTargetWindow() => TargetWindow.IsOpen = false;
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;

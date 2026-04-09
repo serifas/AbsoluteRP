@@ -205,6 +205,7 @@ namespace Networking
         SendSystemRoster = 261,
         SendSheetResponse = 262,
         SendPublicSystemData = 263,
+        SendSystemBans = 268,
     }
     class DataReceiver
     {
@@ -6454,12 +6455,14 @@ namespace Networking
                         AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem =
                             AbsoluteRP.Windows.Listings.SystemsWindow.systemData[0];
 
-                        // Auto-fetch full data for the first system
+                        // Auto-fetch full data for all systems (loads banners, logos, classes, skills, etc.)
                         if (Plugin.character != null)
                         {
-                            var firstSystem = AbsoluteRP.Windows.Listings.SystemsWindow.systemData[0];
-                            if (firstSystem.id > 0)
-                                Networking.DataSender.FetchSystem(Plugin.character, firstSystem.id);
+                            foreach (var sys in AbsoluteRP.Windows.Listings.SystemsWindow.systemData)
+                            {
+                                if (sys.id > 0)
+                                    Networking.DataSender.FetchSystem(Plugin.character, sys.id);
+                            }
                         }
                     }
                 }
@@ -6482,6 +6485,17 @@ namespace Networking
                     int basePointsAvailable = buffer.ReadInt();
                     bool requireApproval = buffer.ReadBool();
                     string rules = buffer.ReadString();
+                    int ownerUserId = buffer.ReadInt();
+
+                    // Banner
+                    byte[] bannerBytes = null;
+                    int bannerLen = buffer.ReadInt();
+                    if (bannerLen > 0) bannerBytes = buffer.ReadBytes(bannerLen);
+
+                    // Logo
+                    byte[] logoBytes = null;
+                    int logoLen = buffer.ReadInt();
+                    if (logoLen > 0) logoBytes = buffer.ReadBytes(logoLen);
 
                     Plugin.PluginLog.Info($"[Systems] Received full data for system {systemId} ({name})");
 
@@ -6511,6 +6525,25 @@ namespace Networking
                     target.basePointsAvailable = basePointsAvailable;
                     target.requireApproval = requireApproval;
                     target.rules = rules;
+                    target.ownerUserId = ownerUserId;
+                    target.bannerBytes = bannerBytes;
+                    target.logoBytes = logoBytes;
+
+                    // Load banner/logo textures
+                    if (bannerBytes != null && bannerBytes.Length > 0)
+                    {
+                        var capturedTarget = target;
+                        var capturedBytes = bannerBytes;
+                        _ = System.Threading.Tasks.Task.Run(async () =>
+                        { try { capturedTarget.bannerTexture = await Plugin.TextureProvider.CreateFromImageAsync(capturedBytes); } catch { } });
+                    }
+                    if (logoBytes != null && logoBytes.Length > 0)
+                    {
+                        var capturedTarget = target;
+                        var capturedBytes = logoBytes;
+                        _ = System.Threading.Tasks.Task.Run(async () =>
+                        { try { capturedTarget.logoTexture = await Plugin.TextureProvider.CreateFromImageAsync(capturedBytes); } catch { } });
+                    }
 
                     // Stats
                     int statCount = buffer.ReadInt();
@@ -6596,7 +6629,35 @@ namespace Networking
                             sortOrder = buffer.ReadInt(),
                             allowCustomSkills = buffer.ReadBool(),
                             iconId = buffer.ReadInt(),
+                            initialSkillPoints = buffer.ReadInt(),
                         });
+                    }
+
+                    // Skill trees — assign to their parent classes
+                    int treeCount = buffer.ReadInt();
+                    // Clear all class trees first
+                    foreach (var cls in target.SkillClasses)
+                        cls.SkillTrees.Clear();
+                    for (int i = 0; i < treeCount; i++)
+                    {
+                        int treeClassId = buffer.ReadInt();
+                        string treeName = buffer.ReadString();
+                        int treeSortOrder = buffer.ReadInt();
+                        var parentClass = target.SkillClasses.FirstOrDefault(c => c.id == treeClassId);
+                        if (parentClass != null)
+                        {
+                            parentClass.SkillTrees.Add(new SkillTreeData
+                            {
+                                name = treeName,
+                                sortOrder = treeSortOrder,
+                            });
+                        }
+                    }
+                    // Ensure every class has at least one tree
+                    foreach (var cls in target.SkillClasses)
+                    {
+                        if (cls.SkillTrees.Count == 0)
+                            cls.SkillTrees.Add(new SkillTreeData { name = "Main Tree", sortOrder = 0 });
                     }
 
                     // Skills
@@ -6643,9 +6704,8 @@ namespace Networking
                         AbsoluteRP.Windows.Listings.SystemsWindow.drawStatLayout = true;
                     }
 
-                    // If this was an import, send to ViewSystems
-                    if (isImport)
-                        AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.OnPublicSystemReceived(target);
+                    // Always update View Systems available list
+                    AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.OnPublicSystemReceived(target);
 
                     // Load icon textures for classes and skills
                     _ = LoadSystemIconsAsync(target);
@@ -6828,6 +6888,28 @@ namespace Networking
                         sheet.status = buffer.ReadInt();
                         sheet.revisionReason = buffer.ReadString();
                         sheet.createdAt = buffer.ReadLong();
+                        sheet.level = buffer.ReadInt();
+                        sheet.bonusSkillPoints = buffer.ReadInt();
+                        sheet.profileId = buffer.ReadInt();
+                        sheet.profileName = buffer.ReadString();
+
+                        // Avatar bytes
+                        int avatarLen = buffer.ReadInt();
+                        if (avatarLen > 0)
+                        {
+                            byte[] avatarBytes = buffer.ReadBytes(avatarLen);
+                            if (avatarBytes != null && avatarBytes.Length > 0)
+                            {
+                                var capturedSheet = sheet;
+                                var capturedBytes = avatarBytes;
+                                _ = System.Threading.Tasks.Task.Run(async () =>
+                                {
+                                    try { capturedSheet.profileAvatar = await Plugin.TextureProvider.CreateFromImageAsync(capturedBytes); }
+                                    catch { }
+                                });
+                            }
+                        }
+
                         sheets.Add(sheet);
                     }
                     Plugin.PluginLog.Info($"[Systems] Received roster for system {systemId}: {count} sheets");
@@ -6854,6 +6936,28 @@ namespace Networking
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleSheetResponse Error: {ex.Message}"); }
+        }
+
+        public static void HandleSystemBans(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    int count = buffer.ReadInt();
+                    var bans = new List<(int id, int userId, string name, string world, string reason, long bannedAt)>();
+                    for (int i = 0; i < count; i++)
+                    {
+                        bans.Add((buffer.ReadInt(), buffer.ReadInt(), buffer.ReadString(),
+                            buffer.ReadString(), buffer.ReadString(), buffer.ReadLong()));
+                    }
+                    AbsoluteRP.Windows.Systems.Roster.Roster.OnBansReceived(bans);
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemBans Error: {ex.Message}"); }
         }
 
         #endregion

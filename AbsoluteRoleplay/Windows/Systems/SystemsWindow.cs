@@ -5,6 +5,7 @@ using AbsoluteRP.Windows.NavLayouts;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using AbsoluteRP.Windows.Social.Views;
+using AbsoluteRP.Windows.Systems;
 using AbsoluteRP.Windows.Systems.Stats;
 using AbsoluteRP.Windows.Systems.Combat;
 using AbsoluteRP.Windows.Systems.Rules;
@@ -36,6 +37,12 @@ namespace AbsoluteRP.Windows.Listings
 
         // Top-level mode: 0=View Systems, 1=Manage Systems
         public static int systemMode = 1;
+
+        // Delete confirmation
+        private static bool showDeleteConfirm = false;
+
+        // File dialog for banner/logo uploads
+        private static Dalamud.Interface.ImGuiFileDialog.FileDialogManager systemFileDialog = new Dalamud.Interface.ImGuiFileDialog.FileDialogManager();
 
         // Section tabs: 0=Stats, 1=Classes, 2=Combat, 3=Rules, 4=Roster
         public static int systemSectionIndex = 0;
@@ -79,6 +86,13 @@ namespace AbsoluteRP.Windows.Listings
             int buttonCount = 5;
             float navHeight = buttonSize * buttonCount * 1.2f;
 
+            // Fetch systems from server on first draw (regardless of which tab is active)
+            if (!fetchedSystems && Plugin.character != null)
+            {
+                fetchedSystems = true;
+                Networking.DataSender.FetchMySystems(Plugin.character);
+            }
+
             // Top-level mode tabs
             if (ImGui.BeginTabBar("##SystemModeBar"))
             {
@@ -99,6 +113,10 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.EndTabBar();
             }
 
+            // Draw file dialogs (must be outside tab items)
+            SystemExportImport.DrawFileDialogs();
+            systemFileDialog.Draw();
+
             ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X - buttonSize * 1.5f, mainPanelPos.Y + headerHeight), ImGuiCond.Always);
             ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.5f, navHeight), ImGuiCond.Always);
 
@@ -109,13 +127,6 @@ namespace AbsoluteRP.Windows.Listings
 
         public static void DrawSystemCreation()
         {
-            // Fetch systems from server on first draw
-            if (!fetchedSystems && Plugin.character != null)
-            {
-                fetchedSystems = true;
-                Networking.DataSender.FetchMySystems(Plugin.character);
-            }
-
             // Create new system
             if (ThemeManager.PillButton("Create System"))
             {
@@ -189,11 +200,17 @@ namespace AbsoluteRP.Windows.Listings
             if (system == null || system.id <= 0 || Plugin.character == null) return;
 
             var character = Plugin.character;
-            Networking.DataSender.UpdateSystemSettings(character, system.id, system.name, system.basePointsAvailable, system.requireApproval, system.rules);
-            Networking.DataSender.SaveSystemStats(character, system.id, system.StatsData);
-            Networking.DataSender.SaveCombatConfig(character, system.id, system.CombatConfig, system.Resources);
-            Networking.DataSender.SaveSkillClasses(character, system.id, system.SkillClasses);
-            Networking.DataSender.SaveSkills(character, system.id, system.Skills, system.SkillConnections);
+            _ = SaveAllSystemDataAsync(character, system);
+        }
+
+        private static async System.Threading.Tasks.Task SaveAllSystemDataAsync(AbsoluteRP.Defines.Character character, SystemData system)
+        {
+            // Save sequentially so stat IDs are settled before combat config references them
+            await Networking.DataSender.UpdateSystemSettings(character, system.id, system.name, system.basePointsAvailable, system.requireApproval, system.rules);
+            await Networking.DataSender.SaveSystemStats(character, system.id, system.StatsData);
+            await Networking.DataSender.SaveCombatConfig(character, system.id, system.CombatConfig, system.Resources);
+            await Networking.DataSender.SaveSkillClasses(character, system.id, system.SkillClasses);
+            await Networking.DataSender.SaveSkills(character, system.id, system.Skills, system.SkillConnections);
         }
 
 
@@ -238,6 +255,76 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.EndCombo();
             }
 
+            // Delete system button
+            if (currentSystem != null && currentSystem.id > 0)
+            {
+                ImGui.SameLine();
+                if (ThemeManager.DangerButton("Delete##delSystem", new Vector2(60, 0)))
+                {
+                    showDeleteConfirm = true;
+                    ImGui.OpenPopup("##DeleteSystemConfirm");
+                }
+            }
+
+            // Delete confirmation popup
+            if (ImGui.BeginPopupModal("##DeleteSystemConfirm", ref showDeleteConfirm, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text($"Delete system \"{currentSystem?.name}\"?");
+                ImGui.Spacing();
+                ImGui.TextColored(new System.Numerics.Vector4(1, 0.4f, 0.4f, 1),
+                    "This will permanently delete the system and all its data.");
+                ImGui.TextColored(new System.Numerics.Vector4(1, 0.4f, 0.4f, 1),
+                    "This action cannot be undone.");
+                ImGui.Spacing();
+                ImGui.Spacing();
+
+                bool ctrlHeld = ImGui.GetIO().KeyCtrl;
+                if (!ctrlHeld) ImGui.BeginDisabled();
+                if (ThemeManager.DangerButton("Confirm Delete##confirmDel", new System.Numerics.Vector2(150, 30)))
+                {
+                    if (currentSystem != null && Plugin.character != null)
+                    {
+                        Networking.DataSender.DeleteSystem(Plugin.character, currentSystem.id);
+                        systemData.RemoveAt(currentSystemIndex);
+
+                        // Also remove from View Systems
+                        var viewList = AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.availableSystems;
+                        viewList.RemoveAll(s => s.id == currentSystem.id);
+
+                        if (systemData.Count > 0)
+                        {
+                            currentSystemIndex = 0;
+                            currentSystem = systemData[0];
+                        }
+                        else
+                        {
+                            currentSystemIndex = -1;
+                            currentSystem = null;
+                        }
+                    }
+                    showDeleteConfirm = false;
+                    ImGui.CloseCurrentPopup();
+                }
+                if (!ctrlHeld) ImGui.EndDisabled();
+
+                if (!ctrlHeld)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(ThemeManager.FontMuted, "Hold CTRL to enable");
+                }
+
+                ImGui.SameLine();
+                if (ThemeManager.GhostButton("Cancel##cancelDel", new System.Numerics.Vector2(80, 30)))
+                {
+                    showDeleteConfirm = false;
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
+            }
+
+            if (systemData.Count == 0 || currentSystemIndex < 0 || currentSystemIndex >= systemData.Count)
+                return;
+
             string systemName = systemData[currentSystemIndex].name;
             ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 160);
             if (ImGui.InputTextWithHint("##SystemName", "Enter system name...", ref systemName))
@@ -275,38 +362,85 @@ namespace AbsoluteRP.Windows.Listings
                 if (ImGui.Checkbox("Require approval for character sheets", ref reqApproval))
                     currentSystem.requireApproval = reqApproval;
             }
-        }
-        private static List<Vector2> CalculatePolygonPoints(Vector2 center, float radius, int count)
-        {
-            var points = new List<Vector2>();
-            if (count == 0) return points;
-            float angleStep = 2 * MathF.PI / count;
-            float startAngle = -MathF.PI / 2; // Ensures first point is straight up
-            for (int i = 0; i < count; i++)
-            {
-                float angle = startAngle + i * angleStep;
-                points.Add(center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * radius);
-            }
-            return points;
-        }
 
-        private static List<Vector2> LerpPolygonPoints(List<Vector2> from, List<Vector2> to, float t)
-        {
-            var result = new List<Vector2>();
-            int count = Math.Min(from.Count, to.Count);
-            for (int i = 0; i < count; i++)
+            // Banner / Logo upload
+            if (currentSystem != null && currentSystem.id > 0)
             {
-                result.Add(Vector2.Lerp(from[i], to[i], t));
+                ImGui.Spacing();
+                // Banner preview
+                if (currentSystem.bannerTexture != null && currentSystem.bannerTexture.Handle != IntPtr.Zero)
+                {
+                    float availW = ImGui.GetContentRegionAvail().X;
+                    float imgW = currentSystem.bannerTexture.Width;
+                    float imgH = currentSystem.bannerTexture.Height;
+                    float aspect = imgH / imgW;
+                    float displayW = availW;
+                    float displayH = displayW * aspect;
+                    float maxH = 150f;
+                    if (displayH > maxH) { displayH = maxH; displayW = displayH / aspect; }
+                    ImGui.Image(currentSystem.bannerTexture.Handle, new Vector2(displayW, displayH));
+                }
+                if (ThemeManager.GhostButton("Set Banner##setBanner", new Vector2(100, 0)))
+                {
+                    systemFileDialog.OpenFileDialog("Select Banner", ".png,.jpg,.jpeg", (ok, paths) =>
+                    {
+                        if (ok && paths.Count > 0)
+                        {
+                            try
+                            {
+                                byte[] bytes = System.IO.File.ReadAllBytes(paths[0]);
+                                currentSystem.bannerBytes = bytes;
+                                _ = System.Threading.Tasks.Task.Run(async () =>
+                                { try { currentSystem.bannerTexture = await Plugin.TextureProvider.CreateFromImageAsync(bytes); } catch { } });
+                                if (Plugin.character != null)
+                                    Networking.DataSender.UploadSystemImage(Plugin.character, currentSystem.id, 0, bytes);
+                            }
+                            catch { }
+                        }
+                    }, 1, null, false);
+                }
+                // Logo preview
+                if (currentSystem.logoTexture != null && currentSystem.logoTexture.Handle != IntPtr.Zero)
+                {
+                    ImGui.Image(currentSystem.logoTexture.Handle, new Vector2(32, 32));
+                    ImGui.SameLine();
+                }
+                if (ThemeManager.GhostButton("Set Logo##setLogo", new Vector2(100, 0)))
+                {
+                    systemFileDialog.OpenFileDialog("Select Logo", ".png,.jpg,.jpeg", (ok, paths) =>
+                    {
+                        if (ok && paths.Count > 0)
+                        {
+                            try
+                            {
+                                byte[] bytes = System.IO.File.ReadAllBytes(paths[0]);
+                                currentSystem.logoBytes = bytes;
+                                _ = System.Threading.Tasks.Task.Run(async () =>
+                                { try { currentSystem.logoTexture = await Plugin.TextureProvider.CreateFromImageAsync(bytes); } catch { } });
+                                if (Plugin.character != null)
+                                    Networking.DataSender.UploadSystemImage(Plugin.character, currentSystem.id, 1, bytes);
+                            }
+                            catch { }
+                        }
+                    }, 1, null, false);
+                }
             }
-            // If the new shape has more points, add them directly
-            for (int i = count; i < to.Count; i++)
-            {
-                result.Add(to[i]);
-            }
-            return result;
-        }
-       
 
+            ImGui.Spacing();
+
+            // Export / Import buttons
+            if (currentSystem != null && currentSystem.id > 0)
+            {
+                if (ThemeManager.GhostButton("Export System##export", new Vector2(110, 0)))
+                    SystemExportImport.ExportSystem(currentSystem);
+                ImGui.SameLine();
+            }
+            if (ThemeManager.GhostButton("Import System##import", new Vector2(110, 0)))
+                SystemExportImport.ImportSystem();
+
+            SystemExportImport.DrawStatusMessage();
+        }
+     
         public void Dispose()
         {
         }

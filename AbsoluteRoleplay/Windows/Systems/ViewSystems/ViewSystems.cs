@@ -1,6 +1,7 @@
 using AbsoluteRP.Defines;
 using AbsoluteRP.Helpers;
 using AbsoluteRP.Windows.Listings;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Textures.TextureWraps;
 using Networking;
@@ -13,11 +14,8 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 {
     internal class ViewSystems
     {
-        // Skill tree preview
-        private static int previewTreeIndex = 0;
-
-        // Wizard steps
-        private static int wizardStep = 0; // 0=System Select, 1=Class Select, 2=Stat Assign, 3=Skill Select, 4=Review
+        // Wizard steps: 0=System, 1=Profile, 2=Class+Skills, 3=Stats, 4=Review
+        private static int wizardStep = 0;
 
         // System selection
         private static string importCode = "";
@@ -25,19 +23,32 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         private static int selectedSystemIndex = -1;
         private static SystemData selectedSystem = null;
 
+        // Profile selection
+        private static int selectedProfileIndex = -1;
+
         // Class selection
         private static int selectedClassIndex = -1;
         private static int hoveredClassIndex = -1;
+        private static int previewTreeIndex = 0;
+
+        // Skill selection (tree-based, done during class step)
+        // Maps skillId -> current tier (0 = not learned, 1+ = tiers invested)
+        private static Dictionary<int, int> skillTiers = new Dictionary<int, int>();
+        private static List<int> selectedSkills = new List<int>(); // kept for submission (skills with tier >= 1)
+        private static int skillPointsUsed = 0;
 
         // Stat assignment
         private static Dictionary<int, int> statAllocations = new Dictionary<int, int>();
 
-        // Skill selection
-        private static List<int> selectedSkills = new List<int>();
-
         // Submission result
         private static string submitMessage = "";
         private static bool submitSuccess = false;
+
+        // Roster view toggle
+        private static bool viewingRoster = false;
+
+        // Revision mode — when > 0, we're revising an existing sheet instead of creating new
+        private static int revisingSheetId = 0;
 
         // Stat radar chart animation
         private static List<float> previousRadii = new List<float>();
@@ -46,12 +57,15 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         private static DateTime morphStartTime = DateTime.MinValue;
         private const float MorphDuration = 0.3f;
 
+        // Skill tree grid constants
+        private const int PreviewGridCols = 5;
+        private const int PreviewGridRows = 8;
+
         public static void DrawViewSystems()
         {
             WindowOperations.LoadIconsLazy(Plugin.plugin);
 
-            // Step progress bar
-            string[] stepNames = { "System", "Class", "Stats", "Skills", "Review" };
+            string[] stepNames = { "System", "Profile", "Class & Skills", "Stats", "Review" };
             ImGui.Spacing();
             for (int i = 0; i < stepNames.Length; i++)
             {
@@ -68,9 +82,9 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             switch (wizardStep)
             {
                 case 0: DrawSystemSelection(); break;
-                case 1: DrawClassSelection(); break;
-                case 2: DrawStatAssignment(); break;
-                case 3: DrawSkillSelection(); break;
+                case 1: DrawProfileSelection(); break;
+                case 2: DrawClassAndSkillSelection(); break;
+                case 3: DrawStatAssignment(); break;
                 case 4: DrawReviewAndCreate(); break;
             }
         }
@@ -89,9 +103,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             if (ThemeManager.PillButton("Import##importSystem", new Vector2(80, 26)))
             {
                 if (!string.IsNullOrWhiteSpace(importCode) && Plugin.character != null)
-                {
                     Networking.DataSender.ImportSystemByCode(Plugin.character, importCode.Trim());
-                }
             }
 
             ImGui.Spacing();
@@ -106,36 +118,324 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ThemeManager.SectionHeader("Available Systems");
             ImGui.Spacing();
 
+            // System cards
+            float cardWidth = 280f;
+            float cardHeight = 120f;
+            float cardSpacing = 10f;
+            float windowWidth = ImGui.GetContentRegionAvail().X;
+            int cardCols = Math.Max(1, (int)(windowWidth / (cardWidth + cardSpacing)));
+
+            var drawList = ImGui.GetWindowDrawList();
+            Vector2 cardOrigin = ImGui.GetCursorScreenPos();
+
             for (int i = 0; i < availableSystems.Count; i++)
             {
                 var sys = availableSystems[i];
+                int col = i % cardCols;
+                int row = i / cardCols;
                 bool isSelected = selectedSystem != null && selectedSystem.id == sys.id;
-                if (ImGui.Selectable($"{sys.name}##{sys.id}", isSelected))
+
+                Vector2 cardPos = cardOrigin + new Vector2(col * (cardWidth + cardSpacing), row * (cardHeight + cardSpacing));
+                Vector2 cardEnd = cardPos + new Vector2(cardWidth, cardHeight);
+
+                // Card background
+                uint bgColor = isSelected
+                    ? ImGui.ColorConvertFloat4ToU32(new Vector4(ThemeManager.Accent.X * 0.2f, ThemeManager.Accent.Y * 0.2f, ThemeManager.Accent.Z * 0.2f, 1f))
+                    : ImGui.ColorConvertFloat4ToU32(ThemeManager.BgLighter);
+                drawList.AddRectFilled(cardPos, cardEnd, bgColor, 6f);
+
+                // Banner (top half of card)
+                float bannerHeight = 50f;
+                if (sys.bannerTexture != null && sys.bannerTexture.Handle != IntPtr.Zero)
+                {
+                    // Center-crop UVs to avoid stretching
+                    float imgAspect = (float)sys.bannerTexture.Width / sys.bannerTexture.Height;
+                    float slotAspect = cardWidth / bannerHeight;
+                    Vector2 uv0 = Vector2.Zero, uv1 = Vector2.One;
+                    if (imgAspect > slotAspect)
+                    {
+                        // Image is wider than slot — crop sides
+                        float visibleFrac = slotAspect / imgAspect;
+                        float offset = (1f - visibleFrac) / 2f;
+                        uv0 = new Vector2(offset, 0);
+                        uv1 = new Vector2(1f - offset, 1);
+                    }
+                    else
+                    {
+                        // Image is taller than slot — crop top/bottom
+                        float visibleFrac = imgAspect / slotAspect;
+                        float offset = (1f - visibleFrac) / 2f;
+                        uv0 = new Vector2(0, offset);
+                        uv1 = new Vector2(1, 1f - offset);
+                    }
+                    drawList.AddImageRounded(sys.bannerTexture.Handle, cardPos, cardPos + new Vector2(cardWidth, bannerHeight),
+                        uv0, uv1, 0xFFFFFFFF, 6f, ImDrawFlags.RoundCornersTop);
+                }
+                else
+                {
+                    uint bannerColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.15f, 0.15f, 0.2f, 1f));
+                    drawList.AddRectFilled(cardPos, cardPos + new Vector2(cardWidth, bannerHeight), bannerColor, 6f, ImDrawFlags.RoundCornersTop);
+                }
+
+                // Logo (overlapping banner/content boundary)
+                float logoSize = 36f;
+                Vector2 logoPos = cardPos + new Vector2(10, bannerHeight - logoSize / 2);
+                if (sys.logoTexture != null && sys.logoTexture.Handle != IntPtr.Zero)
+                {
+                    drawList.AddImageRounded(sys.logoTexture.Handle, logoPos, logoPos + new Vector2(logoSize, logoSize),
+                        new Vector2(0, 0), new Vector2(1, 1), 0xFFFFFFFF, logoSize / 2);
+                    drawList.AddCircle(logoPos + new Vector2(logoSize / 2, logoSize / 2), logoSize / 2 + 1,
+                        ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentMuted), 24, 2f);
+                }
+
+                // System name
+                float textStartX = sys.logoTexture != null ? logoPos.X + logoSize + 8 : cardPos.X + 10;
+                float nameY = cardPos.Y + bannerHeight + 6;
+                drawList.AddText(new Vector2(textStartX, nameY), 0xFFFFFFFF, sys.name);
+
+                // Description (truncated)
+                if (!string.IsNullOrEmpty(sys.description))
+                {
+                    string desc = sys.description.Length > 60 ? sys.description[..57] + "..." : sys.description;
+                    drawList.AddText(new Vector2(cardPos.X + 10, nameY + 18),
+                        ImGui.ColorConvertFloat4ToU32(ThemeManager.FontMuted), desc);
+                }
+
+                // Border
+                uint borderColor = isSelected
+                    ? ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent)
+                    : ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.4f));
+                drawList.AddRect(cardPos, cardEnd, borderColor, 6f, ImDrawFlags.None, isSelected ? 2f : 1f);
+
+                // Click to select
+                ImGui.SetCursorScreenPos(cardPos);
+                if (ImGui.InvisibleButton($"##sysCard_{sys.id}", new Vector2(cardWidth, cardHeight)))
                 {
                     selectedSystemIndex = i;
                     selectedSystem = sys;
                 }
+                if (ImGui.IsItemHovered())
+                {
+                    uint hoverColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 0.05f));
+                    drawList.AddRectFilled(cardPos, cardEnd, hoverColor, 6f);
+                }
             }
+
+            // Reserve space
+            int cardRows = (availableSystems.Count + cardCols - 1) / cardCols;
+            ImGui.SetCursorScreenPos(cardOrigin + new Vector2(0, cardRows * (cardHeight + cardSpacing) + cardSpacing));
 
             ImGui.Spacing();
             if (selectedSystem != null)
             {
-                if (ThemeManager.PillButton("Next: Choose Class##nextStep", new Vector2(200, 32)))
+                if (!string.IsNullOrEmpty(selectedSystem.rules))
                 {
-                    selectedClassIndex = -1;
-                    hoveredClassIndex = -1;
+                    ImGui.Spacing();
+                    ThemeManager.SubtitleText("Rules:");
+                    ImGui.TextWrapped(selectedSystem.rules);
+                    ImGui.Spacing();
+                }
+
+                if (ThemeManager.PillButton("Create Character Sheet##nextStep", new Vector2(200, 32)))
+                {
+                    selectedProfileIndex = -1;
+                    profileAvatarsFetched = false;
+                    // Ensure full system data is loaded
+                    if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
+                        Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
                     wizardStep = 1;
                 }
+
+                ImGui.SameLine();
+                if (ThemeManager.GhostButton("View Roster##viewRoster", new Vector2(120, 32)))
+                {
+                    viewingRoster = true;
+                    Roster.Roster.ResetForSystem();
+                    if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
+                        Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
+                }
+
+                // Leave button (only for non-owners)
+                bool isOwner = selectedSystem.ownerUserId > 0 &&
+                    SystemsWindow.systemData.Exists(s => s.id == selectedSystem.id);
+                if (!isOwner)
+                {
+                    ImGui.SameLine();
+                    if (ThemeManager.DangerButton("Leave##leaveSystem", new Vector2(80, 32)))
+                    {
+                        availableSystems.RemoveAll(s => s.id == selectedSystem.id);
+                        selectedSystem = null;
+                        selectedSystemIndex = -1;
+                        viewingRoster = false;
+                    }
+                }
+            }
+
+            // Show user's own submissions for this system
+            if (selectedSystem != null && Roster.Roster.sheets.Count > 0)
+            {
+                // Filter to current user's sheets (match by character name)
+                string myName = Plugin.character?.characterName ?? "";
+                var mySheets = Roster.Roster.sheets.Where(s => s.characterName == myName).ToList();
+                if (mySheets.Count > 0)
+                {
+                    ImGui.Spacing();
+                    ThemeManager.SubtitleText("Your Submissions:");
+                    ImGui.Spacing();
+                    foreach (var sheet in mySheets)
+                    {
+                        string[] statusLabels = { "Pending", "Approved", "Declined", "Revision Requested" };
+                        Vector4[] statusCols = { new Vector4(1, 0.8f, 0.2f, 1), new Vector4(0.3f, 1, 0.3f, 1),
+                            new Vector4(1, 0.3f, 0.3f, 1), new Vector4(0.6f, 0.6f, 1, 1) };
+                        int st = Math.Clamp(sheet.status, 0, 3);
+                        ImGui.TextColored(statusCols[st], $"[{statusLabels[st]}]");
+                        ImGui.SameLine();
+                        string className = "No Class";
+                        if (sheet.classId >= 0)
+                        {
+                            var cls = selectedSystem.SkillClasses.FirstOrDefault(c => c.id == sheet.classId);
+                            if (cls != null) className = cls.name;
+                        }
+                        ImGui.Text($"{className} - Lv.{sheet.level}");
+
+                        if (sheet.status == 3)
+                        {
+                            if (!string.IsNullOrEmpty(sheet.revisionReason))
+                            {
+                                ImGui.Indent();
+                                ImGui.TextColored(new Vector4(0.6f, 0.6f, 1, 1), $"Reason: {sheet.revisionReason}");
+                                ImGui.Unindent();
+                            }
+                            ImGui.SameLine();
+                            if (ThemeManager.PillButton($"Revise##revise{sheet.id}", new Vector2(80, 24)))
+                            {
+                                // Pre-fill wizard with existing sheet data for revision
+                                revisingSheetId = sheet.id;
+                                selectedProfileIndex = -1;
+                                profileAvatarsFetched = false;
+                                // Find matching class index
+                                selectedClassIndex = -1;
+                                for (int ci = 0; ci < selectedSystem.SkillClasses.Count; ci++)
+                                {
+                                    if (selectedSystem.SkillClasses[ci].id == sheet.classId)
+                                    { selectedClassIndex = ci; break; }
+                                }
+                                // Pre-fill stats
+                                statAllocations = new Dictionary<int, int>(sheet.statValues);
+                                // Pre-fill skills
+                                selectedSkills = new List<int>(sheet.learnedSkills);
+                                skillTiers.Clear();
+                                foreach (var skId in sheet.learnedSkills)
+                                    skillTiers[skId] = 1; // Default to 1 tier
+                                skillPointsUsed = sheet.learnedSkills.Count;
+
+                                if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
+                                    Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
+                                wizardStep = 1;
+                            }
+                        }
+                    }
+                    ImGui.Spacing();
+                }
+            }
+
+            // Public roster view (below system selection)
+            if (viewingRoster && selectedSystem != null)
+            {
+                ImGui.Spacing();
+                ThemeManager.GradientSeparator();
+                ImGui.Spacing();
+                if (ThemeManager.GhostButton("Hide Roster##hideRoster", new Vector2(100, 24)))
+                    viewingRoster = false;
+                ImGui.Spacing();
+                Roster.Roster.DrawPublicRoster(selectedSystem);
             }
         }
 
-        // ── Step 1: Class Selection ──
-        private static void DrawClassSelection()
+        // Profile avatar fetch tracking
+        private static bool profileAvatarsFetched = false;
+
+        // ── Step 1: Profile Selection ──
+        private static void DrawProfileSelection()
         {
             if (selectedSystem == null) { wizardStep = 0; return; }
 
             if (ThemeManager.GhostButton("< Back##backToSystem", new Vector2(80, 26)))
             { wizardStep = 0; return; }
+
+            ImGui.SameLine();
+            ThemeManager.SectionHeader("Choose Your Profile");
+            ImGui.Spacing();
+
+            var profiles = ProfileWindow.profiles;
+
+            // Trigger avatar loading for profiles that don't have one yet
+            if (!profileAvatarsFetched && profiles.Count > 0 && Plugin.character != null)
+            {
+                profileAvatarsFetched = true;
+                foreach (var prof in profiles)
+                {
+                    if (prof.avatar == null && prof.id > 0)
+                    {
+                        // Fetch the full profile which includes avatar bytes
+                        Networking.DataSender.FetchProfile(Plugin.character, true, prof.index,
+                            prof.playerName ?? "", prof.playerWorld ?? "", prof.id);
+                    }
+                }
+            }
+            if (profiles == null || profiles.Count == 0)
+            {
+                ImGui.TextColored(ThemeManager.FontMuted, "No profiles found. Create a profile first.");
+                return;
+            }
+
+            for (int i = 0; i < profiles.Count; i++)
+            {
+                var prof = profiles[i];
+                bool isSelected = i == selectedProfileIndex;
+
+                ImGui.PushID($"prof_{i}");
+
+                // Avatar thumbnail
+                if (prof.avatar != null && prof.avatar.Handle != IntPtr.Zero)
+                {
+                    ImGui.Image(prof.avatar.Handle, new Vector2(32, 32));
+                    ImGui.SameLine();
+                }
+
+                string label = !string.IsNullOrEmpty(prof.title) ? prof.title : $"Profile {i + 1}";
+                if (!string.IsNullOrEmpty(prof.playerName))
+                    label = $"{prof.playerName} - {label}";
+
+                if (ImGui.Selectable(label, isSelected, ImGuiSelectableFlags.None, new Vector2(0, 32)))
+                    selectedProfileIndex = i;
+
+                ImGui.PopID();
+            }
+
+            ImGui.Spacing();
+            if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
+            {
+                if (ThemeManager.PillButton("Next: Choose Class##nextStep2", new Vector2(200, 32)))
+                {
+                    selectedClassIndex = -1;
+                    hoveredClassIndex = -1;
+                    selectedSkills.Clear();
+                    skillTiers.Clear();
+                    skillPointsUsed = 0;
+                    previewTreeIndex = 0;
+                    wizardStep = 2;
+                }
+            }
+        }
+
+        // ── Step 2: Class + Skill Selection ──
+        private static void DrawClassAndSkillSelection()
+        {
+            if (selectedSystem == null) { wizardStep = 0; return; }
+
+            if (ThemeManager.GhostButton("< Back##backToProfile", new Vector2(80, 26)))
+            { wizardStep = 1; return; }
 
             ImGui.SameLine();
             ThemeManager.SectionHeader("Choose Your Class");
@@ -149,7 +449,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 {
                     selectedClassIndex = -1;
                     InitStatAllocations();
-                    wizardStep = 2;
+                    wizardStep = 3;
                 }
                 return;
             }
@@ -160,7 +460,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             float availWidth = ImGui.GetContentRegionAvail().X * 0.55f;
             int cols = Math.Max(1, (int)(availWidth / (iconSize + spacing)));
 
-            // Left panel: class icons
+            // Left panel: class icons + skill tree
             ImGui.BeginChild("##classGrid", new Vector2(availWidth, 0), false);
             var drawList = ImGui.GetWindowDrawList();
             Vector2 cursor = ImGui.GetCursorScreenPos();
@@ -175,9 +475,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 var octPoints = Skills.Skills.GetOctagonPoints(center, octRadius);
 
                 bool isSelected = i == selectedClassIndex;
-                bool isHovered = false;
 
-                // Draw octagon
                 if (cls.iconTexture != null && cls.iconTexture.Handle != IntPtr.Zero)
                 {
                     Vector2 imgMin = center - new Vector2(octRadius, octRadius);
@@ -201,44 +499,60 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     : ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentMuted);
                 drawList.AddPolyline(ref octPoints[0], octPoints.Length, borderColor, ImDrawFlags.Closed, isSelected ? 3f : 1.5f);
 
-                // Invisible button for click/hover
                 ImGui.SetCursorScreenPos(center - new Vector2(octRadius, octRadius));
                 if (ImGui.InvisibleButton($"##cls_{i}", new Vector2(octRadius * 2, octRadius * 2)))
                 {
-                    selectedClassIndex = i;
-                    previewTreeIndex = 0;
+                    if (selectedClassIndex != i)
+                    {
+                        selectedClassIndex = i;
+                        previewTreeIndex = 0;
+                        selectedSkills.Clear();
+                        skillPointsUsed = 0;
+                    }
                 }
-                isHovered = ImGui.IsItemHovered();
-                if (isHovered)
-                    hoveredClassIndex = i;
-
-                // Tooltip
-                if (isHovered)
+                if (ImGui.IsItemHovered())
                 {
+                    hoveredClassIndex = i;
                     ImGui.BeginTooltip();
                     ImGui.TextColored(ThemeManager.Accent, cls.name);
                     if (!string.IsNullOrEmpty(cls.description))
                         ImGui.TextWrapped(cls.description);
+                    if (cls.initialSkillPoints > 0)
+                        ImGui.Text($"Skill Points: {cls.initialSkillPoints}");
                     ImGui.EndTooltip();
                 }
             }
 
-            // Reserve space for the grid
+            // Reserve space for class icons
             int totalRows = (classes.Count + cols - 1) / cols;
             ImGui.SetCursorScreenPos(cursor + new Vector2(0, totalRows * (iconSize + spacing) + spacing));
 
-            // Skill tree preview if a class is selected
+            // Skill tree selection (pick skills from tree)
             if (selectedClassIndex >= 0 && selectedClassIndex < classes.Count)
             {
+                var cls = classes[selectedClassIndex];
+                int maxSkillPoints = cls.initialSkillPoints;
+
                 ImGui.Spacing();
+                ThemeManager.GradientSeparator();
                 ImGui.Spacing();
-                ThemeManager.SubtitleText("Skill Trees:");
-                ImGui.Spacing();
-                DrawSkillTreePreview(selectedSystem, classes[selectedClassIndex]);
+
+                if (maxSkillPoints > 0)
+                {
+                    int remaining = maxSkillPoints - skillPointsUsed;
+                    ImGui.Text("Skill Points: ");
+                    ImGui.SameLine();
+                    Vector4 spColor = remaining > 0 ? ThemeManager.Accent : ThemeManager.FontMuted;
+                    ImGui.TextColored(spColor, $"{remaining} / {maxSkillPoints}");
+                    ImGui.Spacing();
+                }
+
+                DrawSkillTreePicker(selectedSystem, cls);
             }
+
             ImGui.EndChild();
 
-            // Right panel: passives for selected/hovered class
+            // Right panel: passives
             ImGui.SameLine();
             ImGui.BeginChild("##passivePanel", Vector2.Zero, false);
             int previewIdx = selectedClassIndex >= 0 ? selectedClassIndex : hoveredClassIndex;
@@ -257,7 +571,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 {
                     foreach (var passive in passives)
                     {
-                        // Passive icon (small octagon)
                         if (passive.iconTexture != null && passive.iconTexture.Handle != IntPtr.Zero)
                         {
                             ImGui.Image(passive.iconTexture.Handle, new Vector2(24, 24));
@@ -278,21 +591,58 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.Spacing();
             if (selectedClassIndex >= 0)
             {
-                if (ThemeManager.PillButton("Next: Assign Stats##nextStep2", new Vector2(200, 32)))
+                if (ThemeManager.PillButton("Next: Assign Stats##nextStep3", new Vector2(200, 32)))
                 {
                     InitStatAllocations();
-                    wizardStep = 2;
+                    wizardStep = 3;
                 }
             }
         }
 
-        // ── Skill Tree Preview Grid (read-only) ──
-        private const int PreviewGridCols = 5;
-        private const int PreviewGridRows = 8;
+        // ── Skill Tree Picker (interactive, used during class selection) ──
+        /// <summary>
+        /// Helper: get current tier invested in a skill (0 if none).
+        /// </summary>
+        private static int GetSkillTier(int skillId) => skillTiers.ContainsKey(skillId) ? skillTiers[skillId] : 0;
 
-        private static void DrawSkillTreePreview(SystemData system, SkillClassData cls)
+        /// <summary>
+        /// Helper: check if a skill is fully maxed (all tiers invested).
+        /// </summary>
+        private static bool IsSkillMaxed(SkillData skill) => GetSkillTier(skill.id) >= skill.maxTiers;
+
+        /// <summary>
+        /// Check if all prerequisites for a skill are satisfied (parent skills fully maxed).
+        /// </summary>
+        private static bool ArePrereqsMet(SystemData system, int skillId)
+        {
+            var prereqs = system.SkillConnections.Where(c => c.toSkillId == skillId).ToList();
+            if (prereqs.Count == 0) return true;
+            foreach (var prereq in prereqs)
+            {
+                var parentSkill = system.Skills.FirstOrDefault(s => s.id == prereq.fromSkillId);
+                if (parentSkill == null) return false;
+                if (GetSkillTier(parentSkill.id) < parentSkill.maxTiers) return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Rebuild the selectedSkills list from skillTiers (skills with tier >= 1).
+        /// </summary>
+        private static void RebuildSelectedSkills()
+        {
+            selectedSkills.Clear();
+            foreach (var kvp in skillTiers)
+            {
+                if (kvp.Value > 0)
+                    selectedSkills.Add(kvp.Key);
+            }
+        }
+
+        private static void DrawSkillTreePicker(SystemData system, SkillClassData cls)
         {
             int classId = cls.id;
+            int maxSkillPoints = cls.initialSkillPoints;
 
             // Tree tabs
             if (cls.SkillTrees.Count > 0)
@@ -300,11 +650,11 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 if (previewTreeIndex >= cls.SkillTrees.Count)
                     previewTreeIndex = 0;
 
-                if (ImGui.BeginTabBar("##PreviewTreeTabs"))
+                if (ImGui.BeginTabBar("##PickerTreeTabs"))
                 {
                     for (int t = 0; t < cls.SkillTrees.Count; t++)
                     {
-                        if (ImGui.BeginTabItem(cls.SkillTrees[t].name + $"##ptree{t}"))
+                        if (ImGui.BeginTabItem(cls.SkillTrees[t].name + $"##ptab{t}"))
                         {
                             previewTreeIndex = t;
                             ImGui.EndTabItem();
@@ -313,12 +663,10 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     ImGui.EndTabBar();
                 }
             }
-            else
-            {
-                previewTreeIndex = 0;
-            }
 
-            // Draw grid
+            ImGui.TextColored(ThemeManager.FontMuted, "Left-click: add tier | Right-click: remove tier");
+            ImGui.Spacing();
+
             float gridWidth = ImGui.GetContentRegionAvail().X;
             float cellSize = Math.Min((gridWidth - 20) / PreviewGridCols, 64f);
             float octRadius = cellSize * 0.35f;
@@ -326,7 +674,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             var drawList = ImGui.GetWindowDrawList();
             Vector2 origin = ImGui.GetCursorScreenPos();
 
-            // Filter skills for this class + tree
             var treeSkills = system.Skills.Where(s => s.classId == classId && s.treeIndex == previewTreeIndex && s.isCastable).ToList();
 
             // Draw connections
@@ -336,21 +683,21 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 var toSkill = treeSkills.FirstOrDefault(s => s.id == conn.toSkillId);
                 if (fromSkill != null && toSkill != null)
                 {
+                    // Color connection based on whether parent is maxed
+                    bool parentMaxed = IsSkillMaxed(fromSkill);
+                    Vector4 lineVec = parentMaxed ? ThemeManager.Accent : ThemeManager.AccentMuted;
+                    lineVec.W = parentMaxed ? 0.8f : 0.4f;
+                    uint lineColor = ImGui.ColorConvertFloat4ToU32(lineVec);
+
                     Vector2 from = origin + new Vector2(fromSkill.gridX * cellSize + cellSize / 2, fromSkill.gridY * cellSize + cellSize / 2);
                     Vector2 to = origin + new Vector2(toSkill.gridX * cellSize + cellSize / 2, toSkill.gridY * cellSize + cellSize / 2);
-                    uint lineColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentMuted);
                     drawList.AddLine(from, to, lineColor, 2f);
 
-                    // Arrow head
                     Vector2 mid = (from + to) / 2;
                     Vector2 dir = Vector2.Normalize(to - from);
                     Vector2 perp = new Vector2(-dir.Y, dir.X);
                     float arrowSize = 5f;
-                    drawList.AddTriangleFilled(
-                        mid + dir * arrowSize,
-                        mid - dir * arrowSize + perp * arrowSize,
-                        mid - dir * arrowSize - perp * arrowSize,
-                        lineColor);
+                    drawList.AddTriangleFilled(mid + dir * arrowSize, mid - dir * arrowSize + perp * arrowSize, mid - dir * arrowSize - perp * arrowSize, lineColor);
                 }
             }
 
@@ -365,74 +712,153 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
                     if (skill != null)
                     {
+                        int currentTier = GetSkillTier(skill.id);
+                        bool hasAnyTier = currentTier > 0;
+                        bool isMaxed = currentTier >= skill.maxTiers;
+
+                        // Brightness based on tier progress
+                        float alpha = hasAnyTier ? (0.5f + 0.5f * ((float)currentTier / skill.maxTiers)) : 0.3f;
+
                         if (skill.iconTexture != null && skill.iconTexture.Handle != IntPtr.Zero)
                         {
                             Vector2 imgMin = center - new Vector2(octRadius, octRadius);
                             Vector2 imgMax = center + new Vector2(octRadius, octRadius);
-                            drawList.AddImage(skill.iconTexture.Handle, imgMin, imgMax);
+                            var tintColor = new Vector4(alpha, alpha, alpha, 1f);
+                            drawList.AddImage(skill.iconTexture.Handle, imgMin, imgMax,
+                                new Vector2(0, 0), new Vector2(1, 1), ImGui.ColorConvertFloat4ToU32(tintColor));
                             Skills.Skills.MaskSquareToOctagon(drawList, center, octRadius, octPoints);
                         }
                         else
                         {
-                            uint fillColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.BgLighter);
+                            uint fillColor = isMaxed
+                                ? ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent)
+                                : hasAnyTier
+                                    ? ImGui.ColorConvertFloat4ToU32(new Vector4(ThemeManager.Accent.X * 0.6f, ThemeManager.Accent.Y * 0.6f, ThemeManager.Accent.Z * 0.6f, 0.8f))
+                                    : ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 0.2f, 0.2f, 0.6f));
                             Skills.Skills.DrawFilledOctagon(drawList, octPoints, fillColor);
                             string label = skill.name.Length > 6 ? skill.name[..6] + ".." : skill.name;
                             var textSize = ImGui.CalcTextSize(label);
-                            drawList.AddText(center - textSize / 2, 0xFFFFFFFF, label);
+                            uint textCol = hasAnyTier ? 0xFFFFFFFF : 0x66FFFFFF;
+                            drawList.AddText(center - textSize / 2, textCol, label);
                         }
 
-                        uint borderColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentMuted);
-                        drawList.AddPolyline(ref octPoints[0], octPoints.Length, borderColor, ImDrawFlags.Closed, 1.5f);
+                        uint borderColor = isMaxed
+                            ? ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent)
+                            : hasAnyTier
+                                ? ImGui.ColorConvertFloat4ToU32(new Vector4(ThemeManager.Accent.X, ThemeManager.Accent.Y, ThemeManager.Accent.Z, 0.6f))
+                                : ImGui.ColorConvertFloat4ToU32(new Vector4(0.4f, 0.4f, 0.4f, 0.5f));
+                        drawList.AddPolyline(ref octPoints[0], octPoints.Length, borderColor, ImDrawFlags.Closed, isMaxed ? 2.5f : 1.5f);
 
-                        // Tier indicator
+                        // Tier counter (bottom-right) — always show for multi-tier skills
                         if (skill.maxTiers > 1)
                         {
-                            string tierLabel = $"T{skill.maxTiers}";
-                            Vector2 tierPos = center + new Vector2(octRadius * 0.3f, -octRadius * 0.9f);
+                            string tierLabel = $"{currentTier}/{skill.maxTiers}";
+                            var tierSize = ImGui.CalcTextSize(tierLabel);
+                            Vector2 tierPos = center + new Vector2(octRadius * 0.5f - tierSize.X / 2, octRadius * 0.55f);
+                            // Black shadow
                             drawList.AddText(tierPos + new Vector2(1, 1), 0xFF000000, tierLabel);
-                            drawList.AddText(tierPos, 0xFFFFFFFF, tierLabel);
+                            // Colored text: green if maxed, yellow if partial, gray if none
+                            uint tierCol = isMaxed ? 0xFF00FF00 : hasAnyTier ? 0xFF00CCFF : 0xFFAAAAAA;
+                            drawList.AddText(tierPos, tierCol, tierLabel);
                         }
 
-                        // Tooltip on hover
+                        // Click handling — invisible button covers the octagon
                         ImGui.SetCursorScreenPos(center - new Vector2(octRadius, octRadius));
-                        ImGui.InvisibleButton($"##prev_{x}_{y}", new Vector2(octRadius * 2, octRadius * 2));
+                        ImGui.InvisibleButton($"##pick_{x}_{y}", new Vector2(octRadius * 2, octRadius * 2));
+
+                        // Left-click: add a tier
+                        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                        {
+                            if (!isMaxed && (maxSkillPoints <= 0 || skillPointsUsed < maxSkillPoints))
+                            {
+                                // Check prerequisites: parent skills must be fully maxed
+                                if (ArePrereqsMet(system, skill.id))
+                                {
+                                    skillTiers[skill.id] = currentTier + 1;
+                                    skillPointsUsed++;
+                                    RebuildSelectedSkills();
+                                }
+                            }
+                        }
+
+                        // Right-click: remove a tier
+                        if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                        {
+                            if (currentTier > 0)
+                            {
+                                // Check if any child skill depends on this being maxed
+                                bool canRemove = true;
+                                if (currentTier == skill.maxTiers) // going from maxed to not-maxed
+                                {
+                                    var children = system.SkillConnections.Where(c => c.fromSkillId == skill.id).ToList();
+                                    foreach (var child in children)
+                                    {
+                                        if (GetSkillTier(child.toSkillId) > 0)
+                                        { canRemove = false; break; }
+                                    }
+                                }
+
+                                if (canRemove)
+                                {
+                                    skillTiers[skill.id] = currentTier - 1;
+                                    skillPointsUsed--;
+                                    if (skillTiers[skill.id] <= 0)
+                                        skillTiers.Remove(skill.id);
+                                    RebuildSelectedSkills();
+                                }
+                            }
+                        }
+
+                        // Tooltip
                         if (ImGui.IsItemHovered())
                         {
                             ImGui.BeginTooltip();
                             ImGui.TextColored(ThemeManager.Accent, skill.name);
+                            if (skill.maxTiers > 1)
+                                ImGui.Text($"Tier: {currentTier} / {skill.maxTiers}");
                             if (!string.IsNullOrEmpty(skill.description))
                                 ImGui.TextWrapped(skill.description);
                             if (skill.cooldownTurns > 0)
                                 ImGui.Text($"Cooldown: {skill.cooldownTurns} turns");
                             if (skill.resourceCost > 0)
                                 ImGui.Text($"Cost: {skill.resourceCost}");
+                            if (!isMaxed)
+                            {
+                                bool met = ArePrereqsMet(system, skill.id);
+                                var prereqs = system.SkillConnections.Where(c => c.toSkillId == skill.id).ToList();
+                                if (prereqs.Count > 0)
+                                {
+                                    ImGui.TextColored(met ? new Vector4(0.3f, 1f, 0.3f, 1f) : new Vector4(1f, 0.4f, 0.4f, 1f),
+                                        met ? "Prerequisites met" : "Prerequisites not met — parent skills must be maxed");
+                                }
+                            }
+                            else
+                            {
+                                ImGui.TextColored(new Vector4(0.3f, 1f, 0.3f, 1f), "Maxed!");
+                            }
                             ImGui.EndTooltip();
                         }
                     }
                     else
                     {
-                        // Empty slot — faint outline
                         uint outlineColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.2f));
                         drawList.AddPolyline(ref octPoints[0], octPoints.Length, outlineColor, ImDrawFlags.Closed, 1f);
                     }
                 }
             }
 
-            // Reserve space for the grid
             ImGui.SetCursorScreenPos(origin + new Vector2(0, PreviewGridRows * cellSize + 10));
-
             if (treeSkills.Count == 0)
                 ImGui.TextColored(ThemeManager.FontMuted, "No skills in this tree.");
         }
 
-        // ── Step 2: Stat Assignment ──
+        // ── Step 3: Stat Assignment ──
         private static void InitStatAllocations()
         {
             statAllocations.Clear();
             if (selectedSystem == null) return;
             foreach (var kvp in selectedSystem.StatsData)
                 statAllocations[kvp.Key] = 0;
-            // Init radar chart to a small uniform shape
             int count = selectedSystem.StatsData.Count;
             float startSize = 0.05f;
             previousRadii = new List<float>(count);
@@ -451,13 +877,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             var stats = selectedSystem.StatsData;
             int count = stats.Count;
             if (count == 0) return;
-
-            // Snapshot current interpolated state as previous
             previousRadii = GetCurrentInterpolatedRadii();
-
-            // Build new target radii based on allocations
-            // Each stat scales so that spending ALL available points on it = 100% (reaches the corner)
-            // Square root curve makes lower values more visible while max still hits the edge
             int budget = selectedSystem.basePointsAvailable > 0 ? selectedSystem.basePointsAvailable : 1;
             targetRadii = new List<float>(count);
             foreach (var kvp in stats)
@@ -465,9 +885,8 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 int key = kvp.Key;
                 int val = statAllocations.ContainsKey(key) ? statAllocations[key] : 0;
                 float linear = (float)val / budget;
-                targetRadii.Add(MathF.Sqrt(linear)); // sqrt curve: 20% → 45%, 50% → 71%, 100% → 100%
+                targetRadii.Add(MathF.Sqrt(linear));
             }
-
             morphProgress = 0f;
             morphStartTime = DateTime.Now;
         }
@@ -478,9 +897,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             int count = selectedSystem.StatsData.Count;
             if (previousRadii.Count != count || targetRadii.Count != count)
                 return new List<float>(new float[count]);
-
             float t = Math.Clamp(morphProgress, 0f, 1f);
-            // Smooth ease-out
             t = 1f - (1f - t) * (1f - t);
             var result = new List<float>(count);
             for (int i = 0; i < count; i++)
@@ -493,7 +910,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             if (selectedSystem == null) { wizardStep = 0; return; }
 
             if (ThemeManager.GhostButton("< Back##backToClass", new Vector2(80, 26)))
-            { wizardStep = 1; return; }
+            { wizardStep = 2; return; }
 
             ImGui.SameLine();
             ThemeManager.SectionHeader("Assign Stat Points");
@@ -514,7 +931,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             var stats = selectedSystem.StatsData;
             bool changed = false;
 
-            // Left side: stat controls
             float panelWidth = ImGui.GetContentRegionAvail().X;
             float controlsWidth = panelWidth * 0.45f;
             float chartWidth = panelWidth * 0.50f;
@@ -534,9 +950,22 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 ImGui.ColorButton("##statColor", stat.color, ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 24));
                 ImGui.SameLine();
                 ImGui.Text(stat.name);
+                // Info tooltip with description
+                if (!string.IsNullOrEmpty(stat.description))
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(ThemeManager.FontMuted, "(?)");
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.BeginTooltip();
+                        ImGui.TextColored(ThemeManager.Accent, stat.name);
+                        ImGui.TextWrapped(stat.description);
+                        ImGui.Text($"Range: {stat.baseMin} - {stat.baseMax}");
+                        ImGui.EndTooltip();
+                    }
+                }
                 ImGui.SameLine(controlsWidth - 110);
 
-                // - button
                 bool canRemove = stat.canRemovePoints && (stat.canGoNegative || val > stat.baseMin);
                 if (!canRemove) ImGui.BeginDisabled();
                 if (ThemeManager.GhostButton("-##dec", new Vector2(24, 24)))
@@ -547,11 +976,9 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 if (!canRemove) ImGui.EndDisabled();
 
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(30);
                 ImGui.Text($"{val}");
                 ImGui.SameLine();
 
-                // + button
                 bool canAdd = stat.canAddPoints && val < stat.baseMax && remaining > 0;
                 if (!canAdd) ImGui.BeginDisabled();
                 if (ThemeManager.GhostButton("+##inc", new Vector2(24, 24)))
@@ -565,11 +992,8 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             }
             ImGui.EndChild();
 
-            // Trigger animation on change
-            if (changed)
-                TriggerRadarAnimation();
+            if (changed) TriggerRadarAnimation();
 
-            // Right side: radar chart
             ImGui.SameLine();
             ImGui.BeginChild("##radarChart", new Vector2(chartWidth, 0), false);
             DrawRadarChart(stats, chartWidth);
@@ -577,19 +1001,132 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.EndChild();
 
             ImGui.Spacing();
-            if (ThemeManager.PillButton("Next: Choose Skills##nextStep3", new Vector2(200, 32)))
+            if (ThemeManager.PillButton("Next: Review##nextStep4", new Vector2(200, 32)))
+                wizardStep = 4;
+        }
+
+        // ── Step 4: Review & Create ──
+        private static void DrawReviewAndCreate()
+        {
+            if (selectedSystem == null) { wizardStep = 0; return; }
+
+            if (ThemeManager.GhostButton("< Back##backToStats", new Vector2(80, 26)))
+            { wizardStep = 3; return; }
+
+            ImGui.SameLine();
+            ThemeManager.SectionHeader("Review Your Character");
+            ImGui.Spacing();
+
+            // Profile
+            var profiles = ProfileWindow.profiles;
+            if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
             {
-                selectedSkills.Clear();
-                wizardStep = 3;
+                var prof = profiles[selectedProfileIndex];
+                if (prof.avatar != null && prof.avatar.Handle != IntPtr.Zero)
+                {
+                    float avSize = 48;
+                    float centeredX = (ImGui.GetContentRegionAvail().X - avSize) / 2;
+                    ImGui.SetCursorPosX(centeredX);
+                    ImGui.Image(prof.avatar.Handle, new Vector2(avSize, avSize));
+                }
+                string profLabel = !string.IsNullOrEmpty(prof.title) ? prof.title : prof.playerName;
+                if (!string.IsNullOrEmpty(profLabel))
+                {
+                    var textSize = ImGui.CalcTextSize(profLabel);
+                    ImGui.SetCursorPosX((ImGui.GetContentRegionAvail().X - textSize.X) / 2);
+                    ImGui.TextColored(ThemeManager.Accent, profLabel);
+                }
+                ImGui.Spacing();
+            }
+
+            ImGui.Text("System: ");
+            ImGui.SameLine();
+            ImGui.TextColored(ThemeManager.Accent, selectedSystem.name);
+
+            if (selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count)
+            {
+                var cls = selectedSystem.SkillClasses[selectedClassIndex];
+                ImGui.Text("Class: ");
+                ImGui.SameLine();
+                ImGui.TextColored(ThemeManager.Accent, cls.name);
+            }
+
+            ImGui.Spacing();
+            ThemeManager.GradientSeparator();
+            ImGui.Spacing();
+
+            ThemeManager.SubtitleText("Stats:");
+            foreach (var kvp in selectedSystem.StatsData)
+            {
+                if (statAllocations.ContainsKey(kvp.Key))
+                {
+                    ImGui.ColorButton($"##rc{kvp.Key}", kvp.Value.color, ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 18));
+                    ImGui.SameLine();
+                    ImGui.Text($"{kvp.Value.name}: {statAllocations[kvp.Key]}");
+                }
+            }
+
+            ImGui.Spacing();
+
+            ThemeManager.SubtitleText("Skills:");
+            if (selectedSkills.Count == 0)
+            {
+                ImGui.TextColored(ThemeManager.FontMuted, "None selected.");
+            }
+            else
+            {
+                foreach (var skillId in selectedSkills)
+                {
+                    var skill = selectedSystem.Skills.FirstOrDefault(s => s.id == skillId);
+                    if (skill != null) ImGui.BulletText(skill.name);
+                }
+            }
+
+            ImGui.Spacing();
+            ImGui.Spacing();
+
+            if (!string.IsNullOrEmpty(submitMessage))
+            {
+                Vector4 msgColor = submitSuccess ? new Vector4(0.3f, 1f, 0.3f, 1f) : new Vector4(1f, 0.3f, 0.3f, 1f);
+                ImGui.TextColored(msgColor, submitMessage);
+                ImGui.Spacing();
+            }
+
+            string submitLabel = revisingSheetId > 0 ? "Resubmit Revised Sheet##submit" : "Submit Character Sheet##submit";
+            if (ThemeManager.PillButton(submitLabel, new Vector2(250, 36)))
+            {
+                if (Plugin.character != null)
+                {
+                    int classId = selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count
+                        ? selectedSystem.SkillClasses[selectedClassIndex].id : -1;
+                    int profileId = -1;
+                    if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
+                        profileId = profiles[selectedProfileIndex].id;
+                    Networking.DataSender.SubmitCharacterSheet(Plugin.character, selectedSystem.id, classId,
+                        statAllocations, selectedSkills, profileId);
+                    revisingSheetId = 0; // Reset revision mode
+                }
+            }
+
+            if (revisingSheetId > 0)
+            {
+                ImGui.Spacing();
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 1f, 1f), "Revising an existing submission. Changes will be submitted as a new sheet.");
+            }
+
+            if (selectedSystem.requireApproval)
+            {
+                ImGui.Spacing();
+                ImGui.TextColored(ThemeManager.FontMuted, "This system requires owner approval. Your sheet will be reviewed.");
             }
         }
 
+        // ── Radar Chart ──
         private static void DrawRadarChart(SortedList<int, StatData> stats, float availWidth)
         {
             int count = stats.Count;
             if (count < 2) return;
 
-            // Advance animation
             if (morphProgress < 1f)
             {
                 float elapsed = (float)(DateTime.Now - morphStartTime).TotalSeconds;
@@ -599,12 +1136,10 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             float chartRadius = Math.Min(availWidth * 0.42f, 140f);
             Vector2 cursorStart = ImGui.GetCursorScreenPos();
             Vector2 center = cursorStart + new Vector2(availWidth / 2, chartRadius + 20);
-
             var drawList = ImGui.GetWindowDrawList();
             float angleStep = 2f * MathF.PI / count;
             float startAngle = -MathF.PI / 2f;
 
-            // Draw background rings (guides at 25%, 50%, 75%, 100%)
             uint ringColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.3f));
             for (int ring = 1; ring <= 4; ring++)
             {
@@ -618,15 +1153,12 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 drawList.AddPolyline(ref ringPoints[0], ringPoints.Length, ringColor, ImDrawFlags.Closed, 1f);
             }
 
-            // Draw axis lines from center to each vertex + stat labels
             int idx = 0;
             foreach (var kvp in stats)
             {
                 float angle = startAngle + idx * angleStep;
                 Vector2 axisEnd = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * chartRadius;
                 drawList.AddLine(center, axisEnd, ringColor, 1f);
-
-                // Label
                 Vector2 labelPos = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * (chartRadius + 14);
                 string label = kvp.Value.name;
                 var textSize = ImGui.CalcTextSize(label);
@@ -635,63 +1167,47 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 idx++;
             }
 
-            // Get interpolated radii for the filled shape
             var radii = GetCurrentInterpolatedRadii();
             if (radii.Count != count)
-            {
-                // Safety: init if mismatch
                 radii = new List<float>(new float[count]);
-            }
 
-            // Build the data polygon
             var dataPoints = new Vector2[count];
             for (int i = 0; i < count; i++)
             {
-                float r = Math.Max(radii[i], 0.05f) * chartRadius; // Always at least the base size
+                float r = Math.Max(radii[i], 0.05f) * chartRadius;
                 float angle = startAngle + i * angleStep;
                 dataPoints[i] = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r;
             }
-            bool hasAnyValue = true; // Always draw — starts as small shape
 
-            if (hasAnyValue)
+            Vector4 fillVec = ThemeManager.Accent;
+            fillVec.W = 0.2f;
+            uint fillColor2 = ImGui.ColorConvertFloat4ToU32(fillVec);
+            for (int i = 0; i < count; i++)
             {
-                // Filled shape (semi-transparent accent)
-                Vector4 fillVec = ThemeManager.Accent;
-                fillVec.W = 0.2f;
-                uint fillColor = ImGui.ColorConvertFloat4ToU32(fillVec);
-
-                // Draw filled polygon using triangle fan
-                for (int i = 0; i < count; i++)
-                {
-                    int next = (i + 1) % count;
-                    drawList.AddTriangleFilled(center, dataPoints[i], dataPoints[next], fillColor);
-                }
-
-                // Border
-                Vector4 borderVec = ThemeManager.Accent;
-                borderVec.W = 0.8f;
-                uint borderColor = ImGui.ColorConvertFloat4ToU32(borderVec);
-                drawList.AddPolyline(ref dataPoints[0], dataPoints.Length, borderColor, ImDrawFlags.Closed, 2.5f);
-
-                // Dots at each vertex
-                uint dotColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent);
-                for (int i = 0; i < count; i++)
-                {
-                    if (radii[i] > 0.01f)
-                        drawList.AddCircleFilled(dataPoints[i], 4f, dotColor);
-                }
+                int next = (i + 1) % count;
+                drawList.AddTriangleFilled(center, dataPoints[i], dataPoints[next], fillColor2);
             }
 
-            // Reserve space
+            Vector4 borderVec = ThemeManager.Accent;
+            borderVec.W = 0.8f;
+            uint borderColor2 = ImGui.ColorConvertFloat4ToU32(borderVec);
+            drawList.AddPolyline(ref dataPoints[0], dataPoints.Length, borderColor2, ImDrawFlags.Closed, 2.5f);
+
+            uint dotColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent);
+            for (int i = 0; i < count; i++)
+            {
+                if (radii[i] > 0.01f)
+                    drawList.AddCircleFilled(dataPoints[i], 4f, dotColor);
+            }
+
             ImGui.SetCursorScreenPos(cursorStart + new Vector2(0, chartRadius * 2 + 50));
         }
 
+        // ── Resource Bars ──
         private static void DrawResourceBars(SystemData system, SortedList<int, StatData> stats)
         {
-            // Collect resources and health that have linked stats
             var linkedResources = new List<(string name, Vector4 color, int baseVal, int maxVal, int currentVal, int bonusVal)>();
 
-            // Health
             var combat = system.CombatConfig;
             if (combat.healthEnabled && combat.healthLinkedStatId >= 0)
             {
@@ -702,7 +1218,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 linkedResources.Add(("Health", new Vector4(0.8f, 0.2f, 0.2f, 1f), combat.healthBase, max, current, bonus));
             }
 
-            // Resources
             foreach (var r in system.Resources)
             {
                 if (r.linkedStatId >= 0)
@@ -729,18 +1244,15 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
             foreach (var (name, color, baseVal, maxVal, currentVal, bonusVal) in linkedResources)
             {
-                // Label
                 string label = bonusVal != 0
                     ? $"{name}: {baseVal} + {bonusVal} = {currentVal} / {maxVal}"
                     : $"{name}: {currentVal} / {maxVal}";
                 ImGui.Text(label);
 
-                // Bar background
                 Vector2 barPos = ImGui.GetCursorScreenPos();
                 uint bgColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.15f, 0.15f, 0.15f, 1f));
                 drawList.AddRectFilled(barPos, barPos + new Vector2(barWidth, barHeight), bgColor, 4f);
 
-                // Base portion
                 float baseFill = maxVal > 0 ? Math.Clamp((float)baseVal / maxVal, 0f, 1f) : 0f;
                 Vector4 dimColor = color;
                 dimColor.W = 0.4f;
@@ -748,25 +1260,20 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 if (baseFill > 0)
                     drawList.AddRectFilled(barPos, barPos + new Vector2(barWidth * baseFill, barHeight), baseColor, 4f);
 
-                // Total (base + bonus) portion
                 float totalFill = maxVal > 0 ? Math.Clamp((float)currentVal / maxVal, 0f, 1f) : 0f;
                 uint totalColor = ImGui.ColorConvertFloat4ToU32(color);
                 if (totalFill > baseFill)
                     drawList.AddRectFilled(barPos + new Vector2(barWidth * baseFill, 0),
                         barPos + new Vector2(barWidth * totalFill, barHeight), totalColor, 4f);
 
-                // Border
-                uint borderColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.4f, 0.4f, 0.4f, 0.6f));
-                drawList.AddRect(barPos, barPos + new Vector2(barWidth, barHeight), borderColor, 4f);
-
-                // Reserve space
+                uint borderCol = ImGui.ColorConvertFloat4ToU32(new Vector4(0.4f, 0.4f, 0.4f, 0.6f));
+                drawList.AddRect(barPos, barPos + new Vector2(barWidth, barHeight), borderCol, 4f);
                 ImGui.SetCursorScreenPos(barPos + new Vector2(0, barHeight + 4));
             }
         }
 
         private static int GetLinkedStatValue(SortedList<int, StatData> stats, int linkedStatId)
         {
-            // Find the stat by its id and return the allocated value
             foreach (var kvp in stats)
             {
                 if (kvp.Value.id == linkedStatId)
@@ -778,184 +1285,15 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             return 0;
         }
 
-        // ── Step 3: Skill Selection ──
-        private static void DrawSkillSelection()
-        {
-            if (selectedSystem == null) { wizardStep = 0; return; }
-
-            if (ThemeManager.GhostButton("< Back##backToStats", new Vector2(80, 26)))
-            { wizardStep = 2; return; }
-
-            ImGui.SameLine();
-            ThemeManager.SectionHeader("Choose Skills");
-            ImGui.Spacing();
-
-            int classId = selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count
-                ? selectedSystem.SkillClasses[selectedClassIndex].id : -999;
-
-            var availableSkills = selectedSystem.Skills
-                .Where(s => s.isCastable && (classId == -999 || s.classId == classId))
-                .ToList();
-
-            if (availableSkills.Count == 0)
-            {
-                ImGui.TextColored(ThemeManager.FontMuted, "No skills available to select.");
-            }
-            else
-            {
-                foreach (var skill in availableSkills)
-                {
-                    bool isSelected = selectedSkills.Contains(skill.id);
-                    ImGui.PushID($"skill_{skill.id}");
-
-                    if (skill.iconTexture != null && skill.iconTexture.Handle != IntPtr.Zero)
-                    {
-                        ImGui.Image(skill.iconTexture.Handle, new Vector2(24, 24));
-                        ImGui.SameLine();
-                    }
-
-                    bool toggled = isSelected;
-                    if (ImGui.Checkbox($"{skill.name}##sel", ref toggled))
-                    {
-                        if (toggled && !isSelected)
-                        {
-                            // Check prerequisites
-                            bool prereqMet = true;
-                            var prereqs = selectedSystem.SkillConnections.Where(c => c.toSkillId == skill.id).ToList();
-                            foreach (var prereq in prereqs)
-                            {
-                                if (!selectedSkills.Contains(prereq.fromSkillId))
-                                {
-                                    prereqMet = false;
-                                    break;
-                                }
-                            }
-                            if (prereqMet)
-                                selectedSkills.Add(skill.id);
-                        }
-                        else if (!toggled && isSelected)
-                        {
-                            selectedSkills.Remove(skill.id);
-                            // Also remove skills that depend on this one
-                            var dependents = selectedSystem.SkillConnections
-                                .Where(c => c.fromSkillId == skill.id)
-                                .Select(c => c.toSkillId)
-                                .ToList();
-                            selectedSkills.RemoveAll(s => dependents.Contains(s));
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(skill.description) && ImGui.IsItemHovered())
-                        ImGui.SetTooltip(skill.description);
-
-                    ImGui.PopID();
-                }
-            }
-
-            ImGui.Spacing();
-            if (ThemeManager.PillButton("Next: Review##nextStep4", new Vector2(200, 32)))
-                wizardStep = 4;
-        }
-
-        // ── Step 4: Review & Create ──
-        private static void DrawReviewAndCreate()
-        {
-            if (selectedSystem == null) { wizardStep = 0; return; }
-
-            if (ThemeManager.GhostButton("< Back##backToSkills", new Vector2(80, 26)))
-            { wizardStep = 3; return; }
-
-            ImGui.SameLine();
-            ThemeManager.SectionHeader("Review Your Character");
-            ImGui.Spacing();
-
-            // System
-            ImGui.Text("System: ");
-            ImGui.SameLine();
-            ImGui.TextColored(ThemeManager.Accent, selectedSystem.name);
-
-            // Class
-            if (selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count)
-            {
-                var cls = selectedSystem.SkillClasses[selectedClassIndex];
-                ImGui.Text("Class: ");
-                ImGui.SameLine();
-                ImGui.TextColored(ThemeManager.Accent, cls.name);
-            }
-
-            ImGui.Spacing();
-            ThemeManager.GradientSeparator();
-            ImGui.Spacing();
-
-            // Stats
-            ThemeManager.SubtitleText("Stats:");
-            foreach (var kvp in selectedSystem.StatsData)
-            {
-                if (statAllocations.ContainsKey(kvp.Key))
-                {
-                    ImGui.ColorButton($"##rc{kvp.Key}", kvp.Value.color, ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 18));
-                    ImGui.SameLine();
-                    ImGui.Text($"{kvp.Value.name}: {statAllocations[kvp.Key]}");
-                }
-            }
-
-            ImGui.Spacing();
-
-            // Skills
-            ThemeManager.SubtitleText("Skills:");
-            if (selectedSkills.Count == 0)
-            {
-                ImGui.TextColored(ThemeManager.FontMuted, "None selected.");
-            }
-            else
-            {
-                foreach (var skillId in selectedSkills)
-                {
-                    var skill = selectedSystem.Skills.FirstOrDefault(s => s.id == skillId);
-                    if (skill != null)
-                        ImGui.BulletText(skill.name);
-                }
-            }
-
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            if (!string.IsNullOrEmpty(submitMessage))
-            {
-                Vector4 msgColor = submitSuccess ? new Vector4(0.3f, 1f, 0.3f, 1f) : new Vector4(1f, 0.3f, 0.3f, 1f);
-                ImGui.TextColored(msgColor, submitMessage);
-                ImGui.Spacing();
-            }
-
-            if (ThemeManager.PillButton("Submit Character Sheet##submit", new Vector2(250, 36)))
-            {
-                if (Plugin.character != null)
-                {
-                    int classId = selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count
-                        ? selectedSystem.SkillClasses[selectedClassIndex].id : -1;
-                    Networking.DataSender.SubmitCharacterSheet(Plugin.character, selectedSystem.id, classId,
-                        statAllocations, selectedSkills);
-                }
-            }
-
-            if (selectedSystem.requireApproval)
-            {
-                ImGui.Spacing();
-                ImGui.TextColored(ThemeManager.FontMuted, "This system requires owner approval. Your sheet will be reviewed.");
-            }
-        }
-
-        // Called from DataReceiver when sheet submission result arrives
+        // ── Callbacks ──
         public static void OnSubmitResult(bool success, string message)
         {
             submitSuccess = success;
             submitMessage = message;
         }
 
-        // Called from DataReceiver when public system data arrives
         public static void OnPublicSystemReceived(SystemData system)
         {
-            // Add or update in available list
             var existing = availableSystems.FindIndex(s => s.id == system.id);
             if (existing >= 0)
                 availableSystems[existing] = system;
