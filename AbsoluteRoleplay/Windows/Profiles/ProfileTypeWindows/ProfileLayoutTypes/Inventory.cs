@@ -27,7 +27,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     //if we have loaded all
                     //the data received from the server and we are logged in game
 
-                    ImGui.SameLine();
                     DrawInventory(index, uniqueID, layout);   
                 }
             }catch(Exception ex)

@@ -6,6 +6,8 @@ using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using AbsoluteRP.Windows.Social.Views;
 using AbsoluteRP.Windows.Systems.Stats;
+using AbsoluteRP.Windows.Systems.Combat;
+using AbsoluteRP.Windows.Systems.Rules;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.ImGuiFileDialog;
 using Dalamud.Interface.Textures.TextureWraps;
@@ -30,6 +32,11 @@ namespace AbsoluteRP.Windows.Listings
         public static SystemData? currentSystem = null;
         public static List<SystemData> systemData = new List<SystemData>();
         public static bool uiSelected = false;
+        private static bool fetchedSystems = false;
+
+        // Section tabs: 0=Stats, 1=Classes, 2=Combat, 3=Rules
+        public static int systemSectionIndex = 0;
+        private static readonly string[] SectionNames = { "Stats", "Classes", "Combat", "Rules" };
         public SystemsWindow() : base(
             "SYSTEMS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
         {
@@ -47,7 +54,8 @@ namespace AbsoluteRP.Windows.Listings
 
             if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows)
                 && ImGui.IsMouseClicked(ImGuiMouseButton.Left)
-                && !ImGui.IsAnyItemActive() 
+                && !ImGui.IsAnyItemActive()
+                && !ImGui.IsPopupOpen("", ImGuiPopupFlags.AnyPopupId)
                 && !uiSelected)
             {
                 ImGui.SetWindowFocus("SystemNavigation");
@@ -80,23 +88,89 @@ namespace AbsoluteRP.Windows.Listings
 
         public static void DrawSystemCreation()
         {
+            // Fetch systems from server on first draw
+            if (!fetchedSystems && Plugin.character != null)
+            {
+                fetchedSystems = true;
+                Networking.DataSender.FetchMySystems(Plugin.character);
+            }
+
             // Create new system
             if (ThemeManager.PillButton("Create System"))
             {
-                systemData.Add(new SystemData() { name = "New System", description = string.Empty, StatsData = new SortedList<int, StatData>() });
+                var newSystem = new SystemData() { name = "New System", description = string.Empty, StatsData = new SortedList<int, StatData>() };
+                systemData.Add(newSystem);
                 currentSystemIndex = systemData.Count - 1;
-                currentSystem = systemData[currentSystemIndex];
+                currentSystem = newSystem;
+                drawStatLayout = true;
+                systemSectionIndex = 0;
                 Stats.currentStatIndex = -1;
                 Stats.selectedStat = null;
+
+                // Send to server to get an ID
+                if (Plugin.character != null)
+                    Networking.DataSender.CreateSystem(Plugin.character, newSystem.name, newSystem.description);
             }
 
             DrawSystemSelection();
 
-            if (drawStatLayout && currentSystem != null)
+            if (currentSystem == null) return;
+
+            ImGui.Spacing();
+
+            // Horizontal section tab bar (always visible when a system is selected)
+            if (ImGui.BeginTabBar("##SystemSections"))
             {
-                Stats.DrawStatCreation();
+                for (int i = 0; i < SectionNames.Length; i++)
+                {
+                    bool selected = systemSectionIndex == i;
+                    if (ImGui.BeginTabItem(SectionNames[i]))
+                    {
+                        systemSectionIndex = i;
+                        drawStatLayout = (i == 0);
+                        ImGui.EndTabItem();
+                    }
+                }
+                ImGui.EndTabBar();
+            }
+
+            ImGui.Spacing();
+            ThemeManager.GradientSeparator();
+            ImGui.Spacing();
+
+            // Draw the selected section
+            switch (systemSectionIndex)
+            {
+                case 0:
+                    Stats.DrawStatCreation();
+                    break;
+                case 1:
+                    AbsoluteRP.Windows.Systems.Skills.Skills.DrawSkillsEditor();
+                    break;
+                case 2:
+                    AbsoluteRP.Windows.Systems.Combat.Combat.DrawCombatConfig();
+                    break;
+                case 3:
+                    AbsoluteRP.Windows.Systems.Rules.Rules.DrawRulesEditor();
+                    break;
             }
         }
+
+        /// <summary>
+        /// Saves all system data (stats, combat, classes, skills, rules) to the server.
+        /// </summary>
+        public static void SaveAllSystemData()
+        {
+            var system = currentSystem;
+            if (system == null || system.id <= 0 || Plugin.character == null) return;
+
+            var character = Plugin.character;
+            Networking.DataSender.SaveSystemStats(character, system.id, system.StatsData);
+            Networking.DataSender.SaveCombatConfig(character, system.id, system.CombatConfig, system.Resources);
+            Networking.DataSender.SaveSkillClasses(character, system.id, system.SkillClasses);
+            Networking.DataSender.SaveSkills(character, system.id, system.Skills, system.SkillConnections);
+        }
+
 
         public static void DrawSystemSelection()
         {
@@ -137,11 +211,22 @@ namespace AbsoluteRP.Windows.Listings
             }
 
             string systemName = systemData[currentSystemIndex].name;
+            ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 160);
             if (ImGui.InputTextWithHint("##SystemName", "Enter system name...", ref systemName))
             {
                 systemData[currentSystemIndex].name = systemName;
                 if (currentSystem != null)
                     currentSystem.name = systemName;
+            }
+            ImGui.SameLine();
+            if (currentSystem != null && currentSystem.id > 0)
+            {
+                if (ThemeManager.PillButton("Save All##saveAll", new Vector2(140, 0)))
+                    SaveAllSystemData();
+            }
+            else if (currentSystem != null && currentSystem.id <= 0)
+            {
+                ImGui.TextColored(ThemeManager.FontMuted, "Creating...");
             }
         }
         private static List<Vector2> CalculatePolygonPoints(Vector2 center, float radius, int count)

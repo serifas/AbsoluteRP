@@ -193,7 +193,7 @@ namespace InventoryTab
                 }
                 IDalamudTextureWrap Icon = editItemIcon;
                 WindowOperations.RenderIcons(plugin, true, false, null, null, ref Icon);
-                if (ThemeManager.GhostButton("Close Icon Browser"))
+                if (ThemeManager.GhostButton("Choose Icon"))
                 {
                     editIconBrowserOpen = false;
                 }
@@ -279,7 +279,7 @@ namespace InventoryTab
                 WindowOperations.RenderIcons(plugin, true, false, null, null, ref Icon);
 
                 // Add a close button for the browser
-                if (ThemeManager.GhostButton("Close Icon Browser"))
+                if (ThemeManager.GhostButton("Choose Icon"))
                 {
                     isIconBrowserOpen = false;
                 }

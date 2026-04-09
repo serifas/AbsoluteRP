@@ -109,6 +109,8 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         private string[] newTabNames = new string[MaxTabs];
         private int customTabsCount = 0; // Current number of tabs
         private int tabToDeleteIndex = -1; // Index of the tab to delete
+        private int? draggedTabIndex = null; // For drag-drop tab reordering
+        private static bool tabsReordered = false;
         private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
         public static int currentElementID = 0;
         public static bool customTabSelected = false;
@@ -361,7 +363,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             return;
                         }
 
-                        bool allTabsLoaded = DataReceiver.tabsCount > 0
+                        bool allTabsLoaded = DataReceiver.tabCountReceived
                             && DataReceiver.loadedTabsCount >= DataReceiver.tabsCount;
                         bool galleryDone = DataReceiver.GalleryImagesToLoad == 0
                             || DataReceiver.loadedGalleryImages >= DataReceiver.GalleryImagesToLoad;
@@ -373,11 +375,32 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             : 999999;
                         bool minTimeElapsed = elapsedMs >= 500;
 
-                        if (allTabsLoaded && galleryDone && !Sending && minTimeElapsed)
+                        // Safety timeout: if loading takes longer than 15 seconds, stop waiting
+                        bool timedOut = elapsedMs >= 15000;
+
+                        if ((allTabsLoaded && galleryDone && !Sending && minTimeElapsed) || timedOut)
                         {
                             // All data including images arrived and minimum display time passed
                             Fetching = false;
                             fetchStartedTicks = 0;
+
+                            // Sort tabs by tabIndex so reordered tabs display correctly
+                            if (CurrentProfile.customTabs != null && CurrentProfile.customTabs.Count > 1)
+                            {
+                                CurrentProfile.customTabs.Sort((a, b) =>
+                                {
+                                    int idxA = GetLayoutTabIndex(a.Layout);
+                                    int idxB = GetLayoutTabIndex(b.Layout);
+                                    return idxA.CompareTo(idxB);
+                                });
+                            }
+                            // Store each tab's actual DB tabIndex so reorder can send correct (old, new) pairs
+                            initialTabOrder.Clear();
+                            if (CurrentProfile.customTabs != null)
+                            {
+                                foreach (var t in CurrentProfile.customTabs)
+                                    initialTabOrder.Add(GetLayoutTabIndex(t.Layout));
+                            }
                         }
                         else
                         {
@@ -1213,6 +1236,37 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
                 using (var tab = ImRaii.TabItem(uniqueId, ref isOpen))
                 {
+                    // Drag-drop reorder: attach to the tab header (must be right after TabItem)
+                    if (ImGui.BeginDragDropSource(ImGuiDragDropFlags.SourceNoHoldToOpenOthers))
+                    {
+                        draggedTabIndex = index;
+                        ImGui.SetDragDropPayload("TAB_REORDER", ReadOnlySpan<byte>.Empty);
+                        ImGui.Text($"Move: {tabName}");
+                        ImGui.EndDragDropSource();
+                    }
+                    if (ImGui.BeginDragDropTarget())
+                    {
+                        var payload = ImGui.AcceptDragDropPayload("TAB_REORDER");
+                        if (!payload.IsNull && draggedTabIndex.HasValue)
+                        {
+                            int srcIdx = draggedTabIndex.Value;
+                            int dstIdx = index;
+                            if (srcIdx != dstIdx && srcIdx < CurrentProfile.customTabs.Count && dstIdx < CurrentProfile.customTabs.Count)
+                            {
+                                (CurrentProfile.customTabs[srcIdx], CurrentProfile.customTabs[dstIdx]) =
+                                    (CurrentProfile.customTabs[dstIdx], CurrentProfile.customTabs[srcIdx]);
+                                if (srcIdx < initialTabOrder.Count && dstIdx < initialTabOrder.Count)
+                                {
+                                    (initialTabOrder[srcIdx], initialTabOrder[dstIdx]) =
+                                        (initialTabOrder[dstIdx], initialTabOrder[srcIdx]);
+                                }
+                                tabsReordered = true;
+                            }
+                            draggedTabIndex = null;
+                        }
+                        ImGui.EndDragDropTarget();
+                    }
+
                     // IMPORTANT: do NOT return when tab == false.
                     // Begin/TabItem may return false for an inactive tab but it still updates the ref 'isOpen'
                     // when the user clicks the little close button. We must let the method continue so
@@ -1258,7 +1312,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                         Story.RenderStoryLayout(index, uniqueId, storyLayout);
                                         break;
                                     case InventoryLayout inventoryLayout:
-                                        Inventory.RenderInventoryLayout(index, uniqueId, inventoryLayout);
+                                        ProfileLayoutTypes.Inventory.RenderInventoryLayout(index, uniqueId, inventoryLayout);
                                         break;
                                     case TreeLayout treeLayout:
                                         Tree.RenderTreeLayout(index, true, uniqueId, treeLayout, string.Empty, new Vector4(0, 0, 0, 0));
@@ -1912,6 +1966,23 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             }
         }
 
+        private static int GetLayoutTabIndex(CustomLayout layout)
+        {
+            if (layout == null) return int.MaxValue;
+            return layout switch
+            {
+                BioLayout b => b.tabIndex,
+                DetailsLayout d => d.tabIndex,
+                DynamicLayout dyn => dyn.tabIndex,
+                GalleryLayout g => g.tabIndex,
+                InfoLayout inf => inf.tabIndex,
+                StoryLayout s => s.tabIndex,
+                InventoryLayout inv => inv.tabIndex,
+                TreeLayout tr => tr.tabIndex,
+                _ => int.MaxValue,
+            };
+        }
+
         public void SubmitProfileData(bool voidData)
         {
             if (ProfileSaveTracker.IsSaving) return;
@@ -1959,6 +2030,25 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             ProfileSaveTracker.Advance($"Tab created: {tabs[i].Name}");
                     }
 
+                    // Step 2.5: Send tab reorder if tabs were rearranged
+                    if (tabsReordered && !voidData)
+                    {
+                        ProfileSaveTracker.CurrentStep = "Saving tab order...";
+                        // initialTabOrder[i] = the DB tab_index of the tab currently at list position i.
+                        // After drag-drop swaps, initialTabOrder reflects the new arrangement.
+                        // Send every tab whose DB index doesn't match its desired new position.
+                        var indexChanges = new List<(int oldIndex, int newIndex)>();
+                        for (int pos = 0; pos < tabs.Count; pos++)
+                        {
+                            int dbIdx = pos < initialTabOrder.Count ? initialTabOrder[pos] : pos;
+                            if (dbIdx != pos)
+                                indexChanges.Add((dbIdx, pos));
+                        }
+                        if (indexChanges.Count > 0)
+                            await DataSender.SendTabReorder(character, profIdx, indexChanges);
+                        tabsReordered = false;
+                    }
+
                     // Step 3: Submit all tab layouts in a single batch
                     ProfileSaveTracker.CurrentStep = "Preparing tab data...";
                     var tabBuffers = new List<byte[]>();
@@ -1980,6 +2070,11 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             buf = DataSender.BuildInventoryLayoutBuffer(character, profIdx, inventoryLayout);
                         else if (tab.Layout is TreeLayout treeLayout)
                             buf = DataSender.BuildTreeLayoutBuffer(character, profIdx, treeLayout);
+                        else if (tab.Layout is DynamicLayout dynamicLayout)
+                        {
+                            // DynamicLayout sends directly (has images)
+                            DataSender.SubmitDynamicLayout(character, profIdx, dynamicLayout);
+                        }
 
                         if (buf != null) tabBuffers.Add(buf);
                     }
@@ -2002,6 +2097,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         await SaveBackupFile(config.dataSavePath);
                     }
                     CurrentProfile.customTabs.Clear();
+                    AbsoluteRP.Windows.Inventory.InventoryWindow.ClearTabs();
                     customLayouts.Clear();
                     ProfileSaveTracker.Advance("Loading profile from server...");
                     ProfileSaveTracker.CurrentStep = "Loading profile from server...";

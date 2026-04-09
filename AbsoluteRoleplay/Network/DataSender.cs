@@ -227,6 +227,28 @@ namespace Networking
         CRespondToBooking = 222,
         CFetchIncomingBookings = 223,
         CSaveBookableEntries = 224,
+
+        // Equipment System
+        SaveEquipment = 173,
+        FetchEquipment = 174,
+        FetchTargetEquipment = 176,
+
+        // RP Systems
+        CCreateSystem = 240,
+        CUpdateSystem = 241,
+        CDeleteSystem = 242,
+        CFetchSystem = 243,
+        CFetchMySystems = 244,
+        CImportSystemByCode = 245,
+        CSaveSystemStats = 246,
+        CSaveSystemResources = 247,
+        CSaveCombatConfig = 248,
+        CSaveSkillClasses = 249,
+        CSaveSkills = 250,
+        CSaveSkillConnections = 251,
+        CSaveCharacterSheet = 252,
+        CFetchCharacterSheet = 253,
+        CFetchCharacterSheets = 254,
     }
     public class DataSender
     {
@@ -524,8 +546,10 @@ namespace Networking
                         // Reset self tooltipData loading counters
                         DataReceiver.loadedTabsCount = 0;
                         DataReceiver.tabsCount = 0;
+                        DataReceiver.tabCountReceived = false;
                         DataReceiver.loadedGalleryImages = 0;
                         DataReceiver.GalleryImagesToLoad = 0;
+                        AbsoluteRP.Windows.Inventory.InventoryWindow.ClearTabs();
                         ProfileWindow.Fetching = true;
                         ProfileWindow.fetchStartedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
                     }
@@ -2617,7 +2641,7 @@ namespace Networking
 
         // ==================== End Buffer Builders ====================
 
-        internal static async void SendTabReorder(Character character, int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
+        internal static async Task SendTabReorder(Character character, int profileIndex, List<(int oldIndex, int newIndex)> indexChanges)
         {
             if (ClientTCP.IsConnected())
             {
@@ -2643,6 +2667,87 @@ namespace Networking
                 catch (Exception ex)
                 {
                     Plugin.PluginLog.Debug("Debug in SubmitTreeLayout: " + ex.ToString());
+                }
+            }
+        }
+
+        // ========== Equipment System ==========
+
+        internal static async void SendSaveEquipment(Character character, int profileIndex, Dictionary<int, ItemDefinition> equipment)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.SaveEquipment);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(profileIndex);
+                        buffer.WriteInt(equipment.Count);
+                        foreach (var kvp in equipment)
+                        {
+                            buffer.WriteInt(kvp.Key); // slotIndex
+                            buffer.WriteString(kvp.Value.name ?? string.Empty);
+                            buffer.WriteString(kvp.Value.description ?? string.Empty);
+                            buffer.WriteInt(kvp.Value.type);
+                            buffer.WriteInt(kvp.Value.subtype);
+                            buffer.WriteInt(kvp.Value.iconID);
+                            buffer.WriteInt(kvp.Value.quality);
+                            buffer.WriteBool(kvp.Value.locked);
+                        }
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendSaveEquipment: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendFetchEquipment(Character character, int profileIndex)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchEquipment);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteInt(profileIndex);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendFetchEquipment: " + ex.ToString());
+                }
+            }
+        }
+
+        internal static async void SendFetchTargetEquipment(Character character, string targetName, string targetWorld)
+        {
+            if (ClientTCP.IsConnected())
+            {
+                try
+                {
+                    using (var buffer = new ByteBuffer())
+                    {
+                        buffer.WriteInt((int)ClientPackets.FetchTargetEquipment);
+                        buffer.WriteString(plugin.Configuration.account.accountKey);
+                        buffer.WriteString(character.characterKey);
+                        buffer.WriteString(targetName);
+                        buffer.WriteString(targetWorld);
+                        await ClientTCP.SendDataAsync(buffer.ToArray());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Debug in SendFetchTargetEquipment: " + ex.ToString());
                 }
             }
         }
@@ -5052,6 +5157,246 @@ buffer.WriteFloat(emptyElement.color.W);
                 DataReceiver.groupSearchInProgress = false;
                 Plugin.PluginLog.Error($"SearchPublicGroups error: {ex.Message}");
             }
+        }
+
+        #endregion
+
+        #region RP Systems
+
+        public static async Task CreateSystem(Character character, string name, string description)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CCreateSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteString(name);
+                    buffer.WriteString(description ?? "");
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"CreateSystem error: {ex.Message}"); }
+        }
+
+        public static async Task FetchMySystems(Character character)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CFetchMySystems);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"FetchMySystems error: {ex.Message}"); }
+        }
+
+        public static async Task FetchSystem(Character character, int systemId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CFetchSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"FetchSystem error: {ex.Message}"); }
+        }
+
+        public static async Task DeleteSystem(Character character, int systemId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CDeleteSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"DeleteSystem error: {ex.Message}"); }
+        }
+
+        public static async Task ImportSystemByCode(Character character, string shareCode)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CImportSystemByCode);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteString(shareCode);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"ImportSystemByCode error: {ex.Message}"); }
+        }
+
+        public static async Task SaveSystemStats(Character character, int systemId, SortedList<int, StatData> stats)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSaveSystemStats);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteInt(stats.Count);
+                    for (int i = 0; i < stats.Count; i++)
+                    {
+                        var s = stats.Values[i];
+                        buffer.WriteInt(s.id);
+                        buffer.WriteInt(i); // sort order
+                        buffer.WriteString(s.name ?? "");
+                        buffer.WriteString(s.description ?? "");
+                        buffer.WriteFloat(s.color.X);
+                        buffer.WriteFloat(s.color.Y);
+                        buffer.WriteFloat(s.color.Z);
+                        buffer.WriteFloat(s.color.W);
+                        buffer.WriteInt(s.baseMin);
+                        buffer.WriteInt(s.baseMax);
+                        buffer.WriteBool(s.canAddPoints);
+                        buffer.WriteBool(s.canRemovePoints);
+                        buffer.WriteBool(s.canGoNegative);
+                        buffer.WriteBool(s.negativeGivesPoint);
+                    }
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"SaveSystemStats error: {ex.Message}"); }
+        }
+
+        public static async Task SaveCombatConfig(Character character, int systemId, CombatConfigData config, List<ResourceData> resources)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSaveCombatConfig);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    // Combat config
+                    buffer.WriteBool(config.healthEnabled);
+                    buffer.WriteInt(config.healthBase);
+                    buffer.WriteInt(config.healthMax);
+                    buffer.WriteInt(config.healthLinkedStatId);
+                    buffer.WriteFloat(config.healthStatMultiplier);
+                    buffer.WriteInt(config.healthRegenAmount);
+                    buffer.WriteInt(config.healthRegenEveryNTurns);
+                    buffer.WriteInt(config.turnCount);
+                    buffer.WriteInt(config.diceType);
+                    buffer.WriteInt(config.diceCount);
+                    buffer.WriteInt(config.diceModifier);
+                    // Resources
+                    buffer.WriteInt(resources.Count);
+                    foreach (var r in resources)
+                    {
+                        buffer.WriteInt(r.id);
+                        buffer.WriteString(r.name ?? "");
+                        buffer.WriteString(r.description ?? "");
+                        buffer.WriteInt(r.baseValue);
+                        buffer.WriteInt(r.maxValue);
+                        buffer.WriteFloat(r.color.X);
+                        buffer.WriteFloat(r.color.Y);
+                        buffer.WriteFloat(r.color.Z);
+                        buffer.WriteFloat(r.color.W);
+                        buffer.WriteInt(r.linkedStatId);
+                        buffer.WriteFloat(r.statMultiplier);
+                        buffer.WriteInt(r.regenAmount);
+                        buffer.WriteInt(r.regenEveryNTurns);
+                    }
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"SaveCombatConfig error: {ex.Message}"); }
+        }
+
+        public static async Task SaveSkillClasses(Character character, int systemId, List<SkillClassData> classes)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSaveSkillClasses);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteInt(classes.Count);
+                    foreach (var c in classes)
+                    {
+                        buffer.WriteInt(c.id);
+                        buffer.WriteString(c.name ?? "");
+                        buffer.WriteString(c.description ?? "");
+                        buffer.WriteInt(c.sortOrder);
+                        buffer.WriteBool(c.allowCustomSkills);
+                    }
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"SaveSkillClasses error: {ex.Message}"); }
+        }
+
+        public static async Task SaveSkills(Character character, int systemId, List<SkillData> skills, List<SkillConnectionData> connections)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CSaveSkills);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    buffer.WriteInt(skills.Count);
+                    foreach (var s in skills)
+                    {
+                        buffer.WriteInt(s.id);
+                        buffer.WriteInt(s.classId);
+                        buffer.WriteInt(s.treeIndex);
+                        buffer.WriteString(s.name ?? "");
+                        buffer.WriteString(s.description ?? "");
+                        buffer.WriteInt(s.iconId);
+                        buffer.WriteInt(s.gridX);
+                        buffer.WriteInt(s.gridY);
+                        buffer.WriteBool(s.isCastable);
+                        buffer.WriteInt(s.cooldownTurns);
+                        buffer.WriteInt(s.resourceId);
+                        buffer.WriteInt(s.resourceCost);
+                        buffer.WriteInt(s.maxTiers);
+                    }
+                    // Connections
+                    buffer.WriteInt(connections.Count);
+                    foreach (var c in connections)
+                    {
+                        buffer.WriteInt(c.fromSkillId);
+                        buffer.WriteInt(c.toSkillId);
+                        buffer.WriteInt(c.requiredPoints);
+                    }
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"SaveSkills error: {ex.Message}"); }
         }
 
         #endregion

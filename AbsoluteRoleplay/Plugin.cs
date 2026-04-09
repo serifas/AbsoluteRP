@@ -133,6 +133,8 @@ namespace AbsoluteRP
         private ViewLikesWindow? ViewLikesWindow { get; set; }
         private LikeDetailsWindow? LikeDetailsWindow { get; set; }
         private ListingsWindow? ListingsWindow { get; set; }
+        private AbsoluteRP.Windows.Inventory.InventoryWindow? InventoryWindow { get; set; }
+        private AbsoluteRP.Windows.Inventory.EquipmentWindow? EquipmentWindow { get; set; }
         // YouTubePlayerWindow is a WebView2 Forms window that runs on its own thread
 
         public float BlinkInterval = 0.5f;
@@ -811,6 +813,8 @@ namespace AbsoluteRP
         public void ToggleSystemsWindow() => SystemsWindow.Toggle();
         public void ToggleViewLikesWindow() => ViewLikesWindow.Toggle();
         public void OpenListingsWindow() => ListingsWindow.IsOpen = true;
+        public void OpenInventoryWindow() { if (InventoryWindow != null) InventoryWindow.IsOpen = true; }
+        public void OpenEquipmentWindow() { if (EquipmentWindow != null) EquipmentWindow.IsOpen = true; }
         public void OpenLikeDetailsWindow(ProfileData profile)
         {
             LikeDetailsWindow.SetProfile(profile);
@@ -861,6 +865,8 @@ namespace AbsoluteRP
                 ViewLikesWindow = new ViewLikesWindow(this);
                 LikeDetailsWindow = new LikeDetailsWindow();
                 ListingsWindow = new ListingsWindow();
+                InventoryWindow = new AbsoluteRP.Windows.Inventory.InventoryWindow();
+                EquipmentWindow = new AbsoluteRP.Windows.Inventory.EquipmentWindow();
                 // YouTubePlayerWindow creates itself when OpenVideo is called
 
                 WindowSystem.AddWindow(OptionsWindow);
@@ -882,6 +888,8 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(ViewLikesWindow);
                 WindowSystem.AddWindow(LikeDetailsWindow);
                 WindowSystem.AddWindow(ListingsWindow);
+                WindowSystem.AddWindow(InventoryWindow);
+                WindowSystem.AddWindow(EquipmentWindow);
 
                 LoadStatusBarEntry();
                 chatgui.ChatMessage += ArpChatWindow.OnChatMessage;

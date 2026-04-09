@@ -120,13 +120,58 @@ namespace AbsoluteRP.Windows.Systems.Stats
                     }
                     // Store target polygon points after change
                     targetPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
-
-                    // Resample previous to match target count for smooth morph
                     previousPolygonPoints = ResamplePolygonPoints(previousPolygonPoints, targetPolygonPoints.Count);
-
                     morphProgress = 0f;
                     morphStartTime = DateTime.Now;
                 }
+
+                // --- Stat Configuration ---
+                if (selectedStat != null)
+                {
+                    ImGui.Spacing();
+
+                    // Description
+                    string desc = selectedStat.description ?? "";
+                    ImGui.Text("Description:");
+                    if (ImGui.InputTextMultiline($"###statDesc{currentStatIndex}", ref desc, 500, new Vector2(ImGui.GetContentRegionAvail().X, 50)))
+                        selectedStat.description = desc;
+
+                    ImGui.Spacing();
+
+                    // Min/Max values
+                    int bMin = selectedStat.baseMin;
+                    int bMax = selectedStat.baseMax;
+                    ImGui.SetNextItemWidth(100);
+                    if (ImGui.InputInt("Min Value##statMin", ref bMin)) selectedStat.baseMin = bMin;
+                    ImGui.SameLine();
+                    ImGui.SetNextItemWidth(100);
+                    if (ImGui.InputInt("Max Value##statMax", ref bMax)) selectedStat.baseMax = bMax;
+
+                    ImGui.Spacing();
+
+                    // Point rules
+                    bool canAdd = selectedStat.canAddPoints;
+                    bool canRemove = selectedStat.canRemovePoints;
+                    bool canNeg = selectedStat.canGoNegative;
+                    if (ImGui.Checkbox("Can Add Points", ref canAdd)) selectedStat.canAddPoints = canAdd;
+                    ImGui.SameLine();
+                    if (ImGui.Checkbox("Can Remove Points", ref canRemove)) selectedStat.canRemovePoints = canRemove;
+                    ImGui.SameLine();
+                    if (ImGui.Checkbox("Can Go Negative", ref canNeg)) selectedStat.canGoNegative = canNeg;
+
+                    if (selectedStat.canGoNegative)
+                    {
+                        ImGui.Indent();
+                        bool negGives = selectedStat.negativeGivesPoint;
+                        if (ImGui.Checkbox("Negative Gives Extra Spendable Point", ref negGives))
+                            selectedStat.negativeGivesPoint = negGives;
+                        ImGui.Unindent();
+                    }
+
+                    ImGui.Spacing();
+                    ThemeManager.GradientSeparator();
+                }
+
             }
 
             // Draw stat bars
@@ -181,6 +226,17 @@ namespace AbsoluteRP.Windows.Systems.Stats
                     // Draw static polygon outline
                     var staticPoints = CalculatePolygonPoints(center, 100, stats.Count);
                     UIHelpers.DrawPolygonFromPoints(staticPoints, statColors);
+                }
+            }
+
+            // Save button
+            ImGui.Spacing();
+            if (ThemeManager.PillButton("Save Stats##saveStats", new Vector2(140, 32)))
+            {
+                var system = SystemsWindow.currentSystem;
+                if (system != null && system.id > 0 && Plugin.character != null)
+                {
+                    Networking.DataSender.SaveSystemStats(Plugin.character, system.id, system.StatsData);
                 }
             }
         }

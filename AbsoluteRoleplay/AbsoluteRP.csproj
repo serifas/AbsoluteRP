@@ -53,6 +53,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <None Include="UI\inventory.png" />
       <None Include="UI\listings.png" />
       <None Include="UI\social\groups\Settings.png" />
     </ItemGroup>
@@ -66,5 +67,8 @@
         <KnownFrameworkReference Update="Microsoft.WindowsDesktop.App" IsWindowsOnly="false" TargetingPackVersion="10.0.0" />
         <KnownFrameworkReference Update="Microsoft.WindowsDesktop.App.WPF" IsWindowsOnly="false" TargetingPackVersion="10.0.0" />
         <KnownFrameworkReference Update="Microsoft.WindowsDesktop.App.WindowsForms" IsWindowsOnly="false" TargetingPackVersion="10.0.0" />
+    </ItemGroup>
+    <ItemGroup>
+      <Folder Include="Windows\Listings\" />
     </ItemGroup>
 </Project>

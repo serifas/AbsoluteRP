@@ -138,6 +138,16 @@ namespace Networking
             packets.Add((int)ServerPackets.SendBookableEntriesSaved, DataReceiver.HandleBookableEntriesSaved);
             packets.Add((int)ServerPackets.SendBookingNotification, DataReceiver.HandleBookingNotification);
 
+            // RP Systems
+            packets.Add((int)ServerPackets.SendSystemCreated, DataReceiver.HandleSystemCreated);
+            packets.Add((int)ServerPackets.SendSystemDeleted, DataReceiver.HandleSystemDeleted);
+            packets.Add((int)ServerPackets.SendMySystems, DataReceiver.HandleMySystems);
+            packets.Add((int)ServerPackets.SendStatsSaved, DataReceiver.HandleStatsSaved);
+            packets.Add((int)ServerPackets.SendCombatConfigSaved, DataReceiver.HandleCombatConfigSaved);
+            packets.Add((int)ServerPackets.SendSkillClassesSaved, DataReceiver.HandleSkillClassesSaved);
+            packets.Add((int)ServerPackets.SendSkillsSaved, DataReceiver.HandleSkillsSaved);
+            packets.Add((int)ServerPackets.SendSystemError, DataReceiver.HandleSystemError);
+
             //simple message back from server, simply for verification that the user is connected
         }
 

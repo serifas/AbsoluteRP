@@ -22,9 +22,10 @@ namespace AbsoluteRP.Windows.NavLayouts
             {
             "Profiles",
             "Social",
-            "Systems - WIP",
+            "Systems",
             "Quests - WIP",
-            "Listings"
+            "Listings - WIP",
+            "Inventory"
             };
             // Define actions for each button
             navigation.actions = new Action[]
@@ -44,7 +45,7 @@ namespace AbsoluteRP.Windows.NavLayouts
                 () => {
                     if (Plugin.IsOnline())
                     {
-                      //  Plugin.plugin.ToggleSystemsWindow();
+                       Plugin.plugin.ToggleSystemsWindow();
                     }
                 },
                 () => { /* Quests logic */ },
@@ -53,6 +54,13 @@ namespace AbsoluteRP.Windows.NavLayouts
                     {
                         Plugin.plugin.OpenListingsWindow();
                     }
+                },
+                () => {
+                    if (Plugin.IsOnline())
+                    {
+                        DataSender.FetchProfiles(Plugin.character);
+                        Plugin.plugin.OpenInventoryWindow();
+                    }
                 }
                 };
             navigation.textureIDs = new ImTextureID[]{
@@ -60,7 +68,8 @@ namespace AbsoluteRP.Windows.NavLayouts
                 UI.UICommonImage(UI.CommonImageTypes.groups).Handle,
                 UI.UICommonImage(UI.CommonImageTypes.systems).Handle,
                 UI.UICommonImage(UI.CommonImageTypes.quests).Handle,
-                UI.UICommonImage(UI.CommonImageTypes.listings).Handle
+                UI.UICommonImage(UI.CommonImageTypes.listings).Handle,
+                UI.UICommonImage(UI.CommonImageTypes.inventory).Handle
             };
             return navigation;
         }

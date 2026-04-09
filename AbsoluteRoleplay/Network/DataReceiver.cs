@@ -181,9 +181,47 @@ namespace Networking
         SendIncomingBookings = 223,
         SendBookableEntriesSaved = 224,
         SendBookingNotification = 225,
+
+        // RP Systems
+        SendSystemCreated = 240,
+        SendSystemUpdated = 241,
+        SendSystemDeleted = 242,
+        SendSystemData = 243,
+        SendMySystems = 244,
+        SendImportSystemResult = 245,
+        SendStatsSaved = 246,
+        SendResourcesSaved = 247,
+        SendCombatConfigSaved = 248,
+        SendSkillClassesSaved = 249,
+        SendSkillsSaved = 250,
+        SendSkillConnectionsSaved = 251,
+        SendCharacterSheetSaved = 252,
+        SendCharacterSheet = 253,
+        SendCharacterSheets = 254,
+        SendSystemError = 255,
     }
     class DataReceiver
     {
+        // Safe read helpers to prevent crashes from corrupt DB data
+        private const int MaxImageBytes = 10 * 1024 * 1024; // 10MB max per image
+        private const int MaxItemCount = 500; // Max items in any list
+
+        private static int SafeReadCount(ByteBuffer buffer)
+        {
+            int count = buffer.ReadInt();
+            if (count < 0) count = 0;
+            if (count > MaxItemCount) count = 0;
+            return count;
+        }
+
+        private static byte[] SafeReadBytes(ByteBuffer buffer)
+        {
+            int len = buffer.ReadInt();
+            if (len <= 0 || len > MaxImageBytes) return null;
+            try { return buffer.ReadBytes(len); }
+            catch { return null; }
+        }
+
         // Add these public static properties/lists at the top of your GroupManager class
         public static List<GroupCategory> categories = new List<GroupCategory>();
         public static List<GroupRosterField> rosterFields = new List<GroupRosterField>();
@@ -248,6 +286,7 @@ namespace Networking
         public static bool loggedIn;
         public static bool isAdmin;
         public static int tabsCount = 0, loadedTabsCount = 0;
+        public static bool tabCountReceived = false;
         public static bool silentUpdate;
         public static bool allLoaded;
         public static int loadedGalleryImages = 0;
@@ -1770,6 +1809,7 @@ namespace Networking
                     if (self)
                     {
                         tabsCount = tabCount;
+                        tabCountReceived = true;
                         ProfileWindow.CurrentProfile.customTabs.Clear();
                     }
                     else
@@ -2097,16 +2137,17 @@ namespace Networking
 
                     if (self)
                     {
-                        if (ProfileWindow.CurrentProfile.customTabs == null)
-                            ProfileWindow.CurrentProfile.customTabs = new List<CustomTab>();
-                        ProfileWindow.CurrentProfile.customTabs.Add(tab);
+                        // Route inventory tabs to the standalone InventoryWindow
+                        AbsoluteRP.Windows.Inventory.InventoryWindow.inventoryTabs.Add(tab);
+                        AbsoluteRP.Windows.Inventory.InventoryWindow.OnTabsLoaded();
+                        loadedTabsCount += 1;
                     }
                     else
                     {
                         EnsureTargetProfileData();
                         TargetProfileWindow.profileData.customTabs.Add(tab);
+                        loadedTargetTabsCount += 1;
                     }
-                    loadedTabsCount += 1;
                 }
             }
             catch (Exception ex)
@@ -5543,7 +5584,7 @@ namespace Networking
                 {
                     buffer.WriteBytes(data);
                     buffer.ReadInt(); // packet ID
-                    int count = buffer.ReadInt();
+                    int count = SafeReadCount(buffer);
                     ListingsWindow.listingsTotalCount = count;
                     Plugin.PluginLog.Info($"[HandleListingsList] Receiving {count} listings");
 
@@ -5564,37 +5605,27 @@ namespace Networking
                         listing.viewCount = buffer.ReadInt();
 
                         // Banner image
-                        int bannerLen = buffer.ReadInt();
-                        if (bannerLen > 0)
                         {
-                            byte[] bannerBytes = buffer.ReadBytes(bannerLen);
-                            try
+                            byte[] bannerBytes = SafeReadBytes(buffer);
+                            if (bannerBytes != null)
                             {
-                                listing.banner = await Plugin.TextureProvider.CreateFromImageAsync(bannerBytes);
-                            }
-                            catch (Exception imgEx)
-                            {
-                                Plugin.PluginLog.Debug($"[HandleListingsList] Banner load failed for listing {listing.id}: {imgEx.Message}");
+                                try { listing.banner = await Plugin.TextureProvider.CreateFromImageAsync(bannerBytes); }
+                                catch (Exception imgEx) { Plugin.PluginLog.Debug($"[HandleListingsList] Banner load failed: {imgEx.Message}"); }
                             }
                         }
 
                         // Logo image
-                        int logoLen = buffer.ReadInt();
-                        if (logoLen > 0)
                         {
-                            byte[] logoBytes = buffer.ReadBytes(logoLen);
-                            try
+                            byte[] logoBytes = SafeReadBytes(buffer);
+                            if (logoBytes != null)
                             {
-                                listing.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes);
-                            }
-                            catch (Exception imgEx)
-                            {
-                                Plugin.PluginLog.Debug($"[HandleListingsList] Logo load failed for listing {listing.id}: {imgEx.Message}");
+                                try { listing.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes); }
+                                catch (Exception imgEx) { Plugin.PluginLog.Debug($"[HandleListingsList] Logo load failed: {imgEx.Message}"); }
                             }
                         }
 
                         // Schedules
-                        int scheduleCount = buffer.ReadInt();
+                        int scheduleCount = SafeReadCount(buffer);
                         for (int s = 0; s < scheduleCount; s++)
                         {
                             var schedule = new ListingSchedule();
@@ -5671,38 +5702,28 @@ namespace Networking
 
                     // Banner image
                     ListingsWindow.detailLoadingStep = "Loading banner...";
-                    int bannerLen = buffer.ReadInt();
-                    if (bannerLen > 0)
                     {
-                        byte[] bannerBytes = buffer.ReadBytes(bannerLen);
-                        try
+                        byte[] bannerBytes = SafeReadBytes(buffer);
+                        if (bannerBytes != null)
                         {
-                            listing.banner = await Plugin.TextureProvider.CreateFromImageAsync(bannerBytes);
-                        }
-                        catch (Exception imgEx)
-                        {
-                            Plugin.PluginLog.Debug($"[HandleListingDetail] Banner load failed for listing {listing.id}: {imgEx.Message}");
+                            try { listing.banner = await Plugin.TextureProvider.CreateFromImageAsync(bannerBytes); }
+                            catch (Exception imgEx) { Plugin.PluginLog.Debug($"[HandleListingDetail] Banner load failed: {imgEx.Message}"); }
                         }
                     }
 
                     // Logo image
                     ListingsWindow.detailLoadingStep = "Loading logo...";
-                    int logoLen = buffer.ReadInt();
-                    if (logoLen > 0)
                     {
-                        byte[] logoBytes = buffer.ReadBytes(logoLen);
-                        try
+                        byte[] logoBytes = SafeReadBytes(buffer);
+                        if (logoBytes != null)
                         {
-                            listing.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes);
-                        }
-                        catch (Exception imgEx)
-                        {
-                            Plugin.PluginLog.Debug($"[HandleListingDetail] Logo load failed for listing {listing.id}: {imgEx.Message}");
+                            try { listing.logo = await Plugin.TextureProvider.CreateFromImageAsync(logoBytes); }
+                            catch (Exception imgEx) { Plugin.PluginLog.Debug($"[HandleListingDetail] Logo load failed: {imgEx.Message}"); }
                         }
                     }
 
                     // Tabs
-                    int tabCount = buffer.ReadInt();
+                    int tabCount = SafeReadCount(buffer);
                     for (int t = 0; t < tabCount; t++)
                     {
                         var tab = new ListingTab();
@@ -5716,7 +5737,7 @@ namespace Networking
                     }
 
                     // Schedules
-                    int scheduleCount = buffer.ReadInt();
+                    int scheduleCount = SafeReadCount(buffer);
                     for (int s = 0; s < scheduleCount; s++)
                     {
                         var schedule = new ListingSchedule();
@@ -5745,7 +5766,7 @@ namespace Networking
 
                     // Staff
                     ListingsWindow.detailLoadingStep = "Loading staff...";
-                    int staffCount = buffer.ReadInt();
+                    int staffCount = SafeReadCount(buffer);
                     ListingsWindow.detailTotalItems += staffCount;
                     for (int st = 0; st < staffCount; st++)
                     {
@@ -5759,7 +5780,7 @@ namespace Networking
                         staff.sortOrder = buffer.ReadInt();
 
                         // Custom fields
-                        int fieldCount = buffer.ReadInt();
+                        int fieldCount = SafeReadCount(buffer);
                         for (int f = 0; f < fieldCount; f++)
                         {
                             staff.customFields.Add(new field
@@ -5770,33 +5791,29 @@ namespace Networking
                         }
 
                         ListingsWindow.detailLoadingStep = $"Loading staff avatar ({st + 1}/{staffCount})...";
-                        int avatarLen = buffer.ReadInt();
-                        if (avatarLen > 0)
                         {
-                            byte[] avatarBytes = buffer.ReadBytes(avatarLen);
-                            try
+                            byte[] avatarBytes = SafeReadBytes(buffer);
+                            if (avatarBytes != null)
                             {
-                                staff.avatar = await Plugin.TextureProvider.CreateFromImageAsync(avatarBytes);
-                            }
-                            catch (Exception imgEx)
-                            {
-                                Plugin.PluginLog.Debug($"[HandleListingDetail] Staff avatar load failed for staff {staff.id}: {imgEx.Message}");
+                                try { staff.avatar = await Plugin.TextureProvider.CreateFromImageAsync(avatarBytes); }
+                                catch { }
                             }
                         }
                         // Entry images
-                        int staffImgCount = buffer.ReadInt();
+                        int staffImgCount = SafeReadCount(buffer);
                         ListingsWindow.detailTotalItems += staffImgCount;
                         for (int img = 0; img < staffImgCount; img++)
                         {
                             ListingsWindow.detailLoadingStep = $"Loading staff image {img + 1}/{staffImgCount}...";
                             var entryImg = new EntryImage();
-                            int imgLen = buffer.ReadInt();
-                            if (imgLen > 0)
                             {
-                                byte[] imgBytes = buffer.ReadBytes(imgLen);
-                                entryImg.imageBytes = imgBytes;
-                                try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
-                                catch { }
+                                byte[] imgBytes = SafeReadBytes(buffer);
+                                if (imgBytes != null)
+                                {
+                                    entryImg.imageBytes = imgBytes;
+                                    try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
+                                    catch { }
+                                }
                             }
                             entryImg.isNSFW = buffer.ReadBool();
                             entryImg.isTriggering = buffer.ReadBool();
@@ -5811,7 +5828,7 @@ namespace Networking
 
                     // Menu Items
                     ListingsWindow.detailLoadingStep = "Loading menu...";
-                    int menuItemCount = buffer.ReadInt();
+                    int menuItemCount = SafeReadCount(buffer);
                     ListingsWindow.detailTotalItems += menuItemCount;
                     for (int m = 0; m < menuItemCount; m++)
                     {
@@ -5824,19 +5841,20 @@ namespace Networking
                         menuItem.isOOCPrice = buffer.ReadBool();
                         menuItem.sortOrder = buffer.ReadInt();
                         // Entry images
-                        int menuImgCount = buffer.ReadInt();
+                        int menuImgCount = SafeReadCount(buffer);
                         ListingsWindow.detailTotalItems += menuImgCount;
                         for (int img = 0; img < menuImgCount; img++)
                         {
                             ListingsWindow.detailLoadingStep = $"Loading menu image {img + 1}/{menuImgCount}...";
                             var entryImg = new EntryImage();
-                            int imgLen = buffer.ReadInt();
-                            if (imgLen > 0)
                             {
-                                byte[] imgBytes = buffer.ReadBytes(imgLen);
-                                entryImg.imageBytes = imgBytes;
-                                try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
-                                catch { }
+                                byte[] imgBytes = SafeReadBytes(buffer);
+                                if (imgBytes != null)
+                                {
+                                    entryImg.imageBytes = imgBytes;
+                                    try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
+                                    catch { }
+                                }
                             }
                             entryImg.isNSFW = buffer.ReadBool();
                             entryImg.isTriggering = buffer.ReadBool();
@@ -5851,7 +5869,7 @@ namespace Networking
 
                     // Bookable Entries
                     ListingsWindow.detailLoadingStep = "Loading bookable services...";
-                    int bookableCount = buffer.ReadInt();
+                    int bookableCount = SafeReadCount(buffer);
                     ListingsWindow.detailTotalItems += bookableCount;
                     listing.bookableEntries = new List<BookableEntry>();
                     for (int b = 0; b < bookableCount; b++)
@@ -5866,19 +5884,20 @@ namespace Networking
                         entry.isActive = buffer.ReadBool();
                         entry.sortOrder = buffer.ReadInt();
                         // Entry images
-                        int bookableImgCount = buffer.ReadInt();
+                        int bookableImgCount = SafeReadCount(buffer);
                         ListingsWindow.detailTotalItems += bookableImgCount;
                         for (int img = 0; img < bookableImgCount; img++)
                         {
                             ListingsWindow.detailLoadingStep = $"Loading booking image {img + 1}/{bookableImgCount}...";
                             var entryImg = new EntryImage();
-                            int imgLen = buffer.ReadInt();
-                            if (imgLen > 0)
                             {
-                                byte[] imgBytes = buffer.ReadBytes(imgLen);
-                                entryImg.imageBytes = imgBytes;
-                                try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
-                                catch { }
+                                byte[] imgBytes = SafeReadBytes(buffer);
+                                if (imgBytes != null)
+                                {
+                                    entryImg.imageBytes = imgBytes;
+                                    try { entryImg.texture = await Plugin.TextureProvider.CreateFromImageAsync(imgBytes); }
+                                    catch { }
+                                }
                             }
                             entryImg.isNSFW = buffer.ReadBool();
                             entryImg.isTriggering = buffer.ReadBool();
@@ -5887,7 +5906,7 @@ namespace Networking
                             entry.images.Add(entryImg);
                             ListingsWindow.detailLoadedItems++;
                         }
-                        int timeCount = buffer.ReadInt();
+                        int timeCount = SafeReadCount(buffer);
                         for (int t = 0; t < timeCount; t++)
                         {
                             var time = new ListingSchedule();
@@ -5912,7 +5931,7 @@ namespace Networking
                     }
 
                     // Services
-                    int serviceCount = buffer.ReadInt();
+                    int serviceCount = SafeReadCount(buffer);
                     for (int sv = 0; sv < serviceCount; sv++)
                     {
                         var service = new ServiceData();
@@ -5924,7 +5943,7 @@ namespace Networking
                     }
 
                     // Settings
-                    int settingsCount = buffer.ReadInt();
+                    int settingsCount = SafeReadCount(buffer);
                     for (int se = 0; se < settingsCount; se++)
                     {
                         string key = buffer.ReadString();
@@ -6334,6 +6353,172 @@ namespace Networking
             {
                 Plugin.PluginLog.Error($"[HandleBookingNotification] Error: {ex.Message}");
             }
+        }
+
+        #endregion
+
+        #region RP Systems Handlers
+
+        public static void HandleSystemCreated(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet ID
+                    int systemId = buffer.ReadInt();
+                    string shareCode = buffer.ReadString();
+                    string name = buffer.ReadString();
+
+                    Plugin.PluginLog.Info($"[Systems] Created system id={systemId} code={shareCode} name={name}");
+
+                    // Update the local system with the server-assigned ID
+                    var system = AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem;
+                    if (system != null && system.id <= 0)
+                    {
+                        system.id = systemId;
+                        system.shareCode = shareCode;
+                    }
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemCreated Error: {ex.Message}"); }
+        }
+
+        public static void HandleSystemDeleted(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    Plugin.PluginLog.Info($"[Systems] Deleted system id={systemId}");
+                    AbsoluteRP.Windows.Listings.SystemsWindow.systemData.RemoveAll(s => s.id == systemId);
+                    if (AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem?.id == systemId)
+                    {
+                        AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem = null;
+                        AbsoluteRP.Windows.Listings.SystemsWindow.currentSystemIndex = -1;
+                    }
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemDeleted Error: {ex.Message}"); }
+        }
+
+        public static void HandleMySystems(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int count = buffer.ReadInt();
+                    Plugin.PluginLog.Info($"[Systems] Received {count} systems");
+
+                    AbsoluteRP.Windows.Listings.SystemsWindow.systemData.Clear();
+                    for (int i = 0; i < count; i++)
+                    {
+                        int id = buffer.ReadInt();
+                        string name = buffer.ReadString();
+                        string code = buffer.ReadString();
+                        AbsoluteRP.Windows.Listings.SystemsWindow.systemData.Add(new SystemData
+                        {
+                            id = id,
+                            name = name,
+                            shareCode = code,
+                        });
+                    }
+
+                    if (AbsoluteRP.Windows.Listings.SystemsWindow.systemData.Count > 0)
+                    {
+                        AbsoluteRP.Windows.Listings.SystemsWindow.currentSystemIndex = 0;
+                        AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem =
+                            AbsoluteRP.Windows.Listings.SystemsWindow.systemData[0];
+                    }
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleMySystems Error: {ex.Message}"); }
+        }
+
+        public static void HandleStatsSaved(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[Systems] Stats saved for system {systemId}: {success}");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleStatsSaved Error: {ex.Message}"); }
+        }
+
+        public static void HandleCombatConfigSaved(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[Systems] Combat config saved for system {systemId}: {success}");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleCombatConfigSaved Error: {ex.Message}"); }
+        }
+
+        public static void HandleSkillClassesSaved(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[Systems] Skill classes saved for system {systemId}: {success}");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSkillClassesSaved Error: {ex.Message}"); }
+        }
+
+        public static void HandleSkillsSaved(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int systemId = buffer.ReadInt();
+                    bool success = buffer.ReadBool();
+                    Plugin.PluginLog.Info($"[Systems] Skills saved for system {systemId}: {success}");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSkillsSaved Error: {ex.Message}"); }
+        }
+
+        public static void HandleSystemError(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    string message = buffer.ReadString();
+                    Plugin.PluginLog.Error($"[Systems] Server error: {message}");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleSystemError Error: {ex.Message}"); }
         }
 
         #endregion

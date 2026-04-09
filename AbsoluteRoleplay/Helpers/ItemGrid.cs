@@ -16,8 +16,8 @@ namespace AbsoluteRP.Helpers
         private const int TotalSlots = GridSize * GridSize;
 
         // Global drag-and-drop state
-        private static int? DraggedItemSlot = null;
-        private static Dictionary<int, ItemDefinition> DraggedSlotContents = null;
+        public static int? DraggedItemSlot = null;
+        public static Dictionary<int, ItemDefinition> DraggedSlotContents = null;
 
         private static readonly Dictionary<int, IDalamudTextureWrap> IconCache = new();
         private static readonly HashSet<int> LoadingIcons = new();
@@ -363,6 +363,10 @@ namespace AbsoluteRP.Helpers
                                     iconTexture = itemToDuplicate.iconTexture,
                                     locked = itemToDuplicate.locked
                                 };
+                            }
+                            if (ImGui.MenuItem("Equip"))
+                            {
+                                AbsoluteRP.Windows.Inventory.EquipmentPage.EquipFromContextMenu(layout, slotIndex);
                             }
                             ImGui.EndPopup();
                         }

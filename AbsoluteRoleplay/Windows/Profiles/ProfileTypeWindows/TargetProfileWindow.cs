@@ -454,7 +454,15 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     {
                         if (ImGui.BeginTabBar("TargetNavigation"))
                         {
-                            foreach (CustomTab tab in profileData.customTabs.ToList())
+                            // Sort by tabIndex to respect the profile owner's chosen tab order
+                            var sortedTabs = profileData.customTabs.ToList();
+                            sortedTabs.Sort((a, b) =>
+                            {
+                                int idxA = GetTabIndex(a);
+                                int idxB = GetTabIndex(b);
+                                return idxA.CompareTo(idxB);
+                            });
+                            foreach (CustomTab tab in sortedTabs)
                             {
                                 if (tab != null && !string.IsNullOrEmpty(tab.Name) && tab.Layout != null)
                                 {
@@ -802,6 +810,23 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     profileData.customTabs = new List<CustomTab>();
             }
 
+        }
+
+        private static int GetTabIndex(CustomTab tab)
+        {
+            if (tab?.Layout == null) return int.MaxValue;
+            return tab.Layout switch
+            {
+                BioLayout b => b.tabIndex,
+                DetailsLayout d => d.tabIndex,
+                DynamicLayout dyn => dyn.tabIndex,
+                GalleryLayout g => g.tabIndex,
+                InfoLayout inf => inf.tabIndex,
+                StoryLayout s => s.tabIndex,
+                InventoryLayout inv => inv.tabIndex,
+                TreeLayout tr => tr.tabIndex,
+                _ => int.MaxValue,
+            };
         }
     }
 }

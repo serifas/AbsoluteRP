@@ -117,7 +117,7 @@ public class MainPanel : Window, IDisposable
         // --- Navigation Panel (pinned outside, only covers buttons) ---
         float headerHeight = 48f; // Height of your main panel's header/title bar
         float buttonSize = ImGui.GetIO().FontGlobalScale * 45; // Height of each navigation button
-        int buttonCount = 5;      // Number of navigation buttons
+        int buttonCount = 6;      // Number of navigation buttons
 
         float navHeight = buttonSize * buttonCount * 1.2f;
         DrawMainUI();

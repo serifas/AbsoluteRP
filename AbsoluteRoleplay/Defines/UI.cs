@@ -448,17 +448,115 @@ namespace AbsoluteRP
     }
     public class SystemData
     {
+        public int id { get; set; } = -1;
         public string name { get; set; } = string.Empty;
         public string description { get; set; } = string.Empty;
+        public string shareCode { get; set; } = string.Empty;
         public SortedList<int, StatData> StatsData { get; set; } = new SortedList<int, StatData>();
-
+        public List<ResourceData> Resources { get; set; } = new List<ResourceData>();
+        public CombatConfigData CombatConfig { get; set; } = new CombatConfigData();
+        public List<SkillClassData> SkillClasses { get; set; } = new List<SkillClassData>();
+        public List<SkillData> Skills { get; set; } = new List<SkillData>();
+        public List<SkillConnectionData> SkillConnections { get; set; } = new List<SkillConnectionData>();
     }
+
     public class StatData
     {
+        public int id { get; set; } = -1;
         public string name { get; set; } = string.Empty;
         public string description { get; set; } = string.Empty;
         public Vector4 color { get; set; } = Vector4.Zero;
         public int statValue { get; set; } = 0;
+        public int baseMin { get; set; } = 0;
+        public int baseMax { get; set; } = 100;
+        public bool canAddPoints { get; set; } = true;
+        public bool canRemovePoints { get; set; } = true;
+        public bool canGoNegative { get; set; } = false;
+        public bool negativeGivesPoint { get; set; } = false;
+    }
+
+    public class ResourceData
+    {
+        public int id { get; set; } = -1;
+        public string name { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public int baseValue { get; set; } = 100;
+        public int maxValue { get; set; } = 100;
+        public Vector4 color { get; set; } = new Vector4(0.2f, 0.5f, 1f, 1f);
+        public int linkedStatId { get; set; } = -1;
+        public float statMultiplier { get; set; } = 1.0f;
+        public int regenAmount { get; set; } = 0;
+        public int regenEveryNTurns { get; set; } = 0;
+    }
+
+    public class CombatConfigData
+    {
+        public bool healthEnabled { get; set; } = false;
+        public int healthBase { get; set; } = 100;
+        public int healthMax { get; set; } = 100;
+        public int healthLinkedStatId { get; set; } = -1;
+        public float healthStatMultiplier { get; set; } = 1.0f;
+        public int healthRegenAmount { get; set; } = 0;
+        public int healthRegenEveryNTurns { get; set; } = 0;
+        public int turnCount { get; set; } = 1;
+        public int diceType { get; set; } = 20;
+        public int diceCount { get; set; } = 1;
+        public int diceModifier { get; set; } = 0;
+    }
+
+    public class SkillClassData
+    {
+        public int id { get; set; } = -1;
+        public string name { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public int sortOrder { get; set; } = 0;
+        public bool allowCustomSkills { get; set; } = false;
+        public List<SkillTreeData> SkillTrees { get; set; } = new List<SkillTreeData>();
+    }
+
+    public class SkillTreeData
+    {
+        public int id { get; set; } = -1;
+        public string name { get; set; } = "Skill Tree";
+        public int sortOrder { get; set; } = 0;
+    }
+
+    public class SkillData
+    {
+        public int id { get; set; } = -1;
+        public int classId { get; set; } = -1;
+        public int treeIndex { get; set; } = 0;
+        public string name { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public int iconId { get; set; } = 0;
+        public int gridX { get; set; } = 0;
+        public int gridY { get; set; } = 0;
+        public bool isCastable { get; set; } = true;
+        public int cooldownTurns { get; set; } = 0;
+        public int resourceId { get; set; } = -1;
+        public int resourceCost { get; set; } = 0;
+        public int maxTiers { get; set; } = 1;           // how many times this skill can be ranked up
+        public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap iconTexture { get; set; } = null;
+    }
+
+    public class SkillConnectionData
+    {
+        public int fromSkillId { get; set; }
+        public int toSkillId { get; set; }
+        public int requiredPoints { get; set; } = 1;     // points needed in parent to unlock child
+    }
+
+    public class CharacterSheetData
+    {
+        public int id { get; set; } = -1;
+        public int systemId { get; set; } = -1;
+        public string characterName { get; set; } = string.Empty;
+        public string characterWorld { get; set; } = string.Empty;
+        public Dictionary<int, int> statValues { get; set; } = new Dictionary<int, int>();
+        public List<int> learnedSkills { get; set; } = new List<int>();
+        public Dictionary<int, int> resourceValues { get; set; } = new Dictionary<int, int>();
+        public int currentHealth { get; set; } = 0;
+        public int unspentPoints { get; set; } = 0;
     }
 
     public class IconData 
@@ -911,6 +1009,7 @@ namespace AbsoluteRP
             listings = 68,
             personal = 69,
             groups = 70,
+            inventory = 71,
         }
         public enum ListingCategory
         {
@@ -1042,6 +1141,7 @@ namespace AbsoluteRP
                         CommonImageTypes.personal => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/personal.png"))).Result,
                         CommonImageTypes.listings => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings.png"))).Result,
                         CommonImageTypes.groups => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/group.png"))).Result,
+                        CommonImageTypes.inventory => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/inventory.png"))).Result,
                         CommonImageTypes.quests => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/quests.png"))).Result,
                         CommonImageTypes.systems => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/systems.png"))).Result,
                         CommonImageTypes.venues => Plugin.TextureProvider.CreateFromImageAsync(Misc.ImageToByteArray(Path.Combine(path, "UI/listings/venue.png"))).Result,
@@ -1661,8 +1761,7 @@ namespace AbsoluteRP
             ( "Details", "Details page with input element creation.", typeof(Details)),
             ( "Story", "Story page with chapters creation.", typeof(Story)),
             ( "Info", "A page with a single text field.", typeof(Info)),
-            ( "Gallery", "A gallery page to add all your favorite images.", typeof(Gallery)),
-            ( "Inventory", "A inventory page to hold all your items.", typeof(Inventory))
+            ( "Gallery", "A gallery page to add all your favorite images.", typeof(Gallery))
         };
 
     }
