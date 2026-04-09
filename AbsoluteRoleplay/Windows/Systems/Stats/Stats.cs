@@ -192,7 +192,7 @@ namespace AbsoluteRP.Windows.Systems.Stats
 
             // Save button
             ImGui.Spacing();
-            if (ThemeManager.PillButton("Save Stats##saveStats", new Vector2(140, 32)))
+            if (ThemeManager.PillButton("Save Stats##saveStats"))
             {
                 if (system != null && system.id > 0 && Plugin.character != null)
                 {

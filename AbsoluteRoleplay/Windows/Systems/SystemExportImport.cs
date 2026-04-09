@@ -40,7 +40,7 @@ namespace AbsoluteRP.Windows.Systems
                 ["rules"] = system.rules ?? "",
                 ["stats"] = system.StatsData.Values.Select(s => new Dictionary<string, object>
                 {
-                    ["name"] = s.name, ["description"] = s.description ?? "",
+                    ["id"] = s.id, ["name"] = s.name, ["description"] = s.description ?? "",
                     ["colorR"] = s.color.X, ["colorG"] = s.color.Y, ["colorB"] = s.color.Z, ["colorA"] = s.color.W,
                     ["baseMin"] = s.baseMin, ["baseMax"] = s.baseMax,
                     ["canAddPoints"] = s.canAddPoints, ["canRemovePoints"] = s.canRemovePoints,
@@ -59,7 +59,7 @@ namespace AbsoluteRP.Windows.Systems
                 },
                 ["resources"] = system.Resources.Select(r => new Dictionary<string, object>
                 {
-                    ["name"] = r.name, ["description"] = r.description ?? "",
+                    ["id"] = r.id, ["name"] = r.name, ["description"] = r.description ?? "",
                     ["baseValue"] = r.baseValue, ["maxValue"] = r.maxValue,
                     ["colorR"] = r.color.X, ["colorG"] = r.color.Y, ["colorB"] = r.color.Z, ["colorA"] = r.color.W,
                     ["linkedStatId"] = r.linkedStatId, ["statMultiplier"] = r.statMultiplier,
@@ -134,14 +134,20 @@ namespace AbsoluteRP.Windows.Systems
                         };
 
                         // Stats
+                        // Stats — build old ID to new ID mapping
+                        var statIdMap = new Dictionary<int, int>();
                         if (data.ContainsKey("stats"))
                         {
                             int sortIdx = 0;
                             foreach (var s in data["stats"].EnumerateArray())
                             {
+                                int oldStatId = s.TryGetProperty("id", out var osid) ? osid.GetInt32() : sortIdx;
+                                int newStatId = -(sortIdx + 1);
+                                statIdMap[oldStatId] = newStatId;
+
                                 system.StatsData[sortIdx] = new StatData
                                 {
-                                    id = -(sortIdx + 1),
+                                    id = newStatId,
                                     name = s.GetProperty("name").GetString() ?? "",
                                     description = s.TryGetProperty("description", out var d) ? d.GetString() ?? "" : "",
                                     color = new Vector4(
@@ -160,16 +166,18 @@ namespace AbsoluteRP.Windows.Systems
                             }
                         }
 
-                        // Combat
+                        // Combat — remap healthLinkedStatId
                         if (data.ContainsKey("combatConfig"))
                         {
                             var c = data["combatConfig"];
+                            int oldHealthLinked = c.TryGetProperty("healthLinkedStatId", out var hls) ? hls.GetInt32() : -1;
+                            int newHealthLinked = statIdMap.ContainsKey(oldHealthLinked) ? statIdMap[oldHealthLinked] : oldHealthLinked;
                             system.CombatConfig = new CombatConfigData
                             {
                                 healthEnabled = c.TryGetProperty("healthEnabled", out var he) && he.GetBoolean(),
                                 healthBase = c.TryGetProperty("healthBase", out var hb) ? hb.GetInt32() : 100,
                                 healthMax = c.TryGetProperty("healthMax", out var hm) ? hm.GetInt32() : 100,
-                                healthLinkedStatId = c.TryGetProperty("healthLinkedStatId", out var hls) ? hls.GetInt32() : -1,
+                                healthLinkedStatId = newHealthLinked,
                                 healthStatMultiplier = c.TryGetProperty("healthStatMultiplier", out var hsm) ? hsm.GetSingle() : 1,
                                 healthRegenAmount = c.TryGetProperty("healthRegenAmount", out var hra) ? hra.GetInt32() : 0,
                                 healthRegenEveryNTurns = c.TryGetProperty("healthRegenEveryNTurns", out var hrt) ? hrt.GetInt32() : 0,
@@ -180,14 +188,23 @@ namespace AbsoluteRP.Windows.Systems
                             };
                         }
 
-                        // Resources
+                        // Resources — remap linkedStatId, build resource ID map
+                        var resourceIdMap = new Dictionary<int, int>();
                         if (data.ContainsKey("resources"))
                         {
+                            int resIdx = 0;
                             foreach (var r in data["resources"].EnumerateArray())
                             {
+                                int oldResId = r.TryGetProperty("id", out var orid) ? orid.GetInt32() : resIdx;
+                                int newResId = -(resIdx + 1);
+                                resourceIdMap[oldResId] = newResId;
+
+                                int oldLinkedStat = r.TryGetProperty("linkedStatId", out var ls) ? ls.GetInt32() : -1;
+                                int newLinkedStat = statIdMap.ContainsKey(oldLinkedStat) ? statIdMap[oldLinkedStat] : oldLinkedStat;
+
                                 system.Resources.Add(new ResourceData
                                 {
-                                    id = -(system.Resources.Count + 1),
+                                    id = newResId,
                                     name = r.GetProperty("name").GetString() ?? "",
                                     description = r.TryGetProperty("description", out var rd) ? rd.GetString() ?? "" : "",
                                     baseValue = r.TryGetProperty("baseValue", out var bv) ? bv.GetInt32() : 100,
@@ -197,11 +214,12 @@ namespace AbsoluteRP.Windows.Systems
                                         r.TryGetProperty("colorG", out var rcg) ? rcg.GetSingle() : 0.5f,
                                         r.TryGetProperty("colorB", out var rcb) ? rcb.GetSingle() : 1f,
                                         r.TryGetProperty("colorA", out var rca) ? rca.GetSingle() : 1f),
-                                    linkedStatId = r.TryGetProperty("linkedStatId", out var ls) ? ls.GetInt32() : -1,
+                                    linkedStatId = newLinkedStat,
                                     statMultiplier = r.TryGetProperty("statMultiplier", out var sm) ? sm.GetSingle() : 1,
                                     regenAmount = r.TryGetProperty("regenAmount", out var ra) ? ra.GetInt32() : 0,
                                     regenEveryNTurns = r.TryGetProperty("regenEveryNTurns", out var rt) ? rt.GetInt32() : 0,
                                 });
+                                resIdx++;
                             }
                         }
 
@@ -256,6 +274,8 @@ namespace AbsoluteRP.Windows.Systems
 
                                 int oldClassId = sk.TryGetProperty("classId", out var scid) ? scid.GetInt32() : -1;
                                 int newClassId = classIdMap.ContainsKey(oldClassId) ? classIdMap[oldClassId] : oldClassId;
+                                int oldResId = sk.TryGetProperty("resourceId", out var sri) ? sri.GetInt32() : -1;
+                                int newResId = resourceIdMap.ContainsKey(oldResId) ? resourceIdMap[oldResId] : oldResId;
 
                                 system.Skills.Add(new SkillData
                                 {
@@ -269,7 +289,7 @@ namespace AbsoluteRP.Windows.Systems
                                     gridY = sk.TryGetProperty("gridY", out var gy) ? gy.GetInt32() : 0,
                                     isCastable = !sk.TryGetProperty("isCastable", out var sc) || sc.GetBoolean(),
                                     cooldownTurns = sk.TryGetProperty("cooldownTurns", out var scd) ? scd.GetInt32() : 0,
-                                    resourceId = sk.TryGetProperty("resourceId", out var sri) ? sri.GetInt32() : -1,
+                                    resourceId = newResId,
                                     resourceCost = sk.TryGetProperty("resourceCost", out var src) ? src.GetInt32() : 0,
                                     maxTiers = sk.TryGetProperty("maxTiers", out var smt) ? smt.GetInt32() : 1,
                                 });

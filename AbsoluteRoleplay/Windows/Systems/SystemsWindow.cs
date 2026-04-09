@@ -44,6 +44,12 @@ namespace AbsoluteRP.Windows.Listings
         // File dialog for banner/logo uploads
         private static Dalamud.Interface.ImGuiFileDialog.FileDialogManager systemFileDialog = new Dalamud.Interface.ImGuiFileDialog.FileDialogManager();
 
+        // Right-side roster panel
+        public static bool showRosterPanel = false;
+
+        // Collapsible settings
+        private static bool settingsExpanded = false;
+
         // Section tabs: 0=Stats, 1=Classes, 2=Combat, 3=Rules, 4=Roster
         public static int systemSectionIndex = 0;
         private static readonly string[] SectionNames = { "Stats", "Classes", "Combat", "Rules", "Roster" };
@@ -70,6 +76,8 @@ namespace AbsoluteRP.Windows.Listings
             {
                 ImGui.SetWindowFocus("SystemNavigation");
                 ImGui.SetWindowFocus("SYSTEMS");
+                if (showRosterPanel)
+                    ImGui.SetWindowFocus("System Roster##RosterPanel");
             }
             var hovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows);
             var clicked = ImGui.IsMouseClicked(ImGuiMouseButton.Left);
@@ -123,6 +131,37 @@ namespace AbsoluteRP.Windows.Listings
             ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
             Navigation nav = NavigationLayouts.SystemNavigation();
             UIHelpers.DrawSideNavigation("SYSTEMS", "SystemNavigation", ref systemNavIndex, flags, nav, focusRequested);
+
+            // Right-side roster panel
+            if (showRosterPanel && AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.selectedSystem != null)
+            {
+                float rosterWidth = mainPanelSize.X * 0.6f;
+                float rosterMinWidth = 300f;
+                if (rosterWidth < rosterMinWidth) rosterWidth = rosterMinWidth;
+
+                ImGui.SetNextWindowPos(new Vector2(mainPanelPos.X + mainPanelSize.X + 4, mainPanelPos.Y), ImGuiCond.Always);
+                ImGui.SetNextWindowSize(new Vector2(rosterWidth, mainPanelSize.Y), ImGuiCond.Always);
+
+                ImGuiWindowFlags rosterFlags = ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize;
+                bool rosterOpen = showRosterPanel;
+                if (ImGui.Begin("System Roster##RosterPanel", ref rosterOpen, rosterFlags))
+                {
+                    // When roster panel is clicked, bring main window and nav to front too
+                    if (ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows)
+                        && ImGui.IsMouseClicked(ImGuiMouseButton.Left)
+                        && !ImGui.IsAnyItemActive())
+                    {
+                        ImGui.SetWindowFocus("SystemNavigation");
+                        ImGui.SetWindowFocus("SYSTEMS");
+                        ImGui.SetWindowFocus("System Roster##RosterPanel");
+                    }
+
+                    var sys = AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.selectedSystem;
+                    AbsoluteRP.Windows.Systems.Roster.Roster.DrawPublicRoster(sys);
+                }
+                ImGui.End();
+                showRosterPanel = rosterOpen;
+            }
         }
 
         public static void DrawSystemCreation()
@@ -259,7 +298,7 @@ namespace AbsoluteRP.Windows.Listings
             if (currentSystem != null && currentSystem.id > 0)
             {
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton("Delete##delSystem", new Vector2(60, 0)))
+                if (ThemeManager.DangerButton("Delete##delSystem"))
                 {
                     showDeleteConfirm = true;
                     ImGui.OpenPopup("##DeleteSystemConfirm");
@@ -280,7 +319,7 @@ namespace AbsoluteRP.Windows.Listings
 
                 bool ctrlHeld = ImGui.GetIO().KeyCtrl;
                 if (!ctrlHeld) ImGui.BeginDisabled();
-                if (ThemeManager.DangerButton("Confirm Delete##confirmDel", new System.Numerics.Vector2(150, 30)))
+                if (ThemeManager.DangerButton("Confirm Delete##confirmDel"))
                 {
                     if (currentSystem != null && Plugin.character != null)
                     {
@@ -314,7 +353,7 @@ namespace AbsoluteRP.Windows.Listings
                 }
 
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton("Cancel##cancelDel", new System.Numerics.Vector2(80, 30)))
+                if (ThemeManager.GhostButton("Cancel##cancelDel"))
                 {
                     showDeleteConfirm = false;
                     ImGui.CloseCurrentPopup();
@@ -336,7 +375,7 @@ namespace AbsoluteRP.Windows.Listings
             ImGui.SameLine();
             if (currentSystem != null && currentSystem.id > 0)
             {
-                if (ThemeManager.PillButton("Save All##saveAll", new Vector2(140, 0)))
+                if (ThemeManager.PillButton("Save All##saveAll"))
                     SaveAllSystemData();
             }
             else if (currentSystem != null && currentSystem.id <= 0)
@@ -344,27 +383,27 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.TextColored(ThemeManager.FontMuted, "Creating...");
             }
 
-            // Share code display
-            if (currentSystem != null && !string.IsNullOrEmpty(currentSystem.shareCode))
+            // Collapsible settings area
+            if (currentSystem != null && ImGui.CollapsingHeader("System Settings"))
             {
-                ImGui.Text("Share Code:");
-                ImGui.SameLine();
-                ImGui.TextColored(ThemeManager.Accent, currentSystem.shareCode);
-                ImGui.SameLine();
-                if (ThemeManager.GhostButton("Copy##copyCode", new Vector2(50, 0)))
-                    ImGui.SetClipboardText(currentSystem.shareCode);
-            }
+                // Share code
+                if (!string.IsNullOrEmpty(currentSystem.shareCode))
+                {
+                    ImGui.Text("Share Code:");
+                    ImGui.SameLine();
+                    ImGui.TextColored(ThemeManager.Accent, currentSystem.shareCode);
+                    ImGui.SameLine();
+                    if (ThemeManager.GhostButton("Copy##copyCode"))
+                        ImGui.SetClipboardText(currentSystem.shareCode);
+                }
 
-            // Require approval toggle
-            if (currentSystem != null)
-            {
+                // Require approval toggle
                 bool reqApproval = currentSystem.requireApproval;
                 if (ImGui.Checkbox("Require approval for character sheets", ref reqApproval))
                     currentSystem.requireApproval = reqApproval;
-            }
 
             // Banner / Logo upload
-            if (currentSystem != null && currentSystem.id > 0)
+            if (currentSystem.id > 0)
             {
                 ImGui.Spacing();
                 // Banner preview
@@ -380,7 +419,7 @@ namespace AbsoluteRP.Windows.Listings
                     if (displayH > maxH) { displayH = maxH; displayW = displayH / aspect; }
                     ImGui.Image(currentSystem.bannerTexture.Handle, new Vector2(displayW, displayH));
                 }
-                if (ThemeManager.GhostButton("Set Banner##setBanner", new Vector2(100, 0)))
+                if (ThemeManager.GhostButton("Set Banner##setBanner"))
                 {
                     systemFileDialog.OpenFileDialog("Select Banner", ".png,.jpg,.jpeg", (ok, paths) =>
                     {
@@ -405,7 +444,7 @@ namespace AbsoluteRP.Windows.Listings
                     ImGui.Image(currentSystem.logoTexture.Handle, new Vector2(32, 32));
                     ImGui.SameLine();
                 }
-                if (ThemeManager.GhostButton("Set Logo##setLogo", new Vector2(100, 0)))
+                if (ThemeManager.GhostButton("Set Logo##setLogo"))
                 {
                     systemFileDialog.OpenFileDialog("Select Logo", ".png,.jpg,.jpeg", (ok, paths) =>
                     {
@@ -429,16 +468,17 @@ namespace AbsoluteRP.Windows.Listings
             ImGui.Spacing();
 
             // Export / Import buttons
-            if (currentSystem != null && currentSystem.id > 0)
+            if (currentSystem.id > 0)
             {
-                if (ThemeManager.GhostButton("Export System##export", new Vector2(110, 0)))
+                if (ThemeManager.GhostButton("Export System##export"))
                     SystemExportImport.ExportSystem(currentSystem);
                 ImGui.SameLine();
             }
-            if (ThemeManager.GhostButton("Import System##import", new Vector2(110, 0)))
+            if (ThemeManager.GhostButton("Import System##import"))
                 SystemExportImport.ImportSystem();
 
             SystemExportImport.DrawStatusMessage();
+            } // End collapsible System Settings
         }
      
         public void Dispose()

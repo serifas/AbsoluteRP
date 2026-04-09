@@ -143,7 +143,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     Networking.DataSender.FetchSystemRoster(Plugin.character, systemId);
             }
 
-            if (ThemeManager.PillButton("Refresh##refreshRoster", new Vector2(80, 26)))
+            if (ThemeManager.PillButton("Refresh##refreshRoster"))
             {
                 if (Plugin.character != null)
                     Networking.DataSender.FetchSystemRoster(Plugin.character, systemId);
@@ -254,7 +254,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
         // ── Sheet Detail View ──
         private static void DrawSheetDetail(SystemData system, bool isOwner)
         {
-            if (ThemeManager.GhostButton("< Back to Roster##backRoster", new Vector2(140, 26)))
+            if (ThemeManager.GhostButton("< Back to Roster##backRoster"))
             {
                 viewingSheet = null;
                 return;
@@ -314,7 +314,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
             // View Profile button
             float btnWidth = 120;
             ImGui.SetCursorPosX((ImGui.GetContentRegionAvail().X - btnWidth) / 2);
-            if (ThemeManager.GhostButton("View Profile##viewProf", new Vector2(btnWidth, 26)))
+            if (ThemeManager.GhostButton("View Profile##viewProf"))
             {
                 Plugin.plugin.OpenTargetWindow();
                 TargetProfileWindow.characterName = sheet.characterName;
@@ -346,7 +346,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 if (ImGui.InputInt("##sheetBSP", ref bsp))
                     sheet.bonusSkillPoints = Math.Max(0, bsp);
                 ImGui.SameLine();
-                if (ThemeManager.PillButton("Save##saveLvlPts", new Vector2(60, 24)))
+                if (ThemeManager.PillButton("Save##saveLvlPts"))
                 {
                     if (Plugin.character != null)
                         Networking.DataSender.UpdateSheetLevelPoints(Plugin.character, sheet.id, sheet.level, sheet.bonusSkillPoints);
@@ -363,19 +363,19 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 if (sheet.status == 0)
                 {
                     ImGui.SameLine();
-                    if (ThemeManager.PillButton("Approve", new Vector2(70, 24)))
+                    if (ThemeManager.PillButton("Approve"))
                     {
                         if (Plugin.character != null)
                             Networking.DataSender.RespondToSheet(Plugin.character, sheet.id, 1, "");
                     }
                     ImGui.SameLine();
-                    if (ThemeManager.DangerButton("Decline", new Vector2(70, 24)))
+                    if (ThemeManager.DangerButton("Decline"))
                     {
                         if (Plugin.character != null)
                             Networking.DataSender.RespondToSheet(Plugin.character, sheet.id, 2, "");
                     }
                     ImGui.SameLine();
-                    if (ThemeManager.GhostButton("Revision", new Vector2(70, 24)))
+                    if (ThemeManager.GhostButton("Revision"))
                     {
                         revisionSheetId = sheet.id;
                         revisionReason = "";
@@ -386,7 +386,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 else if (sheet.status == 1)
                 {
                     ImGui.SameLine();
-                    if (ThemeManager.DangerButton("Revoke", new Vector2(70, 24)))
+                    if (ThemeManager.DangerButton("Revoke"))
                     {
                         if (Plugin.character != null)
                             Networking.DataSender.RespondToSheet(Plugin.character, sheet.id, 2, "");
@@ -395,7 +395,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
 
                 // Ban button
                 ImGui.Spacing();
-                if (ThemeManager.DangerButton("Ban from System##banSheet", new Vector2(140, 24)))
+                if (ThemeManager.DangerButton("Ban from System##banSheet"))
                 {
                     if (Plugin.character != null)
                         Networking.DataSender.BanFromSystem(Plugin.character, system.id,
@@ -411,36 +411,130 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 DrawRevisionPopup();
             }
 
-            // Stats
-            if (sheet.statValues.Count > 0)
+            // Tabbed Stats / Skills view
+            if (ImGui.BeginTabBar("##SheetDetailTabs"))
             {
-                ThemeManager.SubtitleText("Stats");
-                ImGui.Spacing();
-                foreach (var sv in sheet.statValues)
+                if (ImGui.BeginTabItem("Stats"))
                 {
-                    var stat = system.StatsData.Values.FirstOrDefault(s => s.id == sv.Key);
-                    if (stat != null)
+                    ImGui.Spacing();
+                    if (sheet.statValues.Count > 0 && system.StatsData.Count >= 2)
                     {
-                        ImGui.ColorButton($"##sc{sv.Key}", stat.color,
-                            ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 18));
-                        ImGui.SameLine();
-                        ImGui.Text($"{stat.name}: {sv.Value}");
+                        // Radar chart
+                        DrawSheetRadarChart(system, sheet);
+                        ImGui.Spacing();
                     }
+
+                    // Stat values list
+                    foreach (var sv in sheet.statValues)
+                    {
+                        var stat = system.StatsData.Values.FirstOrDefault(s => s.id == sv.Key);
+                        if (stat != null)
+                        {
+                            ImGui.ColorButton($"##sc{sv.Key}", stat.color,
+                                ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 18));
+                            ImGui.SameLine();
+                            ImGui.Text($"{stat.name}: {sv.Value}");
+                        }
+                    }
+                    ImGui.EndTabItem();
                 }
-                ImGui.Spacing();
+
+                if (ImGui.BeginTabItem("Skills"))
+                {
+                    ImGui.Spacing();
+                    if (sheet.classId >= 0)
+                    {
+                        var cls = system.SkillClasses.FirstOrDefault(c => c.id == sheet.classId);
+                        if (cls != null)
+                            DrawSheetSkillTree(system, cls, sheet);
+                        else
+                            ImGui.TextColored(ThemeManager.FontMuted, "Class not found.");
+                    }
+                    else
+                    {
+                        ImGui.TextColored(ThemeManager.FontMuted, "No class assigned.");
+                    }
+                    ImGui.EndTabItem();
+                }
+
+                ImGui.EndTabBar();
+            }
+        }
+
+        // ── Radar Chart for Sheet Stats ──
+        private static void DrawSheetRadarChart(SystemData system, CharacterSheetData sheet)
+        {
+            int count = system.StatsData.Count;
+            if (count < 2) return;
+
+            float availWidth = ImGui.GetContentRegionAvail().X;
+            float chartRadius = Math.Min(availWidth * 0.4f, 120f);
+            Vector2 cursorStart = ImGui.GetCursorScreenPos();
+            Vector2 center = cursorStart + new Vector2(availWidth / 2, chartRadius + 15);
+            var drawList = ImGui.GetWindowDrawList();
+            float angleStep = 2f * MathF.PI / count;
+            float startAngle = -MathF.PI / 2f;
+
+            // Guide rings
+            uint ringColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.3f));
+            for (int ring = 1; ring <= 4; ring++)
+            {
+                float r = chartRadius * ring / 4f;
+                var ringPoints = new Vector2[count];
+                for (int i = 0; i < count; i++)
+                {
+                    float angle = startAngle + i * angleStep;
+                    ringPoints[i] = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r;
+                }
+                drawList.AddPolyline(ref ringPoints[0], ringPoints.Length, ringColor, ImDrawFlags.Closed, 1f);
             }
 
-            // Skill tree display
-            if (sheet.classId >= 0)
+            // Axis lines + labels
+            int idx = 0;
+            int budget = system.basePointsAvailable > 0 ? system.basePointsAvailable : 1;
+            var dataPoints = new Vector2[count];
+
+            foreach (var kvp in system.StatsData)
             {
-                var cls = system.SkillClasses.FirstOrDefault(c => c.id == sheet.classId);
-                if (cls != null)
-                {
-                    ThemeManager.SubtitleText("Skills");
-                    ImGui.Spacing();
-                    DrawSheetSkillTree(system, cls, sheet);
-                }
+                float angle = startAngle + idx * angleStep;
+                Vector2 axisEnd = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * chartRadius;
+                drawList.AddLine(center, axisEnd, ringColor, 1f);
+
+                // Label
+                Vector2 labelPos = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * (chartRadius + 12);
+                var textSize = ImGui.CalcTextSize(kvp.Value.name);
+                uint labelColor = ImGui.ColorConvertFloat4ToU32(kvp.Value.color);
+                drawList.AddText(labelPos - textSize / 2, labelColor, kvp.Value.name);
+
+                // Data point
+                int val = sheet.statValues.ContainsKey(kvp.Value.id) ? sheet.statValues[kvp.Value.id] : 0;
+                float ratio = MathF.Sqrt(Math.Clamp((float)val / budget, 0f, 1f));
+                float r2 = Math.Max(ratio, 0.05f) * chartRadius;
+                dataPoints[idx] = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r2;
+                idx++;
             }
+
+            // Filled polygon
+            Vector4 fillVec = ThemeManager.Accent;
+            fillVec.W = 0.2f;
+            uint fillColor = ImGui.ColorConvertFloat4ToU32(fillVec);
+            for (int i = 0; i < count; i++)
+            {
+                int next = (i + 1) % count;
+                drawList.AddTriangleFilled(center, dataPoints[i], dataPoints[next], fillColor);
+            }
+
+            // Border
+            Vector4 borderVec = ThemeManager.Accent;
+            borderVec.W = 0.8f;
+            drawList.AddPolyline(ref dataPoints[0], dataPoints.Length, ImGui.ColorConvertFloat4ToU32(borderVec), ImDrawFlags.Closed, 2.5f);
+
+            // Dots
+            uint dotColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent);
+            for (int i = 0; i < count; i++)
+                drawList.AddCircleFilled(dataPoints[i], 3f, dotColor);
+
+            ImGui.SetCursorScreenPos(cursorStart + new Vector2(0, chartRadius * 2 + 40));
         }
 
         // ── Skill Tree for Sheet Detail ──
@@ -565,7 +659,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 ImGui.Text("Reason for revision:");
                 ImGui.InputTextMultiline("##revisionReason", ref revisionReason, 500, new Vector2(300, 80));
                 ImGui.Spacing();
-                if (ThemeManager.PillButton("Send##sendRevision", new Vector2(80, 26)))
+                if (ThemeManager.PillButton("Send##sendRevision"))
                 {
                     if (Plugin.character != null && revisionSheetId > 0)
                     {
@@ -575,7 +669,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     }
                 }
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton("Cancel##cancelRevision", new Vector2(80, 26)))
+                if (ThemeManager.GhostButton("Cancel##cancelRevision"))
                 {
                     showRevisionPopup = false;
                     ImGui.CloseCurrentPopup();
@@ -634,7 +728,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
             ImGui.SetNextItemWidth(150);
             ImGui.InputTextWithHint("##banReason", "Reason (optional)", ref banReason, 200);
             ImGui.SameLine();
-            if (ThemeManager.DangerButton("Ban##banUser", new Vector2(60, 24)))
+            if (ThemeManager.DangerButton("Ban##banUser"))
             {
                 if (!string.IsNullOrWhiteSpace(banCharName) && !string.IsNullOrWhiteSpace(banCharWorld) && Plugin.character != null)
                 {
@@ -673,7 +767,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     ImGui.TextColored(ThemeManager.FontMuted, $"— {ban.reason}");
                 }
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton("Unban##unban", new Vector2(60, 22)))
+                if (ThemeManager.GhostButton("Unban##unban"))
                 {
                     if (Plugin.character != null)
                         Networking.DataSender.UnbanFromSystem(Plugin.character, system.id, ban.id);

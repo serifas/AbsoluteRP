@@ -337,7 +337,7 @@ namespace AbsoluteRP.Windows.Listings
 
         private void DrawMyVenues(Vector2 windowSize)
         {
-            if (ThemeManager.PillButton("Add Venue", new Vector2(140, 32)))
+            if (ThemeManager.PillButton("Add Venue"))
             {
                 ResetCreateForm();
                 venueSubView = 2;
@@ -378,7 +378,7 @@ namespace AbsoluteRP.Windows.Listings
                         ImGui.SameLine();
                         ThemeManager.SubtitleText($"{venue.viewCount} views");
                         ImGui.SameLine(cardWidth - 70);
-                        if (ThemeManager.GhostButton($"Edit##{venue.id}", new Vector2(60, 26)))
+                        if (ThemeManager.GhostButton($"Edit##{venue.id}"))
                             LoadVenueForEdit(venue);
                         ThemeManager.EndCard();
                     }
@@ -432,7 +432,7 @@ namespace AbsoluteRP.Windows.Listings
                 ThemeManager.SubtitleText(loc);
 
                 ImGui.SameLine(cardWidth - 90);
-                if (ThemeManager.PillButton($"View##{venue.id}", new Vector2(70, 24)))
+                if (ThemeManager.PillButton($"View##{venue.id}"))
                 {
                     currentListing = null;
                     isDetailLoading = true;
@@ -491,7 +491,7 @@ namespace AbsoluteRP.Windows.Listings
         private void DrawVenueCreateEdit(Vector2 windowSize)
         {
             bool isEdit = editListingId > 0;
-            if (ThemeManager.GhostButton("< Back", new Vector2(80, 28))) { venueSubView = 1; return; }
+            if (ThemeManager.GhostButton("< Back")) { venueSubView = 1; return; }
             ImGui.SameLine();
             ThemeManager.SectionHeader(isEdit ? "Edit Venue" : "Create Venue");
             ImGui.Spacing();
@@ -578,7 +578,7 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.GetWindowDrawList().AddRectFilled(pos, new Vector2(pos.X + bannerW, pos.Y + 120), ImGui.ColorConvertFloat4ToU32(ThemeManager.BgDark), 6f);
                 ImGui.Dummy(new Vector2(bannerW, 120));
             }
-            if (ThemeManager.GhostButton("Upload Banner", new Vector2(130, 26)))
+            if (ThemeManager.GhostButton("Upload Banner"))
             {
                 _fileDialogManager.OpenFileDialog("Select Banner", ".png,.jpg,.jpeg", (ok, path) =>
                 {
@@ -603,7 +603,7 @@ namespace AbsoluteRP.Windows.Listings
             else
                 ImGui.Dummy(new Vector2(64, 64));
             ImGui.SameLine();
-            if (ThemeManager.GhostButton("Upload Logo", new Vector2(110, 26)))
+            if (ThemeManager.GhostButton("Upload Logo"))
             {
                 _fileDialogManager.OpenFileDialog("Select Logo", ".png,.jpg,.jpeg", (ok, path) =>
                 {
@@ -694,7 +694,7 @@ namespace AbsoluteRP.Windows.Listings
             }
 
             ImGui.Spacing();
-            if (ThemeManager.GhostButton("+ Add Menu Item", new Vector2(160, 30)))
+            if (ThemeManager.GhostButton("+ Add Menu Item"))
             {
                 editMenuItems.Add(new MenuItemData { category = "Food", sortOrder = editMenuItems.Count });
             }
@@ -702,7 +702,7 @@ namespace AbsoluteRP.Windows.Listings
 
         private void DrawEditEntry_Menu(MenuItemData item, int index, Vector2 windowSize)
         {
-            if (ThemeManager.GhostButton("< Back to Menu Items", new Vector2(180, 28))) { editingMenuIndex = -1; return; }
+            if (ThemeManager.GhostButton("< Back to Menu Items")) { editingMenuIndex = -1; return; }
             ImGui.Spacing();
             ThemeManager.SectionHeader($"Edit: {(string.IsNullOrEmpty(item.itemName) ? "New Item" : item.itemName)}");
             ImGui.Spacing();
@@ -753,7 +753,7 @@ namespace AbsoluteRP.Windows.Listings
             }
 
             ImGui.Spacing();
-            if (ThemeManager.GhostButton("+ Add Staff Member", new Vector2(170, 30)))
+            if (ThemeManager.GhostButton("+ Add Staff Member"))
             {
                 editStaff.Add(new StaffEntry { sortOrder = editStaff.Count });
             }
@@ -761,7 +761,7 @@ namespace AbsoluteRP.Windows.Listings
 
         private void DrawEditEntry_Staff(StaffEntry staff, int index, Vector2 windowSize)
         {
-            if (ThemeManager.GhostButton("< Back to Staff", new Vector2(150, 28))) { editingStaffIndex = -1; return; }
+            if (ThemeManager.GhostButton("< Back to Staff")) { editingStaffIndex = -1; return; }
             ImGui.Spacing();
             ThemeManager.SectionHeader($"Edit: {(string.IsNullOrEmpty(staff.name) ? "New Staff" : staff.name)}");
             ImGui.Spacing();
@@ -785,11 +785,11 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.SetNextItemWidth(200); ThemeManager.StyledInput("##fv", ref fVal, 200);
                 staff.customFields[f] = new field { index = f, name = fName, description = fVal };
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton($"X##sf{f}", new Vector2(24, 24)))
+                if (ThemeManager.DangerButton($"X##sf{f}"))
                 { staff.customFields.RemoveAt(f); f--; }
                 ImGui.PopID();
             }
-            if (ThemeManager.GhostButton($"+ Add Field##st{index}", new Vector2(110, 24)))
+            if (ThemeManager.GhostButton($"+ Add Field##st{index}"))
                 staff.customFields.Add(new field { index = staff.customFields.Count });
 
             ImGui.Spacing();
@@ -827,7 +827,7 @@ namespace AbsoluteRP.Windows.Listings
             }
 
             ImGui.Spacing();
-            if (ThemeManager.GhostButton("+ Add Bookable Service", new Vector2(190, 30)))
+            if (ThemeManager.GhostButton("+ Add Bookable Service"))
             {
                 editBookables.Add(new BookableEntry { sortOrder = editBookables.Count });
             }
@@ -835,7 +835,7 @@ namespace AbsoluteRP.Windows.Listings
 
         private void DrawEditEntry_Bookable(BookableEntry entry, int index, Vector2 windowSize)
         {
-            if (ThemeManager.GhostButton("< Back to Services", new Vector2(160, 28))) { editingBookableIndex = -1; return; }
+            if (ThemeManager.GhostButton("< Back to Services")) { editingBookableIndex = -1; return; }
             ImGui.Spacing();
             ThemeManager.SectionHeader($"Edit: {(string.IsNullOrEmpty(entry.name) ? "New Service" : entry.name)}");
             ImGui.Spacing();
@@ -884,11 +884,11 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.SetNextItemWidth(50); ImGui.Combo("##eAP", ref eAP, AmPmNames, 2);
                 sched.endTime = From12Hour(eH, eM, eAP);
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton($"X##bt{t}", new Vector2(24, 24)))
+                if (ThemeManager.DangerButton($"X##bt{t}"))
                 { entry.availableTimes.RemoveAt(t); t--; }
                 ImGui.PopID();
             }
-            if (ThemeManager.GhostButton($"+ Add Time Slot##bk{index}", new Vector2(130, 24)))
+            if (ThemeManager.GhostButton($"+ Add Time Slot##bk{index}"))
                 entry.availableTimes.Add(new ListingSchedule { isRecurring = true, startTime = TimeSpan.FromHours(12), endTime = TimeSpan.FromHours(12) });
 
             ImGui.Spacing();
@@ -973,9 +973,9 @@ namespace AbsoluteRP.Windows.Listings
                 else
                     ThemeManager.SubtitleText("No images");
                 ImGui.Spacing();
-                if (ThemeManager.PillButton($"Edit##{id}", new Vector2(60, 26))) onEdit?.Invoke();
+                if (ThemeManager.PillButton($"Edit##{id}")) onEdit?.Invoke();
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton($"X##{id}", new Vector2(26, 26)))
+                if (ThemeManager.DangerButton($"X##{id}"))
                 {
                     deleteConfirmLabel = string.IsNullOrEmpty(name) ? "this entry" : name;
                     deleteConfirmAction = onRemove;
@@ -999,14 +999,14 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.Text($"Are you sure you want to delete \"{deleteConfirmLabel}\"?");
                 ImGui.Text("This cannot be undone.");
                 ImGui.Spacing();
-                if (ThemeManager.DangerButton("Delete", new Vector2(80, 30)))
+                if (ThemeManager.DangerButton("Delete"))
                 {
                     deleteConfirmAction?.Invoke();
                     showDeleteConfirm = false;
                     ImGui.CloseCurrentPopup();
                 }
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton("Cancel", new Vector2(80, 30)))
+                if (ThemeManager.GhostButton("Cancel"))
                 {
                     showDeleteConfirm = false;
                     ImGui.CloseCurrentPopup();
@@ -1121,7 +1121,7 @@ namespace AbsoluteRP.Windows.Listings
             }
 
             ImGui.Spacing();
-            if (ThemeManager.GhostButton($"+ Add Image##{id}", new Vector2(140, 30)))
+            if (ThemeManager.GhostButton($"+ Add Image##{id}"))
             {
                 _fileDialogManager.OpenFileDialog("Select Image", ".png,.jpg,.jpeg", (ok, path) =>
                 {
@@ -1196,11 +1196,11 @@ namespace AbsoluteRP.Windows.Listings
 
                 // Remove button
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton($"X##rs{i}", new Vector2(26, 26))) { editSchedules.RemoveAt(i); i--; }
+                if (ThemeManager.DangerButton($"X##rs{i}")) { editSchedules.RemoveAt(i); i--; }
 
                 ImGui.PopID();
             }
-            if (ThemeManager.GhostButton("+ Add Time Slot", new Vector2(140, 28)))
+            if (ThemeManager.GhostButton("+ Add Time Slot"))
                 editSchedules.Add(new ListingSchedule
                 {
                     isRecurring = true,
@@ -1216,13 +1216,13 @@ namespace AbsoluteRP.Windows.Listings
             if (isEdit)
             {
                 // Save button preserves current publish state
-                if (ThemeManager.PillButton("Save Changes", new Vector2(140, 34)))
+                if (ThemeManager.PillButton("Save Changes"))
                     SaveVenue(currentListing?.isActive ?? false);
                 ImGui.SameLine();
                 // Publish/Unpublish toggles the publish state only (also saves)
                 if (currentListing != null && currentListing.isActive)
                 {
-                    if (ThemeManager.GhostButton("Unpublish", new Vector2(100, 34)))
+                    if (ThemeManager.GhostButton("Unpublish"))
                     {
                         currentListing.isActive = false;
                         SaveVenue(false);
@@ -1230,7 +1230,7 @@ namespace AbsoluteRP.Windows.Listings
                 }
                 else
                 {
-                    if (ThemeManager.PillButton("Publish", new Vector2(100, 34), false))
+                    if (ThemeManager.PillButton("Publish", false))
                     {
                         if (currentListing != null) currentListing.isActive = true;
                         SaveVenue(true);
@@ -1239,7 +1239,7 @@ namespace AbsoluteRP.Windows.Listings
                 ImGui.SameLine();
                 using (ImRaii.Disabled(!Plugin.CtrlPressed()))
                 {
-                    if (ThemeManager.DangerButton("Delete", new Vector2(80, 34)))
+                    if (ThemeManager.DangerButton("Delete"))
                     {
                         DataSender.DeleteListing(editListingId);
                         fetchedMyVenues = false;
@@ -1249,9 +1249,9 @@ namespace AbsoluteRP.Windows.Listings
             }
             else
             {
-                if (ThemeManager.GhostButton("Save as Draft", new Vector2(130, 34))) CreateVenue(false);
+                if (ThemeManager.GhostButton("Save as Draft")) CreateVenue(false);
                 ImGui.SameLine();
-                if (ThemeManager.PillButton("Publish", new Vector2(100, 34))) CreateVenue(true);
+                if (ThemeManager.PillButton("Publish")) CreateVenue(true);
             }
         }
 
@@ -1300,7 +1300,7 @@ namespace AbsoluteRP.Windows.Listings
 
         private void DrawVenueDetail(Vector2 windowSize)
         {
-            if (ThemeManager.GhostButton("< Back", new Vector2(80, 28))) { venueSubView = 0; venueDetailTab = 0; return; }
+            if (ThemeManager.GhostButton("< Back")) { venueSubView = 0; venueDetailTab = 0; return; }
             if (currentListing == null || isDetailLoading)
             {
                 ImGui.Spacing(); ImGui.Spacing();
@@ -1509,7 +1509,7 @@ namespace AbsoluteRP.Windows.Listings
                     }
 
                     // Buttons row
-                    if (ThemeManager.GhostButton($"View Info##{entry.id}", new Vector2(80, 24)))
+                    if (ThemeManager.GhostButton($"View Info##{entry.id}"))
                     {
                         viewMoreTitle = entry.name;
                         viewMoreSubtitle = "";
@@ -1524,7 +1524,7 @@ namespace AbsoluteRP.Windows.Listings
                     ImGui.SameLine();
                     if (entry.bookedSlots < entry.maxSlots)
                     {
-                        if (ThemeManager.PillButton($"Book##{entry.id}", new Vector2(60, 24)))
+                        if (ThemeManager.PillButton($"Book##{entry.id}"))
                         {
                             showBookingPopup = true;
                             bookingEntryId = entry.id;
@@ -1602,7 +1602,7 @@ namespace AbsoluteRP.Windows.Listings
                 if (!string.IsNullOrEmpty(shortDesc)) ThemeManager.SubtitleText(TruncateText(shortDesc, 80));
                 if (!string.IsNullOrEmpty(price)) ThemeManager.SubtitleText($"{price}{(isOOC ? " (OOC)" : "")}");
                 ImGui.Spacing();
-                if (ThemeManager.GhostButton($"View More##{id}", new Vector2(100, 26)))
+                if (ThemeManager.GhostButton($"View More##{id}"))
                     onViewMore?.Invoke();
                 ImGui.EndGroup();
 
@@ -1831,7 +1831,7 @@ namespace AbsoluteRP.Windows.Listings
 
                 using (ImRaii.Disabled(!canConfirm))
                 {
-                    if (ThemeManager.PillButton("Confirm Booking", new Vector2(140, 30)))
+                    if (ThemeManager.PillButton("Confirm Booking"))
                     {
                         try
                         {
@@ -1866,7 +1866,7 @@ namespace AbsoluteRP.Windows.Listings
                     }
                 }
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton("Cancel", new Vector2(80, 30)))
+                if (ThemeManager.GhostButton("Cancel"))
                 {
                     showBookingPopup = false;
                     selectedTimeSlotIndex = -1;
@@ -1992,17 +1992,17 @@ namespace AbsoluteRP.Windows.Listings
             if (showActions && booking.status == 0)
             {
                 ImGui.SetCursorScreenPos(new Vector2(cardPos.X + 12, cardPos.Y + cardH - 32));
-                if (ThemeManager.PillButton($"Accept##{booking.id}", new Vector2(70, 24)))
+                if (ThemeManager.PillButton($"Accept##{booking.id}"))
                 {
                     _ = DataSender.RespondToBooking(booking.id, 1);
                 }
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton($"Decline##{booking.id}", new Vector2(70, 24)))
+                if (ThemeManager.GhostButton($"Decline##{booking.id}"))
                 {
                     _ = DataSender.RespondToBooking(booking.id, 2);
                 }
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton($"Decline & Block##{booking.id}", new Vector2(120, 24)))
+                if (ThemeManager.DangerButton($"Decline & Block##{booking.id}"))
                 {
                     _ = DataSender.RespondToBooking(booking.id, 3);
                 }

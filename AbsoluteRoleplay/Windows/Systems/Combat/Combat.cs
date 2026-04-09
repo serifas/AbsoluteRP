@@ -60,7 +60,7 @@ namespace AbsoluteRP.Windows.Systems.Combat
                 if (config.diceModifier > 0) rollDesc += $"+{config.diceModifier}";
                 else if (config.diceModifier < 0) rollDesc += $"{config.diceModifier}";
 
-                if (ThemeManager.GhostButton($"Roll {rollDesc}##RollPreview", new Vector2(140, 28)))
+                if (ThemeManager.GhostButton($"Roll {rollDesc}##RollPreview"))
                 {
                     lastRollResult = 0;
                     for (int i = 0; i < config.diceCount; i++)
@@ -134,7 +134,7 @@ namespace AbsoluteRP.Windows.Systems.Combat
             {
                 ImGui.Indent();
 
-                if (ThemeManager.PillButton("+ Add Resource##addRes", new Vector2(140, 26)))
+                if (ThemeManager.PillButton("+ Add Resource##addRes"))
                 {
                     system.Resources.Add(new ResourceData
                     {
@@ -162,7 +162,7 @@ namespace AbsoluteRP.Windows.Systems.Combat
                     if (ImGui.ColorEdit4("##resColor", ref rcol, ImGuiColorEditFlags.NoInputs))
                         r.color = rcol;
                     ImGui.SameLine();
-                    if (ThemeManager.DangerButton("X##resDel", new Vector2(24, 24)))
+                    if (ThemeManager.DangerButton("X##resDel"))
                     {
                         system.Resources.RemoveAt(i);
                         ImGui.PopID();
@@ -235,7 +235,7 @@ namespace AbsoluteRP.Windows.Systems.Combat
 
             // ── Save Button ──
             ImGui.Spacing();
-            if (ThemeManager.PillButton("Save Combat Config##saveCombat", new Vector2(180, 32)))
+            if (ThemeManager.PillButton("Save Combat Config##saveCombat"))
             {
                 if (system.id > 0 && Plugin.character != null)
                 {

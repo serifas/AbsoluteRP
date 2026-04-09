@@ -21,7 +21,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         private static string importCode = "";
         public static List<SystemData> availableSystems = new List<SystemData>();
         private static int selectedSystemIndex = -1;
-        private static SystemData selectedSystem = null;
+        public static SystemData selectedSystem = null;
 
         // Profile selection
         private static int selectedProfileIndex = -1;
@@ -100,7 +100,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.SetNextItemWidth(150);
             ImGui.InputText("##importCode", ref importCode, 32);
             ImGui.SameLine();
-            if (ThemeManager.PillButton("Import##importSystem", new Vector2(80, 26)))
+            if (ThemeManager.PillButton("Import##importSystem"))
             {
                 if (!string.IsNullOrWhiteSpace(importCode) && Plugin.character != null)
                     Networking.DataSender.ImportSystemByCode(Plugin.character, importCode.Trim());
@@ -120,7 +120,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
             // System cards
             float cardWidth = 280f;
-            float cardHeight = 120f;
+            float cardHeight = 150f;
             float cardSpacing = 10f;
             float windowWidth = ImGui.GetContentRegionAvail().X;
             int cardCols = Math.Max(1, (int)(windowWidth / (cardWidth + cardSpacing)));
@@ -207,9 +207,10 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     : ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.4f));
                 drawList.AddRect(cardPos, cardEnd, borderColor, 6f, ImDrawFlags.None, isSelected ? 2f : 1f);
 
-                // Click to select
+                // Click to select (top area only - leave room for buttons at bottom)
+                float btnAreaHeight = 28f;
                 ImGui.SetCursorScreenPos(cardPos);
-                if (ImGui.InvisibleButton($"##sysCard_{sys.id}", new Vector2(cardWidth, cardHeight)))
+                if (ImGui.InvisibleButton($"##sysCard_{sys.id}", new Vector2(cardWidth, cardHeight - btnAreaHeight)))
                 {
                     selectedSystemIndex = i;
                     selectedSystem = sys;
@@ -219,56 +220,65 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     uint hoverColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 0.05f));
                     drawList.AddRectFilled(cardPos, cardEnd, hoverColor, 6f);
                 }
+
+                // Buttons at bottom of card
+                float btnY = cardEnd.Y - btnAreaHeight - 4;
+                float btnX = cardPos.X + 6;
+                ImGui.SetCursorScreenPos(new Vector2(btnX, btnY));
+                ImGui.PushID($"##cardBtns_{sys.id}");
+                if (ThemeManager.PillButton("Create##create"))
+                {
+                    selectedSystemIndex = i;
+                    selectedSystem = sys;
+                    selectedProfileIndex = -1;
+                    profileAvatarsFetched = false;
+                    if (sys.SkillClasses.Count == 0 && sys.id > 0 && Plugin.character != null)
+                        Networking.DataSender.FetchSystem(Plugin.character, sys.id);
+                    wizardStep = 1;
+                }
+                ImGui.SameLine();
+                if (ThemeManager.GhostButton("Roster##roster"))
+                {
+                    selectedSystemIndex = i;
+                    selectedSystem = sys;
+                    SystemsWindow.showRosterPanel = !SystemsWindow.showRosterPanel;
+                    if (SystemsWindow.showRosterPanel)
+                    {
+                        Roster.Roster.ResetForSystem();
+                        if (sys.SkillClasses.Count == 0 && sys.id > 0 && Plugin.character != null)
+                            Networking.DataSender.FetchSystem(Plugin.character, sys.id);
+                    }
+                }
+
+                // Leave button for non-owners
+                bool isOwner = SystemsWindow.systemData.Exists(s => s.id == sys.id);
+                if (!isOwner)
+                {
+                    ImGui.SameLine();
+                    if (ThemeManager.DangerButton("Leave##leave"))
+                    {
+                        availableSystems.RemoveAll(s => s.id == sys.id);
+                        if (selectedSystem != null && selectedSystem.id == sys.id)
+                        {
+                            selectedSystem = null;
+                            selectedSystemIndex = -1;
+                            SystemsWindow.showRosterPanel = false;
+                        }
+                    }
+                }
+                ImGui.PopID();
             }
 
             // Reserve space
             int cardRows = (availableSystems.Count + cardCols - 1) / cardCols;
             ImGui.SetCursorScreenPos(cardOrigin + new Vector2(0, cardRows * (cardHeight + cardSpacing) + cardSpacing));
 
-            ImGui.Spacing();
-            if (selectedSystem != null)
+            // Show rules if a system is selected
+            if (selectedSystem != null && !string.IsNullOrEmpty(selectedSystem.rules))
             {
-                if (!string.IsNullOrEmpty(selectedSystem.rules))
-                {
-                    ImGui.Spacing();
-                    ThemeManager.SubtitleText("Rules:");
-                    ImGui.TextWrapped(selectedSystem.rules);
-                    ImGui.Spacing();
-                }
-
-                if (ThemeManager.PillButton("Create Character Sheet##nextStep", new Vector2(200, 32)))
-                {
-                    selectedProfileIndex = -1;
-                    profileAvatarsFetched = false;
-                    // Ensure full system data is loaded
-                    if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
-                        Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
-                    wizardStep = 1;
-                }
-
-                ImGui.SameLine();
-                if (ThemeManager.GhostButton("View Roster##viewRoster", new Vector2(120, 32)))
-                {
-                    viewingRoster = true;
-                    Roster.Roster.ResetForSystem();
-                    if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
-                        Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
-                }
-
-                // Leave button (only for non-owners)
-                bool isOwner = selectedSystem.ownerUserId > 0 &&
-                    SystemsWindow.systemData.Exists(s => s.id == selectedSystem.id);
-                if (!isOwner)
-                {
-                    ImGui.SameLine();
-                    if (ThemeManager.DangerButton("Leave##leaveSystem", new Vector2(80, 32)))
-                    {
-                        availableSystems.RemoveAll(s => s.id == selectedSystem.id);
-                        selectedSystem = null;
-                        selectedSystemIndex = -1;
-                        viewingRoster = false;
-                    }
-                }
+                ImGui.Spacing();
+                ThemeManager.SubtitleText("Rules:");
+                ImGui.TextWrapped(selectedSystem.rules);
             }
 
             // Show user's own submissions for this system
@@ -307,7 +317,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                                 ImGui.Unindent();
                             }
                             ImGui.SameLine();
-                            if (ThemeManager.PillButton($"Revise##revise{sheet.id}", new Vector2(80, 24)))
+                            if (ThemeManager.PillButton($"Revise##revise{sheet.id}"))
                             {
                                 // Pre-fill wizard with existing sheet data for revision
                                 revisingSheetId = sheet.id;
@@ -339,17 +349,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 }
             }
 
-            // Public roster view (below system selection)
-            if (viewingRoster && selectedSystem != null)
-            {
-                ImGui.Spacing();
-                ThemeManager.GradientSeparator();
-                ImGui.Spacing();
-                if (ThemeManager.GhostButton("Hide Roster##hideRoster", new Vector2(100, 24)))
-                    viewingRoster = false;
-                ImGui.Spacing();
-                Roster.Roster.DrawPublicRoster(selectedSystem);
-            }
         }
 
         // Profile avatar fetch tracking
@@ -360,7 +359,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         {
             if (selectedSystem == null) { wizardStep = 0; return; }
 
-            if (ThemeManager.GhostButton("< Back##backToSystem", new Vector2(80, 26)))
+            if (ThemeManager.GhostButton("< Back##backToSystem"))
             { wizardStep = 0; return; }
 
             ImGui.SameLine();
@@ -416,7 +415,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.Spacing();
             if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
             {
-                if (ThemeManager.PillButton("Next: Choose Class##nextStep2", new Vector2(200, 32)))
+                if (ThemeManager.PillButton("Next: Choose Class##nextStep2"))
                 {
                     selectedClassIndex = -1;
                     hoveredClassIndex = -1;
@@ -434,7 +433,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         {
             if (selectedSystem == null) { wizardStep = 0; return; }
 
-            if (ThemeManager.GhostButton("< Back##backToProfile", new Vector2(80, 26)))
+            if (ThemeManager.GhostButton("< Back##backToProfile"))
             { wizardStep = 1; return; }
 
             ImGui.SameLine();
@@ -445,7 +444,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             if (classes.Count == 0)
             {
                 ImGui.TextColored(ThemeManager.FontMuted, "This system has no classes defined.");
-                if (ThemeManager.PillButton("Skip to Stats##skipClass", new Vector2(140, 28)))
+                if (ThemeManager.PillButton("Skip to Stats##skipClass"))
                 {
                     selectedClassIndex = -1;
                     InitStatAllocations();
@@ -591,7 +590,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.Spacing();
             if (selectedClassIndex >= 0)
             {
-                if (ThemeManager.PillButton("Next: Assign Stats##nextStep3", new Vector2(200, 32)))
+                if (ThemeManager.PillButton("Next: Assign Stats##nextStep3"))
                 {
                     InitStatAllocations();
                     wizardStep = 3;
@@ -909,7 +908,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         {
             if (selectedSystem == null) { wizardStep = 0; return; }
 
-            if (ThemeManager.GhostButton("< Back##backToClass", new Vector2(80, 26)))
+            if (ThemeManager.GhostButton("< Back##backToClass"))
             { wizardStep = 2; return; }
 
             ImGui.SameLine();
@@ -968,7 +967,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
                 bool canRemove = stat.canRemovePoints && (stat.canGoNegative || val > stat.baseMin);
                 if (!canRemove) ImGui.BeginDisabled();
-                if (ThemeManager.GhostButton("-##dec", new Vector2(24, 24)))
+                if (ThemeManager.GhostButton("-##dec"))
                 {
                     statAllocations[key] = val - 1;
                     changed = true;
@@ -981,7 +980,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
                 bool canAdd = stat.canAddPoints && val < stat.baseMax && remaining > 0;
                 if (!canAdd) ImGui.BeginDisabled();
-                if (ThemeManager.GhostButton("+##inc", new Vector2(24, 24)))
+                if (ThemeManager.GhostButton("+##inc"))
                 {
                     statAllocations[key] = val + 1;
                     changed = true;
@@ -1001,7 +1000,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.EndChild();
 
             ImGui.Spacing();
-            if (ThemeManager.PillButton("Next: Review##nextStep4", new Vector2(200, 32)))
+            if (ThemeManager.PillButton("Next: Review##nextStep4"))
                 wizardStep = 4;
         }
 
@@ -1010,7 +1009,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         {
             if (selectedSystem == null) { wizardStep = 0; return; }
 
-            if (ThemeManager.GhostButton("< Back##backToStats", new Vector2(80, 26)))
+            if (ThemeManager.GhostButton("< Back##backToStats"))
             { wizardStep = 3; return; }
 
             ImGui.SameLine();
@@ -1093,7 +1092,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             }
 
             string submitLabel = revisingSheetId > 0 ? "Resubmit Revised Sheet##submit" : "Submit Character Sheet##submit";
-            if (ThemeManager.PillButton(submitLabel, new Vector2(250, 36)))
+            if (ThemeManager.PillButton(submitLabel))
             {
                 if (Plugin.character != null)
                 {
@@ -1102,8 +1101,19 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     int profileId = -1;
                     if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
                         profileId = profiles[selectedProfileIndex].id;
+                    // Convert stat allocations from SortedList keys to stat ID keys
+                    var statsByStatId = new Dictionary<int, int>();
+                    foreach (var kvp in statAllocations)
+                    {
+                        // kvp.Key is the SortedList key (sort index) — look up the stat by key
+                        if (selectedSystem.StatsData.ContainsKey(kvp.Key))
+                        {
+                            int statId = selectedSystem.StatsData[kvp.Key].id;
+                            statsByStatId[statId] = kvp.Value;
+                        }
+                    }
                     Networking.DataSender.SubmitCharacterSheet(Plugin.character, selectedSystem.id, classId,
-                        statAllocations, selectedSkills, profileId);
+                        statsByStatId, selectedSkills, profileId);
                     revisingSheetId = 0; // Reset revision mode
                 }
             }

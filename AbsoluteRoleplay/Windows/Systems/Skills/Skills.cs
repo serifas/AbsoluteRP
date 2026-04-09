@@ -120,12 +120,12 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 ImGui.Image(cls.iconTexture.Handle, new Vector2(32, 32));
                 ImGui.SameLine();
             }
-            if (ThemeManager.PillButton("Change Icon##classIcon", new Vector2(100, 28)))
+            if (ThemeManager.PillButton("Change Icon##classIcon"))
                 showClassIconPicker = true;
             if (cls.iconId > 0)
             {
                 ImGui.SameLine();
-                if (ThemeManager.GhostButton("Clear##clearClassIcon", new Vector2(50, 28)))
+                if (ThemeManager.GhostButton("Clear##clearClassIcon"))
                 {
                     cls.iconId = 0;
                     cls.iconTexture = null;
@@ -167,7 +167,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             ImGui.Spacing();
 
             // Save button
-            if (ThemeManager.PillButton("Save Class##saveClass", new Vector2(140, 32)))
+            if (ThemeManager.PillButton("Save Class##saveClass"))
             {
                 if (system.id > 0 && Plugin.character != null)
                 {
@@ -236,7 +236,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
             // Save
             ImGui.Spacing();
-            if (ThemeManager.PillButton("Save Skills##saveSkills", new Vector2(140, 32)))
+            if (ThemeManager.PillButton("Save Skills##saveSkills"))
             {
                 if (system.id > 0 && Plugin.character != null)
                 {
@@ -256,7 +256,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             int classId = cls.id;
             var passives = system.Skills.Where(s => s.classId == classId && !s.isCastable && s.gridX == -1).ToList();
 
-            if (ThemeManager.PillButton("+ Add Passive##addPassive", new Vector2(130, 26)))
+            if (ThemeManager.PillButton("+ Add Passive##addPassive"))
             {
                 system.Skills.Add(new SkillData
                 {
@@ -283,7 +283,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                     p.name = pname;
 
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton("X##delPassive", new Vector2(24, 24)))
+                if (ThemeManager.DangerButton("X##delPassive"))
                 {
                     system.Skills.Remove(p);
                     ImGui.PopID();
@@ -303,7 +303,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
             // Save
             ImGui.Spacing();
-            if (ThemeManager.PillButton("Save Passives##savePassives", new Vector2(140, 32)))
+            if (ThemeManager.PillButton("Save Passives##savePassives"))
             {
                 if (system.id > 0 && Plugin.character != null)
                 {
@@ -347,7 +347,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             }
 
             ImGui.SameLine();
-            if (ThemeManager.PillButton("+ Class##addClass", new Vector2(80, 24)))
+            if (ThemeManager.PillButton("+ Class##addClass"))
                 ImGui.OpenPopup("##NewClassPopup");
 
             if (ImGui.BeginPopup("##NewClassPopup"))
@@ -355,7 +355,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 ImGui.Text("Class Name:");
                 ImGui.SetNextItemWidth(150);
                 ImGui.InputText("##newClassName", ref newClassName, 64);
-                if (ThemeManager.PillButton("Create##createClass", new Vector2(80, 24)) && !string.IsNullOrWhiteSpace(newClassName))
+                if (ThemeManager.PillButton("Create##createClass") && !string.IsNullOrWhiteSpace(newClassName))
                 {
                     var newClass = new SkillClassData
                     {
@@ -377,7 +377,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             if (selectedClassIndex >= 0 && selectedClassIndex < system.SkillClasses.Count)
             {
                 ImGui.SameLine();
-                if (ThemeManager.DangerButton("X##delClass", new Vector2(24, 24)))
+                if (ThemeManager.DangerButton("X##delClass"))
                 {
                     int classId = system.SkillClasses[selectedClassIndex].id;
                     // Remove skills belonging to this class
@@ -460,7 +460,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 ImGui.Text("Tree Name:");
                 ImGui.SetNextItemWidth(150);
                 ImGui.InputText("##newTreeName", ref newTreeName, 64);
-                if (ThemeManager.PillButton("Create##createTree", new Vector2(80, 24)) && !string.IsNullOrWhiteSpace(newTreeName))
+                if (ThemeManager.PillButton("Create##createTree") && !string.IsNullOrWhiteSpace(newTreeName))
                 {
                     cls.SkillTrees.Add(new SkillTreeData { name = newTreeName.Trim(), sortOrder = cls.SkillTrees.Count });
                     selectedTreeIndex = cls.SkillTrees.Count - 1;
@@ -475,7 +475,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             // Delete tree button (only if more than 1)
             if (cls.SkillTrees.Count > 1 && selectedTreeIndex >= 0 && selectedTreeIndex < cls.SkillTrees.Count)
             {
-                if (ThemeManager.DangerButton("Delete Tree##delTree", new Vector2(90, 24)))
+                if (ThemeManager.DangerButton("Delete Tree##delTree"))
                 {
                     int classId = cls.id;
                     system.Skills.RemoveAll(s => s.classId == classId && s.treeIndex == selectedTreeIndex);
@@ -748,7 +748,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 ImGui.Image(skill.iconTexture.Handle, new Vector2(32, 32));
                 ImGui.SameLine();
             }
-            if (ThemeManager.GhostButton("Choose Icon##pickIcon", new Vector2(100, 28)))
+            if (ThemeManager.GhostButton("Choose Icon##pickIcon"))
             {
                 showIconPicker = true;
             }
@@ -891,7 +891,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                     if (ImGui.IsItemHovered())
                         ImGui.SetTooltip("Points required in this skill before child unlocks");
                     ImGui.SameLine();
-                    if (ThemeManager.DangerButton("X##delConn", new Vector2(20, 20)))
+                    if (ThemeManager.DangerButton("X##delConn"))
                         system.SkillConnections.Remove(conn);
                     ImGui.PopID();
                 }
