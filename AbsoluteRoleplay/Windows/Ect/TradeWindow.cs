@@ -61,9 +61,29 @@ namespace AbsoluteRP.Windows.Profiles
                     ItemGrid.DrawGrid(Plugin.plugin, inventoryLayout, tradeTargetName, tradeTargetWorld, true);
                 }
             }
-            // Inventory tab selector for choosing which inventory to use / receive into
-            ImGui.Text("Your Inventory:");
-            AddTabSelection(false);
+
+            // Inventory tabs (shown as actual tabs instead of a dropdown)
+            if (inventoryTabs.Count > 0)
+            {
+                if (ImGui.BeginTabBar($"##TradeInvTabs_{inventoryTabs.Count}"))
+                {
+                    for (int i = 0; i < inventoryTabs.Count; i++)
+                    {
+                        string tabName = inventoryTabs[i].Item3;
+                        if (string.IsNullOrEmpty(tabName)) tabName = $"Inventory {i + 1}";
+                        if (ImGui.BeginTabItem(tabName + $"##tradeInv{i}"))
+                        {
+                            if (selectedTab != i)
+                            {
+                                selectedTab = i;
+                                DataSender.SendInventorySelection(Plugin.character, inventoryTabs[i].Item1, inventoryTabs[i].Item2);
+                            }
+                            ImGui.EndTabItem();
+                        }
+                    }
+                    ImGui.EndTabBar();
+                }
+            }
             ImGui.Spacing();
 
             if (Misc.DrawCenteredButton("Confirm Trade"))
@@ -89,12 +109,16 @@ namespace AbsoluteRP.Windows.Profiles
                     }
                     else
                     {
-                        ImGui.Text("Choose which inventory will receive traded items:");
+                        ImGui.Text("Traded items will be received into:");
                         ImGui.Spacing();
-                        AddTabSelection(true);
+                        string destName = selectedTab >= 0 && selectedTab < inventoryTabs.Count
+                            ? inventoryTabs[selectedTab].Item3 : "Unknown";
+                        if (string.IsNullOrEmpty(destName)) destName = $"Inventory {selectedTab + 1}";
+                        ImGui.TextColored(ThemeManager.Accent, destName);
+                        ImGui.TextColored(ThemeManager.FontMuted, "(Select a different tab above to change)");
                         ImGui.Spacing();
 
-                        if (ThemeManager.PillButton("Confirm Trade", new Vector2(140, 0)))
+                        if (ThemeManager.PillButton("Confirm Trade"))
                         {
                             DataSender.SendTradeStatus(Plugin.character, inventoryTabs[selectedTab].Item1, inventoryLayout, tradeTargetName, tradeTargetWorld, true, false);
                             showConfirmTradePopup = false;
@@ -113,11 +137,11 @@ namespace AbsoluteRP.Windows.Profiles
 
             ImGui.Text($"{Plugin.plugin.playername} | ");
             ImGui.SameLine();
-            ImGui.TextColored(ImGuiColors.DalamudWhite, receiverStatus);
+            ImGui.TextColored(ImGuiColors.DalamudWhite, senderStatus);
 
             ImGui.Text($"{tradeTargetName} | ");
             ImGui.SameLine();
-            ImGui.TextColored(ImGuiColors.DalamudWhite, senderStatus);
+            ImGui.TextColored(ImGuiColors.DalamudWhite, receiverStatus);
 
             ImGui.EndGroup();
         }

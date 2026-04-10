@@ -46,21 +46,23 @@ namespace AbsoluteRP.Windows.Inventory
 
         public void Dispose() { }
 
+        public override void OnClose()
+        {
+            hasAutoFetched = false;
+        }
+
         public override void Draw()
         {
             if (!Plugin.IsOnline())
                 return;
 
-            // Auto-fetch first profile's inventory when the window first opens
-            if (!hasAutoFetched && ProfileWindow.profiles != null && ProfileWindow.profiles.Count > 0)
+            // Auto-fetch inventory when window opens and tabs haven't been loaded yet
+            if (!hasAutoFetched && Plugin.character != null && ProfileWindow.profiles != null && ProfileWindow.profiles.Count > 0)
             {
                 hasAutoFetched = true;
                 selectedProfileIndex = ProfileWindow.profileIndex;
-                // Only fetch if we don't already have tabs (they may have been loaded during profile fetch)
-                if (inventoryTabs.Count == 0)
-                {
-                    DataSender.FetchProfile(Plugin.character, true, selectedProfileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
-                }
+                if (selectedProfileIndex < 0) selectedProfileIndex = 0;
+                DataSender.FetchProfile(Plugin.character, true, selectedProfileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
             }
 
             // Profile selector dropdown

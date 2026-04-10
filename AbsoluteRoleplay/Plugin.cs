@@ -63,6 +63,7 @@ namespace AbsoluteRP
         private ushort pendingTerritory = 0;
         private const string CommandName = "/arp";
         public static Defines.Character character { get; set; } = null;
+        public static bool characterKeysVerified = false;
 
         public bool loginAttempted = false;
         private IDtrBarEntry? statusBarEntry;
@@ -232,6 +233,7 @@ namespace AbsoluteRP
 
         private void FetchConnectionsInMap(ushort obj)
         {
+            if (!characterKeysVerified) return; // Don't send requests with stale keys
             pendingFetchConnections = true;
             pendingTerritory = obj;
         }
@@ -433,9 +435,24 @@ namespace AbsoluteRP
             ClientHandleData.InitializePackets();
             Connect();
             _ = UpdateStatusAsync();
-            // Note: Don't call CheckConnectionsRequestStatus() here
-            // The status bar will be updated by ReceiveConnectionsRequest when
-            // the server sends a pending connection request notification
+            // Auto-login after connecting so the server creates a session
+            // This allows features like trading to work without opening the main panel first
+            _ = AutoLoginAfterConnectAsync();
+        }
+
+        private async Task AutoLoginAfterConnectAsync()
+        {
+            // Wait briefly for the connection to be established
+            for (int i = 0; i < 20; i++)
+            {
+                if (ClientTCP.IsConnected()) break;
+                await Task.Delay(250);
+            }
+            if (ClientTCP.IsConnected() && Configuration?.account?.accountKey != null)
+            {
+                DataSender.SendLogin();
+                PluginLog.Info("[AutoLogin] Sent login after connection established");
+            }
         }
 
         public void Connect()
@@ -906,6 +923,10 @@ namespace AbsoluteRP
                     x => x?.characterName == ObjectTable.LocalPlayer.Name.ToString()
                       && x?.characterWorld == ObjectTable.LocalPlayer.HomeWorld.Value.Name.ToString());
             }
+
+            // Process any pending joined systems (runs every frame until list is empty)
+            if (character != null)
+                DataReceiver.ProcessPendingJoinedSystems();
 
             if (IsOnline())
             {

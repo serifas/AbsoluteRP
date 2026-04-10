@@ -47,6 +47,10 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         // Roster view toggle
         private static bool viewingRoster = false;
 
+        // System info popup
+        private static bool showSystemInfo = false;
+        private static SystemData infoSystem = null;
+
         // Revision mode — when > 0, we're revising an existing sheet instead of creating new
         private static int revisingSheetId = 0;
 
@@ -281,6 +285,14 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     }
                 }
 
+                // Info button
+                ImGui.SameLine();
+                if (ThemeManager.GhostButton("Info##info"))
+                {
+                    infoSystem = sys;
+                    showSystemInfo = true;
+                }
+
                 // Leave button for non-owners
                 bool isOwner = SystemsWindow.systemData.Exists(s => s.id == sys.id);
                 if (!isOwner)
@@ -288,6 +300,9 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     ImGui.SameLine();
                     if (ThemeManager.DangerButton("Leave##leave"))
                     {
+                        // Leave on server
+                        if (Plugin.character != null)
+                            Networking.DataSender.LeaveSystem(Plugin.character, sys.id);
                         availableSystems.RemoveAll(s => s.id == sys.id);
                         if (selectedSystem != null && selectedSystem.id == sys.id)
                         {
@@ -303,6 +318,246 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             // Reserve space
             int cardRows = (availableSystems.Count + cardCols - 1) / cardCols;
             ImGui.SetCursorScreenPos(cardOrigin + new Vector2(0, cardRows * (cardHeight + cardSpacing) + cardSpacing));
+
+            // System info window
+            if (showSystemInfo && infoSystem != null)
+            {
+                ImGui.SetNextWindowSize(new Vector2(450, 500), ImGuiCond.FirstUseEver);
+                if (ImGui.Begin($"System Info: {infoSystem.name}##SystemInfoWindow", ref showSystemInfo))
+                {
+                    var sys = infoSystem;
+
+                    // Header
+                    ThemeManager.SectionHeader(sys.name);
+                    ImGui.Spacing();
+
+                    // Description
+                    if (!string.IsNullOrEmpty(sys.description))
+                    {
+                        ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
+                        ImGui.TextWrapped(sys.description);
+                        ImGui.PopTextWrapPos();
+                        ImGui.Spacing();
+                        ThemeManager.GradientSeparator();
+                        ImGui.Spacing();
+                    }
+
+                    // System overview
+                    ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
+
+                    ThemeManager.SubtitleText("Overview");
+                    ImGui.Spacing();
+                    ImGui.TextWrapped("To join this system, you'll create a character sheet by choosing a profile, selecting a class, distributing stat points, and picking skills from the available talent trees. Once submitted, the system owner will review and approve your sheet.");
+                    ImGui.Spacing();
+                    ImGui.Spacing();
+
+                    // ── Stats Section ──
+                    int statCount = sys.StatsData.Count;
+                    if (statCount > 0)
+                    {
+                        ThemeManager.GradientSeparator();
+                        ImGui.Spacing();
+                        ThemeManager.SubtitleText($"Stats ({statCount})");
+                        ImGui.Spacing();
+                        ImGui.TextWrapped($"You will receive {sys.basePointsAvailable} stat points to distribute across the following attributes when creating your character:");
+                        ImGui.Spacing();
+
+                        foreach (var stat in sys.StatsData.Values)
+                        {
+                            ImGui.ColorButton($"##infoStatClr{stat.id}", stat.color,
+                                ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 12));
+                            ImGui.SameLine();
+                            ImGui.TextColored(ThemeManager.Accent, stat.name);
+                            if (!string.IsNullOrEmpty(stat.description))
+                            {
+                                ImGui.Indent(20);
+                                ImGui.TextWrapped(stat.description);
+                                ImGui.Unindent(20);
+                            }
+                            ImGui.TextColored(ThemeManager.FontMuted, $"    Range: {stat.baseMin} - {stat.baseMax}");
+                            if (!stat.canAddPoints) ImGui.TextColored(ThemeManager.FontMuted, "    Cannot add points");
+                            if (!stat.canRemovePoints) ImGui.TextColored(ThemeManager.FontMuted, "    Cannot remove points");
+                            if (stat.canGoNegative) ImGui.TextColored(ThemeManager.FontMuted, "    Can go negative");
+                            ImGui.Spacing();
+                        }
+                        ImGui.Spacing();
+                    }
+
+                    // ── Classes Section ──
+                    if (sys.SkillClasses.Count > 0)
+                    {
+                        ThemeManager.GradientSeparator();
+                        ImGui.Spacing();
+                        ThemeManager.SubtitleText($"Classes ({sys.SkillClasses.Count})");
+                        ImGui.Spacing();
+                        ImGui.TextWrapped("When creating your character, you will choose one of the following classes. Each class defines your available skill trees, passive abilities, and starting skill points.");
+                        ImGui.Spacing();
+                        ImGui.Spacing();
+
+                        foreach (var cls in sys.SkillClasses)
+                        {
+                            // Class icon + name
+                            if (cls.iconTexture != null && cls.iconTexture.Handle != IntPtr.Zero)
+                            {
+                                ImGui.Image(cls.iconTexture.Handle, new Vector2(24, 24));
+                                ImGui.SameLine();
+                            }
+                            ImGui.TextColored(ThemeManager.Accent, cls.name);
+
+                            ImGui.Indent(20);
+
+                            if (!string.IsNullOrEmpty(cls.description))
+                                ImGui.TextWrapped(cls.description);
+
+                            // Skill points
+                            if (cls.initialSkillPoints > 0)
+                                ImGui.TextColored(ThemeManager.FontMuted, $"Skill Points: {cls.initialSkillPoints}");
+                            else
+                                ImGui.TextColored(ThemeManager.FontMuted, "Skill Points: Unlimited");
+
+                            // Skill trees
+                            if (cls.SkillTrees.Count > 0)
+                            {
+                                string treeNames = string.Join(", ", cls.SkillTrees.Select(t => t.name));
+                                ImGui.TextColored(ThemeManager.FontMuted, $"Skill Trees: {treeNames}");
+                            }
+
+                            // Skills count
+                            int classSkillCount = sys.Skills.Count(s => s.classId == cls.id && s.isCastable);
+                            int passiveCount = sys.Skills.Count(s => s.classId == cls.id && !s.isCastable);
+                            if (classSkillCount > 0 || passiveCount > 0)
+                            {
+                                string skillInfo = "";
+                                if (classSkillCount > 0) skillInfo += $"{classSkillCount} active skills";
+                                if (passiveCount > 0) skillInfo += (skillInfo.Length > 0 ? ", " : "") + $"{passiveCount} passives";
+                                ImGui.TextColored(ThemeManager.FontMuted, skillInfo);
+                            }
+
+                            ImGui.Unindent(20);
+                            ImGui.Spacing();
+                            ImGui.Spacing();
+                        }
+                    }
+
+                    // ── Combat Section ──
+                    if (sys.CombatConfig.healthEnabled || sys.Resources.Count > 0)
+                    {
+                        ThemeManager.GradientSeparator();
+                        ImGui.Spacing();
+                        ThemeManager.SubtitleText("Combat & Resources");
+                        ImGui.Spacing();
+                    }
+
+                    if (sys.CombatConfig.healthEnabled)
+                    {
+                        ImGui.TextColored(ThemeManager.Accent, "Health");
+                        ImGui.Indent(20);
+                        ImGui.TextWrapped($"Base HP: {sys.CombatConfig.healthBase}  |  Max HP: {sys.CombatConfig.healthMax}");
+                        if (sys.CombatConfig.healthLinkedStatId >= 0)
+                        {
+                            var linkedStat = sys.StatsData.Values.FirstOrDefault(s => s.id == sys.CombatConfig.healthLinkedStatId);
+                            if (linkedStat != null)
+                                ImGui.TextWrapped($"HP scales with {linkedStat.name} (x{sys.CombatConfig.healthStatMultiplier:F1} multiplier)");
+                        }
+                        if (sys.CombatConfig.healthRegenAmount > 0)
+                            ImGui.TextWrapped($"Regenerates {sys.CombatConfig.healthRegenAmount} HP every {sys.CombatConfig.healthRegenEveryNTurns} turn(s)");
+                        ImGui.Unindent(20);
+                        ImGui.Spacing();
+
+                        ImGui.TextColored(ThemeManager.Accent, "Dice");
+                        ImGui.Indent(20);
+                        string diceStr = $"{sys.CombatConfig.diceCount}d{sys.CombatConfig.diceType}";
+                        if (sys.CombatConfig.diceModifier > 0) diceStr += $"+{sys.CombatConfig.diceModifier}";
+                        else if (sys.CombatConfig.diceModifier < 0) diceStr += $"{sys.CombatConfig.diceModifier}";
+                        ImGui.TextWrapped($"Roll: {diceStr}  |  Turns per round: {sys.CombatConfig.turnCount}");
+                        ImGui.Unindent(20);
+                        ImGui.Spacing();
+                    }
+
+                    // Resources
+                    if (sys.Resources.Count > 0)
+                    {
+                        ImGui.TextColored(ThemeManager.Accent, "Resources");
+                        ImGui.Indent(20);
+                        foreach (var res in sys.Resources)
+                        {
+                            ImGui.ColorButton($"##infoResClr{res.id}", res.color,
+                                ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(10, 10));
+                            ImGui.SameLine();
+                            string resInfo = $"{res.name}: {res.baseValue} / {res.maxValue}";
+                            if (res.linkedStatId >= 0)
+                            {
+                                var linkedStat = sys.StatsData.Values.FirstOrDefault(s => s.id == res.linkedStatId);
+                                if (linkedStat != null)
+                                    resInfo += $"  (scales with {linkedStat.name} x{res.statMultiplier:F1})";
+                            }
+                            ImGui.Text(resInfo);
+                            if (res.regenAmount > 0)
+                                ImGui.TextColored(ThemeManager.FontMuted, $"    Regenerates {res.regenAmount} every {res.regenEveryNTurns} turn(s)");
+                        }
+                        ImGui.Unindent(20);
+                        ImGui.Spacing();
+                    }
+
+                    // ── Settings Section ──
+                    ThemeManager.GradientSeparator();
+                    ImGui.Spacing();
+                    ThemeManager.SubtitleText("Settings");
+                    ImGui.Spacing();
+
+                    if (sys.requireApproval)
+                    {
+                        ImGui.BulletText("Approval Required");
+                        ImGui.Indent(20);
+                        ImGui.TextWrapped("Your character sheet must be reviewed and approved by the system owner before you can participate. You will be notified when your sheet is approved or if revisions are requested.");
+                        ImGui.Unindent(20);
+                    }
+                    else
+                    {
+                        ImGui.BulletText("Auto-Approved");
+                        ImGui.Indent(20);
+                        ImGui.TextWrapped("Character sheets are automatically approved upon submission. You can start participating immediately.");
+                        ImGui.Unindent(20);
+                    }
+                    ImGui.Spacing();
+
+                    if (sys.restrictResourceModification)
+                    {
+                        ImGui.BulletText("Resources Restricted");
+                        ImGui.Indent(20);
+                        ImGui.TextWrapped("Only the system owner can modify HP and resource values during gameplay. Players cannot adjust their own values.");
+                        ImGui.Unindent(20);
+                    }
+                    else
+                    {
+                        ImGui.BulletText("Player-Managed Resources");
+                        ImGui.Indent(20);
+                        ImGui.TextWrapped("Players can freely modify their own HP and resource values during gameplay.");
+                        ImGui.Unindent(20);
+                    }
+
+                    ImGui.PopTextWrapPos();
+
+                    // ── Rules Section ──
+                    if (!string.IsNullOrEmpty(sys.rules))
+                    {
+                        ImGui.Spacing();
+                        ThemeManager.GradientSeparator();
+                        ImGui.Spacing();
+                        ThemeManager.SubtitleText("Rules");
+                        ImGui.Spacing();
+                        ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
+                        ImGui.TextWrapped(sys.rules);
+                        ImGui.PopTextWrapPos();
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Spacing();
+                    if (ThemeManager.GhostButton("Close##closeInfo"))
+                        showSystemInfo = false;
+                }
+                ImGui.End();
+            }
 
             // Show unspent points info for selected system
             if (selectedSystem != null)
@@ -462,8 +717,15 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
             if (ThemeManager.GhostButton("< Back##backToSystem"))
             { wizardStep = 0; return; }
+            if (selectedProfileIndex >= 0 && selectedProfileIndex < (ProfileWindow.profiles?.Count ?? 0))
+            {
+                ImGui.SameLine();
+                float nwProf = ImGui.CalcTextSize("Next").X + 40;
+                ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - nwProf + ImGui.GetCursorPosX());
+                if (ThemeManager.PillButton("Next##nextStep2Top"))
+                    wizardStep = 2;
+            }
 
-            ImGui.SameLine();
             ThemeManager.SectionHeader("Choose Your Profile");
             ImGui.Spacing();
 
@@ -513,14 +775,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 ImGui.PopID();
             }
 
-            ImGui.Spacing();
-            if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
-            {
-                if (ThemeManager.PillButton("Next##nextStep2"))
-                {
-                    wizardStep = 2;
-                }
-            }
         }
 
         // ── Point Assignment Mode ──
@@ -854,8 +1108,23 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
             if (ThemeManager.GhostButton("< Back##backToProfile"))
             { wizardStep = 1; return; }
-
             ImGui.SameLine();
+            // Right-align the next button
+            float nextWidth = ImGui.CalcTextSize("Continue").X + 40;
+            ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - nextWidth + ImGui.GetCursorPosX());
+            if (ThemeManager.PillButton("Continue##continueFromRulesTop"))
+            {
+                selectedClassIndex = -1;
+                hoveredClassIndex = -1;
+                selectedSkills.Clear();
+                skillTiers.Clear();
+                skillPointsUsed = 0;
+                previewTreeIndex = 0;
+                if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
+                    Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
+                wizardStep = 3;
+            }
+
             ThemeManager.SectionHeader("System Rules");
             ImGui.Spacing();
 
@@ -868,22 +1137,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 ImGui.TextColored(ThemeManager.FontMuted, "This system has no rules defined.");
             }
 
-            ImGui.Spacing();
-            ImGui.Spacing();
-
-            if (ThemeManager.PillButton("Continue##continueFromRules"))
-            {
-                selectedClassIndex = -1;
-                hoveredClassIndex = -1;
-                selectedSkills.Clear();
-                skillTiers.Clear();
-                skillPointsUsed = 0;
-                previewTreeIndex = 0;
-                // Ensure full system data is loaded
-                if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
-                    Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
-                wizardStep = 3;
-            }
         }
 
         // ── Step 3: Class + Skill Selection ──
@@ -893,8 +1146,18 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
             if (ThemeManager.GhostButton("< Back##backToRules"))
             { wizardStep = 2; return; }
+            if (selectedClassIndex >= 0)
+            {
+                ImGui.SameLine();
+                float nw = ImGui.CalcTextSize("Next: Assign Stats").X + 40;
+                ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - nw + ImGui.GetCursorPosX());
+                if (ThemeManager.PillButton("Next: Assign Stats##nextStep3Top"))
+                {
+                    InitStatAllocations();
+                    wizardStep = 4;
+                }
+            }
 
-            ImGui.SameLine();
             ThemeManager.SectionHeader("Choose Your Class");
             ImGui.Spacing();
 
@@ -1047,15 +1310,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             }
             ImGui.EndChild();
 
-            ImGui.Spacing();
-            if (selectedClassIndex >= 0)
-            {
-                if (ThemeManager.PillButton("Next: Assign Stats##nextStep3"))
-                {
-                    InitStatAllocations();
-                    wizardStep = 4;
-                }
-            }
         }
 
         // ── Skill Tree Picker (interactive, used during class selection) ──
@@ -1373,8 +1627,12 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
             if (ThemeManager.GhostButton("< Back##backToClass"))
             { wizardStep = 3; return; }
-
             ImGui.SameLine();
+            float nwStat = ImGui.CalcTextSize("Next: Review").X + 40;
+            ImGui.SetCursorPosX(ImGui.GetContentRegionAvail().X - nwStat + ImGui.GetCursorPosX());
+            if (ThemeManager.PillButton("Next: Review##nextStep4Top"))
+                wizardStep = 5;
+
             ThemeManager.SectionHeader("Assign Stat Points");
             ImGui.Spacing();
 
@@ -1464,9 +1722,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             DrawResourceBars(selectedSystem, stats);
             ImGui.EndChild();
 
-            ImGui.Spacing();
-            if (ThemeManager.PillButton("Next: Review##nextStep4"))
-                wizardStep = 5;
         }
 
         // ── Step 5: Review & Create ──
@@ -1477,7 +1732,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             if (ThemeManager.GhostButton("< Back##backToStats"))
             { wizardStep = 4; return; }
 
-            ImGui.SameLine();
             ThemeManager.SectionHeader("Review Your Character");
             ImGui.Spacing();
 
@@ -1616,6 +1870,15 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             {
                 ImGui.Spacing();
                 ImGui.TextColored(ThemeManager.FontMuted, "This system requires owner approval. Your sheet will be reviewed.");
+            }
+
+            // Return button (always visible — allows going back to system list after submission)
+            ImGui.Spacing();
+            ImGui.Spacing();
+            if (ThemeManager.GhostButton("Return to Systems##returnToSystems"))
+            {
+                wizardStep = 0;
+                submitMessage = "";
             }
         }
 

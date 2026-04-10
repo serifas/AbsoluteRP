@@ -153,6 +153,10 @@ namespace Networking
         // Server Notifications (shutdown, restart, broadcast)
         SendServerNotification = 130,
 
+        // Equipment
+        SendEquipment = 131,
+        SendTargetEquipment = 132,
+
         // Listings System
         SendListingCreated = 185,
         SendListingUpdated = 186,
@@ -206,6 +210,7 @@ namespace Networking
         SendSheetResponse = 262,
         SendPublicSystemData = 263,
         SendSystemBans = 268,
+        SendJoinedSystems = 273,
     }
     class DataReceiver
     {
@@ -1956,6 +1961,12 @@ namespace Networking
             finally
             {
                 Plugin.plugin.OpenTradeWindow();
+                // Auto-select first inventory tab so the server knows where to send/receive items
+                if (TradeWindow.inventoryTabs.Count > 0 && Plugin.character != null)
+                {
+                    var firstTab = TradeWindow.inventoryTabs[0];
+                    DataSender.SendInventorySelection(Plugin.character, firstTab.Item1, firstTab.Item2);
+                }
             }
         }
         internal static void ReceiveTradeInventory(byte[] data)
@@ -1968,9 +1979,8 @@ namespace Networking
                     var packetID = buffer.ReadInt();
                     int inventoryID = buffer.ReadInt();
                     int inventoryCount = buffer.ReadInt();
+                    // Only clear the inventory contents — preserve trade sending/receiving slots
                     TradeWindow.inventoryLayout.inventorySlotContents.Clear();
-                    TradeWindow.inventoryLayout.tradeSlotContents.Clear();
-                    TradeWindow.inventoryLayout.traderSlotContents.Clear();
                     for (int i = 0; i < inventoryCount; i++)
                     {
                         string itemName = buffer.ReadString();
@@ -2075,10 +2085,20 @@ namespace Networking
                     TradeWindow.senderStatus = senderStatus ? "Ready" : "Awaiting Confirmation...";
                     TradeWindow.receiverStatus = receiverStatus ? "Ready" : "Awaiting Confirmation...";
 
-                    // Only close trade window when both confirmed (trade complete) or both false (cancelled)
+                    // Trade complete (both confirmed) or cancelled (both false)
                     if ((senderStatus && receiverStatus) || (!senderStatus && !receiverStatus))
                     {
+                        // Clear all trade slots — items have been transferred by the server
+                        TradeWindow.inventoryLayout.tradeSlotContents.Clear();
+                        TradeWindow.inventoryLayout.traderSlotContents.Clear();
                         Plugin.plugin.CloseTradeWindow();
+
+                        // Re-fetch inventory to reflect the updated items
+                        if (senderStatus && receiverStatus && Plugin.character != null)
+                        {
+                            DataSender.FetchProfile(Plugin.character, true, ProfileWindow.profileIndex,
+                                Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                        }
                     }
                 }
             }
@@ -5409,6 +5429,23 @@ namespace Networking
                         Plugin.plugin.Configuration.Save();
                         Plugin.PluginLog.Info($"[HandleVerifiedCharacters] Configuration saved");
                     }
+
+                    // Mark keys as verified so other systems can safely use them
+                    Plugin.characterKeysVerified = true;
+                    // Re-resolve Plugin.character with fresh keys
+                    Plugin.character = null;
+
+                    // Fetch joined systems on login (so imported systems appear without opening the Systems window)
+                    // Delay slightly to let Plugin.character resolve on the next frame
+                    _ = System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        await System.Threading.Tasks.Task.Delay(1000);
+                        if (Plugin.character != null)
+                        {
+                            Networking.DataSender.FetchJoinedSystems(Plugin.character);
+                            Networking.DataSender.FetchMySystems(Plugin.character);
+                        }
+                    });
                 }
             }
             catch (Exception ex)
@@ -6455,7 +6492,7 @@ namespace Networking
                         AbsoluteRP.Windows.Listings.SystemsWindow.currentSystem =
                             AbsoluteRP.Windows.Listings.SystemsWindow.systemData[0];
 
-                        // Auto-fetch full data for all systems (loads banners, logos, classes, skills, etc.)
+                        // Auto-fetch full data for all owned systems
                         if (Plugin.character != null)
                         {
                             foreach (var sys in AbsoluteRP.Windows.Listings.SystemsWindow.systemData)
@@ -6465,6 +6502,10 @@ namespace Networking
                             }
                         }
                     }
+
+                    // Always fetch joined systems (imported via share code) — even if user has no owned systems
+                    if (Plugin.character != null)
+                        Networking.DataSender.FetchJoinedSystems(Plugin.character);
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleMySystems Error: {ex.Message}"); }
@@ -6952,6 +6993,127 @@ namespace Networking
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleSheetResponse Error: {ex.Message}"); }
+        }
+
+        public static void HandleEquipment(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet id
+                    int slotCount = buffer.ReadInt();
+                    AbsoluteRP.Windows.Inventory.EquipmentPage.equippedItems.Clear();
+                    for (int i = 0; i < slotCount; i++)
+                    {
+                        int slotIndex = buffer.ReadInt();
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        int type = buffer.ReadInt();
+                        int subType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+                        bool locked = buffer.ReadBool();
+                        AbsoluteRP.Windows.Inventory.EquipmentPage.equippedItems[slotIndex] = new ItemDefinition
+                        {
+                            name = name,
+                            description = description,
+                            type = type,
+                            subtype = subType,
+                            iconID = iconID,
+                            quality = quality,
+                            locked = locked,
+                            slot = slotIndex,
+                        };
+                    }
+                    Plugin.PluginLog.Info($"[Equipment] Loaded {slotCount} equipped items");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleEquipment Error: {ex.Message}"); }
+        }
+
+        public static void HandleTargetEquipment(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt(); // packet id
+                    int slotCount = buffer.ReadInt();
+                    AbsoluteRP.Windows.Inventory.EquipmentPage.targetEquippedItems.Clear();
+                    for (int i = 0; i < slotCount; i++)
+                    {
+                        int slotIndex = buffer.ReadInt();
+                        string name = buffer.ReadString();
+                        string description = buffer.ReadString();
+                        int type = buffer.ReadInt();
+                        int subType = buffer.ReadInt();
+                        int iconID = buffer.ReadInt();
+                        int quality = buffer.ReadInt();
+                        bool locked = buffer.ReadBool();
+                        AbsoluteRP.Windows.Inventory.EquipmentPage.targetEquippedItems[slotIndex] = new ItemDefinition
+                        {
+                            name = name,
+                            description = description,
+                            type = type,
+                            subtype = subType,
+                            iconID = iconID,
+                            quality = quality,
+                            locked = locked,
+                            slot = slotIndex,
+                        };
+                    }
+                    Plugin.PluginLog.Info($"[Equipment] Loaded {slotCount} target equipped items");
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleTargetEquipment Error: {ex.Message}"); }
+        }
+
+        // Pending joined system IDs that need to be fetched when Plugin.character is available
+        public static List<int> pendingJoinedSystemIds = new List<int>();
+
+        public static void HandleJoinedSystems(byte[] data)
+        {
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteBytes(data);
+                    buffer.ReadInt();
+                    int count = buffer.ReadInt();
+                    Plugin.PluginLog.Info($"[Systems] Received {count} joined system IDs");
+                    for (int i = 0; i < count; i++)
+                    {
+                        int systemId = buffer.ReadInt();
+                        if (Plugin.character != null)
+                        {
+                            Networking.DataSender.FetchSystem(Plugin.character, systemId);
+                        }
+                        else
+                        {
+                            // Character not resolved yet — queue for later
+                            if (!pendingJoinedSystemIds.Contains(systemId))
+                                pendingJoinedSystemIds.Add(systemId);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Error($"HandleJoinedSystems Error: {ex.Message}"); }
+        }
+
+        /// <summary>
+        /// Called from the main thread when Plugin.character becomes available.
+        /// Fetches any pending joined systems that arrived before character was resolved.
+        /// </summary>
+        public static void ProcessPendingJoinedSystems()
+        {
+            if (pendingJoinedSystemIds.Count == 0 || Plugin.character == null) return;
+            Plugin.PluginLog.Info($"[Systems] Processing {pendingJoinedSystemIds.Count} pending joined systems");
+            foreach (int systemId in pendingJoinedSystemIds)
+                Networking.DataSender.FetchSystem(Plugin.character, systemId);
+            pendingJoinedSystemIds.Clear();
         }
 
         public static void HandleSystemBans(byte[] data)

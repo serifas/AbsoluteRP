@@ -155,6 +155,13 @@ namespace Networking
             packets.Add((int)ServerPackets.SendSheetResponse, DataReceiver.HandleSheetResponse);
             packets.Add((int)ServerPackets.SendSystemBans, DataReceiver.HandleSystemBans);
 
+            // Joined systems
+            packets.Add((int)ServerPackets.SendJoinedSystems, DataReceiver.HandleJoinedSystems);
+
+            // Equipment
+            packets.Add((int)ServerPackets.SendEquipment, DataReceiver.HandleEquipment);
+            packets.Add((int)ServerPackets.SendTargetEquipment, DataReceiver.HandleTargetEquipment);
+
             //simple message back from server, simply for verification that the user is connected
         }
 

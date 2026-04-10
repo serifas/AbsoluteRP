@@ -25,7 +25,7 @@ namespace AbsoluteRP.Windows
         private bool showCompassInCombat;
         private bool showCompassInDuty;
         private bool showCompassInPvP;
-        public OptionsWindow() : base("OPTIONS", ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
+        public OptionsWindow() : base("OPTIONS")
         {
             SizeConstraints = new WindowSizeConstraints
             {

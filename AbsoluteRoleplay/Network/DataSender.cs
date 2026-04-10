@@ -262,6 +262,9 @@ namespace Networking
         CFetchSystemBans = 268,
         CUpdateSheetResources = 269,
         CUpdateCharacterSheet = 270,
+        CJoinSystem = 271,
+        CLeaveSystem = 272,
+        CFetchJoinedSystems = 273,
     }
     public class DataSender
     {
@@ -5521,6 +5524,56 @@ buffer.WriteFloat(emptyElement.color.W);
         /// <summary>
         /// Upload a banner or logo image for a system. imageType: 0=banner, 1=logo
         /// </summary>
+        public static async Task JoinSystem(Character character, int systemId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CJoinSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"JoinSystem error: {ex.Message}"); }
+        }
+
+        public static async Task LeaveSystem(Character character, int systemId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CLeaveSystem);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(systemId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"LeaveSystem error: {ex.Message}"); }
+        }
+
+        public static async Task FetchJoinedSystems(Character character)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CFetchJoinedSystems);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"FetchJoinedSystems error: {ex.Message}"); }
+        }
+
         public static async Task BanFromSystem(Character character, int systemId, string charName, string charWorld, string reason)
         {
             if (!ClientTCP.IsConnected()) return;

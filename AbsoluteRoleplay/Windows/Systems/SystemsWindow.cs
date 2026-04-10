@@ -129,8 +129,6 @@ namespace AbsoluteRP.Windows.Listings
             ImGui.SetNextWindowSize(new Vector2(buttonSize * 1.5f, navHeight), ImGuiCond.Always);
 
             ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar;
-            Navigation nav = NavigationLayouts.SystemNavigation();
-            UIHelpers.DrawSideNavigation("SYSTEMS", "SystemNavigation", ref systemNavIndex, flags, nav, focusRequested);
 
             // Right-side roster panel
             if (showRosterPanel && AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.selectedSystem != null)
