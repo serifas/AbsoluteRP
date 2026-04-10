@@ -2152,7 +2152,7 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        TargetProfileWindow.AddTabSorted(tab);
                         loadedTargetTabsCount += 1;
                     }
                 }
@@ -2201,7 +2201,7 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        TargetProfileWindow.AddTabSorted(tab);
                         loadedTargetTabsCount += 1;
                     }
                 }
@@ -2264,7 +2264,7 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        TargetProfileWindow.AddTabSorted(tab);
                         loadedTargetTabsCount += 1;
                     }
                 }
@@ -2330,7 +2330,7 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(tab);
+                        TargetProfileWindow.AddTabSorted(tab);
                         loadedTargetTabsCount += 1;
                     }
                 }
@@ -2406,7 +2406,7 @@ namespace Networking
                     EnsureTargetProfileData();
                     if (TargetProfileWindow.profileData.customTabs == null)
                         TargetProfileWindow.profileData.customTabs = new List<CustomTab>();
-                    TargetProfileWindow.profileData.customTabs.Add(tab);
+                    TargetProfileWindow.AddTabSorted(tab);
                     loadedTargetTabsCount += 1;
                     loadedTargetGalleryImages = 0;
                     TargetGalleryImagesToLoad = galleryImageCount;
@@ -2606,7 +2606,7 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(customTab);
+                        TargetProfileWindow.AddTabSorted(customTab);
                         loadedTargetTabsCount += 1;
                     }
                 }
@@ -2808,7 +2808,7 @@ namespace Networking
                     else
                     {
                         EnsureTargetProfileData();
-                        TargetProfileWindow.profileData.customTabs.Add(targetTab);
+                        TargetProfileWindow.AddTabSorted(targetTab);
                         TargetProfileWindow.profileData.id = profileID; // Store profile ID
                         TargetProfileWindow.profileData.playerName = TargetProfileWindow.characterName;
                         TargetProfileWindow.profileData.playerWorld = TargetProfileWindow.characterWorld;

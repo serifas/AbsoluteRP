@@ -7,6 +7,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using FFXIVClientStructs;
 using Networking;
+using System.Linq;
 using System.Numerics;
 
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
@@ -454,7 +455,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     // Tabs
                     if (profileData.customTabs != null && profileData.customTabs.Count > 0)
                     {
-                        if (ImGui.BeginTabBar("TargetNavigation"))
+                        // Build a unique ID based on tab order so ImGui doesn't cache stale order
+                        string tabOrderHash = string.Join(",", profileData.customTabs.Select(t => t.Name));
+                        if (ImGui.BeginTabBar($"TargetNav_{tabOrderHash}"))
                         {
                             foreach (CustomTab tab in profileData.customTabs)
                             {
