@@ -261,6 +261,7 @@ namespace Networking
         CUnbanFromSystem = 267,
         CFetchSystemBans = 268,
         CUpdateSheetResources = 269,
+        CUpdateCharacterSheet = 270,
     }
     public class DataSender
     {
@@ -5573,6 +5574,32 @@ buffer.WriteFloat(emptyElement.color.W);
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Debug($"FetchSystemBans error: {ex.Message}"); }
+        }
+
+        public static async Task UpdateCharacterSheet(Character character, int sheetId, Dictionary<int, int> statValues, List<int> learnedSkills)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CUpdateCharacterSheet);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(sheetId);
+                    buffer.WriteInt(statValues.Count);
+                    foreach (var kvp in statValues)
+                    {
+                        buffer.WriteInt(kvp.Key);
+                        buffer.WriteInt(kvp.Value);
+                    }
+                    buffer.WriteInt(learnedSkills.Count);
+                    foreach (var skillId in learnedSkills)
+                        buffer.WriteInt(skillId);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"UpdateCharacterSheet error: {ex.Message}"); }
         }
 
         public static async Task UpdateSheetResources(Character character, int sheetId, int currentHealth, Dictionary<int, int> resourceValues)

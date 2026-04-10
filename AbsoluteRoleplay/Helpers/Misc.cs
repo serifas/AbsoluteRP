@@ -93,35 +93,41 @@ namespace AbsoluteRP
             {
                 try
                 {
-                    Plugin.PluginLog.Info($"[AudioPlayer] Disposing audio player for: {FileName}");
+                    DisposeNAudioObjects();
+                }
+                catch
+                {
+                    // NAudio assembly may not be loadable in collectible context — force null
+                    WaveOut = null;
+                    AudioReader = null;
+                }
 
+                if (!string.IsNullOrEmpty(TempFilePath) && File.Exists(TempFilePath))
+                {
+                    try { File.Delete(TempFilePath); } catch { }
+                }
+            }
+
+            private void DisposeNAudioObjects()
+            {
+                try
+                {
                     if (WaveOut != null)
                     {
-                        if (WaveOut.PlaybackState == PlaybackState.Playing || WaveOut.PlaybackState == PlaybackState.Paused)
-                        {
-                            Plugin.PluginLog.Info($"[AudioPlayer] Stopping playback...");
-                            WaveOut.Stop();
-                        }
-                        WaveOut.Dispose();
+                        try { WaveOut.Stop(); } catch { }
+                        try { WaveOut.Dispose(); } catch { }
                         WaveOut = null;
-                        Plugin.PluginLog.Info($"[AudioPlayer] WaveOut disposed");
                     }
-
                     if (AudioReader != null)
                     {
-                        AudioReader.Dispose();
+                        try { AudioReader.Dispose(); } catch { }
                         AudioReader = null;
-                        Plugin.PluginLog.Info($"[AudioPlayer] AudioReader disposed");
-                    }
-
-                    if (!string.IsNullOrEmpty(TempFilePath) && File.Exists(TempFilePath))
-                    {
-                        try { File.Delete(TempFilePath); } catch { }
                     }
                 }
-                catch (Exception ex)
+                catch
                 {
-                    Plugin.PluginLog.Error($"[AudioPlayer] Error disposing: {ex.Message}");
+                    WaveOut = null;
+                    AudioReader = null;
                 }
             }
         }
@@ -939,17 +945,19 @@ namespace AbsoluteRP
         /// </summary>
         public static void CleanupAudioPlayers()
         {
-            Plugin.PluginLog.Info($"[AudioPlayer] CleanupAudioPlayers called, {_audioPlayers.Count} players to clean up");
-            lock (_audioLock)
+            try
             {
-                foreach (var player in _audioPlayers.Values)
+                lock (_audioLock)
                 {
-                    player.Dispose();
+                    foreach (var player in _audioPlayers.Values)
+                    {
+                        try { player.Dispose(); } catch { }
+                    }
+                    _audioPlayers.Clear();
+                    _audioDownloading.Clear();
                 }
-                _audioPlayers.Clear();
-                _audioDownloading.Clear();
             }
-            Plugin.PluginLog.Info($"[AudioPlayer] CleanupAudioPlayers complete");
+            catch { }
         }
 
         public class LoaderTweenState

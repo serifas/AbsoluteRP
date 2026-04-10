@@ -217,22 +217,19 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                         ImGui.ColorConvertFloat4ToU32(ThemeManager.FontMuted), desc);
                 }
 
-                // Alert badge for unspent points
+                // Check for unspent points
                 string myCharName = Plugin.character?.characterName ?? "";
                 var mySheet = Roster.Roster.sheets.FirstOrDefault(s => s.characterName == myCharName && s.systemId == sys.id && s.status == 1);
                 if (mySheet == null)
                     mySheet = Roster.Roster.sheets.FirstOrDefault(s => s.characterName == myCharName && s.status == 1);
                 int unspentStat = mySheet != null ? mySheet.bonusStatPoints : 0;
                 int unspentSkill = mySheet != null ? mySheet.bonusSkillPoints : 0;
+
+                // Orange notification dot if points available
                 if (unspentStat > 0 || unspentSkill > 0)
                 {
-                    // Orange notification circle at top-right
-                    Vector2 badgeCenter = cardPos + new Vector2(cardWidth - 14, 14);
-                    uint badgeColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.6f, 0.1f, 1f));
-                    drawList.AddCircleFilled(badgeCenter, 10, badgeColor);
-                    string badgeText = $"{unspentStat + unspentSkill}";
-                    var badgeTextSize = ImGui.CalcTextSize(badgeText);
-                    drawList.AddText(badgeCenter - badgeTextSize / 2, 0xFFFFFFFF, badgeText);
+                    Vector2 dotPos = cardPos + new Vector2(cardWidth - 10, 10);
+                    drawList.AddCircleFilled(dotPos, 6, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.6f, 0.1f, 1f)));
                 }
 
                 // Border
@@ -284,34 +281,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     }
                 }
 
-                // Assign points button (when user has unspent points)
-                if (unspentStat > 0 || unspentSkill > 0)
-                {
-                    ImGui.SameLine();
-                    if (ThemeManager.PillButton("Assign##assign"))
-                    {
-                        selectedSystemIndex = i;
-                        selectedSystem = sys;
-                        assigningPoints = true;
-                        assigningSheet = mySheet;
-                        // Load current stats into assignment allocations
-                        assignStatAllocations.Clear();
-                        foreach (var kvp in sys.StatsData)
-                            assignStatAllocations[kvp.Key] = Roster.Roster.GetSheetStatValue(sys, mySheet, kvp.Value.id);
-                        // Load current skills
-                        assignSelectedSkills = new List<int>(mySheet.learnedSkills);
-                        assignSkillTiers.Clear();
-                        foreach (var skId in mySheet.learnedSkills)
-                        {
-                            var sk = sys.Skills.FirstOrDefault(s => s.id == skId);
-                            assignSkillTiers[skId] = sk != null ? sk.maxTiers : 1;
-                        }
-                        assignSkillPointsUsed = assignSkillTiers.Values.Sum();
-                        if (sys.SkillClasses.Count == 0 && sys.id > 0 && Plugin.character != null)
-                            Networking.DataSender.FetchSystem(Plugin.character, sys.id);
-                    }
-                }
-
                 // Leave button for non-owners
                 bool isOwner = SystemsWindow.systemData.Exists(s => s.id == sys.id);
                 if (!isOwner)
@@ -334,6 +303,44 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             // Reserve space
             int cardRows = (availableSystems.Count + cardCols - 1) / cardCols;
             ImGui.SetCursorScreenPos(cardOrigin + new Vector2(0, cardRows * (cardHeight + cardSpacing) + cardSpacing));
+
+            // Show unspent points info for selected system
+            if (selectedSystem != null)
+            {
+                string myName = Plugin.character?.characterName ?? "";
+                var myApprovedSheet = Roster.Roster.sheets.FirstOrDefault(s => s.characterName == myName && s.status == 1);
+                if (myApprovedSheet != null && (myApprovedSheet.bonusStatPoints > 0 || myApprovedSheet.bonusSkillPoints > 0))
+                {
+                    ImGui.Spacing();
+                    uint alertColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.6f, 0.1f, 1f));
+                    if (myApprovedSheet.bonusStatPoints > 0)
+                        ImGui.TextColored(new Vector4(1f, 0.6f, 0.1f, 1f), $"{myApprovedSheet.bonusStatPoints} stat points available");
+                    if (myApprovedSheet.bonusSkillPoints > 0)
+                        ImGui.TextColored(new Vector4(1f, 0.6f, 0.1f, 1f), $"{myApprovedSheet.bonusSkillPoints} skill points available");
+                    ImGui.Spacing();
+                    if (ThemeManager.PillButton("Assign Points##assignPts"))
+                    {
+                        assigningPoints = true;
+                        assigningSheet = myApprovedSheet;
+                        assignStatAllocations.Clear();
+                        foreach (var kvp in selectedSystem.StatsData)
+                            assignStatAllocations[kvp.Key] = Roster.Roster.GetSheetStatValue(selectedSystem, myApprovedSheet, kvp.Value.id);
+                        assignSelectedSkills = new List<int>(myApprovedSheet.learnedSkills);
+                        assignSkillTiers.Clear();
+                        foreach (var skId in myApprovedSheet.learnedSkills)
+                        {
+                            var sk = selectedSystem.Skills.FirstOrDefault(s => s.id == skId);
+                            assignSkillTiers[skId] = sk != null ? sk.maxTiers : 1;
+                        }
+                        assignSkillPointsUsed = assignSkillTiers.Values.Sum();
+                        assignPrevRadii.Clear();
+                        assignTargetRadii.Clear();
+                        if (selectedSystem.SkillClasses.Count == 0 && selectedSystem.id > 0 && Plugin.character != null)
+                            Networking.DataSender.FetchSystem(Plugin.character, selectedSystem.id);
+                    }
+                    ImGui.Spacing();
+                }
+            }
 
             // Show rules if a system is selected
             if (selectedSystem != null && !string.IsNullOrEmpty(selectedSystem.rules))
@@ -539,71 +546,110 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 if (sheet.bonusStatPoints > 0 && ImGui.BeginTabItem($"Stats ({sheet.bonusStatPoints} pts)"))
                 {
                     ImGui.Spacing();
+
+                    // Calculate budget: original points already spent + bonus points
                     int originalSpent = 0;
                     foreach (var kvp in system.StatsData)
                         originalSpent += Roster.Roster.GetSheetStatValue(system, sheet, kvp.Value.id);
+                    int totalBudget = originalSpent + sheet.bonusStatPoints;
                     int currentSpent = assignStatAllocations.Values.Sum();
-                    int newPointsUsed = currentSpent - originalSpent;
-                    int remaining = sheet.bonusStatPoints - newPointsUsed;
+                    int remaining = totalBudget - currentSpent;
 
-                    ImGui.Text("Bonus Stat Points: ");
+                    ImGui.Text("Total Stat Points: ");
                     ImGui.SameLine();
-                    Vector4 spColor = remaining > 0 ? ThemeManager.Accent : ThemeManager.FontMuted;
-                    ImGui.TextColored(spColor, $"{remaining} / {sheet.bonusStatPoints}");
+                    ImGui.TextColored(ThemeManager.FontMuted, $"{originalSpent} spent + {sheet.bonusStatPoints} bonus = {totalBudget}");
+                    ImGui.Text("Points Remaining: ");
+                    ImGui.SameLine();
+                    Vector4 spColor = remaining > 0 ? ThemeManager.Accent : remaining == 0 ? ThemeManager.FontMuted : new Vector4(1, 0.3f, 0.3f, 1);
+                    ImGui.TextColored(spColor, $"{remaining}");
+                    ImGui.Spacing();
+                    ThemeManager.GradientSeparator();
                     ImGui.Spacing();
 
+                    // Two-column layout: controls left, radar right
+                    float panelWidth = ImGui.GetContentRegionAvail().X;
+                    float controlsWidth = panelWidth * 0.45f;
+                    float chartWidth = panelWidth * 0.50f;
+                    bool changed = false;
+
+                    ImGui.BeginChild("##assignStatControls", new Vector2(controlsWidth, 0), false);
                     foreach (var kvp in system.StatsData)
                     {
                         var stat = kvp.Value;
                         int key = kvp.Key;
                         if (!assignStatAllocations.ContainsKey(key))
-                            assignStatAllocations[key] = 0;
+                            assignStatAllocations[key] = Roster.Roster.GetSheetStatValue(system, sheet, stat.id);
                         int val = assignStatAllocations[key];
 
                         ImGui.PushID($"astat_{key}");
                         ImGui.ColorButton("##c", stat.color, ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 24));
                         ImGui.SameLine();
                         ImGui.Text(stat.name);
-                        ImGui.SameLine(200);
-
-                        if (ThemeManager.GhostButton("-##dec"))
+                        if (!string.IsNullOrEmpty(stat.description))
                         {
-                            int origVal = Roster.Roster.GetSheetStatValue(system, sheet, stat.id);
-                            if (val > origVal) // Can't go below original
-                                assignStatAllocations[key] = val - 1;
+                            ImGui.SameLine();
+                            ImGui.TextColored(ThemeManager.FontMuted, "(?)");
+                            if (ImGui.IsItemHovered())
+                            {
+                                ImGui.BeginTooltip();
+                                ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20f);
+                                ImGui.TextColored(ThemeManager.Accent, stat.name);
+                                ImGui.TextWrapped(stat.description);
+                                ImGui.PopTextWrapPos();
+                                ImGui.EndTooltip();
+                            }
                         }
+                        ImGui.SameLine(controlsWidth - 110);
+
+                        // Can't go below 0 (or baseMin)
+                        bool canDec = stat.canRemovePoints && (stat.canGoNegative || val > stat.baseMin);
+                        if (!canDec) ImGui.BeginDisabled();
+                        if (ThemeManager.GhostButton("-##dec"))
+                        { assignStatAllocations[key] = val - 1; changed = true; }
+                        if (!canDec) ImGui.EndDisabled();
+
                         ImGui.SameLine();
                         ImGui.Text($"{val}");
                         ImGui.SameLine();
 
-                        bool canAdd = val < stat.baseMax && remaining > 0;
-                        if (!canAdd) ImGui.BeginDisabled();
+                        bool canInc = stat.canAddPoints && val < stat.baseMax && remaining > 0;
+                        if (!canInc) ImGui.BeginDisabled();
                         if (ThemeManager.GhostButton("+##inc"))
-                            assignStatAllocations[key] = val + 1;
-                        if (!canAdd) ImGui.EndDisabled();
+                        { assignStatAllocations[key] = val + 1; changed = true; }
+                        if (!canInc) ImGui.EndDisabled();
 
                         ImGui.PopID();
                     }
+                    ImGui.EndChild();
+
+                    // Trigger radar animation on change
+                    if (changed) TriggerAssignRadarAnimation(system, totalBudget);
+
+                    // Radar chart on the right
+                    ImGui.SameLine();
+                    ImGui.BeginChild("##assignRadar", new Vector2(chartWidth, 0), false);
+                    DrawAssignRadarChart(system, totalBudget);
+                    ImGui.EndChild();
 
                     ImGui.Spacing();
                     if (ThemeManager.PillButton("Save Stats##saveAssignStats"))
                     {
                         if (Plugin.character != null)
                         {
-                            // Convert to stat ID keys
                             var statsByStatId = new Dictionary<int, int>();
                             foreach (var kvp in assignStatAllocations)
                             {
                                 if (system.StatsData.ContainsKey(kvp.Key))
                                     statsByStatId[system.StatsData[kvp.Key].id] = kvp.Value;
                             }
-                            // Update sheet locally
+                            int newPointsUsed = currentSpent - originalSpent;
                             sheet.statValues = statsByStatId;
                             sheet.bonusStatPoints = Math.Max(0, sheet.bonusStatPoints - newPointsUsed);
-                            // Save to server
-                            Networking.DataSender.SubmitCharacterSheet(Plugin.character, system.id, sheet.classId,
-                                statsByStatId, sheet.learnedSkills, sheet.profileId);
+                            // Update existing sheet (not create new)
+                            Networking.DataSender.UpdateCharacterSheet(Plugin.character, sheet.id, statsByStatId, sheet.learnedSkills);
                             Networking.DataSender.UpdateSheetLevelPoints(Plugin.character, sheet.id, sheet.level, sheet.bonusSkillPoints, sheet.bonusStatPoints);
+                            assigningPoints = false;
+                            assigningSheet = null;
                         }
                     }
                     ImGui.EndTabItem();
@@ -664,9 +710,11 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                                     sheet.learnedSkills = new List<int>(assignSelectedSkills);
                                     int skillsAdded = assignSelectedSkills.Count - originalSkillCount;
                                     sheet.bonusSkillPoints = Math.Max(0, sheet.bonusSkillPoints - Math.Max(0, skillsAdded));
-                                    Networking.DataSender.SubmitCharacterSheet(Plugin.character, system.id, sheet.classId,
-                                        sheet.statValues, assignSelectedSkills, sheet.profileId);
+                                    // Update existing sheet (not create new)
+                                    Networking.DataSender.UpdateCharacterSheet(Plugin.character, sheet.id, sheet.statValues, assignSelectedSkills);
                                     Networking.DataSender.UpdateSheetLevelPoints(Plugin.character, sheet.id, sheet.level, sheet.bonusSkillPoints, sheet.bonusStatPoints);
+                                    assigningPoints = false;
+                                    assigningSheet = null;
                                 }
                             }
                         }
@@ -680,6 +728,123 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
                 ImGui.EndTabBar();
             }
+        }
+
+        // ── Assign Mode Radar Chart ──
+        private static List<float> assignPrevRadii = new List<float>();
+        private static List<float> assignTargetRadii = new List<float>();
+        private static float assignMorphProgress = 1f;
+        private static DateTime assignMorphStart = DateTime.MinValue;
+
+        private static void TriggerAssignRadarAnimation(SystemData system, int totalBudget)
+        {
+            int count = system.StatsData.Count;
+            if (count == 0) return;
+            assignPrevRadii = GetAssignInterpolatedRadii(count);
+            assignTargetRadii = new List<float>(count);
+            foreach (var kvp in system.StatsData)
+            {
+                int key = kvp.Key;
+                int val = assignStatAllocations.ContainsKey(key) ? assignStatAllocations[key] : 0;
+                float linear = totalBudget > 0 ? (float)val / totalBudget : 0;
+                assignTargetRadii.Add(linear >= 0 ? MathF.Sqrt(linear) : 0f);
+            }
+            assignMorphProgress = 0f;
+            assignMorphStart = DateTime.Now;
+        }
+
+        private static List<float> GetAssignInterpolatedRadii(int count)
+        {
+            if (assignPrevRadii.Count != count || assignTargetRadii.Count != count)
+                return new List<float>(Enumerable.Repeat(0.05f, count));
+            float t = Math.Clamp(assignMorphProgress, 0f, 1f);
+            t = 1f - (1f - t) * (1f - t);
+            var result = new List<float>(count);
+            for (int i = 0; i < count; i++)
+                result.Add(assignPrevRadii[i] + (assignTargetRadii[i] - assignPrevRadii[i]) * t);
+            return result;
+        }
+
+        private static void DrawAssignRadarChart(SystemData system, int totalBudget)
+        {
+            int count = system.StatsData.Count;
+            if (count < 2) return;
+
+            if (assignMorphProgress < 1f)
+            {
+                float elapsed = (float)(DateTime.Now - assignMorphStart).TotalSeconds;
+                assignMorphProgress = Math.Clamp(elapsed / MorphDuration, 0f, 1f);
+            }
+
+            // Init if needed
+            if (assignTargetRadii.Count != count)
+            {
+                assignPrevRadii = new List<float>(count);
+                assignTargetRadii = new List<float>(count);
+                foreach (var kvp in system.StatsData)
+                {
+                    int key = kvp.Key;
+                    int val = assignStatAllocations.ContainsKey(key) ? assignStatAllocations[key] : 0;
+                    float linear = totalBudget > 0 ? (float)val / totalBudget : 0;
+                    float r = linear >= 0 ? MathF.Sqrt(linear) : 0f;
+                    assignPrevRadii.Add(r);
+                    assignTargetRadii.Add(r);
+                }
+                assignMorphProgress = 1f;
+            }
+
+            float availWidth = ImGui.GetContentRegionAvail().X;
+            float chartRadius = Math.Min(availWidth * 0.42f, 140f);
+            Vector2 cursorStart = ImGui.GetCursorScreenPos();
+            Vector2 center = cursorStart + new Vector2(availWidth / 2, chartRadius + 20);
+            var drawList = ImGui.GetWindowDrawList();
+            float angleStep = 2f * MathF.PI / count;
+            float startAngle = -MathF.PI / 2f;
+
+            uint ringColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.3f));
+            for (int ring = 1; ring <= 4; ring++)
+            {
+                float r = chartRadius * ring / 4f;
+                var ringPoints = new Vector2[count];
+                for (int i = 0; i < count; i++)
+                    ringPoints[i] = center + new Vector2(MathF.Cos(startAngle + i * angleStep), MathF.Sin(startAngle + i * angleStep)) * r;
+                drawList.AddPolyline(ref ringPoints[0], ringPoints.Length, ringColor, ImDrawFlags.Closed, 1f);
+            }
+
+            int idx = 0;
+            foreach (var kvp in system.StatsData)
+            {
+                float angle = startAngle + idx * angleStep;
+                Vector2 axisEnd = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * chartRadius;
+                drawList.AddLine(center, axisEnd, ringColor, 1f);
+                Vector2 labelPos = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * (chartRadius + 14);
+                var textSize = ImGui.CalcTextSize(kvp.Value.name);
+                drawList.AddText(labelPos - textSize / 2, ImGui.ColorConvertFloat4ToU32(kvp.Value.color), kvp.Value.name);
+                idx++;
+            }
+
+            var radii = GetAssignInterpolatedRadii(count);
+            var dataPoints = new Vector2[count];
+            for (int i = 0; i < count; i++)
+            {
+                float r = Math.Max(radii[i], 0.05f) * chartRadius;
+                float angle = startAngle + i * angleStep;
+                dataPoints[i] = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r;
+            }
+
+            Vector4 fillVec = ThemeManager.Accent; fillVec.W = 0.2f;
+            uint fillColor = ImGui.ColorConvertFloat4ToU32(fillVec);
+            for (int i = 0; i < count; i++)
+                drawList.AddTriangleFilled(center, dataPoints[i], dataPoints[(i + 1) % count], fillColor);
+
+            Vector4 borderVec = ThemeManager.Accent; borderVec.W = 0.8f;
+            drawList.AddPolyline(ref dataPoints[0], dataPoints.Length, ImGui.ColorConvertFloat4ToU32(borderVec), ImDrawFlags.Closed, 2.5f);
+
+            uint dotColor = ImGui.ColorConvertFloat4ToU32(ThemeManager.Accent);
+            for (int i = 0; i < count; i++)
+                if (radii[i] > 0.01f) drawList.AddCircleFilled(dataPoints[i], 4f, dotColor);
+
+            ImGui.SetCursorScreenPos(cursorStart + new Vector2(0, chartRadius * 2 + 50));
         }
 
         // ── Step 2: Rules ──
@@ -1391,37 +1556,60 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 ImGui.Spacing();
             }
 
-            string submitLabel = revisingSheetId > 0 ? "Resubmit Revised Sheet##submit" : "Submit Character Sheet##submit";
-            if (ThemeManager.PillButton(submitLabel))
-            {
-                if (Plugin.character != null)
-                {
-                    int classId = selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count
-                        ? selectedSystem.SkillClasses[selectedClassIndex].id : -1;
-                    int profileId = -1;
-                    if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
-                        profileId = profiles[selectedProfileIndex].id;
-                    // Convert stat allocations from SortedList keys to stat ID keys
-                    var statsByStatId = new Dictionary<int, int>();
-                    foreach (var kvp in statAllocations)
-                    {
-                        // kvp.Key is the SortedList key (sort index) — look up the stat by key
-                        if (selectedSystem.StatsData.ContainsKey(kvp.Key))
-                        {
-                            int statId = selectedSystem.StatsData[kvp.Key].id;
-                            statsByStatId[statId] = kvp.Value;
-                        }
-                    }
-                    Networking.DataSender.SubmitCharacterSheet(Plugin.character, selectedSystem.id, classId,
-                        statsByStatId, selectedSkills, profileId);
-                    revisingSheetId = 0; // Reset revision mode
-                }
-            }
+            // Check if user already has a sheet for this system
+            string myCharName = Plugin.character?.characterName ?? "";
+            var existingSheet = Roster.Roster.sheets.FirstOrDefault(s => s.characterName == myCharName && s.status != 2);
+            bool isRevision = revisingSheetId > 0;
+            bool hasExisting = existingSheet != null && !isRevision;
 
-            if (revisingSheetId > 0)
+            if (hasExisting)
             {
-                ImGui.Spacing();
-                ImGui.TextColored(new Vector4(0.6f, 0.6f, 1f, 1f), "Revising an existing submission. Changes will be submitted as a new sheet.");
+                ImGui.TextColored(ThemeManager.FontMuted, "You already have a sheet for this system.");
+            }
+            else
+            {
+                string submitLabel = isRevision ? "Resubmit Revised Sheet##submit" : "Submit Character Sheet##submit";
+                if (ThemeManager.PillButton(submitLabel))
+                {
+                    if (Plugin.character != null)
+                    {
+                        int classId = selectedClassIndex >= 0 && selectedClassIndex < selectedSystem.SkillClasses.Count
+                            ? selectedSystem.SkillClasses[selectedClassIndex].id : -1;
+                        int profileId = -1;
+                        if (selectedProfileIndex >= 0 && selectedProfileIndex < profiles.Count)
+                            profileId = profiles[selectedProfileIndex].id;
+                        var statsByStatId = new Dictionary<int, int>();
+                        foreach (var kvp in statAllocations)
+                        {
+                            if (selectedSystem.StatsData.ContainsKey(kvp.Key))
+                            {
+                                int statId = selectedSystem.StatsData[kvp.Key].id;
+                                statsByStatId[statId] = kvp.Value;
+                            }
+                        }
+
+                        if (isRevision && revisingSheetId > 0)
+                        {
+                            // Update existing sheet instead of creating new
+                            Networking.DataSender.UpdateCharacterSheet(Plugin.character, revisingSheetId, statsByStatId, selectedSkills);
+                            // Reset status to pending for re-approval
+                            Networking.DataSender.RespondToSheet(Plugin.character, revisingSheetId, 0, "");
+                        }
+                        else
+                        {
+                            // New submission
+                            Networking.DataSender.SubmitCharacterSheet(Plugin.character, selectedSystem.id, classId,
+                                statsByStatId, selectedSkills, profileId);
+                        }
+                        revisingSheetId = 0;
+                    }
+                }
+
+                if (isRevision)
+                {
+                    ImGui.Spacing();
+                    ImGui.TextColored(new Vector4(0.6f, 0.6f, 1f, 1f), "Revising your existing submission for re-approval.");
+                }
             }
 
             if (selectedSystem.requireApproval)

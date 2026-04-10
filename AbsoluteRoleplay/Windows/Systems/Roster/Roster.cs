@@ -102,6 +102,8 @@ namespace AbsoluteRP.Windows.Systems.Roster
             }
 
             var filtered = filterStatus < 0 ? sheets : sheets.Where(s => s.status == filterStatus).ToList();
+            // Deduplicate: one entry per character per status view
+            filtered = DeduplicateSheets(filtered);
             DrawCardGrid(filtered, system, true);
 
             DrawRevisionPopup();
@@ -122,7 +124,8 @@ namespace AbsoluteRP.Windows.Systems.Roster
 
             FetchRosterIfNeeded(system.id);
 
-            var approved = sheets.Where(s => s.status == 1).ToList();
+            // Deduplicate: one entry per character, prefer approved
+            var approved = DeduplicateSheets(sheets.Where(s => s.status == 1).ToList());
             if (approved.Count == 0)
             {
                 ImGui.TextColored(ThemeManager.FontMuted, "No active members yet.");
@@ -870,6 +873,21 @@ namespace AbsoluteRP.Windows.Systems.Roster
         }
 
         // ── Callbacks ──
+        /// <summary>
+        /// Deduplicate sheets: keep only the latest entry (highest id) per character name+world.
+        /// </summary>
+        private static List<CharacterSheetData> DeduplicateSheets(List<CharacterSheetData> input)
+        {
+            var seen = new Dictionary<string, CharacterSheetData>();
+            foreach (var sheet in input)
+            {
+                string key = $"{sheet.characterName}@{sheet.characterWorld}";
+                if (!seen.ContainsKey(key) || sheet.id > seen[key].id)
+                    seen[key] = sheet;
+            }
+            return seen.Values.ToList();
+        }
+
         public static void OnRosterReceived(List<CharacterSheetData> newSheets)
         {
             sheets = newSheets;
