@@ -313,10 +313,11 @@ public static class ThemeManager
         ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.Border, Accent);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 6));
 
         var result = ImGui.Button(label, size);
 
-        ImGui.PopStyleVar(2);
+        ImGui.PopStyleVar(3);
         ImGui.PopStyleColor(5);
 
         return result;
@@ -333,10 +334,11 @@ public static class ThemeManager
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, Darken(Error, 0.10f));
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 1, 1));
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 6f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 6));
 
         var result = ImGui.Button(label, size);
 
-        ImGui.PopStyleVar(1);
+        ImGui.PopStyleVar(2);
         ImGui.PopStyleColor(4);
 
         return result;

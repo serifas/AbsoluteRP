@@ -260,6 +260,7 @@ namespace Networking
         CBanFromSystem = 266,
         CUnbanFromSystem = 267,
         CFetchSystemBans = 268,
+        CUpdateSheetResources = 269,
     }
     public class DataSender
     {
@@ -5242,7 +5243,7 @@ buffer.WriteFloat(emptyElement.color.W);
             catch (Exception ex) { Plugin.PluginLog.Debug($"DeleteSystem error: {ex.Message}"); }
         }
 
-        public static async Task UpdateSystemSettings(Character character, int systemId, string name, int basePointsAvailable, bool requireApproval, string rules)
+        public static async Task UpdateSystemSettings(Character character, int systemId, string name, int basePointsAvailable, bool requireApproval, string rules, bool restrictResourceModification)
         {
             if (!ClientTCP.IsConnected()) return;
             try
@@ -5257,6 +5258,7 @@ buffer.WriteFloat(emptyElement.color.W);
                     buffer.WriteInt(basePointsAvailable);
                     buffer.WriteBool(requireApproval);
                     buffer.WriteString(rules ?? "");
+                    buffer.WriteBool(restrictResourceModification);
                     await ClientTCP.SendDataAsync(buffer.ToArray());
                 }
             }
@@ -5573,6 +5575,30 @@ buffer.WriteFloat(emptyElement.color.W);
             catch (Exception ex) { Plugin.PluginLog.Debug($"FetchSystemBans error: {ex.Message}"); }
         }
 
+        public static async Task UpdateSheetResources(Character character, int sheetId, int currentHealth, Dictionary<int, int> resourceValues)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CUpdateSheetResources);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteInt(sheetId);
+                    buffer.WriteInt(currentHealth);
+                    buffer.WriteInt(resourceValues.Count);
+                    foreach (var kvp in resourceValues)
+                    {
+                        buffer.WriteInt(kvp.Key);
+                        buffer.WriteInt(kvp.Value);
+                    }
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex) { Plugin.PluginLog.Debug($"UpdateSheetResources error: {ex.Message}"); }
+        }
+
         public static async Task UploadSystemImage(Character character, int systemId, int imageType, byte[] imageBytes)
         {
             if (!ClientTCP.IsConnected() || imageBytes == null) return;
@@ -5593,7 +5619,7 @@ buffer.WriteFloat(emptyElement.color.W);
             catch (Exception ex) { Plugin.PluginLog.Debug($"UploadSystemImage error: {ex.Message}"); }
         }
 
-        public static async Task UpdateSheetLevelPoints(Character character, int sheetId, int level, int bonusSkillPoints)
+        public static async Task UpdateSheetLevelPoints(Character character, int sheetId, int level, int bonusSkillPoints, int bonusStatPoints)
         {
             if (!ClientTCP.IsConnected()) return;
             try
@@ -5606,6 +5632,7 @@ buffer.WriteFloat(emptyElement.color.W);
                     buffer.WriteInt(sheetId);
                     buffer.WriteInt(level);
                     buffer.WriteInt(bonusSkillPoints);
+                    buffer.WriteInt(bonusStatPoints);
                     await ClientTCP.SendDataAsync(buffer.ToArray());
                 }
             }

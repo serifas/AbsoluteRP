@@ -245,7 +245,7 @@ namespace AbsoluteRP.Windows.Listings
         private static async System.Threading.Tasks.Task SaveAllSystemDataAsync(AbsoluteRP.Defines.Character character, SystemData system)
         {
             // Save sequentially so stat IDs are settled before combat config references them
-            await Networking.DataSender.UpdateSystemSettings(character, system.id, system.name, system.basePointsAvailable, system.requireApproval, system.rules);
+            await Networking.DataSender.UpdateSystemSettings(character, system.id, system.name, system.basePointsAvailable, system.requireApproval, system.rules, system.restrictResourceModification);
             await Networking.DataSender.SaveSystemStats(character, system.id, system.StatsData);
             await Networking.DataSender.SaveCombatConfig(character, system.id, system.CombatConfig, system.Resources);
             await Networking.DataSender.SaveSkillClasses(character, system.id, system.SkillClasses);
@@ -401,6 +401,13 @@ namespace AbsoluteRP.Windows.Listings
                 bool reqApproval = currentSystem.requireApproval;
                 if (ImGui.Checkbox("Require approval for character sheets", ref reqApproval))
                     currentSystem.requireApproval = reqApproval;
+
+                // Restrict resource modification toggle
+                bool restrictRes = currentSystem.restrictResourceModification;
+                if (ImGui.Checkbox("Restrict resource modification to owner only", ref restrictRes))
+                    currentSystem.restrictResourceModification = restrictRes;
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Enable this if you do not want anyone to modify their own HP or resources.\nThe system owner can always modify resources regardless.");
 
             // Banner / Logo upload
             if (currentSystem.id > 0)

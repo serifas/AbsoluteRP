@@ -252,6 +252,46 @@ namespace AbsoluteRP.Windows.Systems.Roster
         }
 
         // ── Sheet Detail View ──
+        /// <summary>
+        /// Get stat value from a sheet, trying both stat ID and sort index as keys.
+        /// </summary>
+        public static int GetSheetStatValue(SystemData system, CharacterSheetData sheet, int statId)
+        {
+            // Try by stat ID first (new format)
+            if (sheet.statValues.ContainsKey(statId))
+                return sheet.statValues[statId];
+
+            // Fallback: try by sort index (old format — key matches position in StatsData)
+            int idx = 0;
+            foreach (var kvp in system.StatsData)
+            {
+                if (kvp.Value.id == statId)
+                {
+                    if (sheet.statValues.ContainsKey(idx))
+                        return sheet.statValues[idx];
+                    if (sheet.statValues.ContainsKey(kvp.Key))
+                        return sheet.statValues[kvp.Key];
+                    break;
+                }
+                idx++;
+            }
+            return 0;
+        }
+
+        /// <summary>
+        /// Get all stat values as a list of (StatData, value) pairs, handling both key formats.
+        /// </summary>
+        private static List<(StatData stat, int value)> GetSheetStats(SystemData system, CharacterSheetData sheet)
+        {
+            var result = new List<(StatData, int)>();
+            foreach (var kvp in system.StatsData)
+            {
+                int val = GetSheetStatValue(system, sheet, kvp.Value.id);
+                result.Add((kvp.Value, val));
+            }
+            return result;
+        }
+
         private static void DrawSheetDetail(SystemData system, bool isOwner)
         {
             if (ThemeManager.GhostButton("< Back to Roster##backRoster"))
@@ -345,11 +385,18 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 int bsp = sheet.bonusSkillPoints;
                 if (ImGui.InputInt("##sheetBSP", ref bsp))
                     sheet.bonusSkillPoints = Math.Max(0, bsp);
+
+                ImGui.Text("Bonus Stat Points:");
                 ImGui.SameLine();
+                ImGui.SetNextItemWidth(80);
+                int bstp = sheet.bonusStatPoints;
+                if (ImGui.InputInt("##sheetBSTP", ref bstp))
+                    sheet.bonusStatPoints = Math.Max(0, bstp);
+
                 if (ThemeManager.PillButton("Save##saveLvlPts"))
                 {
                     if (Plugin.character != null)
-                        Networking.DataSender.UpdateSheetLevelPoints(Plugin.character, sheet.id, sheet.level, sheet.bonusSkillPoints);
+                        Networking.DataSender.UpdateSheetLevelPoints(Plugin.character, sheet.id, sheet.level, sheet.bonusSkillPoints, sheet.bonusStatPoints);
                 }
 
                 ImGui.Spacing();
@@ -425,16 +472,13 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     }
 
                     // Stat values list
-                    foreach (var sv in sheet.statValues)
+                    var statPairs = GetSheetStats(system, sheet);
+                    foreach (var (stat, val) in statPairs)
                     {
-                        var stat = system.StatsData.Values.FirstOrDefault(s => s.id == sv.Key);
-                        if (stat != null)
-                        {
-                            ImGui.ColorButton($"##sc{sv.Key}", stat.color,
-                                ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 18));
-                            ImGui.SameLine();
-                            ImGui.Text($"{stat.name}: {sv.Value}");
-                        }
+                        ImGui.ColorButton($"##sc{stat.id}", stat.color,
+                            ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker, new Vector2(12, 18));
+                        ImGui.SameLine();
+                        ImGui.Text($"{stat.name}: {val}");
                     }
                     ImGui.EndTabItem();
                 }
@@ -457,7 +501,152 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     ImGui.EndTabItem();
                 }
 
+                if (ImGui.BeginTabItem("Resources"))
+                {
+                    ImGui.Spacing();
+                    DrawSheetResources(system, sheet, isOwner);
+                    ImGui.EndTabItem();
+                }
+
                 ImGui.EndTabBar();
+            }
+        }
+
+        // ── Resources for Sheet Detail ──
+        private static void DrawSheetResources(SystemData system, CharacterSheetData sheet, bool isOwner)
+        {
+            bool canEdit = isOwner || !system.restrictResourceModification;
+
+            // Health
+            var combat = system.CombatConfig;
+            if (combat.healthEnabled)
+            {
+                int hp = sheet.currentHealth;
+                int maxHp = combat.healthMax;
+
+                // Calculate bonus from linked stat
+                if (combat.healthLinkedStatId >= 0)
+                {
+                    int statVal = GetSheetStatValue(system, sheet, combat.healthLinkedStatId);
+                    maxHp = combat.healthBase + (int)(statVal * combat.healthStatMultiplier);
+                    if (combat.healthMax > 0 && maxHp > combat.healthMax) maxHp = combat.healthMax;
+                }
+
+                // HP bar
+                ImGui.Text("Health:");
+                float barWidth = ImGui.GetContentRegionAvail().X - 10;
+                float barHeight = 20f;
+                var drawList = ImGui.GetWindowDrawList();
+                Vector2 barPos = ImGui.GetCursorScreenPos();
+
+                uint bgColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.15f, 0.15f, 0.15f, 1f));
+                drawList.AddRectFilled(barPos, barPos + new Vector2(barWidth, barHeight), bgColor, 4f);
+
+                float fill = maxHp > 0 ? Math.Clamp((float)hp / maxHp, 0f, 1f) : 0f;
+                uint hpColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.8f, 0.2f, 0.2f, 1f));
+                if (fill > 0)
+                    drawList.AddRectFilled(barPos, barPos + new Vector2(barWidth * fill, barHeight), hpColor, 4f);
+
+                // HP text centered on bar
+                string hpText = $"{hp} / {maxHp}";
+                var hpTextSize = ImGui.CalcTextSize(hpText);
+                drawList.AddText(barPos + new Vector2((barWidth - hpTextSize.X) / 2, (barHeight - hpTextSize.Y) / 2), 0xFFFFFFFF, hpText);
+
+                uint borderCol = ImGui.ColorConvertFloat4ToU32(new Vector4(0.4f, 0.4f, 0.4f, 0.6f));
+                drawList.AddRect(barPos, barPos + new Vector2(barWidth, barHeight), borderCol, 4f);
+                ImGui.SetCursorScreenPos(barPos + new Vector2(0, barHeight + 4));
+
+                // Edit controls
+                if (canEdit)
+                {
+                    ImGui.SetNextItemWidth(80);
+                    if (ImGui.InputInt("##sheetHP", ref hp))
+                        sheet.currentHealth = Math.Clamp(hp, 0, maxHp);
+                    ImGui.SameLine();
+                    ImGui.TextColored(ThemeManager.FontMuted, $"/ {maxHp}");
+                }
+                ImGui.Spacing();
+            }
+
+            // Resources
+            if (system.Resources.Count > 0)
+            {
+                ThemeManager.SubtitleText("Resources");
+                ImGui.Spacing();
+
+                foreach (var res in system.Resources)
+                {
+                    int resId = res.id;
+                    int currentVal = sheet.resourceValues.ContainsKey(resId) ? sheet.resourceValues[resId] : res.baseValue;
+                    int maxVal = res.maxValue;
+
+                    // Calculate bonus from linked stat
+                    if (res.linkedStatId >= 0)
+                    {
+                        int statVal = GetSheetStatValue(system, sheet, res.linkedStatId);
+                        maxVal = res.baseValue + (int)(statVal * res.statMultiplier);
+                        if (res.maxValue > 0 && maxVal > res.maxValue) maxVal = res.maxValue;
+                    }
+
+                    ImGui.PushID($"res_{resId}");
+
+                    // Resource bar
+                    ImGui.Text($"{res.name}:");
+                    float rBarWidth = ImGui.GetContentRegionAvail().X - 10;
+                    float rBarHeight = 18f;
+                    var rDrawList = ImGui.GetWindowDrawList();
+                    Vector2 rBarPos = ImGui.GetCursorScreenPos();
+
+                    uint rBgColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.15f, 0.15f, 0.15f, 1f));
+                    rDrawList.AddRectFilled(rBarPos, rBarPos + new Vector2(rBarWidth, rBarHeight), rBgColor, 4f);
+
+                    float rFill = maxVal > 0 ? Math.Clamp((float)currentVal / maxVal, 0f, 1f) : 0f;
+                    uint rColor = ImGui.ColorConvertFloat4ToU32(res.color);
+                    if (rFill > 0)
+                        rDrawList.AddRectFilled(rBarPos, rBarPos + new Vector2(rBarWidth * rFill, rBarHeight), rColor, 4f);
+
+                    string rText = $"{currentVal} / {maxVal}";
+                    var rTextSize = ImGui.CalcTextSize(rText);
+                    rDrawList.AddText(rBarPos + new Vector2((rBarWidth - rTextSize.X) / 2, (rBarHeight - rTextSize.Y) / 2), 0xFFFFFFFF, rText);
+
+                    uint rBorderCol = ImGui.ColorConvertFloat4ToU32(new Vector4(0.4f, 0.4f, 0.4f, 0.6f));
+                    rDrawList.AddRect(rBarPos, rBarPos + new Vector2(rBarWidth, rBarHeight), rBorderCol, 4f);
+                    ImGui.SetCursorScreenPos(rBarPos + new Vector2(0, rBarHeight + 4));
+
+                    // Edit controls
+                    if (canEdit)
+                    {
+                        int val = currentVal;
+                        ImGui.SetNextItemWidth(80);
+                        if (ImGui.InputInt($"##resVal", ref val))
+                        {
+                            val = Math.Clamp(val, 0, maxVal);
+                            sheet.resourceValues[resId] = val;
+                        }
+                        ImGui.SameLine();
+                        ImGui.TextColored(ThemeManager.FontMuted, $"/ {maxVal}");
+                    }
+
+                    ImGui.PopID();
+                    ImGui.Spacing();
+                }
+            }
+
+            if (!combat.healthEnabled && system.Resources.Count == 0)
+            {
+                ImGui.TextColored(ThemeManager.FontMuted, "No resources configured for this system.");
+                return;
+            }
+
+            // Save button
+            if (canEdit)
+            {
+                ImGui.Spacing();
+                if (ThemeManager.PillButton("Save Resources##saveRes"))
+                {
+                    if (Plugin.character != null)
+                        Networking.DataSender.UpdateSheetResources(Plugin.character, sheet.id, sheet.currentHealth, sheet.resourceValues);
+                }
             }
         }
 
@@ -507,7 +696,7 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 drawList.AddText(labelPos - textSize / 2, labelColor, kvp.Value.name);
 
                 // Data point
-                int val = sheet.statValues.ContainsKey(kvp.Value.id) ? sheet.statValues[kvp.Value.id] : 0;
+                int val = GetSheetStatValue(system, sheet, kvp.Value.id);
                 float ratio = MathF.Sqrt(Math.Clamp((float)val / budget, 0f, 1f));
                 float r2 = Math.Max(ratio, 0.05f) * chartRadius;
                 dataPoints[idx] = center + new Vector2(MathF.Cos(angle), MathF.Sin(angle)) * r2;
@@ -631,10 +820,12 @@ namespace AbsoluteRP.Windows.Systems.Roster
                         if (ImGui.IsItemHovered())
                         {
                             ImGui.BeginTooltip();
+                            ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20f);
                             ImGui.TextColored(isLearned ? ThemeManager.Accent : ThemeManager.FontMuted, skill.name);
                             if (!string.IsNullOrEmpty(skill.description))
                                 ImGui.TextWrapped(skill.description);
                             ImGui.Text(isLearned ? "Learned" : "Not learned");
+                            ImGui.PopTextWrapPos();
                             ImGui.EndTooltip();
                         }
                     }

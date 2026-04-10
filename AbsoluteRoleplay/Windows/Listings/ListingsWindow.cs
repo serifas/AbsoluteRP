@@ -1098,10 +1098,10 @@ namespace AbsoluteRP.Windows.Listings
                 // Set as Main / Remove
                 if (!isMain)
                 {
-                    if (ThemeManager.GhostButton($"Set Main##img{i}", new Vector2(thumbSize, 20)))
+                    if (ThemeManager.GhostButton($"Set Main##img{i}", new Vector2(thumbSize, 0)))
                         mainImageIndex = i;
                 }
-                if (ThemeManager.DangerButton($"Remove##img{i}", new Vector2(thumbSize, 20)))
+                if (ThemeManager.DangerButton($"Remove##img{i}", new Vector2(thumbSize, 0)))
                 {
                     images.RemoveAt(i);
                     if (mainImageIndex >= images.Count) mainImageIndex = Math.Max(0, images.Count - 1);
@@ -1230,7 +1230,7 @@ namespace AbsoluteRP.Windows.Listings
                 }
                 else
                 {
-                    if (ThemeManager.PillButton("Publish", false))
+                    if (ThemeManager.PillButton("Publish"))
                     {
                         if (currentListing != null) currentListing.isActive = true;
                         SaveVenue(true);
@@ -1706,7 +1706,7 @@ namespace AbsoluteRP.Windows.Listings
                             ImGui.SetCursorScreenPos(new Vector2(curPos.X + 8, textY));
                             ThemeManager.SubtitleText(img.isNSFW ? "18+ Content" : "Content Warning");
                             ImGui.SetCursorScreenPos(new Vector2(curPos.X + 8, textY + 20));
-                            if (ThemeManager.GhostButton($"Reveal##img{i}", new Vector2(thumbSize - 16, 20)))
+                            if (ThemeManager.GhostButton($"Reveal##img{i}", new Vector2(thumbSize - 16, 0)))
                                 img.revealed = true;
                             ImGui.SetCursorScreenPos(new Vector2(curPos.X + thumbSize, curPos.Y));
                             ImGui.Dummy(new Vector2(0, thumbSize));
@@ -1778,7 +1778,7 @@ namespace AbsoluteRP.Windows.Listings
                         if (selected)
                             ImGui.PushStyleColor(ImGuiCol.Button, ImGui.ColorConvertFloat4ToU32(ThemeManager.AccentMuted));
 
-                        if (ImGui.Button($"{slotLabel}##slot{i}", new Vector2(ImGui.GetContentRegionAvail().X, 28)))
+                        if (ImGui.Button($"{slotLabel}##slot{i}", new Vector2(ImGui.GetContentRegionAvail().X, 0)))
                             selectedTimeSlotIndex = i;
 
                         if (selected)

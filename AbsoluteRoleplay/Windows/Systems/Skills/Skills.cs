@@ -147,7 +147,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             ImGui.Text("Description (visible to players):");
             string cdesc = cls.description ?? "";
             if (ImGui.InputTextMultiline("##classDesc", ref cdesc, 2000,
-                new Vector2(ImGui.GetContentRegionAvail().X, 120)))
+                new Vector2(ImGui.GetContentRegionAvail().X, 0)))
                 cls.description = cdesc;
 
             ImGui.Spacing();
@@ -292,7 +292,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
                 string pdesc = p.description ?? "";
                 if (ImGui.InputTextMultiline("##passDesc", ref pdesc, 500,
-                    new Vector2(ImGui.GetContentRegionAvail().X, 40)))
+                    new Vector2(ImGui.GetContentRegionAvail().X, 0)))
                     p.description = pdesc;
 
                 ImGui.Spacing();
@@ -681,6 +681,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
                     if (hasSkill && ImGui.IsItemHovered())
                     {
                         ImGui.BeginTooltip();
+                            ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20f);
                         ImGui.PushTextWrapPos(250f);
 
                         // Name (bold-style via accent text)
@@ -720,7 +721,8 @@ namespace AbsoluteRP.Windows.Systems.Skills
                         }
 
                         ImGui.PopTextWrapPos();
-                        ImGui.EndTooltip();
+                        ImGui.PopTextWrapPos();
+                            ImGui.EndTooltip();
                     }
                 }
             }
@@ -768,7 +770,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
             // Description
             ImGui.Text("Description:");
             if (ImGui.InputTextMultiline("##skillDesc", ref editDesc, 500,
-                new Vector2(ImGui.GetContentRegionAvail().X, 50)))
+                new Vector2(ImGui.GetContentRegionAvail().X, 0)))
                 skill.description = editDesc;
 
             ImGui.Spacing();
@@ -862,12 +864,12 @@ namespace AbsoluteRP.Windows.Systems.Skills
             if (connectingFromSkillId.HasValue && connectingFromSkillId.Value == skill.id)
             {
                 ImGui.TextColored(ThemeManager.Accent, "Click another skill to connect...");
-                if (ThemeManager.GhostButton("Cancel##cancelConnect", new Vector2(ImGui.GetContentRegionAvail().X, 24)))
+                if (ThemeManager.GhostButton("Cancel##cancelConnect", new Vector2(ImGui.GetContentRegionAvail().X, 0)))
                     connectingFromSkillId = null;
             }
             else
             {
-                if (ThemeManager.PillButton("Connect to Child##connect", new Vector2(ImGui.GetContentRegionAvail().X, 28)))
+                if (ThemeManager.PillButton("Connect to Child##connect", new Vector2(ImGui.GetContentRegionAvail().X, 0)))
                     connectingFromSkillId = skill.id;
             }
 
@@ -913,7 +915,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
             ImGui.Spacing();
 
-            if (ThemeManager.DangerButton("Delete Skill##delSkill", new Vector2(ImGui.GetContentRegionAvail().X, 28)))
+            if (ThemeManager.DangerButton("Delete Skill##delSkill", new Vector2(ImGui.GetContentRegionAvail().X, 0)))
             {
                 system.SkillConnections.RemoveAll(c => c.fromSkillId == skill.id || c.toSkillId == skill.id);
                 system.Skills.RemoveAt(selectedSkillIndex);

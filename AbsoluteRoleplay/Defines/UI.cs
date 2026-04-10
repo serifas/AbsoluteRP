@@ -454,6 +454,7 @@ namespace AbsoluteRP
         public string shareCode { get; set; } = string.Empty;
         public int basePointsAvailable { get; set; } = 10;
         public bool requireApproval { get; set; } = false;
+        public bool restrictResourceModification { get; set; } = false;
         public SortedList<int, StatData> StatsData { get; set; } = new SortedList<int, StatData>();
         public List<ResourceData> Resources { get; set; } = new List<ResourceData>();
         public CombatConfigData CombatConfig { get; set; } = new CombatConfigData();
@@ -571,6 +572,7 @@ namespace AbsoluteRP
         public int unspentPoints { get; set; } = 0;
         public int level { get; set; } = 1;
         public int bonusSkillPoints { get; set; } = 0;
+        public int bonusStatPoints { get; set; } = 0;
         public int profileId { get; set; } = -1;
         public string profileName { get; set; } = string.Empty;
         public IDalamudTextureWrap profileAvatar { get; set; } = null;

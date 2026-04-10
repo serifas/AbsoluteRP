@@ -6486,6 +6486,7 @@ namespace Networking
                     bool requireApproval = buffer.ReadBool();
                     string rules = buffer.ReadString();
                     int ownerUserId = buffer.ReadInt();
+                    bool restrictResourceModification = buffer.ReadBool();
 
                     // Banner
                     byte[] bannerBytes = null;
@@ -6526,6 +6527,7 @@ namespace Networking
                     target.requireApproval = requireApproval;
                     target.rules = rules;
                     target.ownerUserId = ownerUserId;
+                    target.restrictResourceModification = restrictResourceModification;
                     target.bannerBytes = bannerBytes;
                     target.logoBytes = logoBytes;
 
@@ -6891,6 +6893,7 @@ namespace Networking
                         sheet.level = buffer.ReadInt();
                         sheet.bonusSkillPoints = buffer.ReadInt();
                         sheet.profileId = buffer.ReadInt();
+                        sheet.bonusStatPoints = buffer.ReadInt();
                         sheet.profileName = buffer.ReadString();
 
                         // Avatar bytes
