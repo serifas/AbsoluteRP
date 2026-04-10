@@ -154,8 +154,8 @@ namespace Networking
         SendServerNotification = 130,
 
         // Equipment
-        SendEquipment = 131,
-        SendTargetEquipment = 132,
+        SendEquipment = 160,
+        SendTargetEquipment = 161,
 
         // Listings System
         SendListingCreated = 185,
