@@ -34,6 +34,14 @@ namespace AbsoluteRP.Windows.Systems.Roster
         private static string banCharWorld = "";
         private static string banReason = "";
 
+        // Confirm popups for revoke/ban
+        private static bool showRevokeConfirm = false;
+        private static int revokeSheetId = -1;
+        private static bool showBanConfirm = false;
+        private static int banConfirmSystemId = -1;
+        private static string banConfirmName = "";
+        private static string banConfirmWorld = "";
+
         // Card grid constants
         private const float CardWidth = 180f;
         private const float CardHeight = 200f;
@@ -438,8 +446,9 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     ImGui.SameLine();
                     if (ThemeManager.DangerButton("Revoke"))
                     {
-                        if (Plugin.character != null)
-                            Networking.DataSender.RespondToSheet(Plugin.character, sheet.id, 2, "");
+                        showRevokeConfirm = true;
+                        revokeSheetId = sheet.id;
+                        ImGui.OpenPopup("##RevokeConfirm");
                     }
                 }
 
@@ -447,11 +456,80 @@ namespace AbsoluteRP.Windows.Systems.Roster
                 ImGui.Spacing();
                 if (ThemeManager.DangerButton("Ban from System##banSheet"))
                 {
-                    if (Plugin.character != null)
-                        Networking.DataSender.BanFromSystem(Plugin.character, system.id,
-                            sheet.characterName, sheet.characterWorld, "Banned by system owner");
-                    viewingSheet = null;
-                    return;
+                    showBanConfirm = true;
+                    banConfirmSystemId = system.id;
+                    banConfirmName = sheet.characterName;
+                    banConfirmWorld = sheet.characterWorld;
+                    ImGui.OpenPopup("##BanConfirm");
+                }
+
+                // Revoke confirmation popup
+                if (ImGui.BeginPopupModal("##RevokeConfirm", ref showRevokeConfirm, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    ImGui.Text("Are you sure you want to revoke this user's access?");
+                    ImGui.Spacing();
+                    ImGui.TextColored(new Vector4(1, 0.4f, 0.4f, 1), "This will decline their character sheet.");
+                    ImGui.Spacing();
+                    ImGui.Spacing();
+
+                    bool ctrlHeld = ImGui.GetIO().KeyCtrl;
+                    if (!ctrlHeld) ImGui.BeginDisabled();
+                    if (ThemeManager.DangerButton("Confirm Revoke##confirmRevoke"))
+                    {
+                        if (Plugin.character != null && revokeSheetId > 0)
+                            Networking.DataSender.RespondToSheet(Plugin.character, revokeSheetId, 2, "");
+                        showRevokeConfirm = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+                    if (!ctrlHeld) ImGui.EndDisabled();
+                    if (!ctrlHeld)
+                    {
+                        ImGui.SameLine();
+                        ImGui.TextColored(ThemeManager.FontMuted, "Hold CTRL to enable");
+                    }
+                    ImGui.SameLine();
+                    if (ThemeManager.GhostButton("Cancel##cancelRevoke"))
+                    {
+                        showRevokeConfirm = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+                    ImGui.EndPopup();
+                }
+
+                // Ban confirmation popup
+                if (ImGui.BeginPopupModal("##BanConfirm", ref showBanConfirm, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    ImGui.Text($"Are you sure you want to ban {banConfirmName}?");
+                    ImGui.Spacing();
+                    ImGui.TextColored(new Vector4(1, 0.4f, 0.4f, 1), "This will ban them from the system and decline their sheet.");
+                    ImGui.TextColored(new Vector4(1, 0.4f, 0.4f, 1), "They will not be able to submit new sheets until unbanned.");
+                    ImGui.Spacing();
+                    ImGui.Spacing();
+
+                    bool ctrlHeld2 = ImGui.GetIO().KeyCtrl;
+                    if (!ctrlHeld2) ImGui.BeginDisabled();
+                    if (ThemeManager.DangerButton("Confirm Ban##confirmBan"))
+                    {
+                        if (Plugin.character != null && banConfirmSystemId > 0)
+                            Networking.DataSender.BanFromSystem(Plugin.character, banConfirmSystemId,
+                                banConfirmName, banConfirmWorld, "Banned by system owner");
+                        showBanConfirm = false;
+                        viewingSheet = null;
+                        ImGui.CloseCurrentPopup();
+                    }
+                    if (!ctrlHeld2) ImGui.EndDisabled();
+                    if (!ctrlHeld2)
+                    {
+                        ImGui.SameLine();
+                        ImGui.TextColored(ThemeManager.FontMuted, "Hold CTRL to enable");
+                    }
+                    ImGui.SameLine();
+                    if (ThemeManager.GhostButton("Cancel##cancelBan"))
+                    {
+                        showBanConfirm = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+                    ImGui.EndPopup();
                 }
 
                 ImGui.Spacing();
@@ -789,6 +867,8 @@ namespace AbsoluteRP.Windows.Systems.Roster
                     if (skill != null)
                     {
                         bool isLearned = sheet.learnedSkills.Contains(skill.id);
+                        // Learned skills are assumed maxed tier (since you must max to unlock children)
+                        int currentTier = isLearned ? skill.maxTiers : 0;
                         float alpha = isLearned ? 1.0f : 0.3f;
 
                         if (skill.iconTexture != null && skill.iconTexture.Handle != IntPtr.Zero)
@@ -817,6 +897,17 @@ namespace AbsoluteRP.Windows.Systems.Roster
                             : ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 0.4f));
                         drawList.AddPolyline(ref octPoints[0], octPoints.Length, borderColor, ImDrawFlags.Closed, isLearned ? 2.5f : 1f);
 
+                        // Tier counter (bottom-right) for multi-tier skills
+                        if (skill.maxTiers > 1)
+                        {
+                            string tierLabel = $"{currentTier}/{skill.maxTiers}";
+                            var tierSize = ImGui.CalcTextSize(tierLabel);
+                            Vector2 tierPos = center + new Vector2(octRadius * 0.5f - tierSize.X / 2, octRadius * 0.55f);
+                            drawList.AddText(tierPos + new Vector2(1, 1), 0xFF000000, tierLabel);
+                            uint tierCol = isLearned ? 0xFF00FF00 : 0xFFAAAAAA;
+                            drawList.AddText(tierPos, tierCol, tierLabel);
+                        }
+
                         // Tooltip
                         ImGui.SetCursorScreenPos(center - new Vector2(octRadius, octRadius));
                         ImGui.InvisibleButton($"##dt_{x}_{y}", new Vector2(octRadius * 2, octRadius * 2));
@@ -825,9 +916,15 @@ namespace AbsoluteRP.Windows.Systems.Roster
                             ImGui.BeginTooltip();
                             ImGui.PushTextWrapPos(ImGui.GetFontSize() * 20f);
                             ImGui.TextColored(isLearned ? ThemeManager.Accent : ThemeManager.FontMuted, skill.name);
+                            if (skill.maxTiers > 1)
+                                ImGui.Text($"Tier: {currentTier} / {skill.maxTiers}");
                             if (!string.IsNullOrEmpty(skill.description))
                                 ImGui.TextWrapped(skill.description);
-                            ImGui.Text(isLearned ? "Learned" : "Not learned");
+                            if (skill.cooldownTurns > 0)
+                                ImGui.Text($"Cooldown: {skill.cooldownTurns} turns");
+                            if (skill.resourceCost > 0)
+                                ImGui.Text($"Cost: {skill.resourceCost}");
+                            ImGui.Text(isLearned ? (skill.maxTiers > 1 ? "Maxed" : "Learned") : "Not learned");
                             ImGui.PopTextWrapPos();
                             ImGui.EndTooltip();
                         }

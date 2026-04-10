@@ -6811,7 +6811,13 @@ namespace Networking
 
                     // Re-fetch full system data to get server-assigned IDs for classes/skills
                     if (success && Plugin.character != null && systemId > 0)
+                    {
                         Networking.DataSender.FetchSystem(Plugin.character, systemId);
+                        // Refresh roster and clear stale assignment state
+                        AbsoluteRP.Windows.Systems.Roster.Roster.ResetForSystem();
+                        AbsoluteRP.Windows.Systems.ViewSystems.ViewSystems.ClearAssignmentState();
+                        Networking.DataSender.FetchSystemRoster(Plugin.character, systemId);
+                    }
                 }
             }
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleSkillsSaved Error: {ex.Message}"); }
@@ -6894,6 +6900,13 @@ namespace Networking
                         sheet.bonusSkillPoints = buffer.ReadInt();
                         sheet.profileId = buffer.ReadInt();
                         sheet.bonusStatPoints = buffer.ReadInt();
+                        sheet.currentHealth = buffer.ReadInt();
+                        string resJson = buffer.ReadString();
+                        try
+                        {
+                            sheet.resourceValues = System.Text.Json.JsonSerializer.Deserialize<Dictionary<int, int>>(resJson) ?? new Dictionary<int, int>();
+                        }
+                        catch { sheet.resourceValues = new Dictionary<int, int>(); }
                         sheet.profileName = buffer.ReadString();
 
                         // Avatar bytes

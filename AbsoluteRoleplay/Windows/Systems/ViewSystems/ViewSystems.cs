@@ -1784,6 +1784,18 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
         }
 
         // ── Callbacks ──
+        public static void ClearAssignmentState()
+        {
+            assigningPoints = false;
+            assigningSheet = null;
+            assignStatAllocations.Clear();
+            assignSkillTiers.Clear();
+            assignSelectedSkills.Clear();
+            assignSkillPointsUsed = 0;
+            assignPrevRadii.Clear();
+            assignTargetRadii.Clear();
+        }
+
         public static void OnSubmitResult(bool success, string message)
         {
             submitSuccess = success;

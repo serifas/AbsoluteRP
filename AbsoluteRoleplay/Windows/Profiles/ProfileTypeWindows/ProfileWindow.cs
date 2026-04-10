@@ -882,6 +882,16 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                 CurrentProfile.customTabs.Clear();
                                 CurrentProfile.customTabs.AddRange(newTabs);
 
+                                // Update tabIndex on each layout to match new position
+                                for (int ti = 0; ti < CurrentProfile.customTabs.Count; ti++)
+                                    SetLayoutTabIndex(CurrentProfile.customTabs[ti].Layout, ti);
+
+                                // Reset initialTabOrder since DB now matches list positions
+                                initialTabOrder.Clear();
+                                for (int ti = 0; ti < CurrentProfile.customTabs.Count; ti++)
+                                    initialTabOrder.Add(ti);
+                                tabsReordered = false;
+
                                 showReorderTabsPopup = false;
                                 ImGui.CloseCurrentPopup();
                             }
@@ -1260,6 +1270,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     (initialTabOrder[srcIdx], initialTabOrder[dstIdx]) =
                                         (initialTabOrder[dstIdx], initialTabOrder[srcIdx]);
                                 }
+                                // Update tabIndex on swapped layouts to match new positions
+                                SetLayoutTabIndex(CurrentProfile.customTabs[srcIdx].Layout, srcIdx);
+                                SetLayoutTabIndex(CurrentProfile.customTabs[dstIdx].Layout, dstIdx);
                                 tabsReordered = true;
                             }
                             draggedTabIndex = null;
@@ -1983,6 +1996,22 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             };
         }
 
+        private static void SetLayoutTabIndex(CustomLayout layout, int index)
+        {
+            if (layout == null) return;
+            switch (layout)
+            {
+                case BioLayout b: b.tabIndex = index; break;
+                case DetailsLayout d: d.tabIndex = index; break;
+                case DynamicLayout dyn: dyn.tabIndex = index; break;
+                case GalleryLayout g: g.tabIndex = index; break;
+                case InfoLayout inf: inf.tabIndex = index; break;
+                case StoryLayout s: s.tabIndex = index; break;
+                case InventoryLayout inv: inv.tabIndex = index; break;
+                case TreeLayout tr: tr.tabIndex = index; break;
+            }
+        }
+
         public void SubmitProfileData(bool voidData)
         {
             if (ProfileSaveTracker.IsSaving) return;
@@ -2034,9 +2063,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     if (tabsReordered && !voidData)
                     {
                         ProfileSaveTracker.CurrentStep = "Saving tab order...";
-                        // initialTabOrder[i] = the DB tab_index of the tab currently at list position i.
-                        // After drag-drop swaps, initialTabOrder reflects the new arrangement.
-                        // Send every tab whose DB index doesn't match its desired new position.
                         var indexChanges = new List<(int oldIndex, int newIndex)>();
                         for (int pos = 0; pos < tabs.Count; pos++)
                         {
@@ -2047,6 +2073,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         if (indexChanges.Count > 0)
                             await DataSender.SendTabReorder(character, profIdx, indexChanges);
                         tabsReordered = false;
+                        initialTabOrder.Clear();
+                        for (int ti = 0; ti < tabs.Count; ti++)
+                            initialTabOrder.Add(ti);
                     }
 
                     // Step 3: Submit all tab layouts in a single batch
