@@ -21,6 +21,7 @@ using System.Xml.Linq;
 
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 {
+    // Tracks multi-step profile save progress — shown as a progress bar overlay during saves
     public static class ProfileSaveTracker
     {
         public static bool IsSaving { get; set; }
@@ -74,7 +75,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
     }
 
     
-    //changed
+    // The main profile editing window — where the player views and edits their own character profile.
+    // Handles tab management (Bio, Gallery, Story, etc.), Lodestone verification, profile saving,
+    // loading indicators, avatar/background uploads, and per-tab layout rendering.
     public class ProfileWindow : Window, IDisposable
     {
         private bool openVerifyPopup;
@@ -344,14 +347,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         }
                     }
                 }else{
-                    // Debug: log loading state every time it changes
                     bool _galleryActive = DataReceiver.GalleryImagesToLoad > 0 && DataReceiver.loadedGalleryImages < DataReceiver.GalleryImagesToLoad;
-                    if (Sending || Fetching || _galleryActive)
-                    {
-                        Plugin.PluginLog.Debug($"[LoadCheck] Sending={Sending}, Fetching={Fetching}, " +
-                            $"tabs={DataReceiver.loadedTabsCount}/{DataReceiver.tabsCount}, " +
-                            $"gallery={DataReceiver.loadedGalleryImages}/{DataReceiver.GalleryImagesToLoad}");
-                    }
 
                     // Check if profile is still loading
                     // Fetching stays true until the draw loop confirms all data arrived
@@ -2039,7 +2035,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 {
                     // Step 1: Profile status (avatar, background, metadata)
                     ProfileSaveTracker.CurrentStep = "Sending profile status...";
-                    await DataSender.SetProfileStatus(character, profile.isPrivate, profile.isActive, profIdx, profile.title, profile.titleColor, profile.avatarBytes, profile.backgroundBytes, profile.SpoilerARR, profile.SpoilerHW, profile.SpoilerSB, profile.SpoilerSHB, profile.SpoilerEW, profile.SpoilerDT, profile.NSFW, profile.TRIGGERING);
+                    await DataSender.SetProfileStatus(character, profile.isPrivate, profile.isActive, profIdx, profile.title, profile.titleColor, profile.avatarBytes, profile.backgroundBytes, profile.SpoilerARR, profile.SpoilerHW, profile.SpoilerSB, profile.SpoilerSHB, profile.SpoilerEW, profile.SpoilerDT, profile.NSFW, profile.TRIGGERING, profile.equipmentPublic);
                     ProfileSaveTracker.Advance("Profile status sent");
 
                     // Step 2: Create tabs if new profile — batch all CreateTab calls together

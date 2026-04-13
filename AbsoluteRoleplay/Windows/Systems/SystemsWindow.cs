@@ -23,6 +23,9 @@ using static FFXIVClientStructs.FFXIV.Component.GUI.AtkResNode.Delegates;
 
 namespace AbsoluteRP.Windows.Listings
 {
+    // Main RP Systems editor window — create and manage tabletop-style RP systems with
+    // stats, resources, combat config, skill classes, skill trees, and rules.
+    // Systems can be shared via share codes so other players can join and create character sheets.
     internal class SystemsWindow : Window, IDisposable
     {
         public static Configuration configuration;

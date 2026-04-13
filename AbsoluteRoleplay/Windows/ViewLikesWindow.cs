@@ -8,6 +8,7 @@ using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
 
 namespace AbsoluteRP.Windows
 {
+    // Displays who has liked a profile — shows a scrollable list of likers with their names and comments
     public class ViewLikesWindow : Window
     {
         private Plugin plugin;

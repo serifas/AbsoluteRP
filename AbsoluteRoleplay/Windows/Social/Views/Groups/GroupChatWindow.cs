@@ -14,6 +14,7 @@ using Dalamud.Interface;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups
 {
+    // Standalone group chat window — displays messages for a group channel with send/edit/delete/pin support
     public class GroupChatWindow : Window, IDisposable
     {
         // Static reference to current instance for DataReceiver

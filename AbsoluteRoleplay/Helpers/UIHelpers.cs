@@ -16,6 +16,8 @@ namespace AbsoluteRP.Helpers
 
 
 
+    // Low-level ImGui helper methods — custom buttons, navigation bars, scaled UI elements.
+    // Provides consistent button rendering and navigation layout across all plugin windows.
     public static class UIHelpers
     {
         public static float GlobalScale

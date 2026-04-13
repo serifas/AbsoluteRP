@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Windows.Systems.Stats
 {
+    // Stat editor with animated polygon visualization — add/remove stats, adjust values,
+    // and see a radar chart that morphs smoothly between stat configurations.
     internal class Stats
     {
         private static List<Vector2> previousPolygonPoints = new();
@@ -19,6 +21,7 @@ namespace AbsoluteRP.Windows.Systems.Stats
         private static DateTime morphStartTime = DateTime.MinValue;
         public static int currentStatIndex = -1;
         public static StatData? selectedStat = null;
+        private static bool _deleteStatPopupOpen = true;
         public static int statCount = -1;
 
         // Monotonic counter for temporary stat IDs (avoids collisions when stats share default id=-1)
@@ -120,25 +123,41 @@ namespace AbsoluteRP.Windows.Systems.Stats
                 ImGui.SameLine();
                 if (ThemeManager.DangerButton($"Remove Stat##removeStat{currentStatIndex}"))
                 {
-                    // Store previous polygon points before change
-                    previousPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
-                    int keyToRemove = stats.Keys.ElementAt(currentStatIndex);
-                    stats.Remove(keyToRemove);
-                    if (stats.Count == 0)
+                    ImGui.OpenPopup("ConfirmDeleteStat##confirmDelStat");
+                }
+
+                if (ImGui.BeginPopupModal("ConfirmDeleteStat##confirmDelStat", ref _deleteStatPopupOpen, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    ImGui.Text($"Are you sure you want to remove stat \"{selectedStat.name}\"?");
+                    ImGui.Spacing();
+
+                    if (ThemeManager.DangerButton("Remove"))
                     {
-                        currentStatIndex = -1;
-                        selectedStat = null;
+                        previousPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
+                        int keyToRemove = stats.Keys.ElementAt(currentStatIndex);
+                        stats.Remove(keyToRemove);
+                        if (stats.Count == 0)
+                        {
+                            currentStatIndex = -1;
+                            selectedStat = null;
+                        }
+                        else if (currentStatIndex >= stats.Count)
+                        {
+                            currentStatIndex = stats.Count - 1;
+                            selectedStat = stats.Values[currentStatIndex];
+                        }
+                        targetPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
+                        previousPolygonPoints = ResamplePolygonPoints(previousPolygonPoints, targetPolygonPoints.Count);
+                        morphProgress = 0f;
+                        morphStartTime = DateTime.Now;
+                        ImGui.CloseCurrentPopup();
                     }
-                    else if (currentStatIndex >= stats.Count)
+                    ImGui.SameLine();
+                    if (ImGui.Button("Cancel"))
                     {
-                        currentStatIndex = stats.Count - 1;
-                        selectedStat = stats.Values[currentStatIndex];
+                        ImGui.CloseCurrentPopup();
                     }
-                    // Store target polygon points after change
-                    targetPolygonPoints = CalculatePolygonPoints(center, 100, stats.Count);
-                    previousPolygonPoints = ResamplePolygonPoints(previousPolygonPoints, targetPolygonPoints.Count);
-                    morphProgress = 0f;
-                    morphStartTime = DateTime.Now;
+                    ImGui.EndPopup();
                 }
 
                 // --- Stat Configuration ---

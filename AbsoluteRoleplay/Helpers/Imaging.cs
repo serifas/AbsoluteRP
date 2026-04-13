@@ -19,10 +19,15 @@ using System.Net;
 using System.Net.Http;
 namespace AbsoluteRP.Helpers
 {
+    // Image loading, downloading, scaling, and texture creation utilities.
+    // Handles downloading profile gallery images from URLs, loading game icon textures,
+    // applying blur effects, and converting between byte arrays and System.Drawing images.
     internal static class Imaging
     {
         public static Plugin plugin;
         private static Dictionary<uint, IconInfo?> IconInfoCache = [];
+
+        // Opens the icon picker window for selecting a game icon
         public static void LoadIconSelection(Plugin plugin, IconElement currentIcon)
         {
             if (ImGui.Begin("ICONS", ImGuiWindowFlags.AlwaysAutoResize))
@@ -37,6 +42,7 @@ namespace AbsoluteRP.Helpers
             }
             ImGui.End();
         }
+        // Applies a circular mask to an icon by blending alpha channels — used for round avatar frames
         public static async Task<IDalamudTextureWrap> MaskIconWithCircleAsync(
        byte[] iconBytes,
        byte[] maskBytes,
@@ -63,6 +69,7 @@ namespace AbsoluteRP.Helpers
             return await textureProvider.CreateFromImageAsync(result);
         }
 
+        // Loads a game texture file (.tex) from the FFXIV data files by its game path (e.g. "ui/icon/025000/025210.tex")
         public static async Task<IDalamudTextureWrap?> LoadTextureAsync(string gameTexturePath)
         {
             try
@@ -81,8 +88,6 @@ namespace AbsoluteRP.Helpers
                     return null;
                 }
 
-                Plugin.PluginLog.Debug($"Successfully loaded TexFile for path: {gameTexturePath}");
-
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
                 if (texture == null || texture.Handle == IntPtr.Zero)
@@ -97,6 +102,9 @@ namespace AbsoluteRP.Helpers
                 return null;
             }
         }
+        // Downloads a gallery image from a URL, creates full-size and thumbnail textures.
+        // Retries up to 5 times on transient failures (rate limits, server errors).
+        // NSFW/trigger images get placeholder thumbnails instead of the actual image.
         public static async Task<ProfileGalleryImage> DownloadProfileImage(
     bool self, string url, string tooltip, int profileID, bool nsfw, bool trigger, Plugin plugin, int index)
         {
@@ -222,6 +230,7 @@ namespace AbsoluteRP.Helpers
             galleryImage.imageBytes = galleryImage.imageBytes ?? Array.Empty<byte>();
             return galleryImage;
         }
+        // Safely creates a texture from raw bytes — returns null if the bytes are invalid or empty
         public static async Task<IDalamudTextureWrap?> SafeLoadImGuiImageAsync(byte[]? imageBytes)
         {
             if (imageBytes == null || imageBytes.Length == 0)
@@ -257,6 +266,7 @@ namespace AbsoluteRP.Helpers
             }
             return null;
         }
+        // Downloads raw image bytes from a URL (no texture creation — just the bytes)
         public static async Task<byte[]> FetchUrlImageBytes(string url)
         {
             
@@ -280,6 +290,7 @@ namespace AbsoluteRP.Helpers
                 return Array.Empty<byte>();
             }
         }
+        // Downloads an image for a profile layout element (bio images, etc.) and creates a texture
         public static async Task<IDalamudTextureWrap> DownloadElementImage(bool self, string url, ImageElement element)
         {
             
@@ -355,6 +366,7 @@ namespace AbsoluteRP.Helpers
 
         private static readonly HttpClient httpClient = new HttpClient();
 
+        // Checks if a URL points to an image by sending a HEAD request and checking Content-Type
         public static async Task<bool> IsImageUrlAsync(string url)
         {
             
@@ -396,6 +408,8 @@ namespace AbsoluteRP.Helpers
 
 
        
+        // Applies a box blur to a bitmap and returns the blurred result as PNG bytes.
+        // Used for creating blurred backgrounds or obscuring NSFW content.
         public static byte[] BlurBytes(this Bitmap image, Int32 blurSize)
         {
             var rectangle = new System.Drawing.Rectangle(0, 0, image.Width, image.Height);
@@ -443,6 +457,8 @@ namespace AbsoluteRP.Helpers
             return ImageToByteArray(blurred);
         }
        
+        // Scales an image down to fit within maxWidth x maxHeight while preserving aspect ratio.
+        // Returns the original image unchanged if it's already smaller than the max dimensions.
         public static System.Drawing.Image ScaleImage(System.Drawing.Image image, int maxWidth, int maxHeight)
         {
             int newWidth, newHeight;
@@ -473,6 +489,7 @@ namespace AbsoluteRP.Helpers
                 return image;
             }
         }
+        // Same as ScaleImage but takes/returns byte arrays instead of Image objects
         public static byte[] ScaleImageBytes(byte[] imgBytes, int maxWidth, int maxHeight)
         {
             System.Drawing.Image img = byteArrayToImage(imgBytes);
@@ -492,6 +509,7 @@ namespace AbsoluteRP.Helpers
 
             return scaledBytes;
         }
+        // Converts a System.Drawing.Image to PNG byte array
         public static byte[] ImageToByteArray(System.Drawing.Image imageIn)
         {
             using (var ms = new MemoryStream())
@@ -500,6 +518,7 @@ namespace AbsoluteRP.Helpers
                 return ms.ToArray();
             }
         }
+        // Converts a byte array back to a System.Drawing.Image
         public static System.Drawing.Image byteArrayToImage(byte[] bytesArr)
         {
             using (MemoryStream memstr = new MemoryStream(bytesArr))
@@ -509,6 +528,7 @@ namespace AbsoluteRP.Helpers
             }
         }
 
+        // Deletes all cached gallery images from the plugin's local storage folder
         internal static void RemoveAllImages(AbsoluteRP.Plugin plugin)
         {
             if (Plugin.PluginInterface is { AssemblyLocation.Directory.FullName: { } path })

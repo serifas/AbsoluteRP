@@ -9,6 +9,7 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 {
+    // Rank editor — create, edit, reorder, and configure permissions for group ranks
     internal static class GroupRanks
     {
         // UI State

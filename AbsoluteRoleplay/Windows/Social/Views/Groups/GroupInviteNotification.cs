@@ -11,6 +11,7 @@ using Networking;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups
 {
+    // Popup notification window shown when the player receives a group invitation — accept or decline
     public class GroupInviteNotification : Window, IDisposable
     {
         private static List<GroupInvite> pendingInvites = new List<GroupInvite>();

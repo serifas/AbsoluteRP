@@ -21,6 +21,8 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Windows.Listings
 {
+    // Listings marketplace — browse, create, and manage RP venue/service listings.
+    // Supports categories, search, bookmarks, menus, schedules, and booking systems.
     internal class ListingsWindow : Window, IDisposable
     {
         public static Configuration configuration;

@@ -16,18 +16,24 @@ using AbsoluteRP.Helpers;
 
 namespace Networking
 {
+    // Handles the TCP connection to the AbsoluteRP server.
+    // All communication goes through an SSL/TLS encrypted stream.
+    // Uses a length-prefixed protocol: each packet is [4-byte length][payload].
     public class ClientTCP
     {
+        // Only one write at a time to prevent interleaved packets on the wire
         private static readonly SemaphoreSlim writeSemaphore = new SemaphoreSlim(1, 1);
         public static bool Connected;
         public static TcpClient clientSocket;
         public static SslStream sslStream;
-        private static byte[] recBuffer = new byte[8192];
+        private static byte[] recBuffer = new byte[8192]; // Read buffer for incoming data
         private static readonly string server = "join.absolute-roleplay.net";
         private static readonly int port = 53923;
         public static Plugin Plugin;
 
-        // Ensure all access to recBuffer is on the same thread and always copy before use.
+        // Callback for when data arrives from the server (async read pattern).
+        // Copies the received bytes into a new array before processing to avoid
+        // buffer reuse issues, then kicks off another read to keep listening.
         private static void OnReceiveData(IAsyncResult result)
         {
             try
@@ -44,10 +50,10 @@ namespace Networking
                 }
                 catch (ObjectDisposedException)
                 {
-                    // Stream was disposed, ignore.
                     return;
                 }
 
+                // Zero bytes means the server closed the connection
                 if (bytesRead <= 0)
                 {
                     Plugin.PluginLog.Debug("No data received or connection closed by the server.");
@@ -55,13 +61,11 @@ namespace Networking
                     return;
                 }
 
-                // Defensive: Always copy the buffer before passing to handler.
+                // Copy buffer before passing to handler — the read buffer gets reused
                 byte[] newBytes = new byte[bytesRead];
                 Buffer.BlockCopy(recBuffer, 0, newBytes, 0, bytesRead);
 
-                // Optionally: Validate data here if it will be used for native resources.
-
-                // Process the received data
+                // Hand off to the packet splitter/dispatcher
                 try
                 {
                     ClientHandleData.HandleData(newBytes);
@@ -71,7 +75,7 @@ namespace Networking
                     Plugin.PluginLog.Debug("Exception in HandleData: " + ex);
                 }
 
-                // Continue reading more data asynchronously from the stream
+                // Queue up the next read
                 if (Connected && localSslStream != null && localSslStream.CanRead)
                 {
                     localSslStream.BeginRead(recBuffer, 0, recBuffer.Length, OnReceiveData, localSslStream);
@@ -94,7 +98,8 @@ namespace Networking
             }
         }
 
-        // Asynchronously receive data from the server
+        // Alternative async receive loop (not currently used — OnReceiveData handles it).
+        // Reads in a loop until disconnected, processing each chunk as it arrives.
         private static async Task ReceiveDataAsync()
         {
             try
@@ -108,7 +113,6 @@ namespace Networking
                     }
                     catch (ObjectDisposedException)
                     {
-                        // Stream was disposed, exit loop.
                         break;
                     }
 
@@ -121,7 +125,7 @@ namespace Networking
 
                     Plugin.PluginLog.Debug($"Received {length} bytes from the server.");
 
-                    // Defensive: Always copy the buffer before passing to handler.
+                    // Same defensive copy as OnReceiveData
                     var newBytes = new byte[length];
                     Buffer.BlockCopy(recBuffer, 0, newBytes, 0, length);
 
@@ -142,6 +146,7 @@ namespace Networking
             }
         }
 
+        // Updates the UI status text and color based on the current connection state
         public static void UpdateConnectionStatus(TcpClient client)
         {
             if (client != null && client.Connected)
@@ -156,6 +161,9 @@ namespace Networking
             }
         }
 
+        // Returns the connection status as a color + label tuple.
+        // Uses socket polling + peek to detect dead connections that
+        // the OS still reports as "Connected".
         public static async Task<Tuple<Vector4, string>> GetConnectionStatusAsync(TcpClient _tcpClient)
         {
             Tuple<Vector4, string> connected = Tuple.Create(new Vector4(0, 255, 0, 255), "Connected");
@@ -169,10 +177,12 @@ namespace Networking
 
                     if (isSocketReadable)
                     {
+                        // Peek at incoming data without consuming it
                         byte[] buffer = new byte[1];
                         int bytesRead = await _tcpClient.Client.ReceiveAsync(new ArraySegment<byte>(buffer), SocketFlags.Peek);
                         Plugin.PluginLog.Debug($"Bytes peeked: {bytesRead}");
 
+                        // Zero bytes on a readable socket means the remote end closed
                         if (bytesRead == 0)
                         {
                             Plugin.PluginLog.Debug("No data received (0 bytes), connection likely closed.");
@@ -181,6 +191,7 @@ namespace Networking
                         return connected;
                     }
 
+                    // Writable but not readable = normal idle connection
                     if (isSocketWritable && !isSocketReadable)
                     {
                         Plugin.PluginLog.Debug("Connected");
@@ -206,6 +217,7 @@ namespace Networking
             }
         }
 
+        // Kicks off the async read loop using BeginRead (callback-based pattern)
         public static void StartReceiving()
         {
             if (sslStream != null && sslStream.CanRead)
@@ -218,6 +230,8 @@ namespace Networking
             }
         }
 
+        // Opens a TCP connection to the server and performs the TLS handshake.
+        // On success, starts the receive loop so we can get packets from the server.
         public static async Task EstablishConnectionAsync()
         {
             try
@@ -225,8 +239,10 @@ namespace Networking
                 clientSocket = new TcpClient();
                 await clientSocket.ConnectAsync(server, port);
 
+                // Wrap the raw TCP stream in SSL for encryption
                 sslStream = new SslStream(clientSocket.GetStream(), false, ValidateServerCertificate);
 
+                // TLS 1.2+ only
                 sslStream.AuthenticateAsClient(server, null, SslProtocols.Tls12 | SslProtocols.Tls13, false);
 
                 if (sslStream.IsAuthenticated && sslStream.CanRead && sslStream.CanWrite)
@@ -261,6 +277,7 @@ namespace Networking
             }
         }
 
+        // SSL certificate validation callback — rejects invalid certs
         public static bool ValidateServerCertificate(
             object sender, X509Certificate certificate,
             X509Chain chain,
@@ -273,6 +290,8 @@ namespace Networking
             return false;
         }
 
+        // Tears down the connection — closes both the SSL stream and the TCP socket.
+        // Wrapped in try/catch because either might already be disposed.
         public static void Disconnect()
         {
             Connected = false;
@@ -305,11 +324,15 @@ namespace Networking
             Plugin.PluginLog.Debug("Disconnected from server.");
         }
 
+        // Synchronous wrapper around the async connection check (blocks the calling thread)
         public static bool IsConnected()
         {
             return Task.Run(async () => await IsConnectedToServerAsync(clientSocket)).GetAwaiter().GetResult();
         }
 
+        // Checks if the TCP connection is still alive by polling + peeking.
+        // A socket can report Connected=true even after the remote end closed,
+        // so we peek to detect that case.
         public static async Task<bool> IsConnectedToServerAsync(TcpClient tcpClient)
         {
             try
@@ -321,11 +344,11 @@ namespace Networking
                         byte[] buff = new byte[1];
                         if (await tcpClient.Client.ReceiveAsync(new ArraySegment<byte>(buff), SocketFlags.Peek) == 0)
                         {
-                            return false;
+                            return false; // Remote closed
                         }
                         return true;
                     }
-                    return true;
+                    return true; // Not readable but still connected = idle
                 }
                 return false;
             }
@@ -336,6 +359,7 @@ namespace Networking
             }
         }
 
+        // Pings the server and reconnects if we're not already connected
         public static async void CheckStatus()
         {
             try
@@ -352,6 +376,7 @@ namespace Networking
             }
         }
 
+        // Tries to connect if not already connected, updates the UI status after
         public static async void AttemptConnect()
         {
             try
@@ -368,6 +393,8 @@ namespace Networking
             }
         }
 
+        // Quick TCP ping — tries to open a connection within the timeout.
+        // Returns true if the server is reachable, false otherwise.
         public static async Task<bool> PingHostAsync(string host, int port, int timeout = 1000)
         {
             try
@@ -377,6 +404,7 @@ namespace Networking
                     var connectTask = tcpClient.ConnectAsync(host, port);
                     var delayTask = Task.Delay(timeout);
 
+                    // Whichever finishes first wins — if the delay wins, the server is too slow
                     var completedTask = await Task.WhenAny(connectTask, delayTask);
                     return completedTask == connectTask && tcpClient.Connected;
                 }
@@ -387,6 +415,8 @@ namespace Networking
             }
         }
 
+        // Sends a single packet to the server with a 4-byte length prefix.
+        // Uses a semaphore so only one write happens at a time (prevents garbled data).
         public static async Task SendDataAsync(byte[] data)
         {
             await writeSemaphore.WaitAsync();
@@ -394,6 +424,7 @@ namespace Networking
             {
                 if (sslStream != null && sslStream.IsAuthenticated && sslStream.CanWrite)
                 {
+                    // Build the wire format: [4-byte length][payload]
                     byte[] lengthPrefix = BitConverter.GetBytes(data.Length);
 
                     byte[] message = new byte[lengthPrefix.Length + data.Length];
@@ -418,6 +449,9 @@ namespace Networking
             }
         }
 
+        // Sends multiple packets in one go — much faster than sending them one at a time
+        // because we only acquire the semaphore once and flush once.
+        // All packets are combined into a single byte array before writing.
         /// <summary>
         /// Sends multiple packets in a single batch under one semaphore acquire and one flush.
         /// Much faster than calling SendDataAsync for each packet individually.
@@ -431,12 +465,12 @@ namespace Networking
             {
                 if (sslStream != null && sslStream.IsAuthenticated && sslStream.CanWrite)
                 {
-                    // Calculate total size needed
+                    // Figure out how big the combined buffer needs to be
                     int totalSize = 0;
                     foreach (var data in packets)
-                        totalSize += 4 + data.Length; // 4 bytes for length prefix
+                        totalSize += 4 + data.Length; // 4 bytes for each length prefix
 
-                    // Build one combined buffer for all packets
+                    // Pack all packets into one buffer: [len1][data1][len2][data2]...
                     byte[] combined = new byte[totalSize];
                     int offset = 0;
                     foreach (var data in packets)
@@ -448,7 +482,7 @@ namespace Networking
                         offset += data.Length;
                     }
 
-                    // Single write + single flush for all packets
+                    // One write, one flush for everything
                     await sslStream.WriteAsync(combined, 0, combined.Length);
                     await sslStream.FlushAsync();
                 }

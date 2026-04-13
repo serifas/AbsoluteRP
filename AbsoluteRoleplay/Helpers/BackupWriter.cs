@@ -8,8 +8,11 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Helpers
 {
+    // Serializes profile tab data to the custom tag-based text format (used for legacy backups).
+    // Counterpart to BackupLoader — writes each layout type's fields as XML-like tags.
     internal class BackupWriter
     {
+        // Writes a single tab's content to the backup file based on its layout type
         public static void WriteTabContent(CustomTab tab, StreamWriter writer)
         {
             try

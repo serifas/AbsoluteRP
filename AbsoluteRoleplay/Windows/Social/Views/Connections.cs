@@ -8,6 +8,8 @@ using Networking;
 
 namespace AbsoluteRP.Windows.Social.Views
 {
+    // Connection management UI — shows received/sent/blocked connection requests between players.
+    // Players can accept, decline, block, or remove connections.
     public class Connections
     {
         public static List<Tuple<string, string>> receivedProfileRequests = new List<Tuple<string, string>>();

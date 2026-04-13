@@ -17,6 +17,8 @@ using System.Numerics;
 using System.Text.Json;
 namespace AbsoluteRP.Windows.MainPanel;
 
+// The main plugin window — login/registration, account import/export, character selection,
+// server status display, and navigation buttons to all other windows (profile, social, etc.)
 public class MainPanel : Window, IDisposable
 {
     //input field strings
@@ -294,9 +296,32 @@ public class MainPanel : Window, IDisposable
                             }
 
                             var jsonContent = File.ReadAllText(filePath);
-                            var importData = JsonSerializer.Deserialize<WebExportData>(jsonContent);
 
-                            if (importData == null || importData.exportType != "AbsoluteRP_WebExport")
+                            // Try WebExport format first, then PluginExport format
+                            string importAccountKey = string.Empty;
+                            string importAccountName = string.Empty;
+                            List<WebExportCharacter>? importCharacters = null;
+
+                            var webImport = JsonSerializer.Deserialize<WebExportData>(jsonContent);
+                            if (webImport != null && webImport.exportType == "AbsoluteRP_WebExport")
+                            {
+                                importAccountKey = webImport.account.accountKey;
+                                importAccountName = webImport.account.accountName;
+                                importCharacters = webImport.characters;
+                            }
+                            else
+                            {
+                                // Try PluginExport format (from "Export for Website" button)
+                                var pluginImport = JsonSerializer.Deserialize<PluginExportData>(jsonContent);
+                                if (pluginImport != null && pluginImport.exportType == "AbsoluteRP_PluginExport")
+                                {
+                                    importAccountKey = pluginImport.accountKey;
+                                    importAccountName = pluginImport.accountName;
+                                    importCharacters = pluginImport.characters;
+                                }
+                            }
+
+                            if (string.IsNullOrEmpty(importAccountKey))
                             {
                                 importStatus = "Invalid file format.";
                                 importStatusColor = new Vector4(1, 0.3f, 0.3f, 1);
@@ -304,13 +329,13 @@ public class MainPanel : Window, IDisposable
                             }
 
                             // Apply the imported data to the configuration
-                            Plugin.plugin.Configuration.account.accountKey = importData.account.accountKey;
-                            Plugin.plugin.Configuration.account.accountName = importData.account.accountName;
+                            Plugin.plugin.Configuration.account.accountKey = importAccountKey;
+                            Plugin.plugin.Configuration.account.accountName = importAccountName;
 
                             // Import characters
-                            if (importData.characters != null)
+                            if (importCharacters != null)
                             {
-                                foreach (var importChar in importData.characters)
+                                foreach (var importChar in importCharacters)
                                 {
                                     // Check if character already exists
                                     var existingChar = Plugin.plugin.Configuration.characters.FirstOrDefault(
@@ -336,10 +361,12 @@ public class MainPanel : Window, IDisposable
 
                             Plugin.plugin.Configuration.Save();
 
-                            importStatus = "Account imported successfully!";
-                            importStatusColor = new Vector4(0.3f, 1, 0.3f, 1);
+                            importStatus = "Account data loaded. Verifying with server...";
+                            importStatusColor = new Vector4(1, 1, 0.3f, 1);
 
-                            // Attempt to login with the new credentials
+                            // Attempt to login with the imported credentials
+                            // The server will verify the account exists — the login response
+                            // handler will update the status accordingly
                             DataSender.SendLogin();
                         }
                         catch (Exception ex)

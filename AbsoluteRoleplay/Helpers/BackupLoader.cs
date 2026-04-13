@@ -7,8 +7,12 @@ using System.Text.RegularExpressions;
 
 namespace AbsoluteRP.Helpers
 {
+    // Deserializes profile tab data from a custom tag-based text format (used for legacy backups).
+    // Each layout type (Bio, Gallery, Story, etc.) has its own Load method that extracts
+    // fields from XML-like tags in the input string.
     internal static class BackupLoader
     {
+        // Parses a Bio tab from the tag-based format — extracts name, race, gender, traits, etc.
         public static BioLayout LoadBioLayout(string input)
         {
             BioLayout layout = new BioLayout();

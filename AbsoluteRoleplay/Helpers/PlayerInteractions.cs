@@ -23,6 +23,7 @@ using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 namespace AbsoluteRP.Helpers
 {
+    // A texture placed on the ground in the 3D world (used for floor markers/hitbox overlays)
     public class FloorTextureInstance
     {
         public Vector3 WorldPosition;
@@ -30,18 +31,21 @@ namespace AbsoluteRP.Helpers
         public IDalamudTextureWrap Texture;
         public float WorldSize;
     }
+    // Handles nearby player detection, the compass overlay, and radar dots.
+    // The compass is a horizontal bar showing N/S/E/W with blue dots for connected players.
     public class PlayerInteractions
     {
         public static Plugin plugin;
-        public static Vector2 CompassDragPosition = Vector2.Zero;
+        public static Vector2 CompassDragPosition = Vector2.Zero; // current screen position of the compass
         public static bool CompassDragInitialized = false;
 
         public static bool wasDraggingCompass = false;
-        public static List<PlayerData> playerDataMap = new List<PlayerData>();
+        public static List<PlayerData> playerDataMap = new List<PlayerData>(); // all connected players we know about
         
 
         // This method should be added to PlayerInteractions
    
+        // Looks up a connected player by their FFXIV name and world
         public static PlayerData? GetConnectedPlayer(string playername, string playerworld)
         {
             // Use LINQ to find the first matching player in the list
@@ -49,6 +53,7 @@ namespace AbsoluteRP.Helpers
                 .FirstOrDefault(p => p.playername == playername && p.worldname == playerworld);
         }
      
+        // Iterates all nearby players, finds ones we're connected to, and calls the action for each in range
         public static void GetConnectionsInRange(float range, IPlayerCharacter localPlayer, Action<IPlayerCharacter, PlayerData>? action = null)
         {
             foreach (var obj in Plugin.ObjectTable)
@@ -141,6 +146,8 @@ namespace AbsoluteRP.Helpers
                 ImGui.End();
             }
         }
+        // Renders the compass bar — a horizontal strip with N/S/E/W letters that rotate based
+        // on the player's facing direction, with gradient edges and a glow effect
         public static void DrawDynamicCompass(
            float centerX, float centerY, float compassWidth, float compassHeight, float characterYawRadians)
         {
@@ -309,6 +316,7 @@ namespace AbsoluteRP.Helpers
        
     }
 }
+// Info about a connected player — populated from the server's connection list
 public class PlayerData
 {
     public string playername { get; set; }

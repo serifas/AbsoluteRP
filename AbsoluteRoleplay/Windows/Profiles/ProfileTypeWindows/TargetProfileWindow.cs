@@ -1,5 +1,6 @@
 using AbsoluteRP.Caching;
 using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Inventory;
 using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
@@ -12,6 +13,8 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 {
+    // Read-only view of another player's profile — opened when clicking "View Profile" on a target.
+    // Renders the same tab layouts as ProfileWindow but in view-only mode with no editing.
     public class TargetProfileWindow : Window, IDisposable
     {
         public static string loading;
@@ -37,6 +40,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         private static bool showLikeCommentDialog = false;
         private static string likeCommentBuffer = string.Empty;
         private static int likeCountInput = 1;
+        private static bool showEquipmentInspect = false;
 
         public TargetProfileWindow() : base("TARGET")
         {
@@ -426,6 +430,22 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     if (ThemeManager.GhostButton("Notes")) { addNotes = true; }
                     if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this Profile."); }
 
+                    // Inspect Equipment button — only shown if the profile owner has enabled it
+                    if (profileData.equipmentPublic)
+                    {
+                        ImGui.SameLine();
+                        if (ThemeManager.GhostButton("Inspect Equipment"))
+                        {
+                            showEquipmentInspect = !showEquipmentInspect;
+                            if (showEquipmentInspect && Plugin.character != null)
+                            {
+                                EquipmentPage.ClearTargetEquipment();
+                                DataSender.SendFetchTargetEquipment(Plugin.character, characterName, characterWorld);
+                            }
+                        }
+                        if (ImGui.IsItemHovered()) { ImGui.SetTooltip("View this player's equipped RP items."); }
+                    }
+
                     ImGui.SameLine();
                     Misc.RenderAlignmentToRight("Report");
 
@@ -452,7 +472,21 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             DataReceiver.likeResultMessage = string.Empty;
                         }
                     }
-                    // Tabs
+                    // Equipment inspect panel — replaces the tabs when viewing equipment
+                    if (showEquipmentInspect && profileData.equipmentPublic)
+                    {
+                        ImGui.Spacing();
+                        if (ThemeManager.GhostButton("Back to Profile"))
+                        {
+                            showEquipmentInspect = false;
+                        }
+                        ImGui.Spacing();
+                        ThemeManager.SectionHeader("Equipment");
+                        EquipmentPage.RenderEquipmentPreview(Plugin.plugin);
+                        ImGui.Spacing();
+                    }
+                    else
+                    // Tabs — hidden when equipment inspect is open
                     if (profileData.customTabs != null && profileData.customTabs.Count > 0)
                     {
                         // Build a unique ID based on tab order so ImGui doesn't cache stale order

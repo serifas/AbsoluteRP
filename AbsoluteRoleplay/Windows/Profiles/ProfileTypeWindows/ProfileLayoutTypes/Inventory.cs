@@ -8,6 +8,7 @@ using System.Numerics;
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
     //changed
+    // Inventory tab layout — displays a categorized list of RP items with expandable sections
     public class Inventory
     {
         public static string loading; //loading status string for loading the tooltipData gallery mainly

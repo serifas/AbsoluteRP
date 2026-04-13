@@ -16,6 +16,7 @@ using System.Reflection;
 
 namespace AbsoluteRP.Windows.Listings
 {
+    // Main social hub window — contains tabs for Connections, Bookmarks, Groups, Communities, and Search
     internal class SocialWindow : Window, IDisposable
     {
         public static Configuration configuration;

@@ -12,6 +12,8 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Systems.Roster
 {
+    // System roster viewer — shows all character sheets submitted to a system,
+    // with approval/decline controls for system owners and field value editing.
     internal class Roster
     {
         public static List<CharacterSheetData> sheets = new List<CharacterSheetData>();

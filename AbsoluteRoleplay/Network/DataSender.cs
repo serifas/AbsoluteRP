@@ -23,8 +23,10 @@ using System.Xml.Linq;
 using static Lumina.Data.Parsing.Layer.LayerCommon;
 
 namespace Networking
-{  // Add type aliases at the top of the namespace to resolve ambiguity
-
+{
+    // Enum of every packet the client can send to the server.
+    // Each value must match the server-side expected packet ID exactly.
+    // Grouped by feature area: auth, profiles, social, groups, listings, systems, etc.
     public enum ClientPackets
     {
         SendUserTagCreation = 1,
@@ -266,14 +268,24 @@ namespace Networking
         CLeaveSystem = 272,
         CFetchJoinedSystems = 273,
     }
+    // Builds and sends all outbound packets to the server.
+    // Every method follows the same pattern:
+    //   1. Check if connected (skip silently if not)
+    //   2. Create a ByteBuffer, write the packet ID, then write each field
+    //   3. Send the buffer contents via ClientTCP.SendDataAsync
+    //
+    // Most methods include the accountKey and characterKey for authentication,
+    // so the server can verify who is making the request.
     public class DataSender
     {
-        public static int userID;
+        public static int userID;   // set by the server in the StatusMessage response
         public static Plugin plugin;
 
 
 
 
+        // Asks the server to check if a Lodestone URL is valid for character verification.
+        // Used during initial character linking and account restoration flows.
         internal static async void CheckLodestoneEntry(string lodeSUrl, bool restoration)
         {
             if (ClientTCP.IsConnected())
@@ -295,6 +307,7 @@ namespace Networking
                 }
             }
         }
+        // Registers a new account tag (username) with the server
         internal static async void CreateUserTag(string tagName)
         {
             if (ClientTCP.IsConnected())
@@ -355,6 +368,8 @@ namespace Networking
             }
         }
 
+        // Authenticates with the server using the stored account key.
+        // Sends the plugin version so the server can enforce compatibility.
         internal static async void SendLogin()
         {
             if (ClientTCP.IsConnected())
@@ -375,6 +390,7 @@ namespace Networking
                 }
             }
         }
+        // Submits a profile report to moderators with the reporter's info and reason
         public static async void ReportProfile(Character character, string reporterAccount, string playerName, string playerWorld, string reportInfo)
         {
             if (ClientTCP.IsConnected())
@@ -400,6 +416,8 @@ namespace Networking
             }
 
         }
+        // Uploads a gallery tab's images to the server. Each image includes its URL,
+        // raw bytes, tooltip text, NSFW/trigger flags, and display index.
         public static async Task SubmitGalleryLayout(Character character, int profileIndex, GalleryLayout layout)
         {
             if (ClientTCP.IsConnected())
@@ -461,6 +479,7 @@ namespace Networking
                 }
             }
         }
+        // Uploads a story tab's chapters (title + content for each chapter) to the server
         public static async Task SubmitStoryLayout(Character character, int profileIndex, StoryLayout layout)
         {
             if (ClientTCP.IsConnected())
@@ -518,6 +537,7 @@ namespace Networking
                 }
             }
         }
+        // Resets loading animation tweens before fetching new profile data
         public static void ResetAllData()
         {
             try
@@ -532,6 +552,10 @@ namespace Networking
                 Plugin.PluginLog.Debug("TargetProfileWindow ResetAllData Debug: " + ex.Message);
             }
         }
+        // Requests a profile from the server. If self=true, fetches the player's own profile
+        // for editing; otherwise fetches another player's profile for viewing.
+        // Resets loading counters and UI state before sending the request so the
+        // loading indicators start fresh.
         public static async void FetchProfile(Character character, bool self, int profileIndex, string targetName, string targetWorld, int profileID)
         {
             if (ClientTCP.IsConnected())
@@ -589,6 +613,7 @@ namespace Networking
                 }
             }
         }
+        // Creates a new profile on the server with the given title and type
         public static async void CreateProfile(Character character, string profileTitle, int profileType, int index)
         {
             if (ClientTCP.IsConnected())
@@ -617,6 +642,7 @@ namespace Networking
         }
 
 
+        // Adds another player's profile to the current user's bookmarks
         public static async void BookmarkPlayer(Character character, string playerName, string playerWorld, int profileID)
         {
             if (ClientTCP.IsConnected())
@@ -685,6 +711,8 @@ namespace Networking
 
         }
 
+        // Saves a profile's Bio tab data: character traits, alignment, personality,
+        // custom fields, descriptors, and trait icons.
         public static async Task SubmitProfileBio(Character character, int profileIndex, BioLayout layout)
         {
 
@@ -898,7 +926,9 @@ namespace Networking
         }
 
 
-        internal static async Task SetProfileStatus(Character character, bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING)
+        // Saves profile display settings: active status, tooltip visibility, title,
+        // accent color, avatar/background images, expansion spoiler flags, and content warnings.
+        internal static async Task SetProfileStatus(Character character, bool status, bool tooltipStatus, int profileIndex, string profileTitle, Vector4 color, byte[] avatarBytes, byte[] backgroundBytes, bool spoilerARR, bool spoilerHW, bool spoilerSB, bool spoilerSHB, bool spoilerEW, bool spoilerDT, bool NSFW, bool TRIGGERING, bool equipmentPublic = false)
         {
             if (ClientTCP.IsConnected())
             {
@@ -931,6 +961,7 @@ namespace Networking
                         buffer.WriteBool(NSFW);
                         buffer.WriteBool(TRIGGERING);
                         buffer.WriteInt(profileIndex);
+                        buffer.WriteBool(equipmentPublic);
 
                         await ClientTCP.SendDataAsync(buffer.ToArray());
                     }
@@ -1018,6 +1049,7 @@ namespace Networking
         // ============================
         // Listing System Methods
         // ============================
+        // These methods handle creating, updating, and managing venue/event/service listings.
 
         internal static async Task CreateListing(Character character, int profileId, int listingType, string name, string tagline, int category, string world, string datacenter, string district, int ward, int plot, bool isNSFW, string contactInfo, string tags, string discordLink, string websiteLink, byte[] bannerImage, byte[] logoImage, string schedulesJson)
         {
@@ -1524,6 +1556,9 @@ namespace Networking
         #endregion
 
 
+        // --- Chat and Social Methods ---
+
+        // Sends a chat message or moderator announcement to the ARP chat channel
         internal static async void SendARPChatMessage(Character character, string message, bool isAnnouncement)
         {
             if (ClientTCP.IsConnected())
@@ -1572,6 +1607,7 @@ namespace Networking
             }
         }
 
+        // Requests the list of all profiles owned by the current character
         internal static async void FetchProfiles(Character character)
         {
 
@@ -1666,6 +1702,7 @@ namespace Networking
             }
         }
 
+        // Creates a new inventory item with the given properties (name, description, icon, rarity, etc.)
         internal static async void SendItemCreation(Character character, int currentProfile, int tabIndex, string itemName, string itemDescription, int selectedItemType, int itemSubType, uint createItemIconID, int itemQuality, bool locked)
         {
             if (ClientTCP.IsConnected())
@@ -2768,6 +2805,8 @@ namespace Networking
             }
         }
 
+        // Sends a list of nearby visible players to the server so it can return
+        // which ones have ARP profiles (used for the compass/nearby players feature).
         internal static async void RequestCompassFromList(Character character, List<IPlayerCharacter> players)
         {
             if (ClientTCP.IsConnected())
@@ -2819,6 +2858,11 @@ namespace Networking
         }
     
       
+        // --- Group Management Methods ---
+        // These methods handle creating, updating, and managing groups, channels,
+        // ranks, members, invites, forums, and chat within the group system.
+
+        // Creates or updates a group's core settings (name, visibility, logo, invite policy)
         internal static async void SetGroupValues(Character character, Group group, bool update, int leaderProfileIndex, int groupProfileIndex)
         {
             if (group == null) return;
@@ -5178,7 +5222,11 @@ buffer.WriteFloat(emptyElement.color.W);
         #endregion
 
         #region RP Systems
+        // --- RP Systems Methods ---
+        // These methods handle custom RP systems: stats, skills, combat configs,
+        // character sheets, and system rosters.
 
+        // Creates a new RP system with a name and description
         public static async Task CreateSystem(Character character, string name, string description)
         {
             if (!ClientTCP.IsConnected()) return;

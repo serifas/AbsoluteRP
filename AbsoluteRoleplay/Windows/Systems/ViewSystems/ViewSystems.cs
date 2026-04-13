@@ -12,6 +12,8 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Systems.ViewSystems
 {
+    // Player-facing view of an RP system — join wizard (pick class, allocate stats, select skills),
+    // skill tree viewer with tier unlocking, and character sheet display.
     internal class ViewSystems
     {
         // Wizard steps: 0=System, 1=Profile, 2=Class+Skills, 3=Stats, 4=Review
@@ -1387,7 +1389,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             var drawList = ImGui.GetWindowDrawList();
             Vector2 origin = ImGui.GetCursorScreenPos();
 
-            var treeSkills = system.Skills.Where(s => s.classId == classId && s.treeIndex == previewTreeIndex && s.isCastable).ToList();
+            var treeSkills = system.Skills.Where(s => s.classId == classId && s.treeIndex == previewTreeIndex && s.gridX >= 0).ToList();
 
             // Draw connections
             foreach (var conn in system.SkillConnections)

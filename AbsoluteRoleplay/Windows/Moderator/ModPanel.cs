@@ -8,6 +8,7 @@ using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
 namespace AbsoluteRP.Windows.Moderator
 {
+    // Moderator action panel — lets mods/admins warn, strike, suspend, or ban users
     public class ModPanel : Window, IDisposable
     {
 

@@ -15,6 +15,7 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Ect
 {
+    // In-game ARP chat window — displays messages from ARP chat channels with player context menus
     internal class ARPChatWindow : Window, IDisposable
     {
         public string messageInput = string.Empty;

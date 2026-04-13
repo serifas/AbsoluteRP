@@ -9,6 +9,7 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 {
+    // Forum category and thread management — create/edit forum categories and view forum structure
     internal class GroupForums
     {
         private static int selectedCategoryIndex = -1;

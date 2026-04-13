@@ -10,6 +10,7 @@ using Dalamud.Interface.Colors;
 using Dalamud.Bindings.ImGui;
 namespace AbsoluteRP.Windows.Ect
 {
+    // Popup window for server-wide announcements from moderators/admins
     public class ImportantNotice : Window, IDisposable
     {
         private float _modVersionWidth;

@@ -8,6 +8,7 @@ using FFXIVClientStructs.FFXIV.Common.Math;
 using System;
 namespace AbsoluteRP.Windows
 {
+    // Plugin settings window — tooltip visibility toggles, compass config, theme colors, backup paths
     public class OptionsWindow : Window, IDisposable
     {
         public static bool showTargetOptions;
@@ -348,92 +349,97 @@ namespace AbsoluteRP.Windows
             ThemeManager.SectionHeader("Presets");
             ImGui.Spacing();
 
-            // Preset buttons using pill style
-            if (ThemeManager.PillButton("Default Dark"))
+            // Each preset: (name, accent color, border, font, isDefault)
+            var presets = new (string Name, System.Numerics.Vector4 Accent, System.Numerics.Vector4 Border, System.Numerics.Vector4 Font)[]
             {
-                config.ThemeBorder = null;
-                config.ThemeBackground = null;
-                config.ThemeAccent = null;
-                config.ThemeFont = null;
-                config.Save();
+                ("Aether",      new(0.28f, 0.42f, 0.78f, 1f), new(0.16f, 0.16f, 0.22f, 0.65f), new(0.82f, 0.83f, 0.88f, 1f)),
+                ("Void",        new(0.48f, 0.26f, 0.72f, 1f), new(0.25f, 0.18f, 0.38f, 0.65f), new(0.78f, 0.75f, 0.88f, 1f)),
+                ("Dynamis",     new(0.40f, 0.82f, 0.65f, 1f), new(0.16f, 0.30f, 0.24f, 0.65f), new(0.78f, 0.90f, 0.84f, 1f)),
+                ("Maelstrom",       new(0.70f, 0.18f, 0.22f, 1f), new(0.30f, 0.14f, 0.14f, 0.65f), new(0.85f, 0.78f, 0.78f, 1f)),
+                ("Twin Adders",      new(0.78f, 0.62f, 0.18f, 1f), new(0.30f, 0.24f, 0.10f, 0.65f), new(0.90f, 0.84f, 0.68f, 1f)),
+                ("Immortal Flames",  new(0.75f, 0.42f, 0.14f, 1f), new(0.30f, 0.20f, 0.14f, 0.65f), new(0.88f, 0.82f, 0.75f, 1f)),
+                ("Temple Knights",   new(0.14f, 0.48f, 0.72f, 1f), new(0.14f, 0.22f, 0.30f, 0.65f), new(0.75f, 0.82f, 0.90f, 1f)),
+            };
+
+            // Detect which preset is currently active by matching accent color
+            var currentAccent = config.ThemeAccent ?? ThemeManager.DefaultAccent;
+            int activePreset = -1;
+            if (config.ThemeAccent == null && config.ThemeBorder == null && config.ThemeFont == null)
+                activePreset = 0; // Aetherial Sea (default)
+            else
+            {
+                for (int i = 0; i < presets.Length; i++)
+                {
+                    var pa = presets[i].Accent;
+                    if (Math.Abs(currentAccent.X - pa.X) < 0.02f &&
+                        Math.Abs(currentAccent.Y - pa.Y) < 0.02f &&
+                        Math.Abs(currentAccent.Z - pa.Z) < 0.02f)
+                    {
+                        activePreset = i;
+                        break;
+                    }
+                }
             }
 
-            ImGui.SameLine();
-            if (ThemeManager.PillButton("Deep Purple", primary: false))
+            // Draw preset buttons — colored by their accent, white outline when active
+           
+            for (int i = 0; i < presets.Length; i++)
             {
-                config.ThemeBorder = new System.Numerics.Vector4(0.35f, 0.25f, 0.50f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.60f, 0.35f, 0.85f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.88f, 0.85f, 0.95f, 1.00f);
-                config.Save();
-            }
+                //pop down at the fourth button
+                if(i != 3)
+                {
+                    ImGui.SameLine();
+                }
 
-            ImGui.SameLine();
-            if (ThemeManager.PillButton("Crimson", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.40f, 0.20f, 0.20f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.85f, 0.25f, 0.30f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.95f, 0.88f, 0.88f, 1.00f);
-                config.Save();
-            }
+                var p = presets[i];
+                bool isActive = (activePreset == i);
+                var darkAccent = new System.Numerics.Vector4(p.Accent.X * 0.6f, p.Accent.Y * 0.6f, p.Accent.Z * 0.6f, 1f);
 
-            if (ThemeManager.PillButton("Ocean", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.20f, 0.30f, 0.40f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.20f, 0.60f, 0.85f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.85f, 0.92f, 0.98f, 1.00f);
-                config.Save();
-            }
+                // Button background = darkened accent, hover = full accent
+                ImGui.PushStyleColor(ImGuiCol.Button, darkAccent);
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, p.Accent);
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, p.Accent);
+                ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(1, 1, 1, 1));
+                ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 20f);
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new System.Numerics.Vector2(16, 6));
 
-            ImGui.SameLine();
-            if (ThemeManager.PillButton("Emerald", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.20f, 0.35f, 0.25f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.25f, 0.75f, 0.45f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.88f, 0.95f, 0.90f, 1.00f);
-                config.Save();
-            }
+                // White outline for the active preset
+                if (isActive)
+                {
+                    ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, 2f);
+                    ImGui.PushStyleColor(ImGuiCol.Border, new System.Numerics.Vector4(1, 1, 1, 1));
+                }
 
-            ImGui.SameLine();
-            if (ThemeManager.PillButton("Sunset", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.40f, 0.28f, 0.20f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.90f, 0.55f, 0.20f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.98f, 0.92f, 0.85f, 1.00f);
-                config.Save();
-            }
+                bool clicked = ImGui.Button(p.Name);
 
-            if (ThemeManager.PillButton("Rose Gold", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.38f, 0.25f, 0.30f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.85f, 0.45f, 0.55f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.96f, 0.90f, 0.91f, 1.00f);
-                config.Save();
-            }
+                if (isActive)
+                {
+                    ImGui.PopStyleColor(1);
+                    ImGui.PopStyleVar(1);
+                }
 
-            ImGui.SameLine();
-            if (ThemeManager.PillButton("Midnight", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.18f, 0.18f, 0.28f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.45f, 0.45f, 0.90f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.82f, 0.82f, 0.95f, 1.00f);
-                config.Save();
-            }
+                ImGui.PopStyleVar(2);
+                ImGui.PopStyleColor(4);
 
-            ImGui.SameLine();
-            if (ThemeManager.PillButton("Frost", primary: false))
-            {
-                config.ThemeBorder = new System.Numerics.Vector4(0.30f, 0.38f, 0.42f, 0.65f);
-                config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
-                config.ThemeAccent = new System.Numerics.Vector4(0.50f, 0.80f, 0.95f, 1.00f);
-                config.ThemeFont = new System.Numerics.Vector4(0.88f, 0.94f, 0.98f, 1.00f);
-                config.Save();
+                if (clicked)
+                {
+                    if (i == 0)
+                    {
+                        // Default — clear overrides
+                        config.ThemeBorder = null;
+                        config.ThemeBackground = null;
+                        config.ThemeAccent = null;
+                        config.ThemeFont = null;
+                    }
+                    else
+                    {
+                        config.ThemeBorder = p.Border;
+                        config.ThemeBackground = new System.Numerics.Vector4(0f, 0f, 0f, 0.969f);
+                        config.ThemeAccent = p.Accent;
+                        config.ThemeFont = p.Font;
+                    }
+                    config.Save();
+                }
             }
 
             ImGui.Spacing();

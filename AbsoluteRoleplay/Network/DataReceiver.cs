@@ -22,11 +22,10 @@ using System.Xml.Linq;
 
 namespace Networking
 {
-    /// <summary>
-    /// This entire script simply receives data from the server and sets variables in the windows as needed
-    /// Not too much to look at, simply just for receiving our info and using it as needed
-    /// </summary>
-    //Packets that can be received from the server (Must match server packet number on server)
+    // Enum of every packet the server can send to this client.
+    // Each value must match the server-side packet ID exactly, otherwise
+    // the client will either ignore the packet or route it to the wrong handler.
+    // Grouped by feature area (core, groups, listings, RP systems, etc.).
     public enum ServerPackets
     {
         SWelcomeMessage = 1,
@@ -212,12 +211,23 @@ namespace Networking
         SendSystemBans = 268,
         SendJoinedSystems = 273,
     }
+    // Contains all packet handler methods that process data received from the server.
+    // Every handler follows the same pattern:
+    //   1. Write the raw byte[] into a ByteBuffer
+    //   2. Read the packet ID (to advance past it — it was already used for dispatch)
+    //   3. Read the remaining fields in the exact order the server wrote them
+    //   4. Update the appropriate UI window state with the new data
+    //
+    // Most handlers are static because they update static UI state shared across windows.
     class DataReceiver
     {
-        // Safe read helpers to prevent crashes from corrupt DB data
+        // --- Safety limits to prevent crashes from corrupt or oversized server data ---
         private const int MaxImageBytes = 10 * 1024 * 1024; // 10MB max per image
-        private const int MaxItemCount = 500; // Max items in any list
+        private const int MaxItemCount = 500; // max items in any list
 
+        // Reads an item count from the buffer, clamped to safe bounds.
+        // Returns 0 for negative or excessively large values to avoid allocating
+        // huge arrays from corrupted data.
         private static int SafeReadCount(ByteBuffer buffer)
         {
             int count = buffer.ReadInt();
@@ -226,6 +236,8 @@ namespace Networking
             return count;
         }
 
+        // Reads a length-prefixed byte array (like an image) with safety checks.
+        // Returns null if the length is out of bounds or the read fails.
         private static byte[] SafeReadBytes(ByteBuffer buffer)
         {
             int len = buffer.ReadInt();
@@ -234,7 +246,7 @@ namespace Networking
             catch { return null; }
         }
 
-        // Add these public static properties/lists at the top of your GroupManager class
+        // --- Shared state used by group-related handlers ---
         public static List<GroupCategory> categories = new List<GroupCategory>();
         public static List<GroupRosterField> rosterFields = new List<GroupRosterField>();
         public static List<GroupInvite> invites = new List<GroupInvite>();
@@ -243,20 +255,20 @@ namespace Networking
         public static List<GroupForumCategory> forumStructure = new List<GroupForumCategory>();
         public static List<GroupForumChannelPermission> forumPermissions = new List<GroupForumChannelPermission>();
         public static List<GroupRank> ranks = new List<GroupRank>();
-        public static Dictionary<int, Dictionary<string, string>> memberMetadata = new Dictionary<int, Dictionary<string, string>>();
-        public static Dictionary<int, Dictionary<int, string>> memberFieldValues = new Dictionary<int, Dictionary<int, string>>();
+        public static Dictionary<int, Dictionary<string, string>> memberMetadata = new Dictionary<int, Dictionary<string, string>>(); // member ID -> key/value metadata pairs
+        public static Dictionary<int, Dictionary<int, string>> memberFieldValues = new Dictionary<int, Dictionary<int, string>>(); // member ID -> field ID/value pairs
         public static string rankOperationMessage = string.Empty;
         public static bool rankOperationSuccess = false;
         public static string restorationStatus = "";
 
-        // Profile Likes System
+        // --- Profile Likes state ---
         public static int likesRemaining = 0;
         public static string likeResultMessage = string.Empty;
         public static bool likeResultSuccess = false;
         public static Dictionary<int, int> profileLikeCounts = new Dictionary<int, int>();
         public static List<ProfileLike> currentProfileLikes = new List<ProfileLike>();
 
-        // Rules Channel & Self-Assign Roles
+        // --- Rules Channel and Self-Assign Roles state ---
         public static string groupRulesContent = string.Empty;
         public static int groupRulesVersion = 0;
         public static bool hasAgreedToRules = false;
@@ -271,16 +283,19 @@ namespace Networking
         public static bool selfRoleOperationSuccess = false;
         public static string createChannelError = string.Empty;
 
-        // Form Channel
+        // --- Form Channel state (channel ID -> fields/submissions) ---
         public static Dictionary<int, List<FormField>> formFields = new Dictionary<int, List<FormField>>();
         public static Dictionary<int, List<FormSubmission>> formSubmissions = new Dictionary<int, List<FormSubmission>>();
         public static string formSubmitResultMessage = string.Empty;
         public static bool formSubmitResultSuccess = false;
 
-        // Group Search
+        // --- Group Search state ---
         public static List<GroupSearchResult> groupSearchResults = new List<GroupSearchResult>();
         public static bool groupSearchInProgress = false;
 
+        // --- Profile loading progress tracking ---
+        // -1 = not started, 0 = empty/none, 1 = loaded
+        // Used by the UI to show loading indicators and know when all sections are ready.
         public static bool LoadedSelf = false;
         public static int BioLoadStatus = -1, HooksLoadStatus = -1, StoryLoadStatus = -1, OOCLoadStatus = -1, GalleryLoadStatus = -1, BookmarkLoadStatus = -1,
                           TargetBioLoadStatus = -1, TargetHooksLoadStatus = -1, TargetStoryLoadStatus = -1, TargetOOCLoadStatus = -1, TargetGalleryLoadStatus = -1, TargetNotesLoadStatus = -1;
@@ -309,6 +324,8 @@ namespace Networking
 
         public static int ListingsLoadStatus { get; internal set; }
         public static int TargetGalleryImagesToLoad { get; internal set; }
+        // Makes sure the target profile data object exists before handlers try to write into it.
+        // Prevents null reference exceptions when viewing another player's profile.
         private static void EnsureTargetProfileData()
         {
             if (TargetProfileWindow.profileData == null)
@@ -316,6 +333,8 @@ namespace Networking
             if (TargetProfileWindow.profileData.customTabs == null)
                 TargetProfileWindow.profileData.customTabs = new List<CustomTab>();
         }
+
+        // Receives the player's saved bookmarks list and populates the Bookmarks window.
         public static void RecBookmarks(byte[] data)
         {
             try
@@ -345,6 +364,9 @@ namespace Networking
             }
         }
        
+        // Receives all groups the current user belongs to. For each group, loads
+        // its logo image asynchronously and adds it to the groups list. Also caches
+        // group info for embed display even after leaving a group.
         public static async void ReceiveGroupMemberships(byte[] data)
         {
             try
@@ -424,6 +446,7 @@ namespace Networking
             }
         }
 
+        // Received when the server acknowledges our connection. Updates the UI status bar.
         public static void HandleWelcomeMessage(byte[] data)
         {
             try
@@ -462,6 +485,7 @@ namespace Networking
 
 
 
+        // Confirmation that a profile report was submitted to moderation
         public static void RecProfileReportedSuccessfully(byte[] data)
         {
             try
@@ -496,6 +520,8 @@ namespace Networking
             }
 
         }
+        // Server indicates the user has no profiles yet. Resets all profile-related
+        // UI state so the user sees a clean slate to create their first profile.
         public static void NoProfile(byte[] data)
         {
             try
@@ -532,6 +558,8 @@ namespace Networking
             }
 
         }
+        // The targeted player has no profile. Resets target profile UI and opens
+        // an empty target window so the user sees "no profile found".
         public static void NoTargetProfile(byte[] data)
         {
             try
@@ -561,6 +589,9 @@ namespace Networking
             }
         }
 
+        // Receives core profile metadata (title, color, character info) for either
+        // the player's own profile or a target's profile. Routes data to the correct
+        // window (ProfileWindow for self, TargetProfileWindow for others).
         public static void HandleTargetProfilePacket(byte[] data)
         {
             try
@@ -607,6 +638,8 @@ namespace Networking
 
 
 
+        // Confirms that a profile exists for the current user. Sets the ExistingProfile
+        // flag so the UI knows to show editing controls instead of creation controls.
         public static void ReceiveProfile(byte[] data)
         {
             try
@@ -628,6 +661,10 @@ namespace Networking
             }
         }
 
+        // Central status handler — processes login results, registration outcomes,
+        // account moderation actions (warnings, strikes, suspensions, bans),
+        // character verification via Lodestone, and other server responses.
+        // Updates UI status text/color and saves account keys on successful registration.
         public static void StatusMessage(byte[] data)
         {
             try
@@ -673,6 +710,13 @@ namespace Networking
                     {
                         MainPanel.statusColor = new Vector4(255, 0, 0, 255);
                         MainPanel.status = "Account Banned";
+                    }
+                    if (status == (int)UI.StatusMessages.LOGIN_WRONG_INFORMATION)
+                    {
+                        MainPanel.statusColor = new Vector4(255, 0, 0, 255);
+                        MainPanel.status = "Account not found";
+                        MainPanel.loggedIn = false;
+                        Plugin.plugin.loggedIn = false;
                     }
                     if (status == (int)UI.StatusMessages.LOGIN_UNVERIFIED)
                     {
@@ -810,6 +854,8 @@ namespace Networking
 
 
 
+        // Notifies the client that a profile already exists at the given index.
+        // Sets the CurrentProfile for self profiles, or marks the target as existing.
         public static void ExistingProfile(byte[] data)
         {
             try
@@ -849,6 +895,8 @@ namespace Networking
             }
         }
 
+        // Receives the list of all profiles owned by the current character.
+        // Populates the profile selector, inventory base data, and group creation dropdowns.
         public static void ReceiveProfiles(byte[] data)
         {
             try
@@ -931,6 +979,7 @@ namespace Networking
             }
         }
 
+        // Server rejected an action because the user lacks permission for that profile
         public static void ReceiveNoAuthorization(byte[] data)
         {
             try
@@ -1013,6 +1062,9 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveConnections message: {ex}");
             }
         }
+        // Receives the full connections list (friends, pending requests, blocks).
+        // Sorts each connection into the appropriate bucket (connected, sent, received, blocked)
+        // based on the status field and whether the current user is the requester or receiver.
         internal static void ReceiveConnections(byte[] data)
         {
             try
@@ -1215,6 +1267,9 @@ namespace Networking
             }
         }
 
+        // Receives a full profile's settings and display data (avatar, background, spoiler flags,
+        // NSFW/trigger warnings, accent color, tooltip status). Loads images asynchronously
+        // and populates the profile editor or target profile view.
         public static async void ReceiveProfileSettings(byte[] data)
         {
             try
@@ -1245,6 +1300,11 @@ namespace Networking
                     bool showCompass = buffer.ReadBool();
                     bool fauxName = buffer.ReadBool();
                     bool self = buffer.ReadBool();
+
+                    bool equipmentPublic = buffer.ReadBool();
+
+                    Plugin.PluginLog.Info($"[ReceiveProfileSettings] self={self}, equipmentPublic={equipmentPublic}, name={NAME}");
+
                     if (self)
                     {
                         ProfileWindow.hasDrawException = false; // Reset so loading debug logs work for this fetch
@@ -1287,6 +1347,7 @@ namespace Networking
                         ProfileWindow.CurrentProfile.SpoilerDT = DT;
                         ProfileWindow.CurrentProfile.NSFW = NSFW;
                         ProfileWindow.CurrentProfile.TRIGGERING = TRIGGERING;
+                        ProfileWindow.CurrentProfile.equipmentPublic = equipmentPublic;
                         if (ProfileSaveTracker.IsSaving)
                         {
                             ProfileSaveTracker.Finish(() =>
@@ -1354,6 +1415,7 @@ namespace Networking
                         TargetProfileWindow.profileData.avatar = avatar;
                         TargetProfileWindow.profileData.title = NAME.Replace("''", "'");
                         TargetProfileWindow.profileData.titleColor = new Vector4(colX, colY, colZ, colW);
+                        TargetProfileWindow.profileData.equipmentPublic = equipmentPublic;
                         IDalamudTextureWrap backgroundImage = await Plugin.TextureProvider.CreateFromImageAsync(BACKGROUNDBYTES);
                         if (backgroundImage == null || backgroundImage.Handle == IntPtr.Zero)
                         {
@@ -2107,6 +2169,8 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveTradeStatus message: {ex}");
             }
         }
+        // Receives an inventory tab's items for a profile (self or target).
+        // Each item has a name, description, icon, quantity, and rarity.
         public static void ReceiveInventoryTab(byte[] data)
         {
             try
@@ -2676,6 +2740,9 @@ namespace Networking
         }
 
      
+        // Receives a Bio tab's full data: character details (race, gender, age, etc.),
+        // alignment, personality traits, custom fields, and descriptors.
+        // Routes to either the self-profile or target-profile window.
         public static void RecieveBioTab(byte[] data)
         {
             try
@@ -3044,6 +3111,8 @@ namespace Networking
                 Plugin.PluginLog.Debug($"Debug handling ReceiveGroup message: {ex}");
             }
         }
+        // Receives a batch of group chat messages (used when loading chat history).
+        // Each message includes sender info, content, timestamp, and edit/pin status.
         public static void HandleSendGroupChatMessage(byte[] data)
         {
             try
@@ -3142,6 +3211,8 @@ namespace Networking
             }
         }
 
+        // Receives a single new chat message broadcast in real-time (as opposed to
+        // the bulk history load). Inserts it into the correct channel's message list.
         public static void HandleGroupChatMessageBroadcast(byte[] data)
         {
             try
@@ -3938,6 +4009,8 @@ namespace Networking
             }
         }
 
+        // Receives the full member list for a group, including each member's
+        // name, world, rank IDs, join date, and online status.
         public static void HandleGroupMembers(byte[] data)
         {
             try
@@ -4278,6 +4351,8 @@ namespace Networking
             }
         }
 
+        // Receives all rank definitions for a group including permissions,
+        // colors, and hierarchy ordering. Also returns the current user's permissions.
         public static void HandleGroupRanks(byte[] data)
         {
             try
@@ -5474,6 +5549,8 @@ namespace Networking
         /// Handles server notification packets (shutdown, restart, broadcast).
         /// Displays toast alerts to the user.
         /// </summary>
+        // Receives server-wide notifications (shutdown warnings, restart notices, broadcasts).
+        // Displays them as important notices to the user.
         public static void HandleServerNotification(byte[] data)
         {
             try
@@ -5560,6 +5637,11 @@ namespace Networking
 
         #region Listings System
 
+        // --- Listing System handlers ---
+        // Each handler below processes a response from the listings subsystem
+        // (venues, events, services, etc.) and updates the ListingsWindow state.
+
+        // Confirmation that a new listing was created successfully
         public static void HandleListingCreated(byte[] data)
         {
             try
@@ -6224,6 +6306,9 @@ namespace Networking
 
         #region Booking System
 
+        // --- Booking System handlers ---
+
+        // Result of a booking request (accepted, declined, etc.)
         public static void HandleBookingRequestResult(byte[] data)
         {
             try
@@ -6403,6 +6488,10 @@ namespace Networking
 
         #region RP Systems Handlers
 
+        // --- RP Systems handlers ---
+        // These handle responses for the custom RP systems feature (stats, skills, combat, sheets).
+
+        // Confirmation that a new RP system was created
         public static void HandleSystemCreated(byte[] data)
         {
             try
@@ -6511,6 +6600,9 @@ namespace Networking
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleMySystems Error: {ex.Message}"); }
         }
 
+        // Receives the full data for an RP system: stats, skills, skill classes,
+        // combat config, character sheet template, and all associated images.
+        // This is the largest single handler because it loads the entire system definition.
         public static void HandleSystemData(byte[] data)
         {
             try
@@ -6995,6 +7087,9 @@ namespace Networking
             catch (Exception ex) { Plugin.PluginLog.Error($"HandleSheetResponse Error: {ex.Message}"); }
         }
 
+        // --- Equipment handlers ---
+
+        // Receives the current character's equipment loadout
         public static void HandleEquipment(byte[] data)
         {
             try

@@ -5,19 +5,24 @@ using System.Linq;
 using System.Text;
 
 namespace Networking
-{ 
+{
+    // Responsible for receiving raw bytes from the server, reassembling them into
+    // complete packets, and dispatching each packet to the correct handler method.
+    // Works hand-in-hand with DataReceiver (which contains the actual handler logic).
     static class ClientHandleData
     {
-        private static ByteBuffer playerBuffer;
+        private static ByteBuffer playerBuffer; // accumulates incoming bytes until a full packet is available
         public static DataReceiver dr = new DataReceiver();
-        public delegate void Packet(byte[] data);
-        public static Dictionary<int, Packet> packets = new Dictionary<int, Packet>();
+        public delegate void Packet(byte[] data); // signature every packet handler must match
+        public static Dictionary<int, Packet> packets = new Dictionary<int, Packet>(); // maps packet IDs to their handler delegates
 
-        //add our packets so we don't need to load them on the go.
-        //should be added to start of client loading up
+        // Registers every known server packet ID to its handler function.
+        // Must be called once at startup before any data arrives so the dispatch
+        // table is ready. Packet IDs must match the server-side enum exactly.
         public static void InitializePackets()
         {
             packets.Clear();
+            // --- Core authentication and profile packets ---
             packets.Add((int)ServerPackets.SWelcomeMessage, DataReceiver.HandleWelcomeMessage);
             packets.Add((int)ServerPackets.SRecLoginStatus, DataReceiver.StatusMessage);
             packets.Add((int)ServerPackets.SRecProfileBio, DataReceiver.RecieveBioTab);
@@ -39,6 +44,7 @@ namespace Networking
             packets.Add((int)ServerPackets.CreateItem, DataReceiver.ReceiveProfileItems);
             packets.Add((int)ServerPackets.ReceiveProfileSettings, DataReceiver.ReceiveProfileSettings);
 
+            // --- Chat, social, and UI feature packets ---
             packets.Add((int)ServerPackets.ReceiveChatMessage, DataReceiver.ReceiveChatMessage);
             packets.Add((int)ServerPackets.ReceiveProfileWarning, DataReceiver.RecieveProfileWarning);
             packets.Add((int)ServerPackets.ReceiveProfileListings, DataReceiver.ReceivePersonalListings);
@@ -56,6 +62,7 @@ namespace Networking
             packets.Add((int)ServerPackets.ReceiveTradeInventory, DataReceiver.ReceiveTradeInventory);
             packets.Add((int)ServerPackets.ReceiveTreeLayout, DataReceiver.ReceiveTreeLayout);
             packets.Add((int)ServerPackets.RecConnectedPlayersInMap, DataReceiver.ReceiveConnectedPlayersInMap);
+            // --- Group management packets ---
             packets.Add((int)ServerPackets.ReceiveGroup, DataReceiver.ReceiveGroup);
             packets.Add((int)ServerPackets.ReceiveGroupMemberships, DataReceiver.ReceiveGroupMemberships);
             packets.Add((int)ServerPackets.SendGroupRanks, DataReceiver.HandleGroupRanks);
@@ -165,6 +172,10 @@ namespace Networking
             //simple message back from server, simply for verification that the user is connected
         }
 
+        // Entry point for all incoming server data. Accumulates raw bytes into playerBuffer,
+        // then loops extracting complete packets. Each packet is length-prefixed (4-byte int)
+        // followed by that many bytes of payload. Handles partial reads gracefully by keeping
+        // leftover bytes in the buffer until the next call delivers the rest.
         public static void HandleData(byte[] data)
         {
             // Clone the incoming data to avoid modifying the original buffer
@@ -242,11 +253,15 @@ namespace Networking
             }
         }
 
+        // Extracts the packet ID (first 4 bytes) from a complete packet payload,
+        // looks it up in the dispatch table, and invokes the matching handler.
+        // The full payload (including the ID) is passed to the handler because
+        // each handler re-reads the ID and then continues parsing its own fields.
         private static void HandleDataPackets(byte[] data)
         {
             var buffer = new ByteBuffer();
             buffer.WriteBytes(data);
-            var packetID = buffer.ReadInt();
+            var packetID = buffer.ReadInt(); // first int in every packet is its type ID
             WindowOperations.SafeDispose(buffer);
             buffer = null;
             if (packets.TryGetValue(packetID, out var packet))

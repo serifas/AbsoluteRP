@@ -7,6 +7,7 @@ using Dalamud.Bindings.ImGui;
 
 namespace AbsoluteRP.Windows.Ect
 {
+    // Floating tooltip that appears when hovering over another player — shows their profile summary
     public class ARPTooltipWindow : Window, IDisposable
     {
         public static bool isAdmin;

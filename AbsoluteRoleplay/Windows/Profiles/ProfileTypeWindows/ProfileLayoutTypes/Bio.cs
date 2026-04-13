@@ -8,6 +8,8 @@ using static AbsoluteRP.UI;
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 { 
 
+    // Bio tab layout — the main character info page with name, race, gender, age, alignment,
+    // personality traits, custom descriptors, and custom fields. Both edit and view modes.
     internal class Bio
     {
         public static int currentAlignment = (int)Alignments.None;

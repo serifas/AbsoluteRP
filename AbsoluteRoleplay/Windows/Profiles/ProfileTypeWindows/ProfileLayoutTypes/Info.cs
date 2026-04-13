@@ -10,6 +10,7 @@ using static Dalamud.Interface.Utility.Raii.ImRaii;
 
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
+    // Info tab layout — renders a simple key-value info panel with optional view/edit toggles
     internal class Info
     {
         private static bool viewable = true;

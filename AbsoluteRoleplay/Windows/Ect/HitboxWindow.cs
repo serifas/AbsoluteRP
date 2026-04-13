@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using static Lumina.Data.Parsing.Layer.LayerCommon;
 
+// Debug overlay that shows player hitbox/interaction range visualization in the 3D world
 public class HitboxWindow : Window
 {
     private string content;

@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 {
+    // Group member list UI — view members, assign ranks, kick/ban, and manage member notes
     public static class GroupMembers
     {
         private static int selectedMemberForRank = -1;

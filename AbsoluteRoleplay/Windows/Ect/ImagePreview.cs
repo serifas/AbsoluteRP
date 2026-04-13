@@ -6,6 +6,7 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Ect
 {
+    // Full-size image preview popup — shown when clicking a gallery thumbnail
     public class ImagePreview : Window, IDisposable
     {
         public static IDalamudTextureWrap PreviewImage;

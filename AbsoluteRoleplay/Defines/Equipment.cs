@@ -2,6 +2,8 @@ using AbsoluteRP.Defines;
 
 namespace AbsoluteRP.Defines
 {
+    // RP equipment slots — mirrors FFXIV gear slots but used for roleplay items,
+    // not actual game gear. Players can equip RP items to these slots on their profile.
     public enum EquipmentSlot
     {
         Head = 0,
@@ -19,10 +21,13 @@ namespace AbsoluteRP.Defines
         Soulstone = 12
     }
 
+    // Helper methods and display names for equipment slots.
+    // Both Ring slots share the same display name "Ring".
     public static class EquipmentSlotInfo
     {
-        public const int SlotCount = 13;
+        public const int SlotCount = 13; // total number of equipment slots
 
+        // Human-readable names for each slot (indexed by EquipmentSlot enum value)
         public static readonly string[] SlotNames = new string[]
         {
             "Head",

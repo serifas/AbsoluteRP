@@ -15,6 +15,8 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Windows.Social.Views.SubViews
 {
+    // Group management panel — settings, member list, rank management, channel config,
+    // and moderation tools for group owners/admins. Contains sub-panels for each management area.
     internal class GroupManager
     {
         public static List<ProfileData> profiles = new List<ProfileData>();

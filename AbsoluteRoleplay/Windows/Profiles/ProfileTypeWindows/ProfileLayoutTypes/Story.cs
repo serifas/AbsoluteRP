@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Numerics;
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
+    // Story tab layout — a multi-chapter text editor for character backstory/lore.
+    // Supports up to 31 chapters with individual names and rich text content.
     public class Story
     {
         public static string[] ChapterContents = new string[31];

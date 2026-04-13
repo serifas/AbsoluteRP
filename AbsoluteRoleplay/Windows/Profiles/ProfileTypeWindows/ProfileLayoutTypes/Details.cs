@@ -12,6 +12,7 @@ using static Dalamud.Interface.Utility.Raii.ImRaii;
 
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
+    // Details tab layout — displays editable key-value fields (hooks) for character details
     internal class Details
     {
 

@@ -12,6 +12,9 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Backups
 {
+    // Profile backup system — exports/imports profile data as JSON files.
+    // Handles serialization of all profile tab types (Bio, Gallery, Story, Tree, etc.)
+    // with support for both modern JSON format and legacy tag-based format.
     internal class BackupData
     {
 

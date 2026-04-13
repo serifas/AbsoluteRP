@@ -8,6 +8,8 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Systems.Combat
 {
+    // Combat configuration editor — dice settings, health pool, resources, and linked stat setup.
+    // Also contains the stat-linking dropdown logic used by both health and resource configs.
     internal class Combat
     {
         private static readonly string[] DiceTypeNames = { "d2 (Coin Flip)", "d4", "d6", "d8", "d10", "d12", "d20", "d100" };
@@ -15,6 +17,8 @@ namespace AbsoluteRP.Windows.Systems.Combat
         private static int selectedDiceIndex = 6; // default d20
         private static int lastRollResult = 0;
         private static readonly Random rng = new Random();
+        private static int _pendingResourceDeleteIndex = -1;
+        private static bool _deleteResPopupOpen = true;
 
         public static void DrawCombatConfig()
         {
@@ -102,7 +106,7 @@ namespace AbsoluteRP.Windows.Systems.Combat
                     // Linked stat
                     ImGui.Text("HP Linked to Stat:");
                     config.healthLinkedStatId = DrawStatCombo("##HPLinkedStat", config.healthLinkedStatId, system);
-                    if (config.healthLinkedStatId >= 0)
+                    if (config.healthLinkedStatId != NoLinkedStat)
                     {
                         ImGui.Text("Stat Multiplier:");
                         ImGui.SameLine();
@@ -164,10 +168,32 @@ namespace AbsoluteRP.Windows.Systems.Combat
                     ImGui.SameLine();
                     if (ThemeManager.DangerButton("X##resDel"))
                     {
-                        system.Resources.RemoveAt(i);
-                        ImGui.PopID();
-                        i--;
-                        continue;
+                        _pendingResourceDeleteIndex = i;
+                        ImGui.OpenPopup("ConfirmDeleteResource##confirmDelRes");
+                    }
+
+                    if (_pendingResourceDeleteIndex == i && ImGui.BeginPopupModal("ConfirmDeleteResource##confirmDelRes", ref _deleteResPopupOpen, ImGuiWindowFlags.AlwaysAutoResize))
+                    {
+                        ImGui.Text($"Are you sure you want to remove resource \"{r.name}\"?");
+                        ImGui.Spacing();
+
+                        if (ThemeManager.DangerButton("Remove"))
+                        {
+                            system.Resources.RemoveAt(i);
+                            _pendingResourceDeleteIndex = -1;
+                            ImGui.CloseCurrentPopup();
+                            ImGui.EndPopup();
+                            ImGui.PopID();
+                            i--;
+                            continue;
+                        }
+                        ImGui.SameLine();
+                        if (ImGui.Button("Cancel"))
+                        {
+                            _pendingResourceDeleteIndex = -1;
+                            ImGui.CloseCurrentPopup();
+                        }
+                        ImGui.EndPopup();
                     }
 
                     // Description
@@ -189,7 +215,7 @@ namespace AbsoluteRP.Windows.Systems.Combat
                     // Linked stat
                     ImGui.Text("Linked to Stat:");
                     r.linkedStatId = DrawStatCombo($"##resLinked{i}", r.linkedStatId, system);
-                    if (r.linkedStatId >= 0)
+                    if (r.linkedStatId != NoLinkedStat)
                     {
                         ImGui.Text("Stat Multiplier:");
                         ImGui.SameLine();
@@ -247,22 +273,27 @@ namespace AbsoluteRP.Windows.Systems.Combat
         /// <summary>
         /// Draws a combo box to select a stat from the current system. Returns the new statId.
         /// </summary>
+        private const int NoLinkedStat = int.MinValue;
+
         private static int DrawStatCombo(string label, int statId, SystemData system)
         {
             var stats = system.StatsData;
             string current = "None";
-            if (statId >= 0)
+
+            // Check if the statId matches any existing stat
+            bool hasMatch = false;
+            if (statId != NoLinkedStat)
             {
                 var match = stats.Values.FirstOrDefault(s => s.id == statId);
-                if (match != null) current = match.name;
-                else { current = "None"; statId = -1; }
+                if (match != null) { current = match.name; hasMatch = true; }
+                else { current = "None"; statId = NoLinkedStat; }
             }
 
             ImGui.SetNextItemWidth(150);
             if (ImGui.BeginCombo(label, current))
             {
-                if (ImGui.Selectable("None", statId < 0))
-                    statId = -1;
+                if (ImGui.Selectable("None", !hasMatch))
+                    statId = NoLinkedStat;
                 for (int i = 0; i < stats.Count; i++)
                 {
                     var s = stats.Values[i];

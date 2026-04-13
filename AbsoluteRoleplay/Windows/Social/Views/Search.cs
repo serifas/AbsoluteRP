@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Windows.Social.Views
 {
+    // Player search UI — search for other players by name/world and view their profiles
     internal class Search
     {
         public static string worldSearchQuery = "";

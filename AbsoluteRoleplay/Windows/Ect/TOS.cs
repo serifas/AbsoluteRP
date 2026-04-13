@@ -8,6 +8,7 @@ using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 namespace AbsoluteRP.Windows.Ect
 {
+    // Terms of Service acceptance window — shown on first launch or when TOS version changes
     public class TOS : Window, IDisposable
     {
         private float _modVersionWidth;

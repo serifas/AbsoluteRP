@@ -11,6 +11,9 @@ using AbsoluteRP;
 
 namespace AbsoluteRP.Caching
 {
+    // Local disk cache for profile data — stores profiles as JSON files so they load
+    // instantly on plugin startup without waiting for the server. Cached data is used
+    // as a placeholder until fresh data arrives from the server.
     public static class ProfilesCache
     {
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions

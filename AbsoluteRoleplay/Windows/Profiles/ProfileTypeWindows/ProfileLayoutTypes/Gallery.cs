@@ -8,6 +8,8 @@ using static Dalamud.Interface.Utility.Raii.ImRaii;
 
 namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
 {
+    // Gallery tab layout — displays a grid of images that can be clicked to preview.
+    // Supports adding/removing images, reordering, NSFW/trigger flags, and tooltips.
     internal class Gallery
     {
         public static bool addGalleryImageGUI, ReorderGallery;

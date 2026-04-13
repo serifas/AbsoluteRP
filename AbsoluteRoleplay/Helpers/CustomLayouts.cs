@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Helpers
 {
+    // Reusable custom window layout components — draws themed windows with headers,
+    // navigation sidebars, and content panels. Used across profile and system windows.
     internal class CustomLayouts
     {
         public static ImFontPtr HeaderFont;

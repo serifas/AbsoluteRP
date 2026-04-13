@@ -30,6 +30,7 @@ using static FFXIVClientStructs.FFXIV.Client.UI.Misc.GroupPoseModule;
 using static System.Net.Mime.MediaTypeNames;
 namespace AbsoluteRP
 {
+    // A single message in a group chat channel — includes sender info, content, and edit/pin/delete state
     public class GroupChatMessage
     {
         public int messageID { get; set; }
@@ -47,6 +48,7 @@ namespace AbsoluteRP
         public bool isPinned { get; set; }
     }
 
+    // A category (folder) in a group's channel list — contains multiple channels and can be collapsed
     public class GroupCategory
     {
         public int id { get; set; }
@@ -58,6 +60,7 @@ namespace AbsoluteRP
         public bool collapsed {get;set;}
     }
 
+    // A custom field definition for a group's roster — group admins define these, members fill them in
     public class GroupRosterField
     {
         public int id { get; set; }
@@ -69,6 +72,7 @@ namespace AbsoluteRP
         public int sortOrder { get; set; }
     }
 
+    // An invitation to join a group — sent by a group member, shown as a notification to the recipient
     public class GroupInvite
     {
         public int inviteID { get; set; }
@@ -105,6 +109,7 @@ namespace AbsoluteRP
         public long createdAt { get; set; }
     }
 
+    // A member of a group — tracks their rank(s), avatar, self-assigned roles, and rules agreement
     public class GroupMember
     {
         public int id { get; set; }
@@ -125,6 +130,7 @@ namespace AbsoluteRP
         public int agreedRulesVersion { get; set; }
     }
 
+    // A "like" left on someone's profile — includes the liker's info and an optional comment
     public class ProfileLike
     {
         public int likerUserID { get; set; }
@@ -135,6 +141,7 @@ namespace AbsoluteRP
         public long likedAt { get; set; }
     }
 
+    // A rank within a group — determines what actions a member can perform (via permissions)
     public class GroupRank
     {
         public int id { get; set; }
@@ -146,6 +153,7 @@ namespace AbsoluteRP
         public GroupRankPermissions permissions { get; set; }
     }
 
+    // Per-rank permission flags — controls every action a rank can take within a group
     public class GroupRankPermissions
     {
         // Members
@@ -218,6 +226,7 @@ namespace AbsoluteRP
         public string value { get; set; }
     }
 
+    // A forum category in a group — organizes forum channels into sections
     public class GroupForumCategory
     {
         public int id { get; set; }
@@ -235,6 +244,7 @@ namespace AbsoluteRP
         public List<GroupForumChannel> channels { get; set; }
     }
 
+    // A channel within a forum category — supports sub-channels, locking, NSFW flags
     public class GroupForumChannel
     {
         public int id { get; set; }
@@ -254,6 +264,7 @@ namespace AbsoluteRP
         public List<GroupForumChannel> subChannels { get; set; }
     }
 
+    // Per-channel permission overrides — can be set per rank or per individual user
     public class GroupForumChannelPermission
     {
         public int channelID { get; set; }
@@ -269,6 +280,7 @@ namespace AbsoluteRP
         public bool canPin { get; set; }
         public bool canLock { get; set; }
     }
+    // A text/announcement/rules/form channel in a group — the main communication unit
     public class GroupChannel
     {
         public int id { get; set; }
@@ -446,9 +458,12 @@ namespace AbsoluteRP
         public int[] badges { get; set; } = new int[0]; // Unread count badges
 
     }
+    // An RP system — contains stats, resources, combat config, skill classes, skill trees, and rules.
+    // Systems are created by users and can be shared via share codes. Other users can join and
+    // create character sheets within the system.
     public class SystemData
     {
-        public int id { get; set; } = -1;
+        public int id { get; set; } = -1; // -1 = unsaved/new system
         public string name { get; set; } = string.Empty;
         public string description { get; set; } = string.Empty;
         public string shareCode { get; set; } = string.Empty;
@@ -469,6 +484,7 @@ namespace AbsoluteRP
         public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap logoTexture { get; set; } = null;
     }
 
+    // A single stat in an RP system (e.g. Strength, Intelligence) — has min/max bounds and point allocation rules
     public class StatData
     {
         public int id { get; set; } = -1;
@@ -484,6 +500,7 @@ namespace AbsoluteRP
         public bool negativeGivesPoint { get; set; } = false;
     }
 
+    // A resource bar in an RP system (e.g. Mana, Stamina) — can be linked to a stat with a multiplier
     public class ResourceData
     {
         public int id { get; set; } = -1;
@@ -498,6 +515,7 @@ namespace AbsoluteRP
         public int regenEveryNTurns { get; set; } = 0;
     }
 
+    // Global combat settings for an RP system — health pool, dice rolls, turn structure
     public class CombatConfigData
     {
         public bool healthEnabled { get; set; } = false;
@@ -513,6 +531,7 @@ namespace AbsoluteRP
         public int diceModifier { get; set; } = 0;
     }
 
+    // A class within an RP system (e.g. Warrior, Mage) — has its own skill trees and starting points
     public class SkillClassData
     {
         public int id { get; set; } = -1;
@@ -533,6 +552,7 @@ namespace AbsoluteRP
         public int sortOrder { get; set; } = 0;
     }
 
+    // A single skill node on a skill tree — placed at a grid position, can be castable or passive
     public class SkillData
     {
         public int id { get; set; } = -1;
@@ -551,6 +571,7 @@ namespace AbsoluteRP
         public Dalamud.Interface.Textures.TextureWraps.IDalamudTextureWrap iconTexture { get; set; } = null;
     }
 
+    // A directed edge between two skills on a tree — parent must be leveled before child unlocks
     public class SkillConnectionData
     {
         public int fromSkillId { get; set; }
@@ -558,6 +579,7 @@ namespace AbsoluteRP
         public int requiredPoints { get; set; } = 1;     // points needed in parent to unlock child
     }
 
+    // A player's character sheet within an RP system — tracks their class, stats, skills, health, and approval status
     public class CharacterSheetData
     {
         public int id { get; set; } = -1;
@@ -581,13 +603,15 @@ namespace AbsoluteRP
         public long createdAt { get; set; } = 0;
     }
 
-    public class IconData 
+    // A bookmarked or selected icon — stores the game icon ID and its loaded texture
+    public class IconData
     { 
         public string type { get; set; } = string.Empty;
         public uint iconID { get; set; } = 0;
         public string category { get; set; } = string.Empty;
         public IDalamudTextureWrap icon { get; set; } = null;
     }
+    // Data shown when hovering over another player — pulled from their profile on the server
     public class TooltipData
     {
         public string title { get; set; } = string.Empty;
@@ -611,9 +635,11 @@ namespace AbsoluteRP
         public IDalamudTextureWrap personality_2Img { get; set; }
         public IDalamudTextureWrap personality_3Img { get; set; }
     }
+    // A complete RP profile — contains avatar, background, content warnings, tabs, and display settings.
+    // Each FFXIV character can have multiple profiles (indexed by 'index').
     public class ProfileData
     {
-        public int index {  get; set; }
+        public int index {  get; set; } // which profile slot (a character can have multiple profiles)
         public int id { get; set; }
         public int accountID { get; set; }
         public string playerName { get; set; } = string.Empty;
@@ -635,6 +661,7 @@ namespace AbsoluteRP
         public Vector4 titleColor { get; set; }
         public bool isPrivate { get; set; }
         public bool isActive { get; set; }
+        public bool equipmentPublic { get; set; } = false; // when true, other players can inspect this profile's equipment
         public List<CustomTab> customTabs { get; set; } = new List<CustomTab>();
        
         public string OOC { get; set; }
@@ -695,6 +722,7 @@ namespace AbsoluteRP
         Event = 5,
         Campaign = 6,
     }
+    // The different layout types a profile tab can use — determines how the tab content is rendered
     public enum LayoutTypes
     {
         Relationship = 0,
@@ -765,6 +793,8 @@ namespace AbsoluteRP
         public bool showValue { set; get; }
         public Action action { set; get; }
     }
+    // Core UI utility class — contains enums for status messages and server packet responses,
+    // image loading/caching helpers, alignment/personality lookup tables, and layout type definitions.
     internal class UI
     {
         public static List<ImFontPtr> fontList = new List<ImFontPtr>();
@@ -788,6 +818,9 @@ namespace AbsoluteRP
             Right,
             Bottom
         }
+        // Status codes sent by the server in response to various actions.
+        // The client uses these to update the UI (show errors, success messages, etc.)
+        // Must match the server-side StatusMessages enum exactly.
         public enum StatusMessages
         {
             //Login
@@ -1787,14 +1820,16 @@ namespace AbsoluteRP
         };
 
     }
+    // A tab on a player's profile — each tab has a name, a layout type (Bio, Gallery, Tree, etc.),
+    // and a CustomLayout that holds the actual content for that layout type.
     public class CustomTab
     {
         public int ID;
         public string Name = string.Empty;
-        public bool IsOpen;
-        public bool ShowPopup;
-        public int type;
-        public CustomLayout Layout;
+        public bool IsOpen;          // whether the tab content is expanded
+        public bool ShowPopup;       // whether to show the tab editor popup
+        public int type;             // which LayoutTypes enum value this tab uses
+        public CustomLayout Layout;  // the content data for this tab's layout
     }
     public class Attribute()
     {

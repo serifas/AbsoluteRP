@@ -12,10 +12,10 @@ namespace AbsoluteRP.Helpers;
 public static class ThemeManager
 {
     // ── Default theme palette ──────────────────────────────────────────
-    public static readonly Vector4 DefaultBorder = new(0.22f, 0.22f, 0.28f, 0.65f);
+    public static readonly Vector4 DefaultBorder = new(0.16f, 0.16f, 0.22f, 0.65f);
     public static readonly Vector4 DefaultBackground = new(0f, 0f, 0f, 0.969f);
-    public static readonly Vector4 DefaultAccent = new(0.35f, 0.52f, 0.92f, 1.00f);
-    public static readonly Vector4 DefaultFont = new(0.92f, 0.93f, 0.95f, 1.00f);
+    public static readonly Vector4 DefaultAccent = new(0.28f, 0.42f, 0.78f, 1.00f);
+    public static readonly Vector4 DefaultFont = new(0.82f, 0.83f, 0.88f, 1.00f);
 
     // ── Cached derived colors (updated each PushTheme) ─────────────────
     public static Vector4 Border { get; private set; }

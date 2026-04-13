@@ -10,9 +10,11 @@ namespace AbsoluteRP.Defines
 
    
 
+    // Defines the RP inventory system — item types, subtypes, quality tiers, and their colors.
+    // These are roleplay items (not real game items) that players create and trade.
     internal class Items
     {
-       
+        // Top-level item categories
         public enum InventoryItemType
         {            
             Consumeable = 0,
@@ -24,6 +26,7 @@ namespace AbsoluteRP.Defines
             Script = 6,
             Key = 7,
         }
+        // Subtypes for consumable items
         public enum ConsumableType
         {
             Potion = 0,
@@ -32,6 +35,7 @@ namespace AbsoluteRP.Defines
             Food = 5,
             Aetheric = 6,
         }
+        // Armor/material subtypes (shared between armor and crafting materials)
         public enum MaterialType
         {
             Bone = 0,
@@ -44,6 +48,7 @@ namespace AbsoluteRP.Defines
             Alagan = 7,
             Runic = 8,
         }
+        // Weapon subtypes — covers all FFXIV-style weapon categories
         public enum Weapon
         {
             Fist = 0,
@@ -72,6 +77,7 @@ namespace AbsoluteRP.Defines
             Thrown = 23,
         }
 
+        // Quality/rarity tiers — affects the item's name color in the UI
         public enum ItemQuality
         {
             Common = 0,
@@ -83,6 +89,7 @@ namespace AbsoluteRP.Defines
 
 
 
+        // Maps each quality tier to its display color (used for item name text)
         public static Vector4 ItemQualityColors(int itemQuality)
         {
             switch (itemQuality)
@@ -96,6 +103,9 @@ namespace AbsoluteRP.Defines
             }
         }
 
+        // Master list of item categories: (Name, Description, Subtypes[]).
+        // Used to populate dropdowns in the item creation UI.
+        // Each entry maps to an InventoryItemType and lists its available subtypes.
         public static readonly (string, string, string[]?)[] InventoryTypes =
         {
             ("Consumable", "• Is consumed after specified amount of uses.", new string[]
@@ -160,6 +170,7 @@ namespace AbsoluteRP.Defines
                    "Rune",
             }),
         };
+        // Display names for quality tiers (indexed by ItemQuality enum value)
         public static readonly string[] ItemQualityTypes =
         {
             "Common",

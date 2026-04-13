@@ -466,8 +466,6 @@ namespace AbsoluteRP.Helpers
                     return null;
                 }
 
-                Plugin.PluginLog.Debug($"Successfully loaded TexFile for path: {gameTexturePath}");
-
                 // Create and return the texture
                 var texture = Plugin.TextureProvider.CreateFromTexFile(texFile);
                 if (texture == null || texture.Handle == IntPtr.Zero)

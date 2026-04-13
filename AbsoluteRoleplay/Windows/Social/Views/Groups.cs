@@ -19,6 +19,8 @@ using AbsoluteRP.Defines;
 
 namespace AbsoluteRP.Windows.Social.Views
 {
+    // Main groups UI — handles the groups list, group view with channels/chat, and all group interactions.
+    // This is the largest UI file and contains the chat rendering, member list, and group navigation.
     internal class GroupsData
     {
         public static Group currentGroup;

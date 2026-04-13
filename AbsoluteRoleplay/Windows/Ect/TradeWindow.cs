@@ -19,6 +19,7 @@ using AbsoluteRP.Helpers;
 
 namespace AbsoluteRP.Windows.Profiles
 {
+    // RP item trading window — two-panel view showing your inventory and the trade partner's offer
     public class TradeWindow : Window, IDisposable
     {
         public static InventoryLayout inventoryLayout = new InventoryLayout();

@@ -10,6 +10,8 @@ using System.Numerics;
 
 namespace AbsoluteRP.Helpers
 {
+    // Renders a 10x10 inventory grid with drag-and-drop support, item tooltips, and context menus.
+    // Used for the RP inventory system — items can be moved between slots, traded, and inspected.
     internal class ItemGrid
     {
         private const int GridSize = 10; // 10x10 grid for 200 slots

@@ -40,14 +40,21 @@ using System.Text;
 
 namespace AbsoluteRP
 {
+    // Main plugin class for Absolute Roleplay. Implements IDalamudPlugin to integrate
+    // with the FFXIV Dalamud framework. Responsible for:
+    //   - Initializing the network connection to the ARP server
+    //   - Registering all UI windows and the /arp command
+    //   - Hooking into game events (login, logout, territory changes, context menus)
+    //   - Running per-frame logic (tooltip display, nearby player scanning, compass)
+    //   - Managing the plugin lifecycle (setup, update loop, disposal)
     public partial class Plugin : IDalamudPlugin
     {
-        private bool windowsInitialized = false;
-        private float playersInRangeTimer = 0f;
+        private bool windowsInitialized = false;     // windows are created lazily on first frame the player is online
+        private float playersInRangeTimer = 0f;      // timer for periodic nearby-player scans (every 20 seconds)
         private int lastObjectTableCount = -1;
         public static IGameObject? LastMouseOverTarget;
         public float tooltipAlpha;
-        public static Plugin plugin;
+        public static Plugin plugin;                 // global singleton reference used throughout the codebase
         public string username = string.Empty;
         public string password = string.Empty;
         public string playername = string.Empty;
@@ -61,9 +68,9 @@ namespace AbsoluteRP
         public static bool firstopen = true;
         private bool pendingFetchConnections = false;
         private ushort pendingTerritory = 0;
-        private const string CommandName = "/arp";
-        public static Defines.Character character { get; set; } = null;
-        public static bool characterKeysVerified = false;
+        private const string CommandName = "/arp"; // slash command that opens the main panel
+        public static Defines.Character character { get; set; } = null; // currently active character (matched from local config)
+        public static bool characterKeysVerified = false; // true once we've confirmed the character keys are valid
 
         public bool loginAttempted = false;
         private IDtrBarEntry? statusBarEntry;
@@ -81,6 +88,8 @@ namespace AbsoluteRP
 
 
 
+        // --- Dalamud service injections ---
+        // These are automatically populated by the Dalamud framework at plugin load time.
         [PluginService] internal static IDataManager DataManager { get; private set; } = null;
         [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
         [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
@@ -149,10 +158,16 @@ namespace AbsoluteRP
         private string displayName = string.Empty;
 
 
+        // Plugin constructor — sets up everything needed at load time:
+        //   1. Global exception handlers (so one bad packet doesn't crash the game)
+        //   2. Config loading and default data path setup
+        //   3. Dalamud event hooks (draw, login/logout, territory change, context menu)
+        //   4. Initial server connection and auto-login
         public Plugin()
         {
             plugin = this;
 
+            // Catch unhandled exceptions to prevent game crashes
             AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
             TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
 
@@ -162,17 +177,18 @@ namespace AbsoluteRP
             CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
             {
                 HelpMessage = "opens the plugin window."
-            }); 
-      
+            });
+
             Configuration.Initialize(PluginInterface);
 
+            // Set default data save path on first run
             if (string.IsNullOrEmpty(Configuration.dataSavePath))
             {
                 Configuration.dataSavePath = $"{PluginInterface?.AssemblyLocation?.Directory?.FullName}\\ARPProfileData";
                 Configuration.Save();
             }
 
-            //PluginInterface.UiBuilder.Draw += DrawHitboxes;
+            // Register Dalamud callbacks
             PluginInterface.UiBuilder.Draw += DrawUI;
             PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
             PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
@@ -180,7 +196,7 @@ namespace AbsoluteRP
             ClientState.Logout += OnLogout;
             ClientState.Login += LoadConnection;
             ClientState.TerritoryChanged += FetchConnectionsInMap;
-            Framework.Update += Update;
+            Framework.Update += Update;            // per-frame update loop
             Plugin.HookProvider.InitializeFromAttributes(this);
 
 
@@ -189,10 +205,12 @@ namespace AbsoluteRP
             // Initialize CEF dependency manager for YouTube video playback
             CefDependencyManager.Initialize();
 
-
+            // Connect to the ARP server immediately
             LoadConnection();
-            
+
         }
+        // Returns all player characters within 1000 yalms of the local player.
+        // Used for the compass feature and nearby-player ARP profile scanning.
         public static List<IPlayerCharacter> VisiblePlayers()
         {
             var localPlayer = ObjectTable.LocalPlayer;
@@ -203,6 +221,8 @@ namespace AbsoluteRP
                 .ToList();
             return nearbyPlayers;
         }
+        // Returns a custom name for a nameplate if the player has set an "Identify As" override.
+        // Used to display RP names instead of real character names on nameplates.
         public static string GetNameForPlate(
         string originalName,
         int objectIndex,
@@ -231,6 +251,8 @@ namespace AbsoluteRP
             cachedVersion = await GetOnlineVersionAsync();
         }
 
+        // Called when the player changes zones. Defers the actual fetch to the Update loop
+        // to avoid sending requests with stale character keys during zone transitions.
         private void FetchConnectionsInMap(ushort obj)
         {
             if (!characterKeysVerified) return; // Don't send requests with stale keys
@@ -238,6 +260,7 @@ namespace AbsoluteRP
             pendingTerritory = obj;
         }
 
+        // Fetches the latest plugin version from GitHub to check if ToS needs re-acceptance
         public async Task<Version> GetOnlineVersionAsync()
         {
             try
@@ -274,6 +297,8 @@ namespace AbsoluteRP
             }
         }
 
+        // Opens the profile window and starts loading profile data from the server.
+        // If self=true, opens the editor; otherwise opens the target viewer.
         public void OpenAndLoadProfileWindow(bool self, int index)
         {
             if (self)
@@ -289,6 +314,9 @@ namespace AbsoluteRP
             DataSender.FetchProfile(Plugin.character, self, index, plugin.playername, plugin.playerworld, -1);
         }
 
+        // Adds ARP context menu items (View Profile, Bookmark, Invite to Group)
+        // when right-clicking a player name in chat, friend list, etc.
+        // Handles both direct object targets and name-based targets (like from chat).
         private unsafe void OnMenuOpened(IMenuOpenedArgs args)
         {
             var ctx = AgentContext.Instance();
@@ -354,6 +382,7 @@ namespace AbsoluteRP
 
         }
 
+        // Adds ARP menu items when right-clicking a player character in the game world
         private void ObjectContext(IMenuOpenedArgs args, uint objectId)
         {
             var obj = ObjectTable.SearchById(objectId);
@@ -430,6 +459,8 @@ namespace AbsoluteRP
             return cachedVersion != null && cachedVersion == Configuration.TOSVersion;
         }
 
+        // Initializes the server connection: registers packet handlers, connects,
+        // updates the status bar, and auto-logs in so features work immediately.
         public void LoadConnection()
         {
             ClientHandleData.InitializePackets();
@@ -440,6 +471,8 @@ namespace AbsoluteRP
             _ = AutoLoginAfterConnectAsync();
         }
 
+        // Waits for the connection to establish, then sends a login packet.
+        // This avoids requiring the user to manually open the panel before features work.
         private async Task AutoLoginAfterConnectAsync()
         {
             // Wait briefly for the connection to be established
@@ -463,6 +496,7 @@ namespace AbsoluteRP
             }
         }
 
+        // Resets plugin state when logging out — clears status bars and user info
         public void DisconnectAndLogOut()
         {
             connectionsBarEntry = null;
@@ -479,6 +513,7 @@ namespace AbsoluteRP
             DisconnectAndLogOut();
         }
 
+        // Catches async task exceptions that nobody awaited, preventing them from crashing the game
         private void UnobservedTaskExceptionHandler(object? sender, UnobservedTaskExceptionEventArgs e)
         {
             e.SetObserved();
@@ -512,6 +547,8 @@ namespace AbsoluteRP
             }
         }
 
+        // Creates the ARP icon in the Dalamud DTR (Data Text Row) server info bar.
+        // Clicking it toggles the main panel.
         public void LoadStatusBarEntry()
         {
             var entry = dtrBar.Get("AbsoluteRP");
@@ -549,6 +586,8 @@ namespace AbsoluteRP
             }
         }
 
+        // Shows a blinking group invite indicator in the DTR bar when invites are pending.
+        // The icon pulses between visible and hidden to draw the player's attention.
         public void LoadGroupInviteBarEntry(float deltaTime)
         {
             int inviteCount = GroupInviteNotification.GetPendingInviteCount();
@@ -588,6 +627,8 @@ namespace AbsoluteRP
             }
         }
 
+        // Cleans up all plugin resources: unregisters event hooks, disposes all windows,
+        // removes DTR bar entries, stops audio, and releases texture memory.
         public void Dispose()
         {
             WindowSystem?.RemoveAllWindows();
@@ -674,6 +715,8 @@ namespace AbsoluteRP
             }
         }
 
+        // Checks if the player is currently logged into a character in-game.
+        // Also updates the cached player name and world as a side effect.
         public static bool IsOnline()
         {
             if (ClientState == null || ObjectTable == null)
@@ -701,6 +744,9 @@ namespace AbsoluteRP
         private bool wasProfileWindowOpen = false;
         private bool wasTargetWindowOpen = false;
 
+        // Called every frame by Dalamud. Draws all ARP windows, the compass overlay,
+        // group invite dialogs, and DTR bar updates. Also detects when windows close
+        // to clean up audio players that may have been started inside them.
         private void DrawUI()
         {
             try
@@ -759,6 +805,9 @@ namespace AbsoluteRP
                 PluginLog.Debug($"Exception in DrawUI: {ex}");
             }
         }
+        // Opens a window, but first ensures the server connection is active and
+        // the Terms of Service have been accepted. If ToS is outdated, shows the
+        // ToS window instead of the requested one.
         public async Task LoadWindow(Window window, bool Toggle)
         {
             if (!ClientTCP.IsConnected())
@@ -839,6 +888,7 @@ namespace AbsoluteRP
             LikeDetailsWindow.IsOpen = true;
         }
 
+        // Polls the server connection state and updates the MainPanel status text/color
         internal async Task UpdateStatusAsync()
         {
             try
@@ -853,6 +903,12 @@ namespace AbsoluteRP
             }
         }
    
+        // Per-frame update loop. Handles:
+        //   1. One-time async initialization (version check)
+        //   2. Lazy window creation (deferred until the player is actually online)
+        //   3. Character key resolution (matches the logged-in character to stored config)
+        //   4. Periodic nearby-player scanning for the compass feature (every 20 seconds)
+        //   5. Tooltip display logic (show/hide based on mouse target and lock settings)
         public void Update(IFramework framework)
         {
             if (needsAsyncInit)
@@ -1015,6 +1071,10 @@ namespace AbsoluteRP
             }
         }
 
+        // --- Tooltip suppression checks ---
+        // These return true when tooltips should be hidden based on user settings.
+
+        // Hides tooltips while in a duty (if the user enabled that option)
         public bool InTooltipDutyLock()
         {
             if (Condition[ConditionFlag.BoundByDuty] && Configuration.tooltip_DutyDisabled == true)
@@ -1026,6 +1086,7 @@ namespace AbsoluteRP
                 return false;
             }
         }
+        // Hides tooltips while in combat (if the user enabled that option)
         public bool InTooltipCombatLock()
         {
             if (Condition[ConditionFlag.InCombat] && Configuration.tooltip_HideInCombat == true)
@@ -1037,6 +1098,7 @@ namespace AbsoluteRP
                 return false;
             }
         }
+        // Hides tooltips while in PvP (if the user enabled that option)
         public bool InTooltipPvpLock()
         {
             if (ClientState.IsPvP && Configuration.tooltip_PvPDisabled == true)
@@ -1048,6 +1110,8 @@ namespace AbsoluteRP
                 return false;
             }
         }
+        // --- Compass suppression checks (same concept but for the compass feature) ---
+
         public static bool InCompassCombatLock()
         {
             return Condition[ConditionFlag.InCombat] && Plugin.plugin.Configuration.showCompassInCombat == false;

@@ -44,6 +44,7 @@ namespace AbsoluteRP.Windows.Systems.Skills
 
         // Icon picker
         private static bool showIconPicker = false;
+        private static bool _deleteClassPopupOpen = true;
 
         // Class sub-view: 0=Details, 1=Skill Trees, 2=Passives
         private static int classSubTab = 0;
@@ -183,7 +184,8 @@ namespace AbsoluteRP.Windows.Systems.Skills
         {
             if (!showClassIconPicker) return;
 
-            ImGui.SetNextWindowSize(new Vector2(420, 350), ImGuiCond.FirstUseEver);
+            var scale = ImGui.GetIO().FontGlobalScale;
+            ImGui.SetNextWindowSize(new Vector2(700 * scale, 600 * scale), ImGuiCond.FirstUseEver);
             if (ImGui.Begin("Class Icon Picker##classIconPicker", ref showClassIconPicker))
             {
                 IDalamudTextureWrap dummyTex = null;
@@ -379,18 +381,37 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 ImGui.SameLine();
                 if (ThemeManager.DangerButton("X##delClass"))
                 {
-                    int classId = system.SkillClasses[selectedClassIndex].id;
-                    // Remove skills belonging to this class
-                    system.Skills.RemoveAll(s => s.classId == classId);
-                    // Remove connections referencing those skills
-                    system.SkillConnections.RemoveAll(c =>
-                        !system.Skills.Exists(s => s.id == c.fromSkillId) ||
-                        !system.Skills.Exists(s => s.id == c.toSkillId));
-                    system.SkillClasses.RemoveAt(selectedClassIndex);
-                    selectedClassIndex = -1;
-                    selectedTreeIndex = 0;
-                    connectingFromSkillId = null;
-                    return; // Exit early — class list changed
+                    ImGui.OpenPopup("ConfirmDeleteClass##confirmDelClass");
+                }
+
+                if (ImGui.BeginPopupModal("ConfirmDeleteClass##confirmDelClass", ref _deleteClassPopupOpen, ImGuiWindowFlags.AlwaysAutoResize))
+                {
+                    var className = system.SkillClasses[selectedClassIndex].name;
+                    ImGui.Text($"Are you sure you want to delete class \"{className}\"?");
+                    ImGui.Text("All skills and connections in this class will be removed.");
+                    ImGui.Spacing();
+
+                    if (ThemeManager.DangerButton("Delete"))
+                    {
+                        int classId = system.SkillClasses[selectedClassIndex].id;
+                        system.Skills.RemoveAll(s => s.classId == classId);
+                        system.SkillConnections.RemoveAll(c =>
+                            !system.Skills.Exists(s => s.id == c.fromSkillId) ||
+                            !system.Skills.Exists(s => s.id == c.toSkillId));
+                        system.SkillClasses.RemoveAt(selectedClassIndex);
+                        selectedClassIndex = -1;
+                        selectedTreeIndex = 0;
+                        connectingFromSkillId = null;
+                        ImGui.CloseCurrentPopup();
+                        ImGui.EndPopup();
+                        return;
+                    }
+                    ImGui.SameLine();
+                    if (ImGui.Button("Cancel"))
+                    {
+                        ImGui.CloseCurrentPopup();
+                    }
+                    ImGui.EndPopup();
                 }
 
                 ImGui.SameLine();
@@ -935,7 +956,8 @@ namespace AbsoluteRP.Windows.Systems.Skills
                 return;
             }
 
-            ImGui.SetNextWindowSize(new Vector2(420, 350), ImGuiCond.Appearing);
+            var iconScale = ImGui.GetIO().FontGlobalScale;
+            ImGui.SetNextWindowSize(new Vector2(700 * iconScale, 600 * iconScale), ImGuiCond.Appearing);
             if (ImGui.Begin("Select Skill Icon##IconPicker", ref showIconPicker, ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking))
             {
                 var skill = system.Skills[selectedSkillIndex];

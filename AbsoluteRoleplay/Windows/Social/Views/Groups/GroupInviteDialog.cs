@@ -10,6 +10,7 @@ using AbsoluteRP.Windows.Social.Views.Groups.GroupManager;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups
 {
+    // Dialog for inviting a player to a group — search by name and send an invitation
     public static class GroupInviteDialog
     {
         private static bool isOpen = false;

@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 
 namespace AbsoluteRP.Windows.Social.Views.SubViews
 {
+    // Group creation wizard — lets users set up a new group with name, description, logo, and visibility settings
     internal class GroupCreation
     {
         // Small per-group edit buffer so edits persist across frames.

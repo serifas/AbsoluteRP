@@ -11,6 +11,7 @@ using Dalamud.Interface.Textures.TextureWraps;
 
 namespace AbsoluteRP.Windows.Social.Views
 {
+    // Bookmarked profiles list — shows players the user has bookmarked for quick access
     public class Bookmarks
     {
         public static bool DisableBookmarkSelection = false;

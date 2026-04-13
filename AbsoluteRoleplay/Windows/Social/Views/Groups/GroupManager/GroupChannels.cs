@@ -9,6 +9,7 @@ using System.Numerics;
 
 namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
 {
+    // Channel management UI — create, edit, reorder, and delete channels within group categories
     internal class GroupChannels
     {
         private static int selectedCategoryIndex = -1;
