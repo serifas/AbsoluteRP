@@ -54,7 +54,7 @@
 
     <ItemGroup>
       <None Include="UI\inventory.png" />
-      <None Include="UI\listings.png" />
+      <None Include="UI\Listings.png" />
       <None Include="UI\social\groups\Settings.png" />
     </ItemGroup>
 
