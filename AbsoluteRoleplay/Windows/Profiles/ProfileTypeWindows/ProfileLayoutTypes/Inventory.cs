@@ -35,14 +35,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 Plugin.PluginLog.Debug("InventoryWindow Draw Debug: " + ex.Message);
             }
         }
-        public static async void DrawInventory(int index, string uniqueID, InventoryLayout layout)
+        public static void DrawInventory(int index, string uniqueID, InventoryLayout layout)
         {         
             ImGui.Spacing();
 
-            using var InventoryTab = ImRaii.Child($"INVENTORY{uniqueID}{layout.id}");
-            if (InventoryTab)
-            {         
-                await InvTab.LoadInventoryTabAsync(Plugin.plugin, layout);
+            using (ImRaii.Child($"INVENTORY{uniqueID}{layout.id}"))
+            {
+                InvTab.LoadInventoryTabAsync(Plugin.plugin, layout).GetAwaiter().GetResult();
             }
         }
 

@@ -2972,7 +2972,7 @@ namespace AbsoluteRP
                 .Push(ImGuiCol.ButtonHovered, black);
             ImGui.Button(title, Vector2.Zero);
 
-            using var defInfFontDen = ImRaii.DefaultFont();
+            using var defInfFontDen = ImRaii.FontDisposable.DefaultFont();
             using var defCol = ImRaii.DefaultColors();
             using var defStyle = ImRaii.DefaultStyle();
         }

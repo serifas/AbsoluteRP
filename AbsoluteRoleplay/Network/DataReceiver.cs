@@ -1569,37 +1569,7 @@ namespace Networking
             }
         }
 
-        internal static void ReceiveChatMessage(byte[] data)
-        {
-            try
-            {
-                using (var buffer = new ByteBuffer())
-                {
-                    buffer.WriteBytes(data);
-                    var packetID = buffer.ReadInt();
-                    int userID = buffer.ReadInt();
-                    int profileID = buffer.ReadInt();
-                    string Name = buffer.ReadString();
-                    string World = buffer.ReadString();
-                    string profileName = buffer.ReadString();
-                    int avatarBytesLen = buffer.ReadInt();
-                    byte[] avatarBytes = buffer.ReadBytes(avatarBytesLen);
-                    string message = buffer.ReadString();
-                    bool isAnnouncement = buffer.ReadBool();
-                    IDalamudTextureWrap avatar = Plugin.TextureProvider.CreateFromImageAsync(avatarBytes).Result;
-                    if (isAnnouncement)
-                    {
-                        message = message.Replace("/announce", "[ANNOUNCEMENT]");
-                    }
-                    ARPChatWindow.messages.Add(new ChatMessage { isAnnouncement = isAnnouncement, authorUserID = userID, authorProfileID = profileID, name = Name, world = World, authorName = profileName, avatar = avatar, message = message });
-
-                }
-            }
-            catch (Exception ex)
-            {
-                Plugin.PluginLog.Debug($"Debug handling ReceiveConnectionsRequest message: {ex}");
-            }
-        }
+      
         internal static void ReceiveDynamicTab(byte[] data)
         {
             try

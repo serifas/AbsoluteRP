@@ -140,7 +140,7 @@ namespace AbsoluteRP.Helpers
                     PlayerInteractions.CompassDragPosition.Y,
                     dragBoxSize.X,
                     dragBoxSize.Y,
-                    Plugin.ClientState.LocalPlayer.Rotation
+                    Plugin.ObjectTable.LocalPlayer.Rotation
                 );
 
                 ImGui.End();
@@ -268,7 +268,7 @@ namespace AbsoluteRP.Helpers
             float centerX, float centerY, float compassWidth, float compassHeight, float localYaw)
         {
             var drawList = ImGui.GetBackgroundDrawList();
-            var localPlayer = Plugin.ClientState.LocalPlayer;
+            var localPlayer = Plugin.ObjectTable.LocalPlayer;
             if (localPlayer == null) return;
 
             float maxOffset = compassWidth / 2 - 20;

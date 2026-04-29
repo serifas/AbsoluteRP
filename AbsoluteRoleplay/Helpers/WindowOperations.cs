@@ -81,7 +81,7 @@ namespace AbsoluteRP.Helpers
         {
             if (Plugin.plugin.Configuration.tooltip_Enabled && !Plugin.ClientState.IsGPosing)
             {
-                if (mouseOverTarget.ObjectKind == ObjectKind.Player)
+                if (mouseOverTarget.ObjectKind == ObjectKind.Pc)
                 {
 
                     //Hitboxes.DrawTooltipHitbox(player, GameGUI, 0.200f);

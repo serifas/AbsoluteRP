@@ -190,13 +190,10 @@ namespace AbsoluteRP.Windows.Inventory
                 // Empty slot - show slot name
                 if (ImGui.IsItemHovered())
                 {
-                    using (var tooltip = ImRaii.Tooltip())
+                    using (ImRaii.Tooltip())
                     {
-                        if (tooltip)
-                        {
-                            ImGui.Text(slotName);
-                            ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1.0f), "Empty");
-                        }
+                        ImGui.Text(slotName);
+                        ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1.0f), "Empty");
                     }
                 }
             }

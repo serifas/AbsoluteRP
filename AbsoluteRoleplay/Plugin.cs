@@ -67,7 +67,7 @@ namespace AbsoluteRP
         public static bool justRegistered;
         public static bool firstopen = true;
         private bool pendingFetchConnections = false;
-        private ushort pendingTerritory = 0;
+        private uint pendingTerritory = 0;
         private const string CommandName = "/arp"; // slash command that opens the main panel
         public static Defines.Character character { get; set; } = null; // currently active character (matched from local config)
         public static bool characterKeysVerified = false; // true once we've confirmed the character keys are valid
@@ -133,7 +133,6 @@ namespace AbsoluteRP
         private MainPanel? MainPanel { get; set; }
         private ImportantNotice? ImportantNoticeWindow { get; set; }
         private ProfileWindow? ProfileWindow { get; set; }
-        private ARPChatWindow? ArpChatWindow { get; set; }
         private TargetProfileWindow? TargetWindow { get; set; }
         private ImagePreview? ImagePreview { get; set; }
         private TOS? TermsWindow { get; set; }
@@ -209,6 +208,14 @@ namespace AbsoluteRP
             LoadConnection();
 
         }
+
+        private void FetchConnectionsInMap(uint obj)
+        {
+            if (!characterKeysVerified) return; // Don't send requests with stale keys
+            pendingFetchConnections = true;
+            pendingTerritory = obj;
+        }
+
         // Returns all player characters within 1000 yalms of the local player.
         // Used for the compass feature and nearby-player ARP profile scanning.
         public static List<IPlayerCharacter> VisiblePlayers()
@@ -249,15 +256,6 @@ namespace AbsoluteRP
         private async Task InitializeAsync()
         {
             cachedVersion = await GetOnlineVersionAsync();
-        }
-
-        // Called when the player changes zones. Defers the actual fetch to the Update loop
-        // to avoid sending requests with stale character keys during zone transitions.
-        private void FetchConnectionsInMap(ushort obj)
-        {
-            if (!characterKeysVerified) return; // Don't send requests with stale keys
-            pendingFetchConnections = true;
-            pendingTerritory = obj;
         }
 
         // Fetches the latest plugin version from GitHub to check if ToS needs re-acceptance
@@ -649,7 +647,6 @@ namespace AbsoluteRP
             MainPanel?.Dispose();
             TermsWindow?.Dispose();
             ImagePreview?.Dispose();
-            ArpChatWindow?.Dispose();
             ProfileWindow?.Dispose();
             NotesWindow?.Dispose();
             ImportantNoticeWindow?.Dispose();
@@ -873,7 +870,6 @@ namespace AbsoluteRP
         public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
         public void OpenSocialWindow() => SocialWindow.IsOpen = true;
-        public void ToggleChatWindow() => ArpChatWindow.IsOpen = true;
         public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
         public void OpenTradeWindow() => TradeWindow.IsOpen = true;
         public void CloseTradeWindow() => TradeWindow.IsOpen = false;
@@ -928,7 +924,6 @@ namespace AbsoluteRP
                 ImportantNoticeWindow = new ImportantNotice();
                 TargetWindow = new TargetProfileWindow();
                 ModeratorPanel = new ModPanel();
-                ArpChatWindow = new ARPChatWindow(chatgui);
                 ReportWindow = new ReportWindow();
                 TooltipWindow = new ARPTooltipWindow();
                 NotesWindow = new NotesWindow();
@@ -954,7 +949,6 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(TooltipWindow);
                 WindowSystem.AddWindow(NotesWindow);
                 WindowSystem.AddWindow(SocialWindow);
-                WindowSystem.AddWindow(ArpChatWindow);
                 WindowSystem.AddWindow(ImportantNoticeWindow);
                 WindowSystem.AddWindow(TradeWindow);
                 WindowSystem.AddWindow(SystemsWindow);
@@ -966,7 +960,6 @@ namespace AbsoluteRP
                 WindowSystem.AddWindow(EquipmentWindow);
 
                 LoadStatusBarEntry();
-                chatgui.ChatMessage += ArpChatWindow.OnChatMessage;
                 
             }
 
@@ -1061,7 +1054,7 @@ namespace AbsoluteRP
                 (
                     currentTarget == null ||
                     (currentTarget is IGameObject obj &&
-                     obj.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Player &&
+                     obj.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Pc &&
                      TooltipWindow.IsOpen)
                 )
             )

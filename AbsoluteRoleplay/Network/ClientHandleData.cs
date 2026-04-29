@@ -45,7 +45,6 @@ namespace Networking
             packets.Add((int)ServerPackets.ReceiveProfileSettings, DataReceiver.ReceiveProfileSettings);
 
             // --- Chat, social, and UI feature packets ---
-            packets.Add((int)ServerPackets.ReceiveChatMessage, DataReceiver.ReceiveChatMessage);
             packets.Add((int)ServerPackets.ReceiveProfileWarning, DataReceiver.RecieveProfileWarning);
             packets.Add((int)ServerPackets.ReceiveProfileListings, DataReceiver.ReceivePersonalListings);
             packets.Add((int)ServerPackets.ReceiveProfileDetails, DataReceiver.ReceiveDetailsTab);
