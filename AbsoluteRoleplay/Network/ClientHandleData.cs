@@ -164,6 +164,9 @@ namespace Networking
             // Joined systems
             packets.Add((int)ServerPackets.SendJoinedSystems, DataReceiver.HandleJoinedSystems);
 
+            
+            packets.Add((int)ServerPackets.SendProfilesByAccountTag, DataReceiver.HandleProfilesByAccountTag);
+
             // Equipment
             packets.Add((int)ServerPackets.SendEquipment, DataReceiver.HandleEquipment);
             packets.Add((int)ServerPackets.SendTargetEquipment, DataReceiver.HandleTargetEquipment);

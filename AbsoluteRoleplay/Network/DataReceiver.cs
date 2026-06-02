@@ -210,6 +210,7 @@ namespace Networking
         SendPublicSystemData = 263,
         SendSystemBans = 268,
         SendJoinedSystems = 273,
+        SendProfilesByAccountTag = 274,
     }
     // Contains all packet handler methods that process data received from the server.
     // Every handler follows the same pattern:
@@ -7138,6 +7139,52 @@ namespace Networking
 
         // Pending joined system IDs that need to be fetched when Plugin.character is available
         public static List<int> pendingJoinedSystemIds = new List<int>();
+
+        public static event Action<string, List<ARPProfileSummary>>? OnProfilesByTagReceived;
+
+        public static void HandleProfilesByAccountTag(byte[] data)
+        {
+            try
+            {
+                using var buffer = new ByteBuffer();
+                buffer.WriteBytes(data);
+                buffer.ReadInt(); // packetID
+                string tagName = buffer.ReadString();
+                int count = buffer.ReadInt();
+                var list = new List<ARPProfileSummary>(count);
+                for (int i = 0; i < count; i++)
+                {
+                    list.Add(new ARPProfileSummary
+                    {
+                        ProfileId    = buffer.ReadInt(),
+                        ProfileIndex = buffer.ReadInt(),
+                        ProfileName  = buffer.ReadString(),
+                        PlayerName   = buffer.ReadString(),
+                        PlayerWorld  = buffer.ReadString(),
+                        ProfileType  = buffer.ReadInt(),
+                        IsTooltip    = buffer.ReadInt() != 0,
+                    });
+                }
+                Plugin.PluginLog.Info($"[ARPIpc] Received {count} profile(s) for tag '{tagName}'");
+                try { OnProfilesByTagReceived?.Invoke(tagName, list); }
+                catch (Exception ex) { Plugin.PluginLog.Debug($"OnProfilesByTagReceived handler threw: {ex.Message}"); }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Error($"HandleProfilesByAccountTag Error: {ex.Message}");
+            }
+        }
+
+        public sealed class ARPProfileSummary
+        {
+            public int    ProfileId    { get; set; }
+            public int    ProfileIndex { get; set; }
+            public string ProfileName  { get; set; } = string.Empty;
+            public string PlayerName   { get; set; } = string.Empty;
+            public string PlayerWorld  { get; set; } = string.Empty;
+            public int    ProfileType  { get; set; }
+            public bool   IsTooltip    { get; set; }
+        }
 
         public static void HandleJoinedSystems(byte[] data)
         {

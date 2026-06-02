@@ -207,7 +207,10 @@ namespace AbsoluteRP
             // Connect to the ARP server immediately
             LoadConnection();
 
+            ARPIpc = new IPC.ARPIpc(PluginInterface);
         }
+
+        public IPC.ARPIpc? ARPIpc { get; private set; }
 
         private void FetchConnectionsInMap(uint obj)
         {
@@ -629,6 +632,7 @@ namespace AbsoluteRP
         // removes DTR bar entries, stops audio, and releases texture memory.
         public void Dispose()
         {
+            ARPIpc?.Dispose();
             WindowSystem?.RemoveAllWindows();
             statusBarEntry?.Remove();
             statusBarEntry = null;

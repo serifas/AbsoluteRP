@@ -186,6 +186,73 @@ namespace AbsoluteRP.Caching
             }
         }
 
+        public static ProfileData? LoadProfileCacheByName(string playerName)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(playerName)) return null;
+                var cacheDir = GetCacheDirectory();
+                if (cacheDir == null) return null;
+
+                var nameSeg = SanitizeFileNameSegment(playerName);
+
+                var files = Directory.EnumerateFiles(cacheDir, "*.json", SearchOption.TopDirectoryOnly)
+                    .Where(f =>
+                    {
+                        var fn = Path.GetFileNameWithoutExtension(f);
+                        return !string.IsNullOrEmpty(fn)
+                            && fn.IndexOf(nameSeg, StringComparison.OrdinalIgnoreCase) >= 0;
+                    })
+                    .ToList();
+                if (files.Count == 0) return null;
+
+                var chosen = files.OrderByDescending(File.GetLastWriteTimeUtc).First();
+                var json = File.ReadAllText(chosen);
+                var dto = JsonSerializer.Deserialize<ProfileDto>(json, JsonOptions);
+                if (dto == null) return null;
+
+                Plugin.PluginLog?.Debug($"[ProfilesCache] Loaded profile cache by name from {chosen}");
+                return dto.ToProfile();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"[ProfilesCache] LoadProfileCacheByName failed: {ex}");
+                return null;
+            }
+        }
+
+        public static List<ProfileData> LoadProfilesByAccountTag(string tagName)
+        {
+            var result = new List<ProfileData>();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(tagName)) return result;
+                var cacheDir = GetCacheDirectory();
+                if (cacheDir == null) return result;
+
+                foreach (var file in Directory.EnumerateFiles(cacheDir, "*.json", SearchOption.TopDirectoryOnly))
+                {
+                    try
+                    {
+                        var json = File.ReadAllText(file);
+
+                        if (json.IndexOf("\"accountTag\":\"" + tagName + "\"",
+                                StringComparison.OrdinalIgnoreCase) < 0)
+                            continue;
+                        var dto = JsonSerializer.Deserialize<ProfileDto>(json, JsonOptions);
+                        if (dto == null) continue;
+                        result.Add(dto.ToProfile());
+                    }
+                    catch {  }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"[ProfilesCache] LoadProfilesByAccountTag failed: {ex}");
+            }
+            return result;
+        }
+
         /// <summary>
         /// Check whether a cached profile file exists for the given player name and world.
         /// Returns true when at least one cache file contains both sanitized name and world segments.

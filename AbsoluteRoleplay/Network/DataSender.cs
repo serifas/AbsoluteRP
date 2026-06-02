@@ -267,6 +267,7 @@ namespace Networking
         CJoinSystem = 271,
         CLeaveSystem = 272,
         CFetchJoinedSystems = 273,
+        CFetchProfilesByAccountTag = 274,
     }
     // Builds and sends all outbound packets to the server.
     // Every method follows the same pattern:
@@ -613,6 +614,27 @@ namespace Networking
                 }
             }
         }
+        public static async void FetchProfilesByAccountTag(Character character, string tagName)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            if (string.IsNullOrWhiteSpace(tagName)) return;
+            try
+            {
+                using (var buffer = new ByteBuffer())
+                {
+                    buffer.WriteInt((int)ClientPackets.CFetchProfilesByAccountTag);
+                    buffer.WriteString(plugin.Configuration.account.accountKey);
+                    buffer.WriteString(character.characterKey);
+                    buffer.WriteString(tagName);
+                    await ClientTCP.SendDataAsync(buffer.ToArray());
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("Debug in FetchProfilesByAccountTag: " + ex.ToString());
+            }
+        }
+
         // Creates a new profile on the server with the given title and type
         public static async void CreateProfile(Character character, string profileTitle, int profileType, int index)
         {
