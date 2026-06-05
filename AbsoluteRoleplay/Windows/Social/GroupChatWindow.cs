@@ -325,10 +325,10 @@ namespace AbsoluteRP.Windows.Social
                 }
             }
 
-            // Draw avatar (either from member data or placeholder)
+            var chatAccent = new Vector4(1f, 0.85f, 0.30f, 1f);
             if (avatarTexture != null && avatarTexture.Handle != IntPtr.Zero)
             {
-                ImGui.Image(avatarTexture.Handle, new Vector2(40, 40));
+                AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(avatarTexture.Handle, 40f, chatAccent, borderThickness: 2f);
                 ImGui.SameLine();
             }
             else

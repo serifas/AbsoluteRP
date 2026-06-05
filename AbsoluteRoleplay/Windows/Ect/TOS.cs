@@ -26,7 +26,7 @@ namespace AbsoluteRP.Windows.Ect
             SizeConstraints = new WindowSizeConstraints
             {
                 MinimumSize = new Vector2(200, 200),
-                MaximumSize = new Vector2(1200, 1200)
+                MaximumSize = new Vector2(500, 500)
             };
             Task.Run(() =>
             {

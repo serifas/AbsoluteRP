@@ -45,13 +45,17 @@ namespace AbsoluteRP.Windows.Ect
             {
                 if (tooltipData == null) return;
 
+                if (config.tooltip_showAvatar && tooltipData.avatar != null)
+                {
+                    var avail = ImGui.GetContentRegionAvail().X;
+                    if (avail > 100f) ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (avail - 100f) * 0.5f);
+                    Helpers.Anim.DrawCircleAvatarInline(tooltipData.avatar.Handle, 100f, tooltipData.titleColor, borderThickness: 2.5f);
+                }
+
                 if (!string.IsNullOrEmpty(tooltipData.title) && tooltipData.title != "New Profile")
                     Misc.SetTitle(Plugin.plugin, false, tooltipData.title, tooltipData.titleColor);
 
-                if (config.tooltip_showAvatar && tooltipData.avatar != null)
-                {
-                    ImGui.Image(tooltipData.avatar.Handle, new Vector2(100, 100));
-                }
+              
 
                 if (config.tooltip_showName && !string.IsNullOrEmpty(tooltipData.Name))
                 {

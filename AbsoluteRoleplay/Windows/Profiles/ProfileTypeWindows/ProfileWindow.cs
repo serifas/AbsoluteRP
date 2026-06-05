@@ -109,6 +109,15 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public static int currentLayoutType = 0;
         private const int MaxTabs = 10; // Maximum number of tabs
         private bool[] showInputPopup = new bool[MaxTabs]; // Array of flags to show the input popups for new tabs
+
+        public static bool IsNewPagePopupOpen()
+        {
+            var win = profileWindow;
+            if (win == null || win.showInputPopup == null) return false;
+            for (int i = 0; i < win.showInputPopup.Length; i++)
+                if (win.showInputPopup[i]) return true;
+            return false;
+        }
         private string[] newTabNames = new string[MaxTabs];
         private int customTabsCount = 0; // Current number of tabs
         private int tabToDeleteIndex = -1; // Index of the tab to delete
@@ -235,7 +244,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         }
         public override void Draw()
         {
-            // Draw save progress overlay — skip all other content while saving
             if (ProfileSaveTracker.IsSaving)
             {
                 DrawSaveProgressOverlay();
@@ -244,6 +252,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
 
             try
             {
+                Helpers.TutorialManager.BeginFrame();
+                MaybeAutoStartTutorial();
+                Helpers.TutorialManager.AnchorRect(
+                    Helpers.ProfileTutorial.Anchor_Window,
+                    ImGui.GetWindowPos(),
+                    ImGui.GetWindowPos() + ImGui.GetWindowSize());
+
                 Defines.Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
                 if (character == null)
                 {
@@ -253,6 +268,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         openVerifyPopup = true;
                         ImGui.OpenPopup("Verify Character");
                     }
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_VerifyBtn);
 
                     // Popup logic
                     if (openVerifyPopup)
@@ -462,6 +478,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             {
                                 showTypeCreation = true;
                             }
+                            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_AddProfileBtn);
                             if (profiles.Count > 0 && ExistingProfile == true)
                             {
                                 AddProfileSelection();
@@ -474,6 +491,10 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     DataSender.FetchProfile(Plugin.character, false, profileIndex, Plugin.character.characterName, Plugin.character.characterWorld, -1);
                                 }
                                 DrawProfile();
+                            }
+                            else
+                            {
+                                DrawTutorialControlsRow();
                             }
                          
                             if (profiles.Count <= 0)
@@ -495,13 +516,91 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             }
             catch (Exception ex)
             {
-                if(hasDrawException == false) // Prevent spamming the log with the same Debug
+                if(hasDrawException == false)
                 {
                     hasDrawException = true;
                     Plugin.PluginLog.Debug("ProfileWindow Draw Debug: " + ex.Message + "\n" + ex.StackTrace);
                 }
             }
+
+            Helpers.TutorialManager.Draw();
         }
+
+        private void DrawTutorialControlsPinnedRight()
+        {
+            DrawTutorialControlsRow();
+        }
+
+        private static int ResolveLayoutTypeInt(CustomLayout layout) => layout switch
+        {
+            TreeLayout      => (int)LayoutTypes.Relationship,
+            DynamicLayout   => (int)LayoutTypes.Roster,
+            BioLayout       => (int)LayoutTypes.Bio,
+            DetailsLayout   => (int)LayoutTypes.Details,
+            StoryLayout     => (int)LayoutTypes.Story,
+            InfoLayout      => (int)LayoutTypes.Info,
+            GalleryLayout   => (int)LayoutTypes.Gallery,
+            InventoryLayout => (int)LayoutTypes.Inventory,
+            _               => (int)(layout?.layoutType ?? LayoutTypes.Relationship),
+        };
+
+        private void DrawTutorialControlsRow()
+        {
+            var cfg = Plugin.plugin.Configuration;
+            bool enabled = cfg.TutorialsEnabled;
+
+            if (ImGui.Checkbox("Tutorials", ref enabled))
+            {
+                cfg.TutorialsEnabled = enabled;
+                cfg.Save();
+                if (!enabled)
+                {
+                    Helpers.TutorialManager.Stop();
+                }
+                else
+                {
+                    cfg.ProfileTutorialCompleted = false;
+                    cfg.Save();
+                    Helpers.ProfileTutorial.Install();
+                    Helpers.TutorialManager.Start(Helpers.ProfileTutorial.Flow, Helpers.ProfileTutorial.Step_Welcome);
+                }
+            }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_TutorialToggle);
+
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Walks you through the profile editor step by step. Untick to stop showing the guide.");
+            }
+
+            if (Helpers.TutorialManager.Active || enabled)
+            {
+                ImGui.SameLine();
+                var actionLabel = Helpers.TutorialManager.Active ? "Restart##tutorial" : "Start##tutorial";
+                if (ImGui.SmallButton(actionLabel))
+                {
+                    cfg.ProfileTutorialCompleted = false;
+                    cfg.Save();
+                    Helpers.ProfileTutorial.Install();
+                    Helpers.TutorialManager.Start(Helpers.ProfileTutorial.Flow, Helpers.ProfileTutorial.Step_Welcome);
+                }
+            }
+        }
+
+        private static bool tutorialAutoStartAttempted = false;
+        private void MaybeAutoStartTutorial()
+        {
+            if (tutorialAutoStartAttempted) return;
+            tutorialAutoStartAttempted = true;
+            var cfg = Plugin.plugin.Configuration;
+            if (cfg.TutorialsEnabled && !cfg.ProfileTutorialCompleted && !Helpers.TutorialManager.Active)
+            {
+                Helpers.ProfileTutorial.Install();
+                Helpers.TutorialManager.Start(Helpers.ProfileTutorial.Flow, Helpers.ProfileTutorial.Step_Welcome);
+            }
+        }
+
         public static void CreateProfile()
         {
             DataSender.CreateProfile(Plugin.character, NewProfileTitle, currentProfileType + 1, profiles.Count);
@@ -529,10 +628,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     ImGui.Text($"Profile Type:");
                     ImGui.SameLine();
                     DrawProfileTypeSelection();
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_TypeDropdown);
                     ImGui.Spacing();
                     ImGui.Text("Profile Title:");
                     ImGui.SameLine();
                     ImGui.InputText("##ProfileTitle", ref NewProfileTitle, 50);
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_ProfileTitle);
 
                     if (ThemeManager.PillButton("Create"))
                     {
@@ -540,6 +641,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         showTypeCreation = false;
                         ImGui.CloseCurrentPopup();
                     }
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_CreateBtn);
 
                     ImGui.SameLine();
 
@@ -604,13 +706,25 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             bool SpoilerSHB = CurrentProfile.SpoilerSHB;
             bool SpoilerEW = CurrentProfile.SpoilerEW;
             bool SpoilerDT = CurrentProfile.SpoilerDT;
+
+            // Stagger every group of widgets so the profile cascades in when
+            // the page opens or you switch profile index.
+            var animKey = $"{Plugin.character?.characterName ?? "?"}@{Plugin.character?.characterWorld}/{profileIndex}";
+            Helpers.Anim.ResetKey("profile", animKey);
+            var anim = $"profile/{animKey}";
+
+            Helpers.Anim.PushAlpha(anim + ".g1", 0.40f, 0.00f);
+            DrawTutorialControlsRow();
+            ImGui.Spacing();
             if(ImGui.Checkbox("Set Private", ref isPrivate)) { CurrentProfile.isPrivate = isPrivate; }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_Private);
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("Leave unchecked to keep profile publicly viewable");
             }
             ImGui.SameLine();
             if(ImGui.Checkbox("Set As Current", ref activeProfile)) { CurrentProfile.isActive = activeProfile; }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_Active);
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("Sets this profile as your current viewable profile when public");
@@ -620,14 +734,19 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             {
                 DataSender.SetCompassStatus(Plugin.character, showOnCompass, profileIndex);
             }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_Compass);
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("This will make your position publicly visible on the compass while this profile is set as current");
             }
+            var nsfwMin = ImGui.GetCursorScreenPos();
             if(ImGui.Checkbox("Set as 18+", ref NSFW)) { CurrentProfile.NSFW = NSFW; }
             ImGui.SameLine();
             if(ImGui.Checkbox("Set as Triggering", ref Triggering)) { CurrentProfile.TRIGGERING = Triggering; }
+            var nsfwMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_NsfwTrigger, nsfwMin, nsfwMax);
             ImGui.Text("Has Spoilers From:");
+            var spoilerMin = ImGui.GetCursorScreenPos();
             if(ImGui.Checkbox("A Realm Reborn", ref SpoilerARR)) {  CurrentProfile.SpoilerARR = SpoilerARR; }
             ImGui.SameLine();
             if(ImGui.Checkbox("Heavensward", ref SpoilerHW)) {  CurrentProfile.SpoilerHW = SpoilerHW; }
@@ -638,13 +757,18 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             if(ImGui.Checkbox("Endwalker", ref SpoilerEW)) {  CurrentProfile.SpoilerEW = SpoilerEW; }
             ImGui.SameLine();
             if(ImGui.Checkbox("Dawntrail", ref SpoilerDT)) { CurrentProfile.SpoilerDT = SpoilerDT; }
+            var spoilerMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_Spoilers, spoilerMin, spoilerMax);
+            Helpers.Anim.PopAlpha();  // end Group 1
 
+            Helpers.Anim.PushAlpha(anim + ".g2", 0.40f, 0.10f);
             using (ImRaii.Disabled(ProfileSaveTracker.IsSaving))
             {
                 if (ThemeManager.PillButton(ProfileSaveTracker.IsSaving ? "Saving..." : "Save Profile"))
                 {
                     SubmitProfileData(false);
                 }
+                Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_SaveBtn);
             }
             ImGui.SameLine();
             using (ImRaii.Disabled(!Plugin.CtrlPressed()))
@@ -699,6 +823,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             {
                 ImGui.SetTooltip("Loading a backup can completely replace this profile, if you do not wish to overwrite it, please make a new profile to load on to.");
             }
+            Helpers.Anim.PopAlpha();  // end Group 2
 
             ImGui.Spacing();
             Vector2 imageStartPos = ImGui.GetCursorScreenPos();
@@ -731,37 +856,50 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 return;
             }
             Vector2 avatarSize = currentAvatarImg.Size * ImGui.GetIO().FontGlobalScale;
-            float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2;
+            float avatarDiameter = MathF.Min(avatarSize.X, avatarSize.Y);
+            float centeredX = (ImGui.GetContentRegionAvail().X - avatarDiameter) / 2;
             var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
             float avatarXPos = (windowSize.X - avatarBtnSize.X) / 2;
+            Helpers.Anim.PushAlpha(anim + ".g3", 0.45f, 0.20f);
             ImGui.SetCursorPosX(centeredX);
             if(currentAvatarImg != null && currentAvatarImg.Handle != IntPtr.Zero)
             {
-                ImGui.Image(currentAvatarImg.Handle, avatarSize);
+                Helpers.Anim.DrawCircleAvatarInline(currentAvatarImg.Handle, avatarDiameter, CurrentProfile.titleColor, borderThickness: 3f);
             }
             ImGui.SetCursorPosX(avatarXPos);
             if (ThemeManager.GhostButton("Edit Avatar"))
             {
                 editAvatar = true;
             }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_EditAvatarBtn);
             ImGui.Spacing();
+            Helpers.Anim.PopAlpha();  // end Group 3
+
+            Helpers.Anim.PushAlpha(anim + ".g4", 0.40f, 0.30f);
             Vector4 color = CurrentProfile.titleColor;
             if (!string.IsNullOrEmpty(CurrentProfile.title))
             {
                 Misc.SetTitle(Plugin.plugin, true, CurrentProfile.title, color);
             }
             string ProfileTitle = CurrentProfile.title ?? string.Empty;
+            var titleMin = ImGui.GetCursorScreenPos();
             if(Misc.DrawXCenteredInput("TITLE:", $"Title{profileIndex}", ref ProfileTitle, 50))
             {
                 CurrentProfile.title = ProfileTitle;
             }
             ImGui.SameLine();
             if(ImGui.ColorEdit4($"##Text Input Color{profileIndex}", ref color, ImGuiColorEditFlags.NoInputs)) { CurrentProfile.titleColor = color; }
+            var titleMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_TitleInput, titleMin, titleMax);
+            Helpers.Anim.PopAlpha();  // end Group 4
+
+            Helpers.Anim.PushAlpha(anim + ".g5", 0.40f, 0.40f);
             // Get the actual name and world ID
             var uploadBtnSize = ImGui.CalcTextSize("Set Background") + new Vector2(10, 10);
             float uploadXPos = (windowSize.X - uploadBtnSize.X) / 2;
 
             ImGui.SetCursorPosX(uploadXPos);
+            var setBgMin = ImGui.GetCursorScreenPos();
             if (ThemeManager.GhostButton("Set Background"))
             {
                 editBackground = true;
@@ -769,10 +907,11 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             ImGui.SameLine();
             if (ThemeManager.DangerButton("X##RemoveBackground"))
             {
-                // Create a 4x4 transparent PNG
                 CurrentProfile.backgroundBytes = CreateTransparentPng();
                 backgroundImage = null;
             }
+            var setBgMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_SetBackground, setBgMin, setBgMax);
             if (ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("Remove background image");
@@ -788,6 +927,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             {
                 ImGui.SetTooltip(UI.inputHelperUrlInfo);
             }
+            Helpers.Anim.PopAlpha();  // end Group 5
+
+            Helpers.Anim.PushAlpha(anim + ".g6", 0.50f, 0.55f);
             ImGui.Spacing();
             ThemeManager.GradientSeparator();
             using (var navigation = ImRaii.TabBar("ProfileNavigation"))
@@ -814,6 +956,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             newTabNames[customTabsCount] = "";
                             ImGui.OpenPopup($"New Page##{customTabsCount}");
                         }
+                        Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_AddTabBtn);
                     }
                     /*
                     // "Reorder Tabs" button at the end of the tab bar
@@ -926,10 +1069,10 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     editBackground = false;
                     Misc.EditImage(Plugin.plugin, _fileDialogManager, null, false, true, 0);
                 }
-            }      
-
+            }
+            Helpers.Anim.PopAlpha();  // end Group 6
         }
-     
+
         public void RenderCustomTabs()
         {
             try
@@ -950,43 +1093,22 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     showInputPopup[i] = showPopup;
                                     ImGui.Text($"Enter the name for the page:");
                                     ImGui.InputText($"##TabInput{i}", ref newTabNames[i], 100);
+                                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_NewPageName);
+                                    var layoutDdMin = ImGui.GetCursorScreenPos();
                                     DrawLayoutTypeSelection();
+                                    var layoutDdMax = ImGui.GetItemRectMax();
+                                    Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_LayoutDropdown, layoutDdMin, layoutDdMax);
+                                    Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_LayoutItem, layoutDdMin, layoutDdMax);
                                     ImGui.TextColored(new Vector4(1, 0, 0, 1), "Please save your content before creating new tabs.\nThis will remove your current unsaved data.");
                                     var io = ImGui.GetIO();
-                                    if ((ThemeManager.PillButton("Submit") || io.KeysDown[(int)ImGuiKey.Enter]) && !string.IsNullOrWhiteSpace(newTabNames[i]))
+                                    bool submitClicked = (ThemeManager.PillButton("Submit") || io.KeysDown[(int)ImGuiKey.Enter]) && !string.IsNullOrWhiteSpace(newTabNames[i]);
+                                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_SubmitTab);
+                                    if (submitClicked)
                                     {
                                         showInputPopup[i] = false;
                                         customTabsCount = CurrentProfile.customTabs.Count;
-
-                                        // Instantiate the correct layout type
-                                        CustomLayout layout = null;
-                                        if (currentLayoutType == (int)LayoutTypes.Bio)
-                                            layout = new BioLayout { tabIndex = customTabsCount };
-                                        else if (currentLayoutType == (int)LayoutTypes.Details)
-                                            layout = new DetailsLayout { tabIndex = customTabsCount };
-                                        else if (currentLayoutType == (int)LayoutTypes.Gallery)
-                                            layout = new GalleryLayout { tabIndex = customTabsCount };
-                                        else if (currentLayoutType == (int)LayoutTypes.Info)
-                                            layout = new InfoLayout { tabIndex = customTabsCount };
-                                        else if (currentLayoutType == (int)LayoutTypes.Story)
-                                            layout = new StoryLayout { tabIndex = customTabsCount };
-                                        else if (currentLayoutType == (int)LayoutTypes.Inventory)
-                                            layout = new InventoryLayout { tabIndex = customTabsCount };
-                                        else if (currentLayoutType == (int)LayoutTypes.Relationship)
-                                            layout = new TreeLayout { tabIndex = customTabsCount };
-                                        else
-                                            Plugin.PluginLog.Debug($"Unknown layout type: {currentLayoutType}");
-
-
-
-                                        CustomTab tab = new CustomTab
-                                        {
-                                            Name = tabName,
-                                            Layout = layout,
-                                            IsOpen = true,
-                                            type = (int)layout.layoutType
-                                        };
-                                        DataSender.CreateTab(Plugin.character, newTabNames[i], currentLayoutType, CurrentProfile.index, customTabsCount + 1);
+                                        int newTabIndex = customTabsCount + 1;
+                                        DataSender.CreateTab(Plugin.character, newTabNames[i], currentLayoutType, CurrentProfile.index, newTabIndex);
                                     }
 
                                     ImGui.SameLine();
@@ -1552,7 +1674,14 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         }
         private void DrawLayoutTypeSelection()
         {
-            try { 
+            try {
+            bool inLayoutWalk =
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Tree) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Bio) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Details) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Story) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Info) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Gallery);
             using var combo = ImRaii.Combo("##LayoutTypes", layoutType.Item1);
             if (!combo)
                 return;
@@ -1560,11 +1689,15 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 {
                     if(name != "Roster")
                     {
+                        var itemMin = ImGui.GetCursorScreenPos();
                         if (ImGui.Selectable(name + "##" + idx, idx == currentLayoutType))
                         {
                             layoutType = UI.LayoutTypeVals[idx];
                             currentLayoutType = idx;
                         }
+                        var itemMax = ImGui.GetItemRectMax();
+                        if (currentLayoutType == idx && inLayoutWalk)
+                            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_LayoutItem, itemMin, itemMax);
                         UIHelpers.SelectableHelpMarker(description);
                     }
                 }
@@ -2046,7 +2179,8 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         for (int i = 0; i < tabs.Count; i++)
                         {
                             CustomTab tab = tabs[i];
-                            var buf = DataSender.BuildCreateTabBuffer(character, tab.Name, (int)tab.Layout.layoutType, profile.index, i);
+                            var layoutTypeInt = ResolveLayoutTypeInt(tab.Layout);
+                            var buf = DataSender.BuildCreateTabBuffer(character, tab.Name, layoutTypeInt, profile.index, i);
                             if (buf != null) createTabBuffers.Add(buf);
                         }
                         if (createTabBuffers.Count > 0)

@@ -26,6 +26,16 @@ public class Configuration : IPluginConfiguration
     public int Version { get; set; } = 0;
     public Version TOSVersion { get; set; } = new Version("0.0.0.0"); // last TOS version the user agreed to
     public bool AlwaysOpenDefaultImport { get; set; } = false;
+    public bool TutorialsEnabled { get; set; } = true;
+    public bool ProfileTutorialCompleted { get; set; } = false;
+
+    //Not used yet, vfx disabled for now
+    public bool VfxEnabled { get; set; } = true;
+    //same with this
+    public System.Numerics.Vector4 VfxColor { get; set; } = new(0.55f, 0.78f, 1f, 1f);
+    //and this
+    public int VfxPreset { get; set; } = 0;
+    public bool AnimationsEnabled { get; set; } = true;
     public string username { get; set; } = "";
     public string password { get; set; } = "";
     public bool rememberInformation { get; set; }

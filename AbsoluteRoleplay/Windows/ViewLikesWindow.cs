@@ -65,14 +65,13 @@ namespace AbsoluteRP.Windows
                 ImGui.PushID(profile.id);
                 ImGui.BeginGroup();
 
-                // Draw avatar
                 if (profile.avatar != null)
                 {
-                    ImGui.Image(profile.avatar.Handle, new Vector2(64, 64));
+                    AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(profile.avatar.Handle, 64f, profile.titleColor, borderThickness: 2f);
                 }
                 else
                 {
-                    ImGui.Dummy(new Vector2(64, 64));
+                    AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(default, 64f, profile.titleColor, borderThickness: 2f);
                 }
 
                 ImGui.SameLine();

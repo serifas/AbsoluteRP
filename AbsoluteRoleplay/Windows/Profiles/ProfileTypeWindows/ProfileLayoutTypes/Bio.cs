@@ -253,7 +253,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
         }
         public static void RenderBioLayout(int index, string id, BioLayout layout)
         {
-            //display for avatar
             ImGui.Spacing();
             bool isTooltip = layout.isTooltip;
             if (ImGui.Checkbox($"Set as tooltip##Tooltip{layout.id}", ref isTooltip))
@@ -262,11 +261,12 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 {
                     if (ProfileWindow.CurrentProfile.customTabs[i].Layout is BioLayout biolayout)
                     {
-                        biolayout.isTooltip = false; // Reset all other tooltips to false
+                        biolayout.isTooltip = false;
                     }
                 }
                 layout.isTooltip = isTooltip;
             }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioSetAsTooltip);
             if(ImGui.IsItemHovered())
             {
                 ImGui.SetTooltip("Set this bio as the tooltip of the tooltipData.\nOnly one tooltipData can be set as a tooltip at a time.");
@@ -283,7 +283,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
             }
            */
 
-            if (ImGui.CollapsingHeader("Basic Info", ImGuiTreeNodeFlags.None))
+            bool basicOpen = ImGui.CollapsingHeader("Basic Info", ImGuiTreeNodeFlags.None);
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioBasicInfo);
+            if (basicOpen)
             {
                 string name = layout.name;
                 string race = layout.race;
@@ -295,24 +297,33 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 ImGui.Text("NAME:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##name_bio{index}", "Character Name (The name or nickname of the character you are currently playing as)", ref name, 100)) { layout.name = name; }
-              
+                Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioName);
+
                 ImGui.Text("RACE:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##race_bio{index}", "The IC Race of your character", ref race, 100)) { layout.race = race; }
+                Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioRace);
                 ImGui.Text("GENDER:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##gender_bio{index}", "The IC gender of your character", ref gender, 100)) { layout.gender = gender; }
+                Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioGender);
                 ImGui.Text("AGE:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##age_bio{index}", "Must be specified to post in nsfw. No nsfw if not 18+", ref age, 100)) { layout.age = age; }
+                Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioAge);
+                var heightMin = ImGui.GetCursorScreenPos();
                 ImGui.Text("HEIGHT:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##height_bio{index}", "Your OC's IC Height", ref height, 100)) { layout.height = height; }
                 ImGui.Text("WEIGHT:");
                 ImGui.SameLine();
                 if (ImGui.InputTextWithHint($"##weight_bio{index}", "Your OC's IC Weight", ref weight, 100)) { layout.weight = weight; }
+                var heightMax = ImGui.GetItemRectMax();
+                Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_BioHeight, heightMin, heightMax);
             }
-            if (ImGui.CollapsingHeader("Custom Info", ImGuiTreeNodeFlags.None))
+            bool customInfoOpen = ImGui.CollapsingHeader("Custom Info", ImGuiTreeNodeFlags.None);
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioCustomInfo);
+            if (customInfoOpen)
             {
                 if (ThemeManager.PillButton("Add Field##CustomDescriptor"))
                 {
@@ -347,7 +358,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     }
                 }
             }
-            if (ImGui.CollapsingHeader("Details", ImGuiTreeNodeFlags.None))
+            bool detailsOpen = ImGui.CollapsingHeader("Details", ImGuiTreeNodeFlags.None);
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioDetails);
+            if (detailsOpen)
             {
                 string afg = layout.afg;
                 ImGui.Text("AT FIRST GLANCE:");
@@ -356,8 +369,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                     layout.afg = afg;
                 }
             }
-            //simple for loop to get through our bio text fields
-            if (ImGui.CollapsingHeader("Custom Details", ImGuiTreeNodeFlags.None))
+            bool customDetailsOpen = ImGui.CollapsingHeader("Custom Details", ImGuiTreeNodeFlags.None);
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioCustomDetails);
+            if (customDetailsOpen)
             {
                 if (ThemeManager.PillButton("Add Field##CustomFieldBtn"))
                 {
@@ -389,7 +403,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 }
             }
 
-            if (ImGui.CollapsingHeader("Traits", ImGuiTreeNodeFlags.None))
+            bool traitsOpen = ImGui.CollapsingHeader("Traits", ImGuiTreeNodeFlags.None);
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioTraits);
+            if (traitsOpen)
             {
                 ImGui.TextColored(new Vector4(1, 1, 1, 1), "ALIGNMENT:");
                 AddAlignmentSelection(layout); //add alignment combo selection
@@ -402,7 +418,9 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
                 AddPersonalitySelection_2(layout);
                 AddPersonalitySelection_3(layout);
             }
-            if (ImGui.CollapsingHeader("Custom Traits", ImGuiTreeNodeFlags.None))
+            bool customTraitsOpen = ImGui.CollapsingHeader("Custom Traits", ImGuiTreeNodeFlags.None);
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_BioCustomTraits);
+            if (customTraitsOpen)
             {
                 if (ThemeManager.PillButton("Add Custom Trait##AddPersonality"))
                 {

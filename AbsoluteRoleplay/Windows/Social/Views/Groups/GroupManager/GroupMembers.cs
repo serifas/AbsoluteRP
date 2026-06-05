@@ -34,32 +34,23 @@ namespace AbsoluteRP.Windows.Social.Views.Groups.GroupManager
         /// </summary>
         private static void RenderMemberAvatar(GroupMember member, Vector2 size)
         {
+            float diameter = MathF.Min(size.X, size.Y);
+            var accent = new Vector4(1f, 0.85f, 0.30f, 1f);
             try
             {
-                // Check if member has a valid avatar texture
                 if (member?.avatar != null && member.avatar.Handle != IntPtr.Zero)
                 {
-                    ImGui.Image(member.avatar.Handle, size);
+                    Helpers.Anim.DrawCircleAvatarInline(member.avatar.Handle, diameter, accent, borderThickness: 2f);
                 }
                 else
                 {
-                    // Draw a placeholder box if no avatar available
-                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.2f, 0.3f, 1f));
-                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.2f, 0.2f, 0.3f, 1f));
-                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.2f, 0.2f, 0.3f, 1f));
-                    ImGui.Button($"##avatar_{member?.id ?? 0}", size);
-                    ImGui.PopStyleColor(3);
+                    Helpers.Anim.DrawCircleAvatarInline(default, diameter, accent, borderThickness: 2f);
                 }
             }
             catch (Exception ex)
             {
-                // If rendering fails, show placeholder and log the error
                 Plugin.PluginLog.Debug($"[GroupMembers] RenderMemberAvatar exception: {ex.Message}");
-                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.2f, 0.2f, 0.3f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.2f, 0.2f, 0.3f, 1f));
-                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.2f, 0.2f, 0.3f, 1f));
-                ImGui.Button($"##avatar_{member?.id ?? 0}", size);
-                ImGui.PopStyleColor(3);
+                Helpers.Anim.DrawCircleAvatarInline(default, diameter, accent, borderThickness: 2f);
             }
         }
 

@@ -96,8 +96,33 @@ namespace AbsoluteRP.Windows
                         Plugin.plugin.Configuration.showWeb = showWeb;
                         Plugin.plugin.Configuration.Save();
                     }
-                
-                    //DrawAlertOptions();
+
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
+
+                    bool animsEnabled = Plugin.plugin.Configuration.AnimationsEnabled;
+                    if (ImGui.Checkbox("Enable Window Animations", ref animsEnabled))
+                    {
+                        Plugin.plugin.Configuration.AnimationsEnabled = animsEnabled;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Smooth fades, divider sweeps, and avatar zoom-in when profile windows open.\nDisable if you prefer everything to appear instantly.");
+                    }
+
+                    bool tutorialsEnabled = Plugin.plugin.Configuration.TutorialsEnabled;
+                    if (ImGui.Checkbox("Enable Tutorials", ref tutorialsEnabled))
+                    {
+                        Plugin.plugin.Configuration.TutorialsEnabled = tutorialsEnabled;
+                        Plugin.plugin.Configuration.Save();
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Guided walkthroughs that appear in profile and other plugin windows.");
+                    }
+
                     ImGui.EndTabItem();
                 }
 

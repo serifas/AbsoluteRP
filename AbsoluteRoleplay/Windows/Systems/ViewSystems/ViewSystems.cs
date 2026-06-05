@@ -141,9 +141,13 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
             ImGui.Spacing();
 
             // System cards
-            float cardWidth = 280f;
-            float cardHeight = 150f;
-            float cardSpacing = 10f;
+            float scale = ImGui.GetIO().FontGlobalScale;
+            float btnH = ImGui.GetTextLineHeight() + 12f * scale;
+            float bannerHeight = 50f * scale;
+            float btnAreaHeight = btnH + 8f * scale;
+            float cardWidth = 280f * scale;
+            float cardHeight = bannerHeight + ImGui.GetTextLineHeightWithSpacing() * 2f + btnAreaHeight + 12f * scale;
+            float cardSpacing = 10f * scale;
             float windowWidth = ImGui.GetContentRegionAvail().X;
             int cardCols = Math.Max(1, (int)(windowWidth / (cardWidth + cardSpacing)));
 
@@ -167,7 +171,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 drawList.AddRectFilled(cardPos, cardEnd, bgColor, 6f);
 
                 // Banner (top half of card)
-                float bannerHeight = 50f;
                 if (sys.bannerTexture != null && sys.bannerTexture.Handle != IntPtr.Zero)
                 {
                     // Center-crop UVs to avoid stretching
@@ -200,8 +203,8 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 }
 
                 // Logo (overlapping banner/content boundary)
-                float logoSize = 36f;
-                Vector2 logoPos = cardPos + new Vector2(10, bannerHeight - logoSize / 2);
+                float logoSize = 36f * scale;
+                Vector2 logoPos = cardPos + new Vector2(10f * scale, bannerHeight - logoSize / 2);
                 if (sys.logoTexture != null && sys.logoTexture.Handle != IntPtr.Zero)
                 {
                     drawList.AddImageRounded(sys.logoTexture.Handle, logoPos, logoPos + new Vector2(logoSize, logoSize),
@@ -211,15 +214,15 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 }
 
                 // System name
-                float textStartX = sys.logoTexture != null ? logoPos.X + logoSize + 8 : cardPos.X + 10;
-                float nameY = cardPos.Y + bannerHeight + 6;
+                float textStartX = sys.logoTexture != null ? logoPos.X + logoSize + 8f * scale : cardPos.X + 10f * scale;
+                float nameY = cardPos.Y + bannerHeight + 6f * scale;
                 drawList.AddText(new Vector2(textStartX, nameY), 0xFFFFFFFF, sys.name);
 
                 // Description (truncated)
                 if (!string.IsNullOrEmpty(sys.description))
                 {
                     string desc = sys.description.Length > 60 ? sys.description[..57] + "..." : sys.description;
-                    drawList.AddText(new Vector2(cardPos.X + 10, nameY + 18),
+                    drawList.AddText(new Vector2(cardPos.X + 10f * scale, nameY + ImGui.GetTextLineHeightWithSpacing()),
                         ImGui.ColorConvertFloat4ToU32(ThemeManager.FontMuted), desc);
                 }
 
@@ -234,8 +237,8 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 // Orange notification dot if points available
                 if (unspentStat > 0 || unspentSkill > 0)
                 {
-                    Vector2 dotPos = cardPos + new Vector2(cardWidth - 10, 10);
-                    drawList.AddCircleFilled(dotPos, 6, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.6f, 0.1f, 1f)));
+                    Vector2 dotPos = cardPos + new Vector2(cardWidth - 10f * scale, 10f * scale);
+                    drawList.AddCircleFilled(dotPos, 6f * scale, ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 0.6f, 0.1f, 1f)));
                 }
 
                 // Border
@@ -245,7 +248,6 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 drawList.AddRect(cardPos, cardEnd, borderColor, 6f, ImDrawFlags.None, isSelected ? 2f : 1f);
 
                 // Click to select (top area only - leave room for buttons at bottom)
-                float btnAreaHeight = 28f;
                 ImGui.SetCursorScreenPos(cardPos);
                 if (ImGui.InvisibleButton($"##sysCard_{sys.id}", new Vector2(cardWidth, cardHeight - btnAreaHeight)))
                 {
@@ -259,8 +261,8 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                 }
 
                 // Buttons at bottom of card
-                float btnY = cardEnd.Y - btnAreaHeight - 4;
-                float btnX = cardPos.X + 6;
+                float btnY = cardEnd.Y - btnAreaHeight - 4f * scale;
+                float btnX = cardPos.X + 6f * scale;
                 ImGui.SetCursorScreenPos(new Vector2(btnX, btnY));
                 ImGui.PushID($"##cardBtns_{sys.id}");
                 if (ThemeManager.PillButton("Create##create"))
@@ -760,10 +762,9 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
 
                 ImGui.PushID($"prof_{i}");
 
-                // Avatar thumbnail
                 if (prof.avatar != null && prof.avatar.Handle != IntPtr.Zero)
                 {
-                    ImGui.Image(prof.avatar.Handle, new Vector2(32, 32));
+                    Helpers.Anim.DrawCircleAvatarInline(prof.avatar.Handle, 32f, prof.titleColor, borderThickness: 1.5f);
                     ImGui.SameLine();
                 }
 
@@ -1747,7 +1748,7 @@ namespace AbsoluteRP.Windows.Systems.ViewSystems
                     float avSize = 48;
                     float centeredX = (ImGui.GetContentRegionAvail().X - avSize) / 2;
                     ImGui.SetCursorPosX(centeredX);
-                    ImGui.Image(prof.avatar.Handle, new Vector2(avSize, avSize));
+                    Helpers.Anim.DrawCircleAvatarInline(prof.avatar.Handle, avSize, prof.titleColor, borderThickness: 2f);
                 }
                 string profLabel = !string.IsNullOrEmpty(prof.title) ? prof.title : prof.playerName;
                 if (!string.IsNullOrEmpty(profLabel))

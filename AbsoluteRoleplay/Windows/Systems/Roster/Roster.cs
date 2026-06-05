@@ -317,13 +317,13 @@ namespace AbsoluteRP.Windows.Systems.Roster
 
             var sheet = viewingSheet;
 
-            // Avatar + name header (centered like profile window)
             if (sheet.profileAvatar != null && sheet.profileAvatar.Handle != IntPtr.Zero)
             {
                 float avSize = 80;
                 float centeredX = (ImGui.GetContentRegionAvail().X - avSize) / 2;
                 ImGui.SetCursorPosX(centeredX);
-                ImGui.Image(sheet.profileAvatar.Handle, new Vector2(avSize, avSize));
+                var rosterAccent = new Vector4(1f, 0.85f, 0.30f, 1f);
+                AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(sheet.profileAvatar.Handle, avSize, rosterAccent, borderThickness: 2.5f);
             }
 
             string displayName = !string.IsNullOrEmpty(sheet.profileName) ? sheet.profileName : sheet.characterName;

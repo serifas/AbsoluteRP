@@ -387,20 +387,25 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     }
 
 
-                    // Draw avatar if valid
+                    string animKey = $"{characterName}@{characterWorld}/{profileData?.title}";
+                    Helpers.Anim.ResetKey("target", animKey);
+                    string anim = "target/" + animKey;
+
                     if (profileData.avatar != null && profileData.avatar.Handle != IntPtr.Zero)
                     {
                         try
                         {
                             Vector2 avatarSize = profileData.avatar.Size * ImGui.GetIO().FontGlobalScale;
-                            float centeredX = (ImGui.GetContentRegionAvail().X - avatarSize.X) / 2;
-                            var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
-                            float avatarXPos = (ImGui.GetWindowSize().X - avatarBtnSize.X) / 2;
-                            ImGui.SetCursorPosX(centeredX);
-                            if (profileData.avatar != null && profileData.avatar.Handle != IntPtr.Zero)
-                            {
-                                ImGui.Image(profileData.avatar.Handle, avatarSize);
-                            }
+                            Helpers.Anim.DrawScaledCenteredCircleAvatar(
+                                anim + ".avatar",
+                                profileData.avatar.Handle,
+                                avatarSize,
+                                borderColor: profileData.titleColor,
+                                duration: 0.70f,
+                                delay: 0.08f,
+                                ease: Helpers.Anim.Ease.OutBack,
+                                fromScale: 0.30f,
+                                borderThickness: 3f);
                         }
                         catch (Exception ex)
                         {
@@ -425,12 +430,11 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         }
                     }
 
-                    // Controls
+                    Helpers.Anim.PushAlpha(anim + ".controls", 0.45f, 0.55f);
                     ImGui.Text("Controls");
                     if (ThemeManager.GhostButton("Notes")) { addNotes = true; }
                     if (ImGui.IsItemHovered()) { ImGui.SetTooltip("Add personal notes about this Profile."); }
 
-                    // Inspect Equipment button — only shown if the profile owner has enabled it
                     if (profileData.equipmentPublic)
                     {
                         ImGui.SameLine();
@@ -459,6 +463,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                     {
                         ImGui.SetTooltip("Report this tooltipData for inappropriate use.\n(Repeat false reports may result in your account being banned.)");
                     }
+                    Helpers.Anim.PopAlpha();
                     if (!string.IsNullOrEmpty(DataReceiver.likeResultMessage))
                     {
                         ImGui.TextColored(
@@ -486,10 +491,11 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         ImGui.Spacing();
                     }
                     else
-                    // Tabs — hidden when equipment inspect is open
                     if (profileData.customTabs != null && profileData.customTabs.Count > 0)
                     {
-                        // Build a unique ID based on tab order so ImGui doesn't cache stale order
+                        ImGui.Spacing();
+                        Helpers.Anim.DrawGrowingDivider(anim + ".divider", duration: 0.65f, delay: 0.85f, height: 2f);
+                        Helpers.Anim.PushAlpha(anim + ".tabs", 0.45f, 1.10f);
                         string tabOrderHash = string.Join(",", profileData.customTabs.Select(t => t.Name));
                         if (ImGui.BeginTabBar($"TargetNav_{tabOrderHash}"))
                         {
@@ -500,6 +506,15 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                     if (ImGui.BeginTabItem(tab.Name))
                                     {
                                         currentLayout = tab.Layout as CustomLayout;
+                                        Helpers.Anim.ResetKey("targetTab", $"{characterName}@{characterWorld}/{tab.Name}");
+                                        string tabAnim = $"targetTab/{characterName}@{characterWorld}/{tab.Name}";
+
+                                        Helpers.Anim.DrawGrowingDivider(tabAnim + ".accent", duration: 0.45f, delay: 0.0f, height: 2f);
+
+                                        Helpers.Anim.PushAlpha(tabAnim + ".content", 0.40f, 0.08f);
+                                        float slide = Helpers.Anim.SlideOffsetY(tabAnim + ".slide", 0.55f, distance: 22f, delay: 0.08f, ease: Helpers.Anim.Ease.OutQuint);
+                                        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + slide);
+
                                         try
                                         {
                                             switch (tab.Layout)
@@ -517,7 +532,6 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                                     try
                                                     {
                                                         Misc.SetTitle(Plugin.plugin, true, tab.Name, profileData.titleColor);
-                                                        // Parse only if text changed
                                                         Misc.RenderHtmlElements(infoLayout.text, true, true, true, false);
                                                     }
                                                     catch (Exception ex)
@@ -541,12 +555,15 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                                         {
                                             Plugin.PluginLog.Debug($"[TargetProfileWindow] Tab Render Debug: {ex.Message}");
                                         }
+
+                                        Helpers.Anim.PopAlpha();
                                         ImGui.EndTabItem();
                                     }
                                 }
                             }
                             ImGui.EndTabBar();
                         }
+                        Helpers.Anim.PopAlpha();
                     }
                     else
                     {

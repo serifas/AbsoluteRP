@@ -547,10 +547,14 @@ namespace Networking
                     ProfileWindow.editProfile = false;
                     ProfileWindow.ExistingProfile = false;
                     Inventory.ExistingProfile = false;
-                    ProfileWindow.ExistingProfile = false;
-                    Inventory.ExistingProfile = false;
 
-
+                    ProfileWindow.Fetching = false;
+                    ProfileWindow.Sending = false;
+                    tabsCount = 0;
+                    loadedTabsCount = 0;
+                    tabCountReceived = true;
+                    GalleryImagesToLoad = 0;
+                    loadedGalleryImages = 0;
                 }
             }
             catch (Exception ex)
@@ -932,6 +936,18 @@ namespace Networking
                         Inventory.ProfileBaseData.Add(Tuple.Create(index, name));
                         GroupCreation.profiles.Add(new ProfileData() { index = index, title = name });
                         GroupManager.profiles.Add(new ProfileData() { index = index, title = name });
+                    }
+
+                    if (profileCount == 0)
+                    {
+                        ProfileWindow.Fetching = false;
+                        ProfileWindow.Sending = false;
+                        ProfileWindow.ExistingProfile = false;
+                        tabsCount = 0;
+                        loadedTabsCount = 0;
+                        tabCountReceived = true;
+                        GalleryImagesToLoad = 0;
+                        loadedGalleryImages = 0;
                     }
                 }
             }

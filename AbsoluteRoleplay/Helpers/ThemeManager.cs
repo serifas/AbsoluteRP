@@ -115,9 +115,11 @@ public static class ThemeManager
         PushColor(ImGuiCol.HeaderActive, AccentActive);
 
         // ── Tabs ──
-        PushColor(ImGuiCol.Tab, BgLight);
-        PushColor(ImGuiCol.TabHovered, Accent);
-        PushColor(ImGuiCol.TabActive, Darken(Accent, 0.08f));
+        PushColor(ImGuiCol.Tab, Darken(BgLight, 0.05f));
+        PushColor(ImGuiCol.TabHovered, AccentMuted);
+        PushColor(ImGuiCol.TabActive, Accent);
+        PushColor(ImGuiCol.TabUnfocused, Darken(BgLight, 0.10f));
+        PushColor(ImGuiCol.TabUnfocusedActive, Darken(Accent, 0.20f));
 
         // ── Separator ──
         PushColor(ImGuiCol.Separator, new Vector4(Border.X, Border.Y, Border.Z, Border.W * 0.5f));
@@ -160,7 +162,7 @@ public static class ThemeManager
         PushStyle(ImGuiStyleVar.PopupRounding, 6.0f);
         PushStyle(ImGuiStyleVar.ScrollbarRounding, 8.0f);
         PushStyle(ImGuiStyleVar.GrabRounding, 6.0f);
-        PushStyle(ImGuiStyleVar.TabRounding, 6.0f);
+        PushStyle(ImGuiStyleVar.TabRounding, 12.0f);
         PushStyleVec(ImGuiStyleVar.WindowPadding, new Vector2(12, 12));
         PushStyleVec(ImGuiStyleVar.FramePadding, new Vector2(8, 5));
         PushStyleVec(ImGuiStyleVar.ItemSpacing, new Vector2(8, 7));

@@ -911,37 +911,19 @@ namespace AbsoluteRP.Windows.Social.Views
                 ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 5);
                 ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 5);
 
-                // Render avatar with fallback to placeholder
+                var memberAccent = member.owner
+                    ? new Vector4(1f, 0.84f, 0f, 1f)
+                    : new Vector4(0.95f, 0.85f, 0.40f, 1f);
                 try
                 {
-                    if (member.avatar != null && member.avatar.Handle != IntPtr.Zero)
-                    {
-                        ImGui.Image(member.avatar.Handle, new Vector2(avatarSize, avatarSize));
-                    }
-                    else
-                    {
-                        // Placeholder if no avatar available
-                        var placeholderPos = ImGui.GetCursorScreenPos();
-                        drawList.AddRectFilled(
-                            placeholderPos,
-                            new Vector2(placeholderPos.X + avatarSize, placeholderPos.Y + avatarSize),
-                            ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 1f)),
-                            4.0f
-                        );
-                        ImGui.Dummy(new Vector2(avatarSize, avatarSize));
-                    }
+                    var handle = (member.avatar != null && member.avatar.Handle != IntPtr.Zero)
+                        ? member.avatar.Handle
+                        : default;
+                    Helpers.Anim.DrawCircleAvatarInline(handle, avatarSize, memberAccent, borderThickness: 2f);
                 }
                 catch
                 {
-                    // Fallback placeholder on error
-                    var placeholderPos = ImGui.GetCursorScreenPos();
-                    drawList.AddRectFilled(
-                        placeholderPos,
-                        new Vector2(placeholderPos.X + avatarSize, placeholderPos.Y + avatarSize),
-                        ImGui.ColorConvertFloat4ToU32(new Vector4(0.3f, 0.3f, 0.3f, 1f)),
-                        4.0f
-                    );
-                    ImGui.Dummy(new Vector2(avatarSize, avatarSize));
+                    Helpers.Anim.DrawCircleAvatarInline(default, avatarSize, memberAccent, borderThickness: 2f);
                 }
 
                 ImGui.SameLine();
@@ -1157,10 +1139,27 @@ namespace AbsoluteRP.Windows.Social.Views
         private static void DrawChannelList()
         {
             ImGui.BeginGroup();
+            try
+            {
+                DrawChannelListInner();
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"[Groups] DrawChannelList threw: {ex.Message}\n{ex.StackTrace}");
+            }
+            finally
+            {
+                ImGui.EndGroup();
+            }
+        }
+
+        private static void DrawChannelListInner()
+        {
+            if (currentGroup == null) return;
+
             ImGui.Text("CHANNELS");
             ThemeManager.GradientSeparator();
 
-            // Get current member's permissions (needed for context menu even when empty)
             var currentMember = currentGroup.members?.FirstOrDefault(m => m.userID == Plugin.plugin.Configuration.account.userID);
             bool canEditCategory = currentMember?.owner == true || currentMember?.rank?.permissions?.canEditCategory == true;
             bool canDeleteCategory = currentMember?.owner == true || currentMember?.rank?.permissions?.canDeleteCategory == true;
@@ -1172,7 +1171,6 @@ namespace AbsoluteRP.Windows.Social.Views
             using var child = ImRaii.Child("ChannelList", new Vector2(-1, -1), false);
             if (!child)
             {
-                ImGui.EndGroup();
                 return;
             }
 
@@ -1194,7 +1192,6 @@ namespace AbsoluteRP.Windows.Social.Views
 
                 // Draw popups even when empty
                 DrawChannelListPopups(canEditCategory, canEditForum);
-                ImGui.EndGroup();
                 return;
             }
 
@@ -2280,8 +2277,6 @@ namespace AbsoluteRP.Windows.Social.Views
 
             // Draw all popups
             DrawChannelListPopups(canEditCategory, canEditForum);
-
-            ImGui.EndGroup();
         }
 
         private static void DrawChannelListPopups(bool canEditCategory, bool canEditForum)
@@ -4647,7 +4642,8 @@ namespace AbsoluteRP.Windows.Social.Views
                                 // Avatar
                                 float avatarSize = 32;
                                 bool pinnedAvatarDrawn = false;
-                                var msgAvatar = msg.avatar; // Capture reference to avoid race conditions
+                                var pinnedAccent = new Vector4(1f, 0.85f, 0.30f, 1f);
+                                var msgAvatar = msg.avatar;
                                 if (IsTextureValid(msgAvatar))
                                 {
                                     try
@@ -4655,7 +4651,7 @@ namespace AbsoluteRP.Windows.Social.Views
                                         var handle = msgAvatar.Handle;
                                         if (handle != default)
                                         {
-                                            ImGui.Image(handle, new Vector2(avatarSize, avatarSize));
+                                            AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(handle, avatarSize, pinnedAccent, borderThickness: 1.5f);
                                             pinnedAvatarDrawn = true;
                                         }
                                     }
@@ -4665,10 +4661,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
                                 if (!pinnedAvatarDrawn)
                                 {
-                                    // Placeholder avatar
-                                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.3f, 0.3f, 0.3f, 1f));
-                                    ImGui.Button("##avatar", new Vector2(avatarSize, avatarSize));
-                                    ImGui.PopStyleColor();
+                                    AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(default, avatarSize, pinnedAccent, borderThickness: 1.5f);
                                 }
 
                                 ImGui.SameLine();
@@ -5831,21 +5824,14 @@ namespace AbsoluteRP.Windows.Social.Views
                         // Avatar section
                         ImGui.BeginGroup();
 
+                        var embedAccent = new Vector4(0.55f, 0.75f, 1f, 1f);
                         if (avatarTexture != null && avatarTexture.Handle != IntPtr.Zero)
                         {
-                            ImGui.Image(avatarTexture.Handle, new Vector2(avatarSize, avatarSize));
+                            AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(avatarTexture.Handle, avatarSize, embedAccent, borderThickness: 2f);
                         }
                         else
                         {
-                            // Colored circle as avatar placeholder
-                            var drawList = ImGui.GetWindowDrawList();
-                            var cursorPos = ImGui.GetCursorScreenPos();
-                            drawList.AddCircleFilled(
-                                new Vector2(cursorPos.X + avatarSize / 2, cursorPos.Y + avatarSize / 2),
-                                avatarSize / 2,
-                                ImGui.GetColorU32(new Vector4(0.4f, 0.6f, 0.8f, 1f))
-                            );
-                            ImGui.Dummy(new Vector2(avatarSize, avatarSize));
+                            AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(default, avatarSize, embedAccent, borderThickness: 2f);
                         }
 
                         ImGui.EndGroup();

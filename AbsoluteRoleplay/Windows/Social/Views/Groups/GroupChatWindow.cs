@@ -356,13 +356,13 @@ namespace AbsoluteRP.Windows.Social.Views.Groups
                 }
             }
 
-            // Draw avatar (either from member data or placeholder)
             bool avatarDrawn = false;
+            var chatAccent = new Vector4(1f, 0.85f, 0.30f, 1f);
             if (avatarTexture != null && GroupsData.IsTextureValid(avatarTexture))
             {
                 try
                 {
-                    ImGui.Image(avatarTexture.Handle, new Vector2(40, 40));
+                    AbsoluteRP.Helpers.Anim.DrawCircleAvatarInline(avatarTexture.Handle, 40f, chatAccent, borderThickness: 2f);
                     ImGui.SameLine();
                     avatarDrawn = true;
                 }

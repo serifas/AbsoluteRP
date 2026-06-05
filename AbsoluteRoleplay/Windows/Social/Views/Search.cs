@@ -103,11 +103,12 @@ namespace AbsoluteRP.Windows.Social.Views
         }
         private static void DrawProfileCardGrid()
         {
+            float scale = ImGui.GetIO().FontGlobalScale;
             float windowWidth = ImGui.GetContentRegionAvail().X;
-            float cardWidth = 300f;
-            float cardSpacing = 10f;
-            float cardHeight = 230f;
-            float rowSpacing = 10f;
+            float cardWidth = 300f * scale;
+            float cardSpacing = 10f * scale;
+            float cardHeight = 230f * scale;
+            float rowSpacing = 10f * scale;
             int columns = Math.Max(1, (int)((windowWidth) / (cardWidth + cardSpacing)));
 
             var filtered = SocialWindow.listings.Where(l => l.type == type).ToList();
@@ -143,10 +144,19 @@ namespace AbsoluteRP.Windows.Social.Views
 
         private static void DrawProfileCard(Listing listing, float cardWidth)
         {
-            float cardHeight = 230f;
-            float avatarSize = 80f;
-            float avatarY = 16f;
-            float rounding = 8f;
+            float scale = ImGui.GetIO().FontGlobalScale;
+            float avatarSize = 80f * scale;
+            float avatarY = 16f * scale;
+            float rounding = 8f * scale;
+            float lineH = ImGui.GetTextLineHeightWithSpacing();
+            float btnH = ImGui.GetTextLineHeight() + 18f * scale;
+            float btnPadX = 32f * scale;
+            float btnGap = 8f * scale;
+            float topPad = 4f * scale;
+            float nameSpacing = 8f * scale;
+            float badgeSpacing = 4f * scale;
+            float bottomPad = 16f * scale;
+            float cardHeight = avatarY + avatarSize + nameSpacing + lineH + badgeSpacing + lineH + badgeSpacing + btnH + bottomPad;
 
             // Use BeginGroup + Dummy + DrawList instead of BeginCard (which uses BeginChild).
             // BeginChild creates nested scroll regions that don't contribute to parent scroll height.
@@ -165,7 +175,7 @@ namespace AbsoluteRP.Windows.Social.Views
 
             // Accent color strip at top of card
             uint accentCol = ImGui.ColorConvertFloat4ToU32(new Vector4(listing.color.X, listing.color.Y, listing.color.Z, 0.6f));
-            dl.AddRectFilled(cardPos, new Vector2(cardPos.X + cardWidth, cardPos.Y + 4), accentCol, rounding, ImDrawFlags.RoundCornersTop);
+            dl.AddRectFilled(cardPos, new Vector2(cardPos.X + cardWidth, cardPos.Y + topPad), accentCol, rounding, ImDrawFlags.RoundCornersTop);
 
             // Avatar circle (centered)
             float avX = centerX - avatarSize / 2f;
@@ -174,10 +184,10 @@ namespace AbsoluteRP.Windows.Social.Views
 
             // Glow ring in profile color
             uint glowCol = ImGui.ColorConvertFloat4ToU32(new Vector4(listing.color.X, listing.color.Y, listing.color.Z, 0.35f));
-            dl.AddCircleFilled(avCenter, avatarSize / 2f + 4, glowCol);
+            dl.AddCircleFilled(avCenter, avatarSize / 2f + 4f * scale, glowCol);
 
             // White border
-            dl.AddCircleFilled(avCenter, avatarSize / 2f + 2, 0xFFFFFFFF);
+            dl.AddCircleFilled(avCenter, avatarSize / 2f + 2f * scale, 0xFFFFFFFF);
 
             // Avatar image
             if (listing.avatar != null && listing.avatar.Handle != IntPtr.Zero)
@@ -195,8 +205,8 @@ namespace AbsoluteRP.Windows.Social.Views
             }
 
             // Name (centered, in profile color) — truncate to fit card inner width
-            float nameY = avY + avatarSize + 8;
-            float cardInner = cardWidth - 32;
+            float nameY = avY + avatarSize + nameSpacing;
+            float cardInner = cardWidth - 32f * scale;
             string displayName = listing.name;
             float nameWidth = ImGui.CalcTextSize(displayName).X;
             if (nameWidth > cardInner)
@@ -210,7 +220,7 @@ namespace AbsoluteRP.Windows.Social.Views
             ImGui.TextColored(listing.color, displayName);
 
             // Spoiler badges row
-            float badgeY = nameY + ImGui.GetTextLineHeightWithSpacing() + 2;
+            float badgeY = nameY + ImGui.GetTextLineHeightWithSpacing() + badgeSpacing;
             List<string> spoilerTags = new List<string>();
             if (listing.ARR) spoilerTags.Add("ARR");
             if (listing.HW) spoilerTags.Add("HW");
@@ -227,14 +237,11 @@ namespace AbsoluteRP.Windows.Social.Views
             }
 
             // View + Bookmark buttons (auto-sized to text, centered at bottom)
-            float btnY = badgeY + ImGui.GetTextLineHeightWithSpacing() + 4;
-            float btnPadX = 32f;
-            float btnH = ImGui.GetTextLineHeight() + 18f;
+            float btnY = badgeY + ImGui.GetTextLineHeightWithSpacing() + badgeSpacing;
             string viewLabel = $"View Profile##{listing.id}";
             string bookmarkLabel = $"Bookmark##{listing.id}";
             float viewBtnW = ImGui.CalcTextSize("View Profile").X + btnPadX;
             float bookmarkBtnW = ImGui.CalcTextSize("Bookmark").X + btnPadX;
-            float btnGap = 8f;
             float totalBtnW = viewBtnW + bookmarkBtnW + btnGap;
             ImGui.SetCursorScreenPos(new Vector2(centerX - totalBtnW / 2f, btnY));
 
