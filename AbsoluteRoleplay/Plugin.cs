@@ -122,6 +122,7 @@ namespace AbsoluteRP
         public static bool CtrlPressed() => (GetKeyState(0xA2) & 0x8000) != 0 || (GetKeyState(0xA3) & 0x8000) != 0;
         public Configuration Configuration { get; init; }
         public static bool tooltipLoaded = false;
+        public static bool tooltipStickyMode = false;
         public static Plugin? Ui { get; private set; }
         internal readonly WindowSystem WindowSystem = new("Absolute Roleplay");
         public OptionsWindow? OptionsWindow { get; private set; }
@@ -871,7 +872,11 @@ namespace AbsoluteRP
         public void OpenReportWindow() => ReportWindow.IsOpen = true;
         public void OpenOptionsWindow() => OptionsWindow.IsOpen = true;
         public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
-        public void CloseARPTooltip() => TooltipWindow.IsOpen = false;
+        public void CloseARPTooltip()
+        {
+            TooltipWindow.IsOpen = false;
+            tooltipStickyMode = false;
+        }
         public void OpenProfileNotes() => NotesWindow.IsOpen = true;
         public void OpenSocialWindow() => SocialWindow.IsOpen = true;
         public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
@@ -1055,6 +1060,7 @@ namespace AbsoluteRP
             }
             else if (
                 TooltipWindow != null &&
+                !tooltipStickyMode &&
                 (
                     currentTarget == null ||
                     (currentTarget is IGameObject obj &&

@@ -268,6 +268,7 @@ namespace Networking
         CLeaveSystem = 272,
         CFetchJoinedSystems = 273,
         CFetchProfilesByAccountTag = 274,
+        SRequestTooltipByProfileId = 275,
     }
     // Builds and sends all outbound packets to the server.
     // Every method follows the same pattern:
@@ -1017,6 +1018,25 @@ namespace Networking
                 {
                     Plugin.PluginLog.Debug("Debug in SendChatmessage: " + ex.ToString());
                 }
+            }
+        }
+
+        // Tooltip request by a specific profile id
+        internal static async void SendRequestTooltipByProfileId(Character character, int profileId)
+        {
+            if (!ClientTCP.IsConnected()) return;
+            try
+            {
+                using var buffer = new ByteBuffer();
+                buffer.WriteInt((int)ClientPackets.SRequestTooltipByProfileId);
+                buffer.WriteString(plugin.Configuration.account.accountKey);
+                buffer.WriteString(character.characterKey);
+                buffer.WriteInt(profileId);
+                await ClientTCP.SendDataAsync(buffer.ToArray());
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("SendRequestTooltipByProfileId failed: " + ex.Message);
             }
         }
         internal static async void SubmitListing(Character character, byte[] bannerBytes, string listingName, string listingDescription, string listingRules, int inclusion, int currentCategory, int currentType, int currentFocus, int currentSetting, bool nsfw, string triggers,

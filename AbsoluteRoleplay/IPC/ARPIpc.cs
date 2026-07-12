@@ -19,6 +19,11 @@ namespace AbsoluteRP.IPC
         private const string GetProfilesByTagId   = "AbsoluteRP.GetProfilesByAccountTag";
         private const string OpenProfileByTagId   = "AbsoluteRP.OpenProfileByAccountTag";
         private const string OpenProfileByIdId    = "AbsoluteRP.OpenProfileById";
+        private const string GetMyLocalProfilesId = "AbsoluteRP.GetMyLocalProfiles";
+        private const string GetLocalProfileByIdId = "AbsoluteRP.GetLocalProfileById";
+        private const string RequestTooltipForPlayerId = "AbsoluteRP.RequestTooltipForPlayer";
+        private const string CloseTooltipId            = "AbsoluteRP.CloseTooltip";
+        private const string RequestTooltipForProfileId = "AbsoluteRP.RequestTooltipForProfile";
 
         // Bump on breaking changes to the JSON wire shape or callable signatures.
         public const uint ApiMajor = 1;
@@ -33,6 +38,11 @@ namespace AbsoluteRP.IPC
         private ICallGateProvider<string, string>?          getProfilesByTagProvider;
         private ICallGateProvider<string, object>?          openProfileByTagProvider;
         private ICallGateProvider<int, string, string, object>? openProfileByIdProvider;
+        private ICallGateProvider<string>?                  getMyLocalProfilesProvider;
+        private ICallGateProvider<int, string>?             getLocalProfileByIdProvider;
+        private ICallGateProvider<string, string, object>?  requestTooltipForPlayerProvider;
+        private ICallGateProvider<object>?                  closeTooltipProvider;
+        private ICallGateProvider<int, object>?             requestTooltipForProfileProvider;
 
         private readonly IDalamudPluginInterface pluginInterface;
 
@@ -68,6 +78,21 @@ namespace AbsoluteRP.IPC
 
                 openProfileByIdProvider = pluginInterface.GetIpcProvider<int, string, string, object>(OpenProfileByIdId);
                 openProfileByIdProvider.RegisterAction(OpenProfileById);
+
+                getMyLocalProfilesProvider = pluginInterface.GetIpcProvider<string>(GetMyLocalProfilesId);
+                getMyLocalProfilesProvider.RegisterFunc(GetMyLocalProfilesJson);
+
+                getLocalProfileByIdProvider = pluginInterface.GetIpcProvider<int, string>(GetLocalProfileByIdId);
+                getLocalProfileByIdProvider.RegisterFunc(GetLocalProfileByIdJson);
+
+                requestTooltipForPlayerProvider = pluginInterface.GetIpcProvider<string, string, object>(RequestTooltipForPlayerId);
+                requestTooltipForPlayerProvider.RegisterAction(RequestTooltipForPlayer);
+
+                closeTooltipProvider = pluginInterface.GetIpcProvider<object>(CloseTooltipId);
+                closeTooltipProvider.RegisterAction(CloseTooltip);
+
+                requestTooltipForProfileProvider = pluginInterface.GetIpcProvider<int, object>(RequestTooltipForProfileId);
+                requestTooltipForProfileProvider.RegisterAction(RequestTooltipForProfile);
 
                 Plugin.PluginLog?.Information(
                     $"ARPIpc: registered IPC channels (version {ApiMajor}.{ApiMinor}).");
@@ -176,6 +201,112 @@ namespace AbsoluteRP.IPC
             {
                 Plugin.PluginLog?.Debug($"ARPIpc.GetProfilesByTagJson failed: {ex.Message}");
                 return string.Empty;
+            }
+        }
+
+        // Returns every profile the local user owns
+        private static string GetMyLocalProfilesJson()
+        {
+            try
+            {
+                var src = AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileWindow.profiles;
+                if (src == null || src.Count == 0) return string.Empty;
+
+                var summaries = new List<ARPProfileSummaryWire>(src.Count);
+                foreach (var p in src)
+                {
+                    if (p == null) continue;
+                    summaries.Add(new ARPProfileSummaryWire
+                    {
+                        profileId    = p.id,
+                        profileIndex = p.index,
+                        profileName  = p.title ?? string.Empty,
+                        playerName   = p.playerName ?? string.Empty,
+                        playerWorld  = p.playerWorld ?? string.Empty,
+                        profileType  = 0,
+                        isTooltip    = p.isActive,
+                    });
+                }
+                return JsonSerializer.Serialize(summaries, ARPProfileWire.JsonOptions);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"ARPIpc.GetMyLocalProfilesJson failed: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        // Returns the same ARPProfile
+        private static string GetLocalProfileByIdJson(int profileId)
+        {
+            try
+            {
+                if (profileId <= 0) return string.Empty;
+                var src = AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileWindow.profiles;
+                if (src == null || src.Count == 0) return string.Empty;
+                ProfileData? p = null;
+                foreach (var cand in src) { if (cand != null && cand.id == profileId) { p = cand; break; } }
+                if (p == null) return string.Empty;
+
+                var dto = new ARPProfileWire
+                {
+                    name        = p.playerName ?? string.Empty,
+                    world       = p.playerWorld ?? string.Empty,
+                    title       = p.title ?? string.Empty,
+                    description = p.OOC ?? string.Empty,
+                    avatarPng   = (p.avatarBytes != null && p.avatarBytes.Length > 0)
+                        ? Convert.ToBase64String(p.avatarBytes) : string.Empty,
+                    bannerPng   = (p.backgroundBytes != null && p.backgroundBytes.Length > 0)
+                        ? Convert.ToBase64String(p.backgroundBytes) : string.Empty,
+                    isPrivate   = p.isPrivate,
+                };
+                return JsonSerializer.Serialize(dto, ARPProfileWire.JsonOptions);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"ARPIpc.GetLocalProfileByIdJson failed: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
+        // Fire the same server request path a real player-hover uses.
+        private static void RequestTooltipForPlayer(string playerName, string playerWorld)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(playerName)) return;
+                if (Plugin.character == null) return;
+                DataSender.SendRequestPlayerTooltip(Plugin.character, playerName, playerWorld ?? string.Empty);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"ARPIpc.RequestTooltipForPlayer failed: {ex.Message}");
+            }
+        }
+
+        // Tooltip request by profile id.
+        private static void RequestTooltipForProfile(int profileId)
+        {
+            try
+            {
+                if (profileId <= 0) return;
+                if (Plugin.character == null) return;
+                Plugin.tooltipStickyMode = true;
+                DataSender.SendRequestTooltipByProfileId(Plugin.character, profileId);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"ARPIpc.RequestTooltipForProfile failed: {ex.Message}");
+            }
+        }
+
+        // Close the ARP tooltip window.
+        private static void CloseTooltip()
+        {
+            try { Plugin.plugin?.CloseARPTooltip(); }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog?.Debug($"ARPIpc.CloseTooltip failed: {ex.Message}");
             }
         }
 

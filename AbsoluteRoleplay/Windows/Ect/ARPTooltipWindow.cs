@@ -53,7 +53,7 @@ namespace AbsoluteRP.Windows.Ect
                 }
 
                 if (!string.IsNullOrEmpty(tooltipData.title) && tooltipData.title != "New Profile")
-                    Misc.SetTitle(Plugin.plugin, false, tooltipData.title, tooltipData.titleColor);
+                    Misc.SetTitle(Plugin.plugin, true, tooltipData.title, tooltipData.titleColor);
 
               
 
@@ -189,8 +189,6 @@ namespace AbsoluteRP.Windows.Ect
                     WindowOperations.SafeDispose(personality.icon.icon);
                     personality.icon.icon = null;
                 }
-                // If you have other IDisposable fields, dispose them here with null checks
-                // If you have lists of IDisposable, iterate and dispose each with null checks
             }
             catch (Exception ex)
             {
