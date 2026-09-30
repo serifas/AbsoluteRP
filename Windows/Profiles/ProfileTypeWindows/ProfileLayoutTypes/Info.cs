@@ -1,0 +1,38 @@
+using AbsoluteRP.RsUI;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using System.Text;
+using System.Threading.Tasks;
+using static Dalamud.Interface.Utility.Raii.ImRaii;
+
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes
+{
+    // Info tab layout - renders a simple key-value info panel with optional view/edit toggles
+    internal class Info
+    {
+        private static bool viewable = true;
+
+        public static void RenderInfoLayout(int index, string uniqueID, InfoLayout layout)
+        {
+            /*
+            ImGui.Checkbox($"Viewable##Viewable{layout.id}", ref viewable);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("If checked, this tab will be viewable by others.\nIf unchecked, it will not be displayed.");
+            }
+            */
+            string content = layout.text;
+            var inputSize = new Vector2(ImGui.GetWindowSize().X - 20, ImGui.GetWindowSize().Y / 2);
+            if (RsElements.InputTextArea($"##InfoContent {index}_{uniqueID}", ref content, 5000000, size: inputSize))
+            {
+                layout.text = content;
+            }
+        }
+
+
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "Author": "Serifaz",
+    "Name": "AbsoluteRP",
+    "Punchline": "A plugin for creating profiles, groups and soon stat sheets, quests and events!",
+    "Description": "Allows users to create, manage, view and bookmark roleplay profiles with FF.",
+    "InternalName": "AbsoluteRoleplay",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/serifas/AbsoluteRP",
+    "Tags": [
+        "Absolute",
+        "Roleplay",
+        "RP"
+    ]
+}

@@ -1,0 +1,1229 @@
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows;
+using AbsoluteRP.Windows.Ect;
+using AbsoluteRP.Windows.Listings;
+using AbsoluteRP.Windows.Moderator;
+using AbsoluteRP.Windows.Profiles;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows;
+using AbsoluteRP.Windows.Social.Views;
+using AbsoluteRP.Windows.Social.Views.Groups;
+using Dalamud.Game.ClientState.Conditions;
+using Dalamud.Game.ClientState.Objects;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.Command;
+using Dalamud.Game.Gui.ContextMenu;
+using MenuItem = Dalamud.Game.Gui.ContextMenu.MenuItem;
+using Dalamud.Game.Gui.Dtr;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
+using Dalamud.Hooking;
+using Dalamud.Interface;
+using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Windowing;
+using Dalamud.IoC;
+using Dalamud.Plugin;
+using Dalamud.Plugin.Services;
+using Dalamud.Utility;
+using Dalamud.Utility.Signatures;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.Object;
+using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Component.GUI;
+using Networking;
+using System.Linq;
+using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text;
+using AbsoluteRP.Windows;
+using AbsoluteRP.RsUI;
+using AbsoluteRP.Network;
+
+namespace AbsoluteRP
+{
+    // Main plugin class for Absolute Roleplay. Implements IDalamudPlugin to integrate
+    // with the FFXIV Dalamud framework. Responsible for:
+    //   - Initializing the network connection to the ARP server
+    //   - Registering all UI windows and the /arp command
+    //   - Hooking into game events (login, logout, territory changes, context menus)
+    //   - Running per-frame logic (tooltip display, nearby player scanning, compass)
+    //   - Managing the plugin lifecycle (setup, update loop, disposal)
+    public partial class Plugin : IDalamudPlugin
+    {
+        private bool windowsInitialized = false;     // windows are created lazily on first frame the player is online
+        private float playersInRangeTimer = 0f;      // timer for periodic nearby-player scans (every 20 seconds)
+        private int lastObjectTableCount = -1;
+        public static IGameObject? LastMouseOverTarget;
+        public float tooltipAlpha;
+        public static Plugin plugin;                 // global singleton reference used throughout the codebase
+        public string username = string.Empty;
+        public string password = string.Empty;
+        public string playername = string.Empty;
+        public bool connected = false;
+        public string playerworld = string.Empty;
+        private IntPtr lastTargetAddress = IntPtr.Zero;
+        public static bool lockedtarget = false;
+        private bool openItemTooltip;
+        public bool loggedIn;
+        public static bool justRegistered;
+        public static bool firstopen = true;
+        private bool pendingFetchConnections = false;
+        private uint pendingTerritory = 0;
+        private const string CommandName = "/arp"; // slash command that opens the main panel
+        private const string HubCommandName = "/arphub"; // slash command that toggles the new hub UI
+        public static Defines.Character character { get; set; } = null; // currently active character (matched from local config)
+        public static bool characterKeysVerified = false; // true once we've confirmed the character keys are valid
+
+        public bool loginAttempted = false;
+        private IDtrBarEntry? statusBarEntry;
+        private IDtrBarEntry? connectionsBarEntry;
+        private IDtrBarEntry? chatBarEntry;
+        private IDtrBarEntry? groupInviteBarEntry;
+        public static bool BarAdded = false;
+        internal static float timer = 0f;
+        public static UiBuilder builder;
+        public static IGameGui GameGUI;
+        public static HashSet<string> viewedPlayers = new HashSet<string>();
+
+
+ 
+
+
+
+        // Dalamud service injections. These are automatically populated by the Dalamud framework at plugin load time.
+        [PluginService] internal static IDataManager DataManager { get; private set; } = null;
+        [PluginService] internal static IObjectTable ObjectTable { get; private set; } = null;
+        [PluginService] internal static IDalamudPluginInterface PluginInterface { get; private set; } = null;
+        [PluginService] internal static ICommandManager CommandManager { get; private set; } = null;
+        [PluginService] internal static IFramework Framework { get; private set; } = null;
+        [PluginService] internal static ICondition Condition { get; private set; } = null;
+        [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null;
+        [PluginService] internal static IClientState ClientState { get; private set; } = null;
+        [PluginService] internal static IPlayerState PlayerState { get; private set; } = null;
+        [PluginService] internal static ITargetManager TargetManager { get; private set; } = null;
+        [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null;
+        [PluginService] internal static IChatGui chatgui { get; private set; } = null;
+        [PluginService] internal static IDtrBar dtrBar { get; private set; } = null!;
+        [PluginService] internal static IPluginLog PluginLog { get; private set; } = null!;
+        [PluginService] public static ICommandManager Commands { get; private set; } = null!;
+        [PluginService] public static IDataManager Data { get; private set; } = null!;
+        [PluginService] public static IObjectTable Objects { get; private set; } = null!;
+        [PluginService] public static ITargetManager Targets { get; private set; } = null!;
+        [PluginService] public static IGameConfig GameConfig { get; private set; } = null!;
+        [PluginService] public static IGameInteropProvider HookProvider { get; private set; } = null!;
+        [PluginService] public static IPluginLog Log { get; private set; } = null!;
+        [PluginService] public static IGameGui GameGui { get; private set; } = null!;
+        [PluginService] public static IChatGui Chat { get; private set; } = null!;
+        [PluginService] public static IAddonLifecycle AddonLifecycle { get; private set; } = null!;
+        [PluginService] public static INamePlateGui NamePlateGui { get; private set; } = null!;
+        [PluginService] public static IToastGui ToastGui { get; private set; } = null!;
+
+        [LibraryImport("user32")]
+        internal static partial short GetKeyState(int nVirtKey);
+        public static bool CtrlPressed() => (GetKeyState(0xA2) & 0x8000) != 0 || (GetKeyState(0xA3) & 0x8000) != 0;
+        public Configuration Configuration { get; init; }
+        public static bool tooltipLoaded = false;
+        public static bool tooltipStickyMode = false;
+        public static Plugin? Ui { get; private set; }
+        internal readonly WindowSystem WindowSystem = new("Absolute Roleplay");
+        public OptionsWindow? OptionsWindow { get; private set; }
+        public NotesWindow? NotesWindow { get; private set; }
+        private ModPanel? ModeratorPanel { get; set; }
+        private SocialWindow? SocialWindow { get; set; }
+        public ARPTooltipWindow? TooltipWindow { get; private set; }
+        private ReportWindow? ReportWindow { get; set; }
+        private AccountWindow? MainPanel { get; set; }
+        private ImportantNotice? ImportantNoticeWindow { get; set; }
+        private ProfileWindow? ProfileWindow { get; set; }
+        private TargetProfileWindow? TargetWindow { get; set; }
+        private AbsoluteRP.Immersive.Themes.ThemeEditorWindow? ThemeEditor { get; set; }
+        private ImagePreview? ImagePreview { get; set; }
+        private TOS? TermsWindow { get; set; }
+        private TradeWindow? TradeWindow { get; set; }
+        private SystemsWindow? SystemsWindow { get; set; }
+        public static GroupInviteNotification? groupInviteNotification { get; set; }
+        private ViewLikesWindow? ViewLikesWindow { get; set; }
+        private LikeDetailsWindow? LikeDetailsWindow { get; set; }
+        private ListingsWindow? ListingsWindow { get; set; }
+        private AbsoluteRP.Windows.Inventory.InventoryWindow? InventoryWindow { get; set; }
+        private AbsoluteRP.Windows.Inventory.EquipmentWindow? EquipmentWindow { get; set; }
+        private AbsoluteRP.RsUI.RsWindowSystem? rsWindowSystem;
+        private AbsoluteRP.RsUI.MainWindow? rsMainWindow;
+        // YouTubePlayerWindow is a WebView2 Forms window that runs on its own thread
+
+        public float BlinkInterval = 0.5f;
+        public bool newConnection = false;
+        private bool isWindowOpen;
+        public static bool tooltipShown;
+
+        public static Dictionary<int, IDalamudTextureWrap> staticTextures = new Dictionary<int, IDalamudTextureWrap>();
+
+        private bool needsAsyncInit = true;
+        private string displayName = string.Empty;
+
+
+        // Plugin constructor  -  sets up everything needed at load time:
+        //   1. Global exception handlers (so one bad packet doesn't crash the game)
+        //   2. Config loading and default data path setup
+        //   3. Dalamud event hooks (draw, login/logout, territory change, context menu)
+        //   4. Initial server connection and auto-login
+        public Plugin()
+        {
+            plugin = this;
+
+            // Catch unhandled exceptions to prevent game crashes
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler;
+
+            Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+
+            DataSender.plugin = this;
+            CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+            {
+                HelpMessage = "opens the plugin window."
+            });
+
+            Configuration.Initialize(PluginInterface);
+
+            // New RsUI hub window system, runs alongside the existing windows
+            rsWindowSystem = new AbsoluteRP.RsUI.RsWindowSystem();
+            rsMainWindow = rsWindowSystem.Add(new AbsoluteRP.RsUI.MainWindow());
+            PluginInterface.UiBuilder.Draw += rsWindowSystem.Draw;
+            CommandManager.AddHandler(HubCommandName, new CommandInfo(OnHubCommand)
+            {
+                HelpMessage = "Toggle the new AbsoluteRP hub UI."
+            });
+
+            // Set default data save path on first run
+            if (string.IsNullOrEmpty(Configuration.dataSavePath))
+            {
+                Configuration.dataSavePath = $"{PluginInterface?.AssemblyLocation?.Directory?.FullName}\\ARPProfileData";
+                Configuration.Save();
+            }
+
+            // Register Dalamud callbacks
+            PluginInterface.UiBuilder.Draw += DrawUI;
+            PluginInterface.UiBuilder.OpenConfigUi += ToggleConfigUI;
+            PluginInterface.UiBuilder.OpenMainUi += ToggleMainUI;
+
+            // Video-playback pipeline: grabs the ImGui D3D11 device + adapter LUID so the renderer subprocess can create a matching D3D11 device and shared texture.
+            try { AbsoluteRP.Video.DxHandler.Initialize(PluginInterface); }
+            catch (Exception ex) { PluginLog.Warning(ex, "Video DxHandler init failed"); }
+            ContextMenu!.OnMenuOpened += this.OnMenuOpened;
+            ClientState.Logout += OnLogout;
+            ClientState.Login += LoadConnection;
+            ClientState.TerritoryChanged += FetchConnectionsInMap;
+            Framework.Update += Update;            // per-frame update loop
+            Plugin.HookProvider.InitializeFromAttributes(this);
+
+
+            needsAsyncInit = true;
+
+            // Initialize CEF dependency manager for YouTube video playback
+            CefDependencyManager.Initialize();
+
+            // Sweep any orphan AbsoluteRP.Renderer.exe processes left over from a previous plugin load that didn't get a clean unload (game crash, force-quit, job-object bind failure). Their pipes are dead, their handles are unreachable, and if we don't reap them the plugin folder stays locked on the next build. Skips renderers still owned by an alive parent that could be another concurrent instance of the plugin.
+            try
+            {
+                var here = System.Diagnostics.Process.GetCurrentProcess().Id;
+                foreach (var p in System.Diagnostics.Process.GetProcessesByName("AbsoluteRP.Renderer"))
+                {
+                    try
+                    {
+                        // Best-effort: just kill them all. They will exclusively be our subprocesses (the .exe name is unique) and any live-and-happy one is bound to a currently-alive plugin instance which, if it exists, will handle its own respawn.
+                        p.Kill();
+                    }
+                    catch (Exception ex) { PluginLog?.Debug("[AbsoluteRP] orphan renderer sweep: " + ex.Message); }
+                    finally { try { p.Dispose(); } catch { } }
+                }
+            }
+            catch (Exception ex) { PluginLog?.Debug("[AbsoluteRP] orphan sweep threw: " + ex.Message); }
+
+            // DTR bar bell for social notifications
+            try { AbsoluteRP.Social.SocialDtrBell.Initialize(); }
+            catch (Exception ex) { PluginLog?.Debug("SocialDtrBell init: " + ex.Message); }
+
+            // Rich-text composer font handles - bundled system fonts with. Regular/Bold/Italic/BoldItalic variants so the composer can switch families and render italics that the game font can't.
+            try { AbsoluteRP.Social.SocialComposerFonts.Initialize(); }
+            catch (Exception ex) { PluginLog?.Debug("SocialComposerFonts init: " + ex.Message); }
+
+            // Connect to the ARP server immediately
+            LoadConnection();
+
+            ARPIpc = new IPC.ARPIpc(PluginInterface);
+        }
+
+        public IPC.ARPIpc? ARPIpc { get; private set; }
+
+        private void FetchConnectionsInMap(uint obj)
+        {
+            if (!characterKeysVerified) return; // Don't send requests with stale keys
+            pendingFetchConnections = true;
+            pendingTerritory = obj;
+        }
+
+        // Returns all player characters within 1000 yalms of the local player. Used for the compass feature and nearby-player ARP profile scanning.
+        public static List<IPlayerCharacter> VisiblePlayers()
+        {
+            var localPlayer = ObjectTable.LocalPlayer;
+            List<IPlayerCharacter> nearbyPlayers = ObjectTable
+                .Where(obj => obj is IPlayerCharacter pc && pc != localPlayer)
+                .Cast<IPlayerCharacter>()
+                .Where(pc => Vector3.Distance(pc.Position, localPlayer.Position) <= 1000)
+                .ToList();
+            return nearbyPlayers;
+        }
+        // Returns a custom name for a nameplate if the player has set an "Identify As" override. Used to display RP names instead of real character names on nameplates.
+        public static string GetNameForPlate(
+        string originalName,
+        int objectIndex,
+        ulong localContentId,
+        IDictionary<ulong, (string, uint)> identifyAs,
+        string? altCode = null)
+        {
+            string? overrideName = null;
+
+
+            if (objectIndex == 0 && identifyAs.TryGetValue(localContentId, out var identifyAsTuple))
+            {
+                overrideName = identifyAsTuple.Item1;
+                return overrideName;
+            }
+            else
+            {
+                return originalName;
+            }
+        }
+      
+
+
+        private async Task InitializeAsync()
+        {
+            cachedVersion = await GetOnlineVersionAsync();
+        }
+
+        // Fetches the latest plugin version from GitHub to check if ToS needs re-acceptance
+        public async Task<Version> GetOnlineVersionAsync()
+        {
+            try
+            {
+                using HttpClient client = new HttpClient();
+                client.Timeout = TimeSpan.FromSeconds(5);
+
+                string versionText = await client.GetStringAsync("https://raw.githubusercontent.com/serifas/Absolute-Roleplay/refs/heads/main/Version.txt");
+
+                if (Version.TryParse(versionText.Trim(), out Version version))
+                {
+                    return version;
+                }
+                else
+                {
+                    PluginLog.Debug($"Failed to parse version from response: {versionText}");
+                    return new Version(0, 0, 0, 0);
+                }
+            }
+            catch (TaskCanceledException)
+            {
+                PluginLog.Debug("Request timed out while fetching the online version.");
+                return new Version(0, 0, 0, 0);
+            }
+            catch (HttpRequestException ex)
+            {
+                PluginLog.Debug($"HTTP Debug while fetching version: {ex.Message}");
+                return new Version(0, 0, 0, 0);
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Debug($"Unexpected Debug in GetOnlineVersionAsync: {ex}");
+                return new Version(0, 0, 0, 0);
+            }
+        }
+
+        // Opens the profile window and starts loading profile data from the server. If self=true, opens the editor; otherwise opens the target viewer.
+        public void OpenAndLoadProfileWindow(bool self, int index)
+        {
+            if (self)
+            {
+                OpenProfileWindow();
+                Profiles_DS.FetchProfiles(Plugin.character);
+            }
+            else
+            {
+                TargetProfileWindow.RequestingProfile = true;
+                OpenTargetWindow();
+            }
+            Profiles_DS.FetchProfile(Plugin.character, self, index, plugin.playername, plugin.playerworld, -1);
+        }
+
+        // Adds ARP context menu items (View Profile, Bookmark, Invite to Group)
+        // when right-clicking a player name in chat, friend list, etc.
+        // Handles both direct object targets and name-based targets (like from chat).
+        private unsafe void OnMenuOpened(IMenuOpenedArgs args)
+        {
+            var ctx = AgentContext.Instance();
+            if (args.AgentPtr != (nint)ctx)
+            {
+                return;
+            }
+            var obj = ObjectTable.SearchById(ctx->TargetObjectId.ObjectId);
+
+            if (ctx->TargetObjectId.ObjectId != 0xE000_0000)
+            {
+                this.ObjectContext(args, ctx->TargetObjectId.ObjectId);
+                return;
+            }
+
+            var world = ctx->TargetHomeWorldId;
+            if (world == 0)
+            {
+                return;
+            }
+
+            var name = SeString.Parse(ctx->TargetName.AsSpan()).TextValue;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return;
+            }
+            var worldname = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.World>().GetRowOrDefault((uint)world)?.Name.ToString();
+
+            if (Configuration.MenuBookmarkProfile)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Bookmark Absolute RP Profile",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedLetterB,
+                OnClicked = _ => {
+                    Profiles_DS.BookmarkPlayer(Plugin.character, name, worldname, -1);
+                },
+            });
+            if (Configuration.MenuViewProfile)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "View Absolute RP Profile",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedQuestionMark,
+                OnClicked = _ => {
+                    OpenTargetWindow();
+                    TargetProfileWindow.characterName = name;
+                    TargetProfileWindow.characterWorld = worldname;
+                    TargetProfileWindow.RequestingProfile = true;
+                    TargetProfileWindow.ResetAllData();
+                    Profiles_DS.FetchProfile(Plugin.character, false, -1, name, worldname, -1);
+                },
+            });
+
+
+            if (Configuration.MenuInviteToGroup)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Invite to Group",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedPlus,
+                OnClicked = _ => {
+                    GroupInviteDialog.Open(name, worldname);
+                },
+            });
+
+        }
+
+        // Adds ARP menu items when right-clicking a player character in the game world
+        private void ObjectContext(IMenuOpenedArgs args, uint objectId)
+        {
+            var obj = ObjectTable.SearchById(objectId);
+            if (obj is not IPlayerCharacter chara)
+            {
+                return;
+            }
+
+            if (Configuration.MenuBookmarkProfile)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Bookmark ARP Profile",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedLetterB,
+                OnClicked = _ => {
+                    Profiles_DS.BookmarkPlayer(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                },
+            });
+            if (Configuration.MenuViewProfile)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "View ARP Profile",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedQuestionMark,
+                OnClicked = _ => {
+                    OpenTargetWindow();
+                    TargetProfileWindow.characterName = chara.Name.ToString();
+                    TargetProfileWindow.characterWorld = chara.HomeWorld.Value.Name.ToString();
+                    TargetProfileWindow.RequestingProfile = true;
+                    TargetProfileWindow.ResetAllData();
+                    Profiles_DS.FetchProfile(character, false, -1, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString(), -1);
+                },
+            });
+            if (Configuration.MenuInviteToGroup)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Invite to Group",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedPlus,
+                OnClicked = _ => {
+                    GroupInviteDialog.Open(chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });
+            if (Configuration.MenuOpenTrade)
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Open ARP Trade",
+                PrefixColor = 56,
+                Prefix = SeIconChar.Gil,
+                OnClicked = _ => {
+                    Trades_DS.RequestTargetTrade(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });
+            /*
+            args.AddMenuItem(new MenuItem
+            {
+                Name = "Trade ARP Items",
+                PrefixColor = 56,
+                Prefix = SeIconChar.BoxedLetterT,
+                OnClicked = _ => {
+                    Trades_DS.RequestTargetTrade(character, chara.Name.ToString(), chara.HomeWorld.Value.Name.ToString());
+                },
+            });*/
+        }
+
+        private Version? cachedVersion = null;
+        private bool isCheckingVersion = false;
+
+        public async Task<bool> IsToSVersionUpdated()
+        {
+            if (!isCheckingVersion)
+            {
+                isCheckingVersion = true;
+                cachedVersion = await GetOnlineVersionAsync();
+                isCheckingVersion = false;
+            }
+
+            return cachedVersion != null && cachedVersion == Configuration.TOSVersion;
+        }
+
+        // Initializes the server connection: registers packet handlers, connects, updates the status bar, and auto-logs in so features work immediately.
+        public void LoadConnection()
+        {
+            ClientHandleData.InitializePackets();
+            Connect();
+            _ = UpdateStatusAsync();
+            // Auto-login after connecting so the server creates a session. This allows features like trading to work without opening the main panel first
+            _ = AutoLoginAfterConnectAsync();
+        }
+
+        // Waits for the connection to establish, then sends a login packet. This avoids requiring the user to manually open the panel before features work.
+        private async Task AutoLoginAfterConnectAsync()
+        {
+            // Wait briefly for the connection to be established
+            for (int i = 0; i < 20; i++)
+            {
+                if (ClientTCP.IsConnected()) break;
+                await Task.Delay(250);
+            }
+            if (ClientTCP.IsConnected() && Configuration?.account?.accountKey != null)
+            {
+                Accounts_DS.SendLogin();
+                PluginLog.Info("[AutoLogin] Sent login after connection established");
+            }
+        }
+
+        public void Connect()
+        {
+            if (!ClientTCP.IsConnected())
+            {
+                ClientTCP.AttemptConnect();
+            }
+        }
+
+        // Resets plugin state when logging out - clears status bars and user info
+        public void DisconnectAndLogOut()
+        {
+            connectionsBarEntry = null;
+            statusBarEntry = null;
+            MainPanel.switchUI();
+            loginAttempted = false;
+            playername = string.Empty;
+            playerworld = string.Empty;
+            newConnection = false; // Reset connection request flag on logout
+        }
+
+        private void OnLogout(int type, int code)
+        {
+            DisconnectAndLogOut();
+        }
+
+        // Catches async task exceptions that nobody awaited, preventing them from crashing the game
+        private void UnobservedTaskExceptionHandler(object? sender, UnobservedTaskExceptionEventArgs e)
+        {
+            e.SetObserved();
+            Framework.RunOnFrameworkThread(() =>
+            {
+                PluginLog.Debug("Exception handled" + e.Exception.Message);
+            });
+        }
+
+        public void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Framework.RunOnFrameworkThread(() =>
+            {
+                if (e.ExceptionObject is Exception ex)
+                {
+                    PluginLog.Debug($"Unhandled exception: {ex}");
+                }
+                else
+                {
+                    PluginLog.Debug($"Unhandled non-Exception object: {e.ExceptionObject}");
+                }
+            });
+        }
+
+        private void BookmarkProfile(IMenuItemClickedArgs args)
+        {
+            if (IsOnline())
+            {
+                var targetPlayer = TargetManager.Target as IPlayerCharacter;
+                Profiles_DS.BookmarkPlayer(character, targetPlayer.Name.ToString(), targetPlayer.HomeWorld.Value.Name.ToString(), -1);
+            }
+        }
+
+        // Creates the ARP icon in the Dalamud DTR (Data Text Row) server info bar. Clicking it toggles the main panel.
+        public void LoadStatusBarEntry()
+        {
+            var entry = dtrBar.Get("AbsoluteRP");
+            statusBarEntry = entry;
+            string icon = "\uE03E";
+            statusBarEntry.Text = icon;
+            statusBarEntry.Tooltip = "Absolute Roleplay";
+            entry.OnClick = _ => ToggleMainUI();
+        }
+        /*
+        public void LoadConnectionsBarEntry(float deltaTime)
+        {
+            timer += deltaTime;
+            float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0;
+
+            var entry = dtrBar.Get("AbsoluteConnection");
+            connectionsBarEntry = entry;
+            connectionsBarEntry.Tooltip = "Absolute Roleplay - New Connections Request";
+            Connections.currentListing = 2;
+            entry.OnClick = _ => Connections_DS.RequestConnections(Plugin.character);
+            SeStringBuilder statusString = new SeStringBuilder();
+            statusString.AddUiGlow((ushort)pulse);
+            statusString.AddText("\uE070");
+            statusString.AddUiGlow(0);
+            SeString str = statusString.BuiltString;
+            connectionsBarEntry.Text = str;
+        }*/
+
+        public void UnloadConnectionsBar()
+        {
+            if (connectionsBarEntry != null)
+            {
+                connectionsBarEntry.Remove();
+                connectionsBarEntry = null;
+            }
+        }
+
+        // Shows a blinking group invite indicator in the DTR bar when invites are pending. The icon pulses between visible and hidden to draw the player's attention.
+        public void LoadGroupInviteBarEntry(float deltaTime)
+        {
+            int inviteCount = GroupInviteNotification.GetPendingInviteCount();
+
+            if (inviteCount > 0)
+            {
+                timer += deltaTime;
+                float pulse = ((int)(timer / BlinkInterval) % 2 == 0) ? 14 : 0;
+
+                var entry = dtrBar.Get("AbsoluteGroupInvite");
+                groupInviteBarEntry = entry;
+                groupInviteBarEntry.Tooltip = $"Absolute Roleplay - {inviteCount} pending group invite{(inviteCount > 1 ? "s" : "")}";
+                entry.OnClick = _ => GroupInviteNotification.ShowNextInvite();
+                SeStringBuilder statusString = new SeStringBuilder();
+                statusString.AddUiGlow((ushort)pulse);
+                statusString.AddText("\uE06F"); // Group/users icon
+                if (inviteCount > 1)
+                {
+                    statusString.AddText($" {inviteCount}");
+                }
+                statusString.AddUiGlow(0);
+                SeString str = statusString.BuiltString;
+                groupInviteBarEntry.Text = str;
+            }
+            else
+            {
+                UnloadGroupInviteBar();
+            }
+        }
+
+        public void UnloadGroupInviteBar()
+        {
+            if (groupInviteBarEntry != null)
+            {
+                groupInviteBarEntry?.Remove();
+                groupInviteBarEntry = null;
+            }
+        }
+
+        // Cleans up all plugin resources: unregisters event hooks, disposes all windows, removes DTR bar entries, stops audio, and releases texture memory.
+        public void Dispose()
+        {
+            // Kill any live video-background renderer subprocesses FIRST - otherwise they stay alive holding their own .exe open and block the next Debug/Release build.
+            try { AbsoluteRP.RsUI.Pages.ProfilesPage.DisposeBackgroundVideo(); }
+            catch (Exception ex) { PluginLog.Debug("Self BG video dispose: " + ex.Message); }
+            try { AbsoluteRP.Windows.Profiles.ProfileTypeWindows.TargetProfileWindow.DisposeBackgroundVideo(); }
+            catch (Exception ex) { PluginLog.Debug("Target BG video dispose: " + ex.Message); }
+            try { AbsoluteRP.Immersive.ImmersiveTextures.DisposeAll(); }
+            catch (Exception ex) { PluginLog.Debug("Immersive textures dispose: " + ex.Message); }
+
+            try { AbsoluteRP.Social.SocialDtrBell.Dispose(); }
+            catch (Exception ex) { PluginLog?.Debug("SocialDtrBell dispose: " + ex.Message); }
+
+            try { AbsoluteRP.Social.SocialComposerFonts.Dispose(); }
+            catch (Exception ex) { PluginLog?.Debug("SocialComposerFonts dispose: " + ex.Message); }
+
+            ARPIpc?.Dispose();
+            WindowSystem?.RemoveAllWindows();
+            statusBarEntry?.Remove();
+            statusBarEntry = null;
+            connectionsBarEntry?.Remove();
+            connectionsBarEntry = null;
+            groupInviteBarEntry?.Remove();
+            groupInviteBarEntry = null;
+            CommandManager.RemoveHandler(CommandName);
+            CommandManager.RemoveHandler(HubCommandName);
+            ContextMenu.OnMenuOpened -= OnMenuOpened;
+            if (rsWindowSystem != null)
+            {
+                PluginInterface.UiBuilder.Draw -= rsWindowSystem.Draw;
+                rsWindowSystem.Dispose();
+                rsWindowSystem = null;
+            }
+            PluginInterface.UiBuilder.Draw -= DrawUI;
+            PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUI;
+            PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUI;
+            ClientState.Logout -= OnLogout;
+            ClientState.Login -= LoadConnection;
+            OptionsWindow?.Dispose();
+            MainPanel?.Dispose();
+            TermsWindow?.Dispose();
+            ImagePreview?.Dispose();
+            ProfileWindow?.Dispose();
+            NotesWindow?.Dispose();
+            ImportantNoticeWindow?.Dispose();
+            TargetWindow?.Dispose();
+            TooltipWindow?.Dispose();
+            ReportWindow?.Dispose();
+            SocialWindow?.Dispose();
+            ModeratorPanel?.Dispose();
+            SystemsWindow?.Dispose();
+            YouTubePlayerWindow.ClosePlayer(); // Close WebView2 Forms window if open
+            Misc.CleanupAudioPlayers(); // Stop and dispose all audio players
+            Misc.Jupiter?.Dispose();
+
+
+            foreach (IDalamudTextureWrap texture in UI.commonImageWraps.Values)
+            {
+                texture.Dispose();
+            }
+            foreach (IDalamudTextureWrap texture in UI.alignmentImageWraps.Values)
+            {
+                texture.Dispose();
+            }
+            foreach (IDalamudTextureWrap texture in UI.personalityImageWraps.Values)
+            {
+                texture.Dispose();
+            }
+            // Anything retired in the last few frames (video SRVs, evicted theme textures) would otherwise leak on unload. Last call at the graveyard; nobody haunts the next session.
+            try { Helpers.TextureGraveyard.Flush(); } catch { }
+        }
+        /*
+        public void CheckConnectionsRequestStatus()
+        {
+            TimeSpan deltaTimeSpan = Framework.UpdateDelta;
+            float deltaTime = (float)deltaTimeSpan.TotalSeconds;
+            if (newConnection == true)
+            {
+                LoadConnectionsBarEntry(deltaTime);
+            }
+            else
+            {
+                UnloadConnectionsBar();
+            }
+        }*/
+
+        public void CheckGroupInviteStatus()
+        {
+            TimeSpan deltaTimeSpan = Framework.UpdateDelta;
+            float deltaTime = (float)deltaTimeSpan.TotalSeconds;
+            LoadGroupInviteBarEntry(deltaTime);
+        }
+
+        private void OnCommand(string command, string args)
+        {
+            ToggleMainUI();
+        }
+
+        private void OnHubCommand(string command, string args)
+        {
+            if (rsMainWindow != null)
+                rsMainWindow.IsOpen = !rsMainWindow.IsOpen;
+        }
+
+        public void CloseAllWindows()
+        {
+            foreach (Window window in WindowSystem.Windows)
+            {
+                if (window.IsOpen)
+                {
+                    window.Toggle();
+                }
+            }
+        }
+
+        // Checks if the player is currently logged into a character in-game. Also updates the cached player name and world as a side effect.
+        public static bool IsOnline()
+        {
+            if (ClientState == null || ObjectTable == null)
+                return false;
+
+            try
+            {
+                var localPlayer = ObjectTable.LocalPlayer;
+                if (localPlayer != null)
+                {
+                    plugin.playername = localPlayer.Name.ToString();
+                    plugin.playerworld = localPlayer.HomeWorld.Value.Name.ToString() ?? string.Empty;
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Debug($"IsOnline() exception: {ex}");
+            }
+            return false;
+        }
+
+        private bool avatarTextureSpawned = false;
+        private bool wasSocialWindowOpen = false;
+        private bool wasProfileWindowOpen = false;
+        private bool wasTargetWindowOpen = false;
+
+        // Called every frame by Dalamud. Draws all ARP windows, the compass overlay, group invite dialogs, and DTR bar updates. Also detects when windows close to clean up audio players that may have been started inside them.
+        private void DrawUI()
+        {
+            try
+            {
+                // Check if SocialWindow was just closed and cleanup audio
+                bool isSocialWindowOpen = SocialWindow?.IsOpen ?? false;
+                if (wasSocialWindowOpen && !isSocialWindowOpen)
+                {
+                    Misc.CleanupAudioPlayers();
+                }
+                wasSocialWindowOpen = isSocialWindowOpen;
+
+                // Check if ProfileWindow was just closed and cleanup audio
+                bool isProfileWindowOpen = ProfileWindow?.IsOpen ?? false;
+                if (wasProfileWindowOpen && !isProfileWindowOpen)
+                {
+                    Misc.CleanupAudioPlayers();
+                }
+                wasProfileWindowOpen = isProfileWindowOpen;
+
+                // Check if TargetWindow (TargetProfileWindow) was just closed and cleanup audio
+                bool isTargetWindowOpen = TargetWindow?.IsOpen ?? false;
+                if (wasTargetWindowOpen && !isTargetWindowOpen)
+                {
+                    Misc.CleanupAudioPlayers();
+                }
+                wasTargetWindowOpen = isTargetWindowOpen;
+
+                Helpers.ThemeManager.PushTheme(Configuration);
+                // RsUI restyle goes on top of the legacy theme so the new palette wins
+                RsUI.RsGlobalStyle.Push();
+                try
+                {
+                    WindowSystem.Draw();
+                    // Themed file dialog: once per frame, whichever window asked for it.
+                    RsUI.RsFileDialog.Draw();
+                    Helpers.GalleryMedia.DrawPopups();   // gallery video / audio players
+                    Helpers.TextureGraveyard.Drain();    // textures retired a few frames ago
+                }
+                catch (Exception ex)
+                {
+                    PluginLog.Debug("Exception in WindowSystem.Draw: " + ex.Message);
+                }
+                finally
+                {
+                    RsUI.RsGlobalStyle.Pop();
+                    Helpers.ThemeManager.PopTheme();
+                }
+
+                PlayerInteractions.DrawCompass();
+
+                // Draw group invite dialog
+                GroupInviteDialog.Draw();
+
+                // Draw group join request dialog
+                GroupJoinRequestDialog.Draw();
+
+                // Update DTR bar entries
+                CheckGroupInviteStatus();
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Debug($"Exception in DrawUI: {ex}");
+            }
+        }
+        // Opens a window, but first ensures the server connection is active and the Terms of Service have been accepted. If ToS is outdated, shows the. ToS window instead of the requested one.
+        public async Task LoadWindow(Window window, bool Toggle)
+        {
+            if (!ClientTCP.IsConnected())
+            {
+                LoadConnection();
+            }
+            if (window == null)
+            {
+                PluginLog.Debug("LoadWindow called with a null window.");
+                return;
+            }
+
+            if (await IsToSVersionUpdated())
+            {
+                PluginLog.Debug($"Version matched, loading window: {window}");
+                if (Toggle)
+                {
+                    window.Toggle();
+                }
+                else
+                {
+                    window.IsOpen = true;
+                }
+            }
+            else
+            {
+                PluginLog.Debug("Version mismatch, opening Terms of Service window.");
+
+                if (Configuration.TOSVersion == null)
+                {
+                    Configuration.TOSVersion = new Version(0, 0, 0, 0);
+                }
+
+                TermsWindow.version = await GetOnlineVersionAsync();
+                TermsWindow.IsOpen = true;
+            }
+        }
+
+        public void ToggleConfigUI() => RsUI.MainWindow.Instance?.OpenPage("settings");
+
+        // Hub is the primary UI now; /arp and the DTR icon land here.
+        public void ToggleMainUI()
+        {
+            if (rsMainWindow != null)
+                rsMainWindow.IsOpen = !rsMainWindow.IsOpen;
+            Profiles_DS.FetchProfiles(Plugin.character);
+        }
+
+        public void OpenMainPanel()
+        {
+            RsUI.MainWindow.Instance?.OpenPage("account");
+            Profiles_DS.FetchProfiles(Plugin.character);
+        }
+
+        public void OpenTermsWindow() => TermsWindow.IsOpen = true;
+        public void OpenImagePreview() => ImagePreview.IsOpen = true;
+        public void OpenModeratorPanel() => ModeratorPanel.IsOpen = true;
+        public void OpenProfileWindow() => RsUI.MainWindow.Instance?.OpenPage("profiles");
+        public void CloseProfileWindow() => ProfileWindow.IsOpen = false;
+        public void OpenTargetWindow() => TargetWindow.IsOpen = true;
+        public bool IsTargetWindowOpen => TargetWindow?.IsOpen == true;
+        public void CloseTargetWindow() => TargetWindow.IsOpen = false;
+        public void OpenReportWindow() => ReportWindow.IsOpen = true;
+        public void OpenOptionsWindow() => RsUI.MainWindow.Instance?.OpenPage("settings");
+        public void OpenARPTooltip() => TooltipWindow.IsOpen = true;
+        public void CloseARPTooltip()
+        {
+            TooltipWindow.IsOpen = false;
+            tooltipStickyMode = false;
+        }
+        public void OpenProfileNotes() => NotesWindow.IsOpen = true;
+        public void OpenSocialWindow() => RsUI.MainWindow.Instance?.OpenPage("social");
+        public void OpenImportantNoticeWindow() => ImportantNoticeWindow.IsOpen = true;
+        public void OpenTradeWindow() => TradeWindow.IsOpen = true;
+        public void CloseTradeWindow() => TradeWindow.IsOpen = false;
+        public void ToggleSystemsWindow() => RsUI.MainWindow.Instance?.OpenPage("systems");
+        public void ToggleViewLikesWindow() => ViewLikesWindow.Toggle();
+        public void OpenListingsWindow() => RsUI.MainWindow.Instance?.OpenPage("social");   // listings live in social now
+        public void OpenInventoryWindow() => RsUI.MainWindow.Instance?.OpenPage("inventory");
+        public void OpenEquipmentWindow() { if (EquipmentWindow != null) EquipmentWindow.IsOpen = true; }
+        public void OpenLikeDetailsWindow(ProfileData profile)
+        {
+            LikeDetailsWindow.SetProfile(profile);
+            LikeDetailsWindow.IsOpen = true;
+        }
+
+        // Polls the server connection state and updates the MainPanel status text/color
+        internal async Task UpdateStatusAsync()
+        {
+            try
+            {
+                var status = await ClientTCP.GetConnectionStatusAsync(ClientTCP.clientSocket);
+                AccountWindow.serverStatus = status.Item2;
+                AccountWindow.serverStatusColor = status.Item1;
+            }
+            catch (Exception ex)
+            {
+                PluginLog.Debug("Debug updating status: " + ex.ToString());
+            }
+        }
+   
+        // Per-frame update loop. Handles:
+        //   1. One-time async initialization (version check)
+        //   2. Lazy window creation (deferred until the player is actually online)
+        //   3. Character key resolution (matches the logged-in character to stored config)
+        //   4. Periodic nearby-player scanning for the compass feature (every 20 seconds)
+        //   5. Tooltip display logic (show/hide based on mouse target and lock settings)
+        public void Update(IFramework framework)
+        {
+            if (needsAsyncInit)
+            {
+                needsAsyncInit = false;
+                _ = InitializeAsync();
+            }
+
+            // DTR bar bell - cheap: no-ops unless SocialFeed.Version moved.
+            try { AbsoluteRP.Social.SocialDtrBell.Tick(); } catch { }
+            // Server-info bar entries follow the setting.
+            try
+            {
+                var dtrOn = Configuration?.ShowDtrEntries ?? true;
+                if (statusBarEntry != null) statusBarEntry.Shown = dtrOn;
+                if (connectionsBarEntry != null) connectionsBarEntry.Shown = dtrOn;
+                if (chatBarEntry != null) chatBarEntry.Shown = dtrOn;
+                if (groupInviteBarEntry != null) groupInviteBarEntry.Shown = dtrOn;
+                AbsoluteRP.Social.SocialDtrBell.SetVisible(dtrOn);
+            }
+            catch { }
+            // Kill inline/popup videos whose UI has stopped drawing - the audio would otherwise keep playing after the user leaves the page. Both are cheap when nothing is playing.
+            try { AbsoluteRP.Social.SocialVideoThumbCache.HeartbeatTick(); } catch { }
+            try { AbsoluteRP.Social.SocialVideoPopup.HeartbeatTick(); } catch { }
+            if (!windowsInitialized && IsOnline())
+            {
+                windowsInitialized = true;
+
+                OptionsWindow = new OptionsWindow();
+                MainPanel = new AccountWindow();
+                TermsWindow = new TOS();
+                ProfileWindow = new ProfileWindow();
+                ImagePreview = new ImagePreview();
+                ImportantNoticeWindow = new ImportantNotice();
+                TargetWindow = new TargetProfileWindow();
+                ThemeEditor = new AbsoluteRP.Immersive.Themes.ThemeEditorWindow();
+                ModeratorPanel = new ModPanel();
+                ReportWindow = new ReportWindow();
+                TooltipWindow = new ARPTooltipWindow();
+                NotesWindow = new NotesWindow();
+                SocialWindow = new SocialWindow();
+                TradeWindow = new TradeWindow();
+                SystemsWindow = new SystemsWindow();
+                groupInviteNotification = new GroupInviteNotification();
+                ViewLikesWindow = new ViewLikesWindow(this);
+                LikeDetailsWindow = new LikeDetailsWindow();
+                ListingsWindow = new ListingsWindow();
+                InventoryWindow = new AbsoluteRP.Windows.Inventory.InventoryWindow();
+                EquipmentWindow = new AbsoluteRP.Windows.Inventory.EquipmentWindow();
+                // YouTubePlayerWindow creates itself when OpenVideo is called
+
+                WindowSystem.AddWindow(OptionsWindow);
+                WindowSystem.AddWindow(MainPanel);
+                WindowSystem.AddWindow(TermsWindow);
+                // ProfileWindow is no longer a floating Dalamud window - the profile UI lives in ProfilesPage inside the hub. ProfileWindow stays as a static data holder that. DataReceiver and other consumers write into.
+                WindowSystem.AddWindow(ImagePreview);
+                WindowSystem.AddWindow(TargetWindow);
+                WindowSystem.AddWindow(ThemeEditor);
+                WindowSystem.AddWindow(ModeratorPanel);
+                WindowSystem.AddWindow(ReportWindow);
+                WindowSystem.AddWindow(TooltipWindow);
+                WindowSystem.AddWindow(NotesWindow);
+                WindowSystem.AddWindow(SocialWindow);
+                WindowSystem.AddWindow(ImportantNoticeWindow);
+                WindowSystem.AddWindow(TradeWindow);
+                WindowSystem.AddWindow(SystemsWindow);
+                WindowSystem.AddWindow(groupInviteNotification);
+                WindowSystem.AddWindow(ViewLikesWindow);
+                WindowSystem.AddWindow(LikeDetailsWindow);
+                WindowSystem.AddWindow(ListingsWindow);
+                WindowSystem.AddWindow(InventoryWindow);
+                WindowSystem.AddWindow(EquipmentWindow);
+
+                LoadStatusBarEntry();
+                
+            }
+
+            if (IsOnline() &&
+                (character == null
+                 || character.characterName != ObjectTable.LocalPlayer.Name.ToString()
+                 || character.characterWorld != ObjectTable.LocalPlayer.HomeWorld.Value.Name.ToString()))
+            {
+                character = Plugin.plugin.Configuration?.characters?.FirstOrDefault(
+                    x => x?.characterName == ObjectTable.LocalPlayer.Name.ToString()
+                      && x?.characterWorld == ObjectTable.LocalPlayer.HomeWorld.Value.Name.ToString());
+            }
+
+            // Process any pending joined systems (runs every frame until list is empty)
+            if (character != null)
+                Systems_DR.ProcessPendingJoinedSystems();
+
+            if (IsOnline())
+            {
+                playersInRangeTimer += (float)Framework.UpdateDelta.TotalSeconds;
+                if (playersInRangeTimer >= 20f)
+                {
+                    if(AccountWindow.loggedIn == true)
+                    {
+                        playersInRangeTimer = 0f;         
+                        Connections_DS.RequestCompassFromList(character, VisiblePlayers());
+                        var visible = VisiblePlayers();
+
+                        var playersInRange = VisiblePlayers();
+                        Connections_DS.RequestCompassFromList(character, playersInRange);
+
+                        // Build stable keys for current players and prune viewedPlayers of those who left
+                        var currentKeys = new HashSet<string>(playersInRange.Select(p => $"{p.Name}@{p.HomeWorld.Value.Name}"));
+                        viewedPlayers.RemoveWhere(k => !currentKeys.Contains(k));
+
+                        foreach (var player in playersInRange)
+                        {
+                            try
+                            {
+                                var playerKey = $"{player.Name}@{player.HomeWorld.Value.Name}";
+
+                                if (viewedPlayers.Contains(playerKey))
+                                    continue;
+
+                                // Preconditions: we must have a valid local character, connection and a configured faux name
+                                if (character == null)
+                                {
+                                    continue;
+                                }
+                                if (!ClientTCP.IsConnected())
+                                {
+                                    continue;
+                                }
+
+                                // Mark seen and send broadcast only for this newly-seen player (single-item list)
+                                viewedPlayers.Add(playerKey);
+
+                             
+                            }
+                            catch (Exception ex)
+                            {
+                                PluginLog.Debug($"Error handling visible player in Update: {ex}");
+                            }
+                        }
+                    }
+                }               
+            }
+
+            // var currentTarget can be null or not an IGameObject, so always check type before using ObjectKind
+            var currentTarget = TargetManager.Target ?? TargetManager.MouseOverTarget;
+
+            if (Configuration.tooltip_LockOnClick && TargetManager.Target != null)
+            {
+                lockedtarget = true;
+            }
+            else
+            {
+                lockedtarget = false;
+            }
+
+            if (currentTarget is IGameObject gameObject && gameObject.Address != lastTargetAddress)
+            {
+                if (InTooltipCombatLock() || InTooltipDutyLock() || InTooltipPvpLock())
+                    return;
+
+                WindowOperations.DrawTooltipInfo(gameObject);
+
+                lastTargetAddress = gameObject.Address;
+            }
+            else if (
+                TooltipWindow != null &&
+                !tooltipStickyMode &&
+                (
+                    currentTarget == null ||
+                    (currentTarget is IGameObject obj &&
+                     obj.ObjectKind != Dalamud.Game.ClientState.Objects.Enums.ObjectKind.Pc &&
+                     TooltipWindow.IsOpen)
+                )
+            )
+            {
+                TooltipWindow.IsOpen = false;
+                lastTargetAddress = IntPtr.Zero;
+            }
+        }
+
+        // Tooltip suppression checks. These return true when tooltips should be hidden based on user settings.
+
+        // Hides tooltips while in a duty (if the user enabled that option)
+        public bool InTooltipDutyLock()
+        {
+            if (Condition[ConditionFlag.BoundByDuty] && Configuration.tooltip_DutyDisabled == true)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        // Hides tooltips while in combat (if the user enabled that option)
+        public bool InTooltipCombatLock()
+        {
+            if (Condition[ConditionFlag.InCombat] && Configuration.tooltip_HideInCombat == true)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        // Hides tooltips while in PvP (if the user enabled that option)
+        public bool InTooltipPvpLock()
+        {
+            if (ClientState.IsPvP && Configuration.tooltip_PvPDisabled == true)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        // Compass suppression checks (same concept but for the compass feature)
+
+        public static bool InCompassCombatLock()
+        {
+            return Condition[ConditionFlag.InCombat] && Plugin.plugin.Configuration.showCompassInCombat == false;
+        }
+        public bool IsCompassPvpLock()
+        {
+            // Disable compass in PvP if showCompassInPvP is false
+            return ClientState.IsPvP && Configuration.showCompassInPvP == false;
+        }
+
+        public bool IsCompassDutyLock()
+        {
+            // Disable compass in Duty if showCompassInDuty is false
+            return Condition[ConditionFlag.BoundByDuty] && Configuration.showCompassInDuty == false;
+        }
+      
+
+    }
+}

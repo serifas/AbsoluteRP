@@ -1,0 +1,2386 @@
+using AbsoluteRP.Backups;
+using AbsoluteRP.Defines;
+using AbsoluteRP.Helpers;
+using AbsoluteRP.Windows.Profiles.ProfileTypeWindows.ProfileLayoutTypes;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Game.ClientState.Objects.SubKinds;
+using Dalamud.Interface.ImGuiFileDialog;
+using Dalamud.Interface.Textures.TextureWraps;
+using Dalamud.Interface.Utility.Raii;
+using Dalamud.Interface.Windowing;
+using Dalamud.Plugin.Services;
+using Dalamud.Utility;
+using FFXIVClientStructs.FFXIV.Client.Game.Character;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using Networking;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Xml.Linq;
+using AbsoluteRP.Network;
+
+namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
+{
+    // Tracks multi-step profile save progress - shown as a progress bar overlay during saves
+    public static class ProfileSaveTracker
+    {
+        public static bool IsSaving { get; set; }
+        public static int TotalSteps { get; set; }
+        public static int CompletedSteps { get; set; }
+        public static string CurrentStep { get; set; } = string.Empty;
+        public static bool HasError { get; set; }
+        public static string ErrorMessage { get; set; } = string.Empty;
+
+        public static float Progress => TotalSteps > 0 ? (float)CompletedSteps / TotalSteps : 0f;
+
+        public static void Begin(int totalSteps)
+        {
+            IsSaving = true;
+            TotalSteps = totalSteps;
+            CompletedSteps = 0;
+            CurrentStep = "Preparing...";
+            HasError = false;
+            ErrorMessage = string.Empty;
+        }
+
+        public static void Advance(string stepName)
+        {
+            CompletedSteps++;
+            CurrentStep = stepName;
+        }
+
+        public static void Finish(Action onDismissed = null)
+        {
+            CurrentStep = "Save complete!";
+            CompletedSteps = TotalSteps;
+            Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                IsSaving = false;
+                onDismissed?.Invoke();
+            });
+        }
+
+        public static void Fail(string error)
+        {
+            HasError = true;
+            ErrorMessage = error;
+            CurrentStep = "Save failed!";
+            Task.Run(async () =>
+            {
+                await Task.Delay(4000);
+                IsSaving = false;
+            });
+        }
+    }
+
+    
+    // The main profile editing window - where the player views and edits their own character profile. Handles tab management (Bio, Gallery, Story, etc.), Lodestone verification, profile saving, loading indicators, avatar/background uploads, and per-tab layout rendering.
+    public class ProfileWindow : Window, IDisposable
+    {
+        private bool openVerifyPopup;
+        // All static state now lives on AbsoluteRP.RsUI.Pages.ProfilesPage. These are forwarding properties so ProfileWindow's own methods (SubmitProfileData, LoadBackupSaveDialog, etc.) read/write the single source of truth instead of a stale parallel copy.
+        public static string lodeStoneKey { get => AbsoluteRP.RsUI.Pages.ProfilesPage.lodeStoneKey; set => AbsoluteRP.RsUI.Pages.ProfilesPage.lodeStoneKey = value; }
+        public static bool lodeStoneKeyVerified { get => AbsoluteRP.RsUI.Pages.ProfilesPage.lodeStoneKeyVerified; set => AbsoluteRP.RsUI.Pages.ProfilesPage.lodeStoneKeyVerified = value; }
+        public static bool VerificationSucceeded { get => AbsoluteRP.RsUI.Pages.ProfilesPage.VerificationSucceeded; set => AbsoluteRP.RsUI.Pages.ProfilesPage.VerificationSucceeded = value; }
+        public static string LodeSUrl { get => AbsoluteRP.RsUI.Pages.ProfilesPage.LodeSUrl; set => AbsoluteRP.RsUI.Pages.ProfilesPage.LodeSUrl = value; }
+        public static string loading { get => AbsoluteRP.RsUI.Pages.ProfilesPage.loading; set => AbsoluteRP.RsUI.Pages.ProfilesPage.loading = value; }
+        public static AbsoluteRP.RsUI.RsFileDialogManager _fileDialogManager { get => AbsoluteRP.RsUI.Pages.ProfilesPage._fileDialogManager; set => AbsoluteRP.RsUI.Pages.ProfilesPage._fileDialogManager = value; }
+        public Configuration configuration;
+        public static IDalamudTextureWrap pictureTab { get => AbsoluteRP.RsUI.Pages.ProfilesPage.pictureTab; set => AbsoluteRP.RsUI.Pages.ProfilesPage.pictureTab = value; }
+        public static SortedList<int, bool> CustomTabOpen { get => AbsoluteRP.RsUI.Pages.ProfilesPage.CustomTabOpen; set => AbsoluteRP.RsUI.Pages.ProfilesPage.CustomTabOpen = value; }
+        public static bool hasDrawException { get => AbsoluteRP.RsUI.Pages.ProfilesPage.hasDrawException; set => AbsoluteRP.RsUI.Pages.ProfilesPage.hasDrawException = value; }
+        public static bool addProfile { get => AbsoluteRP.RsUI.Pages.ProfilesPage.addProfile; set => AbsoluteRP.RsUI.Pages.ProfilesPage.addProfile = value; }
+        public static bool editProfile { get => AbsoluteRP.RsUI.Pages.ProfilesPage.editProfile; set => AbsoluteRP.RsUI.Pages.ProfilesPage.editProfile = value; }
+        public static string oocInfo { get => AbsoluteRP.RsUI.Pages.ProfilesPage.oocInfo; set => AbsoluteRP.RsUI.Pages.ProfilesPage.oocInfo = value; }
+        public static bool ExistingProfile { get => AbsoluteRP.RsUI.Pages.ProfilesPage.ExistingProfile; set => AbsoluteRP.RsUI.Pages.ProfilesPage.ExistingProfile = value; }
+        public static IDalamudTextureWrap backgroundImage { get => AbsoluteRP.RsUI.Pages.ProfilesPage.backgroundImage; set => AbsoluteRP.RsUI.Pages.ProfilesPage.backgroundImage = value; }
+        public static float loaderInd { get => AbsoluteRP.RsUI.Pages.ProfilesPage.loaderInd; set => AbsoluteRP.RsUI.Pages.ProfilesPage.loaderInd = value; }
+        public static IDalamudTextureWrap avatarHolder { get => AbsoluteRP.RsUI.Pages.ProfilesPage.avatarHolder; set => AbsoluteRP.RsUI.Pages.ProfilesPage.avatarHolder = value; }
+        public static bool showTypeCreation { get => AbsoluteRP.RsUI.Pages.ProfilesPage.showTypeCreation; set => AbsoluteRP.RsUI.Pages.ProfilesPage.showTypeCreation = value; }
+        public static int profileIndex { get => AbsoluteRP.RsUI.Pages.ProfilesPage.profileIndex; set => AbsoluteRP.RsUI.Pages.ProfilesPage.profileIndex = value; }
+        public static float inputWidth { get => AbsoluteRP.RsUI.Pages.ProfilesPage.inputWidth; set => AbsoluteRP.RsUI.Pages.ProfilesPage.inputWidth = value; }
+        public static IDalamudTextureWrap currentAvatarImg { get => AbsoluteRP.RsUI.Pages.ProfilesPage.currentAvatarImg; set => AbsoluteRP.RsUI.Pages.ProfilesPage.currentAvatarImg = value; }
+        public static List<ProfileData> profiles { get => AbsoluteRP.RsUI.Pages.ProfilesPage.profiles; set => AbsoluteRP.RsUI.Pages.ProfilesPage.profiles = value; }
+        private bool profileTypeCreationJustOpened = false;
+        public static ProfileData CurrentProfile { get => AbsoluteRP.RsUI.Pages.ProfilesPage.CurrentProfile; set => AbsoluteRP.RsUI.Pages.ProfilesPage.CurrentProfile = value; }
+        public (string, string) profileType = UI.ListingCategoryVals[(int)ProfileTypes.Personal];
+        public (string, string, Type) layoutType = UI.LayoutTypeVals[(int)LayoutTypes.Relationship];
+        public static int currentLayoutType { get => AbsoluteRP.RsUI.Pages.ProfilesPage.currentLayoutType; set => AbsoluteRP.RsUI.Pages.ProfilesPage.currentLayoutType = value; }
+        private const int MaxTabs = 10; // Maximum number of tabs
+        private bool[] showInputPopup = new bool[MaxTabs]; // Array of flags to show the input popups for new tabs
+
+        public static bool IsNewPagePopupOpen()
+        {
+            var win = profileWindow;
+            if (win == null || win.showInputPopup == null) return false;
+            for (int i = 0; i < win.showInputPopup.Length; i++)
+                if (win.showInputPopup[i]) return true;
+            return false;
+        }
+        private string[] newTabNames = new string[MaxTabs];
+        private int customTabsCount = 0; // Current number of tabs
+        private int tabToDeleteIndex = -1; // Index of the tab to delete
+        private int? draggedTabIndex = null; // For drag-drop tab reordering
+        private static bool tabsReordered = false;
+        private bool showDeleteConfirmationPopup = false; // Flag to show delete confirmation popup
+        public static int currentElementID { get => AbsoluteRP.RsUI.Pages.ProfilesPage.currentElementID; set => AbsoluteRP.RsUI.Pages.ProfilesPage.currentElementID = value; }
+        public static bool customTabSelected { get => AbsoluteRP.RsUI.Pages.ProfilesPage.customTabSelected; set => AbsoluteRP.RsUI.Pages.ProfilesPage.customTabSelected = value; }
+        public static bool Locked { get => AbsoluteRP.RsUI.Pages.ProfilesPage.Locked; set => AbsoluteRP.RsUI.Pages.ProfilesPage.Locked = value; }
+        public static CustomLayout currentLayout { get => AbsoluteRP.RsUI.Pages.ProfilesPage.currentLayout; set => AbsoluteRP.RsUI.Pages.ProfilesPage.currentLayout = value; }
+        public static List<CustomLayout> customLayouts { get => AbsoluteRP.RsUI.Pages.ProfilesPage.customLayouts; set => AbsoluteRP.RsUI.Pages.ProfilesPage.customLayouts = value; }
+        public static ProfileWindow profileWindow;
+        public static ProfileWindow? Instance;
+        private List<int> tabOrder = new List<int>();         // Current order (updated by user)
+        private List<int> initialTabOrder = new List<int>();  // Original order (for comparison)
+        private bool showReorderTabsPopup;
+        public static InventoryLayout currentInventory { get => AbsoluteRP.RsUI.Pages.ProfilesPage.currentInventory; set => AbsoluteRP.RsUI.Pages.ProfilesPage.currentInventory = value; }
+        public static bool AddInputTextElement { get; private set; }
+        public static bool AddInputTextMultilineElement { get; private set; }
+        public static bool AddInputImageElement { get; private set; }
+        public static bool editBackground { get => AbsoluteRP.RsUI.Pages.ProfilesPage.editBackground; set => AbsoluteRP.RsUI.Pages.ProfilesPage.editBackground = value; }
+        public static bool Sending { get => AbsoluteRP.RsUI.Pages.ProfilesPage.Sending; set => AbsoluteRP.RsUI.Pages.ProfilesPage.Sending = value; }
+        public static bool VerificationFailed { get => AbsoluteRP.RsUI.Pages.ProfilesPage.VerificationFailed; internal set => AbsoluteRP.RsUI.Pages.ProfilesPage.VerificationFailed = value; }
+
+        public static bool editAvatar { get => AbsoluteRP.RsUI.Pages.ProfilesPage.editAvatar; set => AbsoluteRP.RsUI.Pages.ProfilesPage.editAvatar = value; }
+        private static int currentProfileType = 5;
+        public static string NewProfileTitle { get => AbsoluteRP.RsUI.Pages.ProfilesPage.NewProfileTitle; set => AbsoluteRP.RsUI.Pages.ProfilesPage.NewProfileTitle = value; }
+        public static bool Fetching { get => AbsoluteRP.RsUI.Pages.ProfilesPage.Fetching; set => AbsoluteRP.RsUI.Pages.ProfilesPage.Fetching = value; }
+        public static long fetchStartedTicks { get => AbsoluteRP.RsUI.Pages.ProfilesPage.fetchStartedTicks; set => AbsoluteRP.RsUI.Pages.ProfilesPage.fetchStartedTicks = value; }
+        public static bool checking { get => AbsoluteRP.RsUI.Pages.ProfilesPage.checking; set => AbsoluteRP.RsUI.Pages.ProfilesPage.checking = value; }
+        internal static bool showOnCompass { get => AbsoluteRP.RsUI.Pages.ProfilesPage.showOnCompass; set => AbsoluteRP.RsUI.Pages.ProfilesPage.showOnCompass = value; }
+
+        public ProfileWindow() : base(
+       "PROFILE", ImGuiWindowFlags.None)
+        {
+            SizeConstraints = new WindowSizeConstraints
+            {
+
+                MinimumSize = new Vector2(300, 300),
+                MaximumSize = new Vector2(600, 1000)
+            };
+
+            configuration = Plugin.plugin.Configuration;
+            _fileDialogManager = new AbsoluteRP.RsUI.RsFileDialogManager();
+            profileWindow = this;
+            Instance = this;
+        }
+        public override void OnOpen()
+        {
+            try
+            {
+                for (int i = 0; i < MaxTabs; i++)
+                {
+                    showInputPopup[i] = false;
+                }
+                profiles.Clear();
+
+                if (currentAvatarImg == null)
+                {
+                    // Try to recover by setting a default image
+                    currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder) ?? pictureTab;
+                
+                    if(avatarHolder == null)
+                    {
+                        avatarHolder = currentAvatarImg;
+                    }
+                }
+                // same for pictureTab
+                var pictureTabImage = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                if (pictureTabImage != null)
+                {
+                    if (pictureTab == null)
+                        pictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+                }
+                CurrentProfile.customTabs.Clear();
+                for(int i = 0; i < profiles.Count; i++)
+                {
+                    if (profiles[i].isActive == true && !profiles[i].isPrivate)
+                    {
+                        foreach (var tab in profiles[i].customTabs)
+                        {
+                            if (tab.Layout is InventoryLayout inventory)
+                            {
+                                currentInventory = inventory; // Set the current inventory layout if it exists
+                            }
+                        }
+                    }
+                }
+
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("ProfileWindow OnOpen Debug: " + ex.Message);
+            }
+        }
+        // method to check if we have loaded our data received from the server
+      
+      
+
+        public bool CheckIfNull()
+        {
+            bool allNotNull = true;
+            var nullFields = new List<string>();
+
+            // Instance fields
+            if (Plugin.plugin == null) { nullFields.Add(nameof(Plugin.plugin)); allNotNull = false; }
+            if (configuration == null) { nullFields.Add(nameof(configuration)); allNotNull = false; }
+
+            // Static fields
+            if (_fileDialogManager == null) { nullFields.Add(nameof(_fileDialogManager)); allNotNull = false; }
+            if (pictureTab == null) { nullFields.Add(nameof(pictureTab)); allNotNull = false; }
+            if (CustomTabOpen == null) { nullFields.Add(nameof(CustomTabOpen)); allNotNull = false; }
+            if (avatarHolder == null) { nullFields.Add(nameof(avatarHolder)); allNotNull = false; }
+            if (currentAvatarImg == null) { nullFields.Add(nameof(currentAvatarImg)); allNotNull = false; }
+            if (profiles == null) { nullFields.Add(nameof(profiles)); allNotNull = false; }
+            if (CurrentProfile == null) { nullFields.Add(nameof(CurrentProfile)); allNotNull = false; }
+            if (profileWindow == null) { nullFields.Add(nameof(profileWindow)); allNotNull = false; }
+
+            // Print any null fields
+            if (nullFields.Count > 0)
+            {
+                Plugin.PluginLog.Debug("Null ProfileWindow fields: " + string.Join(", ", nullFields));
+            }
+
+            return allNotNull;
+        }
+        public override void Draw()
+        {
+            DrawContent();
+        }
+
+        // Full window body, callable from the hub's Profiles page as well as Draw()
+        public void DrawContent()
+        {
+            if (ProfileSaveTracker.IsSaving)
+            {
+                DrawSaveProgressOverlay();
+                return;
+            }
+
+            try
+            {
+                Helpers.TutorialManager.BeginFrame();
+                MaybeAutoStartTutorial();
+                Helpers.TutorialManager.AnchorRect(
+                    Helpers.ProfileTutorial.Anchor_Window,
+                    ImGui.GetWindowPos(),
+                    ImGui.GetWindowPos() + ImGui.GetWindowSize());
+
+                Defines.Character character = Plugin.plugin.Configuration.characters.FirstOrDefault(x => x.characterName == Plugin.plugin.playername && x.characterWorld == Plugin.plugin.playerworld);
+                if (character == null)
+                {
+                    ImGui.Text("You must verify your character before accessing a profile");
+                    if (ThemeManager.PillButton("Verify Character"))
+                    {
+                        openVerifyPopup = true;
+                        ImGui.OpenPopup("Verify Character");
+                    }
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_VerifyBtn);
+
+                    // Popup logic
+                    if (openVerifyPopup)
+                    {
+                        ImGui.OpenPopup("Verify Character");
+                        if (ImGui.BeginPopupModal("Verify Character", ref openVerifyPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                        {
+                            ImGui.Text("Please insert the current character's Lodestone url");
+
+                            { var __lu = LodeSUrl ?? string.Empty; ImGui.InputTextWithHint("##LodestoneURL", "Lodestone URL", ref __lu); LodeSUrl = __lu; }
+
+                            if (lodeStoneKey == string.Empty)
+                            {
+                                
+                                if (ThemeManager.PillButton("Submit", new Vector2(120, 0)))
+                                {       
+                                    if(LodeSUrl != string.Empty)
+                                    {
+                                        Accounts_DS.SubmitLodestoneURL(LodeSUrl, Plugin.plugin.Configuration.account.accountKey, false);
+                                    }
+                                    
+                                }
+                            }
+                            if (lodeStoneKey != string.Empty)
+                            {
+                                ImGui.Text("Please add this key to your character lodestone");
+                                ImGui.Text(lodeStoneKey);
+                                ImGui.SameLine();
+                                if (ThemeManager.GhostButton("Copy"))
+                                {
+                                    ImGui.SetClipboardText(lodeStoneKey);
+                                }
+                                if (VerificationSucceeded)
+                                {
+
+                                    Fetching = true;
+                                    Profiles_DS.FetchProfiles(character);
+                                    Profiles_DS.FetchProfile(Plugin.character, true, 0, Plugin.character.characterName, Plugin.character.characterWorld, -1);
+                                }
+                                else
+                                {
+                                    if(ThemeManager.GhostButton("Request New Key"))
+                                    {
+                                        if(LodeSUrl != string.Empty)
+                                        {
+                                            Accounts_DS.SubmitLodestoneURL(LodeSUrl, Plugin.plugin.Configuration.account.accountKey, false);
+                                        }
+                                    }
+                                    // ... inside your popup logic
+                                    using (ImRaii.Disabled(checking))
+                                    {
+                                        // Only allow pressing the button if not already checking
+                                        if (ThemeManager.PillButton("Verify Lodestone") && !checking)
+                                        {
+                                            checking = true;
+                                            if (LodeSUrl != string.Empty)
+                                            {
+                                                Accounts_DS.CheckLodestoneEntry(LodeSUrl, false);
+                                                // Set checking = false in your callback/response handler, not here!
+                                            }
+                                        }
+                                    }
+                                    ImGui.SameLine();
+                                    if (ThemeManager.GhostButton("Start Over"))
+                                    {
+                                        // Reset all verification-related values
+                                        lodeStoneKey = string.Empty;
+                                        LodeSUrl = string.Empty;
+                                        lodeStoneKeyVerified = false;
+                                        VerificationSucceeded = false;
+                                        VerificationFailed = false;
+                                        checking = false;
+                                    }
+                                    if (ImGui.IsItemHovered())
+                                    {
+                                        ImGui.SetTooltip("Reset verification to start fresh with a new key");
+                                    }
+                                }
+                                if (VerificationFailed)
+                                {
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), "Verification Failed");
+                                }
+                            }
+                            ImGui.SameLine();
+                            if (ThemeManager.GhostButton("Cancel", new Vector2(120, 0)))
+                            {
+                                ImGui.CloseCurrentPopup();
+                                openVerifyPopup = false;
+                            }
+
+                            ImGui.EndPopup();
+                        }
+                    }
+                }else{
+                    bool _galleryActive = Profiles_DR.GalleryImagesToLoad > 0 && Profiles_DR.loadedGalleryImages < Profiles_DR.GalleryImagesToLoad;
+
+                    // Check if profile is still loading Fetching stays true until the draw loop confirms all data arrived AND a minimum display time has passed (so fast loads still show the overlay)
+                    if (Sending || Fetching || _galleryActive)
+                    {
+                        if (ProfileSaveTracker.IsSaving)
+                        {
+                            return;
+                        }
+
+                        bool allTabsLoaded = Profiles_DR.tabCountReceived
+                            && Profiles_DR.loadedTabsCount >= Profiles_DR.tabsCount;
+                        bool galleryDone = Profiles_DR.GalleryImagesToLoad == 0
+                            || Profiles_DR.loadedGalleryImages >= Profiles_DR.GalleryImagesToLoad;
+
+                        // Ensure the loading overlay shows for at least 500ms so the user sees it
+                        double elapsedMs = fetchStartedTicks > 0
+                            ? (double)(System.Diagnostics.Stopwatch.GetTimestamp() - fetchStartedTicks)
+                              / System.Diagnostics.Stopwatch.Frequency * 1000.0
+                            : 999999;
+                        bool minTimeElapsed = elapsedMs >= 500;
+
+                        // Safety timeout: if loading takes longer than 15 seconds, stop waiting
+                        bool timedOut = elapsedMs >= 15000;
+
+                        if ((allTabsLoaded && galleryDone && !Sending && minTimeElapsed) || timedOut)
+                        {
+                            // All data including images arrived and minimum display time passed
+                            Fetching = false;
+                            fetchStartedTicks = 0;
+
+                            // Sort tabs by tabIndex so reordered tabs display correctly
+                            if (CurrentProfile.customTabs != null && CurrentProfile.customTabs.Count > 1)
+                            {
+                                CurrentProfile.customTabs.Sort((a, b) =>
+                                {
+                                    int idxA = GetLayoutTabIndex(a.Layout);
+                                    int idxB = GetLayoutTabIndex(b.Layout);
+                                    return idxA.CompareTo(idxB);
+                                });
+                            }
+                            // Store each tab's actual DB tabIndex so reorder can send correct (old, new) pairs
+                            initialTabOrder.Clear();
+                            if (CurrentProfile.customTabs != null)
+                            {
+                                foreach (var t in CurrentProfile.customTabs)
+                                    initialTabOrder.Add(GetLayoutTabIndex(t.Layout));
+                            }
+                        }
+                        else
+                        {
+                            bool tabsLoading = Profiles_DR.tabsCount > 0
+                                && Profiles_DR.loadedTabsCount < Profiles_DR.tabsCount;
+                            bool galleryLoading = Profiles_DR.GalleryImagesToLoad > 0
+                                && Profiles_DR.loadedGalleryImages < Profiles_DR.GalleryImagesToLoad;
+                            DrawProfileLoadingOverlay(tabsLoading, galleryLoading);
+                            return;
+                        }
+                    }
+
+                    // Block further UI until all tweens are finished
+                    if (Misc.IsLoaderTweening("tabs") || Misc.IsLoaderTweening("gallery"))
+                    {
+                        DrawProfileLoadingOverlay(false, false);
+                        return;
+                    }
+                    else
+                    {
+                        if (Locked)
+                        {
+                            this.Flags = ImGuiWindowFlags.NoMove;
+                        }
+                        else
+                        {
+                            this.Flags = ImGuiWindowFlags.None;
+                        }
+                        // Early out: show loader and skip all checks if still loading
+
+                        // Fallback initialization for static fields (runs only after loading is done)
+                        if (pictureTab == null)
+                            pictureTab = UI.UICommonImage(UI.CommonImageTypes.blankPictureTab);
+
+                        if (avatarHolder == null)
+                            avatarHolder = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+
+                        if (currentAvatarImg == null)
+                            currentAvatarImg = pictureTab ?? avatarHolder;
+
+                        // Only proceed if all required fields are now initialized
+                        if (!CheckIfNull())
+                        {
+                            ImGui.Text("Profile window is still loading...");
+                            return;
+                        }
+
+                        if (Locked)
+                        {
+                            this.Flags = ImGuiWindowFlags.NoMove;
+                        }
+                        else
+                        {
+                            this.Flags = ImGuiWindowFlags.None;
+                        }
+
+                        if (Plugin.IsOnline())
+                        {
+                            _fileDialogManager.Draw();
+
+                            ImGui.SameLine();
+                            if (ThemeManager.PillButton("Add Profile"))
+                            {
+                                showTypeCreation = true;
+                            }
+                            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_AddProfileBtn);
+                            if (profiles.Count > 0 && ExistingProfile == true)
+                            {
+                                AddProfileSelection();
+                                ImGui.SameLine();
+                                if (ThemeManager.GhostButton("Preview Profile"))
+                                {
+                                    TargetProfileWindow.RequestingProfile = true;
+                                    TargetProfileWindow.ResetAllData();
+                                    Plugin.plugin.OpenTargetWindow();
+                                    Profiles_DS.FetchProfile(Plugin.character, false, profileIndex, Plugin.character.characterName, Plugin.character.characterWorld, -1);
+                                }
+                                DrawProfile();
+                            }
+                            else
+                            {
+                                DrawTutorialControlsRow();
+                            }
+                         
+                            if (profiles.Count <= 0)
+                            {
+                                ExistingProfile = false;
+                            }
+                            else
+                            {
+                                ExistingProfile = true;
+                            }
+                            if (showTypeCreation == true)
+                            {
+                                ImGui.OpenPopup($"Profile Creation##{profiles.Count}");
+                                RenderProfileTypeCreation(profiles.Count);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if(hasDrawException == false)
+                {
+                    hasDrawException = true;
+                    Plugin.PluginLog.Debug("ProfileWindow Draw Debug: " + ex.Message + "\n" + ex.StackTrace);
+                }
+            }
+
+            Helpers.TutorialManager.Draw();
+        }
+
+        private void DrawTutorialControlsPinnedRight()
+        {
+            DrawTutorialControlsRow();
+        }
+
+        private static int ResolveLayoutTypeInt(CustomLayout layout) => layout switch
+        {
+            TreeLayout      => (int)LayoutTypes.Relationship,
+            DynamicLayout   => (int)LayoutTypes.Roster,
+            BioLayout       => (int)LayoutTypes.Bio,
+            DetailsLayout   => (int)LayoutTypes.Details,
+            StoryLayout     => (int)LayoutTypes.Story,
+            InfoLayout      => (int)LayoutTypes.Info,
+            GalleryLayout   => (int)LayoutTypes.Gallery,
+            InventoryLayout => (int)LayoutTypes.Inventory,
+            _               => (int)(layout?.layoutType ?? LayoutTypes.Relationship),
+        };
+
+        private void DrawTutorialControlsRow()
+        {
+            var cfg = Plugin.plugin.Configuration;
+            bool enabled = cfg.TutorialsEnabled;
+
+            if (ImGui.Checkbox("Tutorials", ref enabled))
+            {
+                cfg.TutorialsEnabled = enabled;
+                cfg.Save();
+                if (!enabled)
+                {
+                    Helpers.TutorialManager.Stop();
+                }
+                else
+                {
+                    cfg.ProfileTutorialCompleted = false;
+                    cfg.Save();
+                    Helpers.ProfileTutorial.Install();
+                    Helpers.TutorialManager.Start(Helpers.ProfileTutorial.Flow, Helpers.ProfileTutorial.Step_Welcome);
+                }
+            }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_TutorialToggle);
+
+            ImGui.SameLine();
+            ImGui.TextDisabled("(?)");
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Walks you through the profile editor step by step. Untick to stop showing the guide.");
+            }
+
+            if (Helpers.TutorialManager.Active || enabled)
+            {
+                ImGui.SameLine();
+                var actionLabel = Helpers.TutorialManager.Active ? "Restart##tutorial" : "Start##tutorial";
+                if (ImGui.SmallButton(actionLabel))
+                {
+                    cfg.ProfileTutorialCompleted = false;
+                    cfg.Save();
+                    Helpers.ProfileTutorial.Install();
+                    Helpers.TutorialManager.Start(Helpers.ProfileTutorial.Flow, Helpers.ProfileTutorial.Step_Welcome);
+                }
+            }
+        }
+
+        private static bool tutorialAutoStartAttempted = false;
+        private void MaybeAutoStartTutorial()
+        {
+            if (tutorialAutoStartAttempted) return;
+            tutorialAutoStartAttempted = true;
+            var cfg = Plugin.plugin.Configuration;
+            if (cfg.TutorialsEnabled && !cfg.ProfileTutorialCompleted && !Helpers.TutorialManager.Active)
+            {
+                Helpers.ProfileTutorial.Install();
+                Helpers.TutorialManager.Start(Helpers.ProfileTutorial.Flow, Helpers.ProfileTutorial.Step_Welcome);
+            }
+        }
+
+        public static void CreateProfile()
+        {
+            Profiles_DS.CreateProfile(Plugin.character, NewProfileTitle, currentProfileType + 1, profiles.Count);
+            profileIndex = profiles.Count;
+            Plugin.PluginLog.Debug(profileIndex.ToString());
+            Fetching = true;
+            Profiles_DS.FetchProfiles(Plugin.character);
+            Profiles_DS.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+            ExistingProfile = true;
+        }
+        private void RenderProfileTypeCreation(int index)
+        {
+            try
+            {
+                // Only set the default when the popup is first opened
+                if (showTypeCreation && !profileTypeCreationJustOpened)
+                {
+                    currentProfileType = 5;
+                    profileType = UI.ListingCategoryVals[currentProfileType];
+                    profileTypeCreationJustOpened = true;
+                }
+
+                var __stc = showTypeCreation;
+                bool __stcOpen = __stc && ImGui.BeginPopupModal($"Profile Creation##{index}", ref __stc, ImGuiWindowFlags.AlwaysAutoResize);
+                showTypeCreation = __stc;
+                if (__stcOpen)
+                {
+                    ImGui.Text($"Profile Type:");
+                    ImGui.SameLine();
+                    DrawProfileTypeSelection();
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_TypeDropdown);
+                    ImGui.Spacing();
+                    ImGui.Text("Profile Title:");
+                    ImGui.SameLine();
+                    { var __npt = NewProfileTitle ?? string.Empty; ImGui.InputText("##ProfileTitle", ref __npt, 50); NewProfileTitle = __npt; }
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_ProfileTitle);
+
+                    if (ThemeManager.PillButton("Create"))
+                    {
+                        CreateProfile();
+                        showTypeCreation = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_CreateBtn);
+
+                    ImGui.SameLine();
+
+                    if (ThemeManager.GhostButton("Cancel"))
+                    {
+                        showTypeCreation = false;
+                        ImGui.CloseCurrentPopup();
+                    }
+
+                    ImGui.EndPopup();
+                }
+                else if (!showTypeCreation)
+                {
+                    // Reset the flag when the popup is closed
+                    profileTypeCreationJustOpened = false;
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("ProfileWindow RenderProfileTypeCreation Debug: " + ex.Message);
+            }
+        }
+        public void DrawProfile()
+        {
+            // Guard against null profile data
+            if (CurrentProfile == null) return;
+            if (CurrentProfile.title == null) CurrentProfile.title = string.Empty;
+            if (CurrentProfile.customTabs == null) CurrentProfile.customTabs = new List<CustomTab>();
+
+            if (profiles == null || profiles.Count == 0 || profileIndex < 0 || profileIndex >= profiles.Count)
+            {
+                Plugin.PluginLog.Debug("DrawProfile: Profiles not loaded or profileIndex out of range.");
+                return;
+            }
+            if (CurrentProfile == null)
+            {
+                Plugin.PluginLog.Debug("DrawProfile: CurrentProfile is null.");
+                return;
+            }
+            if (CurrentProfile.customTabs == null)
+            {
+                Plugin.PluginLog.Debug("DrawProfile: CurrentProfile.customTabs is null.");
+                return;
+            }
+            if (currentAvatarImg == null)
+            {
+                // Try to recover by setting a default image
+                currentAvatarImg = pictureTab ?? UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+                if (currentAvatarImg == null)
+                {
+                    Plugin.PluginLog.Debug("DrawProfile: currentAvatarImg is still null after fallback. Skipping draw.");
+                    return;
+                }
+            }
+            bool isPrivate = CurrentProfile.isPrivate;
+            bool activeProfile = CurrentProfile.isActive;
+            bool NSFW = CurrentProfile.NSFW;
+            bool Triggering = CurrentProfile.TRIGGERING;
+            bool SpoilerARR = CurrentProfile.SpoilerARR;
+            bool SpoilerHW = CurrentProfile.SpoilerHW;
+            bool SpoilerSB = CurrentProfile.SpoilerSB;
+            bool SpoilerSHB = CurrentProfile.SpoilerSHB;
+            bool SpoilerEW = CurrentProfile.SpoilerEW;
+            bool SpoilerDT = CurrentProfile.SpoilerDT;
+
+            // Stagger every group of widgets so the profile cascades in when the page opens or you switch profile index.
+            var animKey = $"{Plugin.character?.characterName ?? "?"}@{Plugin.character?.characterWorld}/{profileIndex}";
+            Helpers.Anim.ResetKey("profile", animKey);
+            var anim = $"profile/{animKey}";
+
+            Helpers.Anim.PushAlpha(anim + ".g1", 0.40f, 0.00f);
+            DrawTutorialControlsRow();
+            ImGui.Spacing();
+            if(ImGui.Checkbox("Set Private", ref isPrivate)) { CurrentProfile.isPrivate = isPrivate; }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_Private);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Leave unchecked to keep profile publicly viewable");
+            }
+            ImGui.SameLine();
+            if(ImGui.Checkbox("Set As Current", ref activeProfile)) { CurrentProfile.isActive = activeProfile; }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_Active);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Sets this profile as your current viewable profile when public");
+            }
+            ImGui.SameLine();
+            { var __soc = showOnCompass; bool __socChanged = ImGui.Checkbox("Show on Compass", ref __soc); showOnCompass = __soc; if (__socChanged)
+            {
+                Connections_DS.SetCompassStatus(Plugin.character, showOnCompass, profileIndex);
+            } }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_Compass);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("This will make your position publicly visible on the compass while this profile is set as current");
+            }
+            var nsfwMin = ImGui.GetCursorScreenPos();
+            if(ImGui.Checkbox("Set as 18+", ref NSFW)) { CurrentProfile.NSFW = NSFW; }
+            ImGui.SameLine();
+            if(ImGui.Checkbox("Set as Triggering", ref Triggering)) { CurrentProfile.TRIGGERING = Triggering; }
+            var nsfwMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_NsfwTrigger, nsfwMin, nsfwMax);
+
+            // Immersive HUD theme viewers see when they open this profile with immersive mode on. 0 defers to the viewer's own pick.
+            {
+                ImGui.AlignTextToFramePadding();
+                ImGui.Text("Immersive theme:");
+                ImGui.SameLine();
+                var ownerChoices = AbsoluteRP.Immersive.ImmersiveThemes.OwnerChoices();
+                var ownerLabels = ownerChoices.ConvertAll(c => c.label);
+                var themeChoice = Math.Max(0, ownerChoices.FindIndex(c => c.value == CurrentProfile.immersiveTheme));
+                if (AbsoluteRP.RsUI.RsElements.Dropdown("profile_immersive_theme", ref themeChoice, ownerLabels, AbsoluteRP.RsUI.RsTheme.S(220f)))
+                {
+                    CurrentProfile.immersiveTheme = ownerChoices[Math.Clamp(themeChoice, 0, ownerChoices.Count - 1)].value;
+                }
+                if (ImGui.IsItemHovered())
+                {
+                    var t = CurrentProfile.immersiveTheme;
+                    var tip = t == 0
+                        ? "Viewers with immersive mode use whichever theme they picked in their own settings."
+                        : t <= AbsoluteRP.Immersive.ImmersiveThemes.All.Length
+                            ? AbsoluteRP.Immersive.ImmersiveThemes.Get(t - 1).Tagline + " — shown to viewers who have immersive mode on."
+                            : "A gallery theme — viewers with immersive mode on will see your profile in it. Manage themes in the Themes tab.";
+                    ImGui.SetTooltip(tip);
+                }
+            }
+            ImGui.Text("Has Spoilers From:");
+            var spoilerMin = ImGui.GetCursorScreenPos();
+            if(ImGui.Checkbox("A Realm Reborn", ref SpoilerARR)) {  CurrentProfile.SpoilerARR = SpoilerARR; }
+            ImGui.SameLine();
+            if(ImGui.Checkbox("Heavensward", ref SpoilerHW)) {  CurrentProfile.SpoilerHW = SpoilerHW; }
+            ImGui.SameLine();
+            if(ImGui.Checkbox("Stormblood", ref SpoilerSB)) { CurrentProfile.SpoilerSB = SpoilerSB; }
+            if(ImGui.Checkbox("Shadowbringers", ref SpoilerSHB)) {  CurrentProfile.SpoilerSHB = SpoilerSHB; }
+            ImGui.SameLine();
+            if(ImGui.Checkbox("Endwalker", ref SpoilerEW)) {  CurrentProfile.SpoilerEW = SpoilerEW; }
+            ImGui.SameLine();
+            if(ImGui.Checkbox("Dawntrail", ref SpoilerDT)) { CurrentProfile.SpoilerDT = SpoilerDT; }
+            var spoilerMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_Spoilers, spoilerMin, spoilerMax);
+            Helpers.Anim.PopAlpha();  // end Group 1
+
+            Helpers.Anim.PushAlpha(anim + ".g2", 0.40f, 0.10f);
+            using (ImRaii.Disabled(ProfileSaveTracker.IsSaving))
+            {
+                if (ThemeManager.PillButton(ProfileSaveTracker.IsSaving ? "Saving..." : "Save Profile"))
+                {
+                    SubmitProfileData(false);
+                }
+                Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_SaveBtn);
+            }
+           
+            
+            if (ThemeManager.GhostButton("Backup"))
+            {
+                  LoadBackupSaveDialog();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Save a local backup of your profile.");
+            }
+            ImGui.SameLine();
+            if (ThemeManager.GhostButton("Load Backup"))
+            {
+                LoadBackupLoaderDialog();
+            }
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Loading a backup can completely replace this profile, if you do not wish to overwrite it, please make a new profile to load on to.");
+            }
+            Helpers.Anim.PopAlpha();  // end Group 2
+
+            ImGui.Spacing();
+            Vector2 imageStartPos = ImGui.GetCursorScreenPos();
+            Vector2 windowPos = ImGui.GetWindowPos();
+            Vector2 windowSize = ImGui.GetWindowSize();
+            if (backgroundImage != null && backgroundImage.Handle != IntPtr.Zero)
+            {
+                var drawList = ImGui.GetWindowDrawList();
+                float alpha = 0.5f; // 50% opacity
+                uint tintColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha));
+
+                // Use the maximum window size and apply scaling
+                float scale = ImGui.GetIO().FontGlobalScale;
+                Vector2 scaledSize = backgroundImage.Size * scale;
+
+                Vector2 imageEndPos = imageStartPos + scaledSize;
+
+                drawList.AddImage(
+                    backgroundImage.Handle,
+                    imageStartPos,
+                    imageEndPos,
+                    new Vector2(0, 0),
+                    new Vector2(1, 1),
+                    tintColor
+                );
+            }
+            if (currentAvatarImg == null || currentAvatarImg.Size == null)
+            {
+                Plugin.PluginLog.Debug("DrawProfile: currentAvatarImg or its Size is null. Skipping draw.");
+                return;
+            }
+            Vector2 avatarSize = currentAvatarImg.Size * ImGui.GetIO().FontGlobalScale;
+            float avatarDiameter = MathF.Min(avatarSize.X, avatarSize.Y);
+            float centeredX = (ImGui.GetContentRegionAvail().X - avatarDiameter) / 2;
+            var avatarBtnSize = ImGui.CalcTextSize("Edit Avatar") + new Vector2(10, 10);
+            float avatarXPos = (windowSize.X - avatarBtnSize.X) / 2;
+            Helpers.Anim.PushAlpha(anim + ".g3", 0.45f, 0.20f);
+            ImGui.SetCursorPosX(centeredX);
+            if(currentAvatarImg != null && currentAvatarImg.Handle != IntPtr.Zero)
+            {
+                Helpers.Anim.DrawCircleAvatarInline(currentAvatarImg.Handle, avatarDiameter, CurrentProfile.titleColor, borderThickness: 3f);
+            }
+            ImGui.SetCursorPosX(avatarXPos);
+            if (ThemeManager.GhostButton("Edit Avatar"))
+            {
+                editAvatar = true;
+            }
+            Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_EditAvatarBtn);
+            ImGui.Spacing();
+            Helpers.Anim.PopAlpha();  // end Group 3
+
+            Helpers.Anim.PushAlpha(anim + ".g4", 0.40f, 0.30f);
+            Vector4 color = CurrentProfile.titleColor;
+            if (!string.IsNullOrEmpty(CurrentProfile.title))
+            {
+                Misc.SetTitle(Plugin.plugin, true, CurrentProfile.title, color);
+            }
+            string ProfileTitle = CurrentProfile.title ?? string.Empty;
+            var titleMin = ImGui.GetCursorScreenPos();
+            if(Misc.DrawXCenteredInput("TITLE:", $"Title{profileIndex}", ref ProfileTitle, 50))
+            {
+                CurrentProfile.title = ProfileTitle;
+            }
+            ImGui.SameLine();
+            if(ImGui.ColorEdit4($"##Text Input Color{profileIndex}", ref color, ImGuiColorEditFlags.NoInputs)) { CurrentProfile.titleColor = color; }
+            var titleMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_TitleInput, titleMin, titleMax);
+            Helpers.Anim.PopAlpha();  // end Group 4
+
+            Helpers.Anim.PushAlpha(anim + ".g5", 0.40f, 0.40f);
+            // Get the actual name and world ID
+            var uploadBtnSize = ImGui.CalcTextSize("Set Background") + new Vector2(10, 10);
+            float uploadXPos = (windowSize.X - uploadBtnSize.X) / 2;
+
+            ImGui.SetCursorPosX(uploadXPos);
+            var setBgMin = ImGui.GetCursorScreenPos();
+            if (ThemeManager.GhostButton("Set Background"))
+            {
+                editBackground = true;
+            }
+            ImGui.SameLine();
+            if (ThemeManager.DangerButton("X##RemoveBackground"))
+            {
+                CurrentProfile.backgroundBytes = CreateTransparentPng();
+                backgroundImage = null;
+            }
+            var setBgMax = ImGui.GetItemRectMax();
+            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_SetBackground, setBgMin, setBgMax);
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip("Remove background image");
+            }
+
+            ImGui.Spacing();
+
+
+            ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Format Information");
+
+            // Make the text clickable
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.SetTooltip(UI.inputHelperUrlInfo);
+            }
+            Helpers.Anim.PopAlpha();  // end Group 5
+
+            Helpers.Anim.PushAlpha(anim + ".g6", 0.50f, 0.55f);
+            ImGui.Spacing();
+            ThemeManager.GradientSeparator();
+            using (var navigation = ImRaii.TabBar("ProfileNavigation"))
+            {
+
+                if (navigation)
+                {
+                    // Store overlay start position BEFORE rendering tab content
+                    float overlayStartY = ImGui.GetCursorScreenPos().Y;
+                    Vector2 overlayStart = new Vector2(windowPos.X, overlayStartY);
+                    Vector2 overlayEnd = new Vector2(windowPos.X + windowSize.X, windowPos.Y + windowSize.Y);
+
+                    var drawList = ImGui.GetWindowDrawList();
+                    uint overlayColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 0, 0, 0.5f));
+                    drawList.AddRectFilled(overlayStart, overlayEnd, overlayColor);
+
+                    // Now render tab content
+                    RenderCustomTabs();
+                    if (CurrentProfile.customTabs.Count < MaxTabs)
+                    {
+                        if (ImGui.TabItemButton("  +  ##AddTab", ImGuiTabItemFlags.NoCloseWithMiddleMouseButton))
+                        {
+                            showInputPopup[customTabsCount] = true;
+                            newTabNames[customTabsCount] = "";
+                            ImGui.OpenPopup($"New Page##{customTabsCount}");
+                        }
+                        Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_AddTabBtn);
+                    }
+                    /*
+                    // "Reorder Tabs" button at the end of the tab bar
+                    ImGui.SameLine();
+                    if (ImGui.Button("Reorder Tabs"))
+                    {
+                        // Initialize tabOrder with current order
+                        tabOrder = Enumerable.Range(0, CurrentProfile.customTabs.Count).ToList();
+                        showReorderTabsPopup = true;
+                        ImGui.OpenPopup("ReorderTabsPopup");
+                    }*/
+
+                    // Popup for reordering tabs with Up/Down buttons
+                    if (showReorderTabsPopup)
+                    {
+                        if (ImGui.BeginPopupModal("ReorderTabsPopup", ref showReorderTabsPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                        {
+                            ImGui.Text("Use Up/Down to reorder tabs:");
+                            ThemeManager.GradientSeparator();
+
+                            for (int i = 0; i < tabOrder.Count; i++)
+                            {
+                                int tabIdx = tabOrder[i];
+                                var tab = CurrentProfile.customTabs[tabIdx];
+                                ImGui.PushID(i);
+
+                                ImGui.Text(tab.Name);
+                                ImGui.SameLine();
+
+                                // Up button
+                                if (ThemeManager.GhostButton("Up") && i > 0)
+                                {
+                                    (tabOrder[i - 1], tabOrder[i]) = (tabOrder[i], tabOrder[i - 1]);
+                                }
+                                ImGui.SameLine();
+
+                                // Down button
+                                if (ThemeManager.GhostButton("Down") && i < tabOrder.Count - 1)
+                                {
+                                    (tabOrder[i], tabOrder[i + 1]) = (tabOrder[i + 1], tabOrder[i]);
+                                }
+
+                                ImGui.PopID();
+                            }
+
+                            ThemeManager.GradientSeparator();
+                            if (ThemeManager.PillButton("Confirm"))
+                            {
+                                // Build list of changes
+                                var indexChanges = new List<(int oldIndex, int newIndex)>();
+                                for (int newIdx = 0; newIdx < tabOrder.Count; newIdx++)
+                                {
+                                    int tabId = tabOrder[newIdx];
+                                    int oldIdx = initialTabOrder.IndexOf(tabId);
+                                    if (oldIdx != newIdx)
+                                        indexChanges.Add((oldIdx, newIdx));
+                                }
+                                ProfileTabs_DS.SendTabReorder(Plugin.character, profileIndex, indexChanges);
+
+                                // Actually reorder the tabs in the UI
+                                var newTabs = tabOrder.Select(idx => CurrentProfile.customTabs[idx]).ToList();
+                                CurrentProfile.customTabs.Clear();
+                                CurrentProfile.customTabs.AddRange(newTabs);
+
+                                // Update tabIndex on each layout to match new position
+                                for (int ti = 0; ti < CurrentProfile.customTabs.Count; ti++)
+                                    SetLayoutTabIndex(CurrentProfile.customTabs[ti].Layout, ti);
+
+                                // Reset initialTabOrder since DB now matches list positions
+                                initialTabOrder.Clear();
+                                for (int ti = 0; ti < CurrentProfile.customTabs.Count; ti++)
+                                    initialTabOrder.Add(ti);
+                                tabsReordered = false;
+
+                                showReorderTabsPopup = false;
+                                ImGui.CloseCurrentPopup();
+                            }
+                            ImGui.SameLine();
+                            if (ThemeManager.GhostButton("Cancel"))
+                            {
+                                showReorderTabsPopup = false;
+                                ImGui.CloseCurrentPopup();
+                            }
+                            ImGui.EndPopup();
+                        }
+                    }
+                }
+
+                if (Gallery.loadPreview == true)
+                {
+                    // load gallery image preview if requested
+                    Plugin.plugin.OpenImagePreview();
+                    Gallery.loadPreview = false;
+                }
+                if (Gallery.addGalleryImageGUI == true)
+                {
+                    // Gallery.galleryImageCount = CurrentProfile?.GalleryLayouts?.Count ?? 0;
+
+                    // Gallery.AddImagesToGallery(plugin, CurrentProfile); //used to add our image to the gallery
+                }
+                 
+                if (editAvatar == true)
+                {
+                    editAvatar = false;
+                    Misc.EditImage(Plugin.plugin, _fileDialogManager, null, true, false, 0);
+                }
+
+                if (editBackground == true)
+                {
+                    editBackground = false;
+                    Misc.EditImage(Plugin.plugin, _fileDialogManager, null, false, true, 0);
+                }
+            }
+            Helpers.Anim.PopAlpha();  // end Group 6
+        }
+
+        public void RenderCustomTabs()
+        {
+            try
+            {
+                // Render all active popups for new tab creation
+                for (int i = 0; i < MaxTabs; i++)
+                {
+                    if (showInputPopup[i])
+                    {
+                        string tabName = newTabNames[i];
+                        bool showPopup = showInputPopup[i];
+                        using (var pageBtn = ImRaii.PopupModal($"New Page##{i}", ref showPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                        {
+                            if (pageBtn)
+                            {
+                                try
+                                {
+                                    showInputPopup[i] = showPopup;
+                                    ImGui.Text($"Enter the name for the page:");
+                                    ImGui.InputText($"##TabInput{i}", ref newTabNames[i], 100);
+                                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_NewPageName);
+                                    var layoutDdMin = ImGui.GetCursorScreenPos();
+                                    DrawLayoutTypeSelection();
+                                    var layoutDdMax = ImGui.GetItemRectMax();
+                                    Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_LayoutDropdown, layoutDdMin, layoutDdMax);
+                                    Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_LayoutItem, layoutDdMin, layoutDdMax);
+                                    ImGui.TextColored(new Vector4(1, 0, 0, 1), "Please save your content before creating new tabs.\nThis will remove your current unsaved data.");
+                                    var io = ImGui.GetIO();
+                                    bool submitClicked = (ThemeManager.PillButton("Submit") || io.KeysDown[(int)ImGuiKey.Enter]) && !string.IsNullOrWhiteSpace(newTabNames[i]);
+                                    Helpers.TutorialManager.Anchor(Helpers.ProfileTutorial.Anchor_SubmitTab);
+                                    if (submitClicked)
+                                    {
+                                        showInputPopup[i] = false;
+                                        customTabsCount = CurrentProfile.customTabs.Count;
+                                        int newTabIndex = customTabsCount + 1;
+                                        ProfileTabs_DS.CreateTab(Plugin.character, newTabNames[i], currentLayoutType, CurrentProfile.index, newTabIndex);
+                                    }
+
+                                    ImGui.SameLine();
+                                    if (ThemeManager.GhostButton("Cancel"))
+                                    {
+                                        showInputPopup[i] = false;
+                                        ImGui.CloseCurrentPopup();
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    Plugin.PluginLog.Debug(e.ToString());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Render all tabs with unique keys (name + index)
+                var renderedTabKeys = new HashSet<string>();
+                for (int i = 0; i < CurrentProfile.customTabs.Count; i++)
+                {
+                    var tab = CurrentProfile.customTabs[i];
+                    bool isOpen = tab.IsOpen;
+                    RenderTab(tab.Layout, i, ref isOpen, tab.Name);
+
+                    // Persist back the open/closed state to the model so close button behavior is consistent
+                    tab.IsOpen = isOpen;
+
+                    // If user clicked the tab header, mark it as the currently targeted tab for delete/other actions
+                    if (ImGui.IsItemClicked() || ImGui.IsItemActivated() || ImGui.IsItemFocused())
+                    {
+                        tabToDeleteIndex = i;
+                    }
+                }
+                // Render the delete confirmation popup
+                if (showDeleteConfirmationPopup)
+                {
+                    using (var confirmation = ImRaii.PopupModal("Delete Tab Confirmation", ref showDeleteConfirmationPopup, ImGuiWindowFlags.AlwaysAutoResize))
+                    {
+                        if (confirmation)
+                        {
+                            if (tabToDeleteIndex >= 0 && tabToDeleteIndex < CurrentProfile.customTabs.Count)
+                            {
+                                ImGui.Text($"Are you sure you want to delete the tab \"{CurrentProfile.customTabs[tabToDeleteIndex].Name}\"?");
+                            }
+                            else
+                            {
+                                ImGui.Text("Tab not found.");
+                            }
+                            ImGui.Spacing();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.PillButton("Confirm"))
+                                {
+                                    try
+                                    {
+                                        if (tabToDeleteIndex >= 0 && tabToDeleteIndex < CurrentProfile.customTabs.Count)
+                                        {
+                                            var tabToDelete = CurrentProfile.customTabs[tabToDeleteIndex];
+                                            var tabTypeToSend = tabToDelete.type;
+
+                                            // Get the actual tabIndex from the layout, not the list position
+                                            int actualTabIndex = tabToDeleteIndex; // Default to list position
+                                            if (tabToDelete.Layout != null)
+                                            {
+                                                actualTabIndex = tabToDelete.Layout switch
+                                                {
+                                                    BioLayout bio => bio.tabIndex,
+                                                    DetailsLayout details => details.tabIndex,
+                                                    StoryLayout story => story.tabIndex,
+                                                    InfoLayout info => info.tabIndex,
+                                                    GalleryLayout gallery => gallery.tabIndex,
+                                                    InventoryLayout inv => inv.tabIndex,
+                                                    TreeLayout tree => tree.tabIndex,
+                                                    DynamicLayout dyn => dyn.tabIndex,
+                                                    _ => tabToDeleteIndex
+                                                };
+                                            }
+
+                                            // Send delete request to server first
+                                            try
+                                            {
+                                                ProfileTabs_DS.DeleteTab(Plugin.character, CurrentProfile.index, actualTabIndex, tabTypeToSend);
+                                                Plugin.PluginLog.Debug($"RenderCustomTabs: DeleteTab sent for profileIndex={CurrentProfile?.index} tabIndex={actualTabIndex} (listPos={tabToDeleteIndex}) type={tabTypeToSend}");
+                                            }
+                                            catch (Exception exDel)
+                                            {
+                                                Plugin.PluginLog.Debug($"RenderCustomTabs: DeleteTab call failed: {exDel.Message}");
+                                            }
+
+                                            // Remove the tab locally and clean up runtime structures Dispose/cleanup runtime layout entry if present
+                                            try
+                                            {
+                                                if (tabToDeleteIndex >= 0 && tabToDeleteIndex < customLayouts.Count)
+                                                {
+                                                    // best-effort removal from customLayouts; disposal handled elsewhere on full Dispose
+                                                    customLayouts.RemoveAt(tabToDeleteIndex);
+                                                }
+                                            }
+                                            catch { /* non-fatal */ }
+
+                                            CurrentProfile.customTabs.RemoveAt(tabToDeleteIndex);
+
+                                            // Rebuild CustomTabOpen mapping to keep keys in sync
+                                            CustomTabOpen.Clear();
+                                            for (int kk = 0; kk < CurrentProfile.customTabs.Count; kk++)
+                                                CustomTabOpen[kk] = CurrentProfile.customTabs[kk].IsOpen;
+
+                                            // Rebuild ordering lists to remain consistent
+                                            tabOrder = Enumerable.Range(0, CurrentProfile.customTabs.Count).ToList();
+                                            initialTabOrder = Enumerable.Range(0, CurrentProfile.customTabs.Count).ToList();
+
+                                            customTabsCount = CurrentProfile.customTabs.Count;
+                                        }
+
+                                        // Close confirmation state
+                                        showDeleteConfirmationPopup = false;
+                                        tabToDeleteIndex = -1;
+                                        ImGui.CloseCurrentPopup();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Plugin.PluginLog.Debug($"RenderCustomTabs: deletion flow failed: {ex}");
+                                        // Attempt to restore sane state
+                                        showDeleteConfirmationPopup = false;
+                                        tabToDeleteIndex = -1;
+                                        ImGui.CloseCurrentPopup();
+                                    }
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Hold Ctrl to delete the selected tab. This action cannot be undone.");
+                            }
+                            ImGui.SameLine();
+                            if (ThemeManager.GhostButton("Cancel"))
+                            {
+                                showDeleteConfirmationPopup = false;
+                                tabToDeleteIndex = -1;
+                                ImGui.CloseCurrentPopup();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("ProfileWindow RenderCustomTabs Debug: " + ex.Message);
+                loading = "An Debug occurred while rendering custom tabs.";
+            }
+        }// Insert this helper method inside the ProfileWindow class (e.g., near the bottom before Dispose/other helpers)
+        private static void NormalizeTreeLayoutSlots(TreeLayout tr)
+        {
+            if (tr == null || tr.relationships == null || tr.relationships.Count == 0)
+                return;
+
+            const int gridSizeX = 5;
+            const int gridSizeY = 8;
+            var centerX = gridSizeX / 2;
+            var centerY = gridSizeY / 2;
+
+            // Helper: is slot inside grid
+            static bool InRange((int x, int y) s, int maxX, int maxY)
+                => s.x >= 0 && s.x < maxX && s.y >= 0 && s.y < maxY;
+
+            // Build list of defined slots (skip nulls)
+            var definedSlots = tr.relationships
+                .Where(r => r?.Slot.HasValue == true)
+                .Select(r => r.Slot!.Value)
+                .ToList();
+
+            // If none defined, nothing to normalize
+            if (definedSlots.Count == 0)
+                return;
+
+            // Quick accept: if most slots already in range, do nothing
+            var inRangeCount = definedSlots.Count(s => InRange(s, gridSizeX, gridSizeY));
+            if (inRangeCount >= definedSlots.Count)
+            {
+                Plugin.PluginLog?.Debug($"NormalizeTreeLayoutSlots: all slots already in-range ({inRangeCount}/{definedSlots.Count}). No transform applied.");
+                return;
+            }
+
+            // Candidate transforms to test
+            (string name, Func<(int x, int y), (int x, int y)> fn)[] transforms =
+            {
+        ("identity", s => (s.x, s.y)),
+        ("addCenter", s => (s.x + centerX, s.y + centerY)),
+        ("swapXY", s => (s.y, s.x)),
+        ("swapXY_addCenter", s => (s.y + centerX, s.x + centerY))
+    };
+
+            // Score each transform by how many slots fall in-range after applying it
+            var best = transforms
+                .Select(t => new
+                {
+                    t.name,
+                    t.fn,
+                    count = definedSlots.Select(s => t.fn(s)).Count(s2 => InRange(s2, gridSizeX, gridSizeY))
+                })
+                .OrderByDescending(x => x.count)
+                .First();
+
+            Plugin.PluginLog?.Debug($"NormalizeTreeLayoutSlots: best transform='{best.name}' maps {best.count}/{definedSlots.Count} slots in-range.");
+
+            // If identity is best but still maps zero, still try addCenter as fallback If identity is best but still maps zero, still try addCenter as fallback
+            if (best.count == 0 && transforms.Any(t => t.name == "addCenter"))
+            {
+                var addCenter = transforms.First(t => t.name == "addCenter");
+                var cnt = definedSlots.Select(s => addCenter.fn(s)).Count(s2 => InRange(s2, gridSizeX, gridSizeY));
+                if (cnt > best.count)
+                {
+                    // Construct an anonymous object with the same property names/types as 'best'
+                    best = new { name = addCenter.name, fn = addCenter.fn, count = cnt };
+                    Plugin.PluginLog?.Debug($"NormalizeTreeLayoutSlots: fallback chose addCenter, maps {cnt}/{definedSlots.Count} in-range.");
+                }
+            }
+
+            // Only apply if it improves mapping
+            if (best.count > inRangeCount)
+            {
+                try
+                {
+                    foreach (var rel in tr.relationships)
+                    {
+                        if (rel?.Slot.HasValue != true) continue;
+                        var old = rel.Slot.Value;
+                        var @new = best.fn(old);
+                        rel.Slot = @new;
+                        Plugin.PluginLog?.Debug($"NormalizeTreeLayoutSlots: rel '{rel.Name}' slot {old} -> {@new}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog?.Debug($"NormalizeTreeLayoutSlots: failed applying transform '{best.name}': {ex.Message}");
+                }
+            }
+            else
+            {
+                Plugin.PluginLog?.Debug("NormalizeTreeLayoutSlots: no transform improved mapping; leaving slots as-is.");
+            }
+        }
+        private void RenderTab(CustomLayout layout, int index, ref bool isOpen, string tabName)
+        {
+            try
+            {
+                // Defensive defaults
+                tabName ??= $"Tab{index}";
+                string uniqueId = $"{tabName}##{index}";
+
+                using (var tab = ImRaii.TabItem(uniqueId, ref isOpen))
+                {
+                    // Drag-drop reorder: attach to the tab header (must be right after TabItem)
+                    if (ImGui.BeginDragDropSource(ImGuiDragDropFlags.SourceNoHoldToOpenOthers))
+                    {
+                        draggedTabIndex = index;
+                        ImGui.SetDragDropPayload("TAB_REORDER", ReadOnlySpan<byte>.Empty);
+                        ImGui.Text($"Move: {tabName}");
+                        ImGui.EndDragDropSource();
+                    }
+                    if (ImGui.BeginDragDropTarget())
+                    {
+                        var payload = ImGui.AcceptDragDropPayload("TAB_REORDER");
+                        if (!payload.IsNull && draggedTabIndex.HasValue)
+                        {
+                            int srcIdx = draggedTabIndex.Value;
+                            int dstIdx = index;
+                            if (srcIdx != dstIdx && srcIdx < CurrentProfile.customTabs.Count && dstIdx < CurrentProfile.customTabs.Count)
+                            {
+                                (CurrentProfile.customTabs[srcIdx], CurrentProfile.customTabs[dstIdx]) =
+                                    (CurrentProfile.customTabs[dstIdx], CurrentProfile.customTabs[srcIdx]);
+                                if (srcIdx < initialTabOrder.Count && dstIdx < initialTabOrder.Count)
+                                {
+                                    (initialTabOrder[srcIdx], initialTabOrder[dstIdx]) =
+                                        (initialTabOrder[dstIdx], initialTabOrder[srcIdx]);
+                                }
+                                // Update tabIndex on swapped layouts to match new positions
+                                SetLayoutTabIndex(CurrentProfile.customTabs[srcIdx].Layout, srcIdx);
+                                SetLayoutTabIndex(CurrentProfile.customTabs[dstIdx].Layout, dstIdx);
+                                tabsReordered = true;
+                            }
+                            draggedTabIndex = null;
+                        }
+                        ImGui.EndDragDropTarget();
+                    }
+
+                    // IMPORTANT: do NOT return when tab == false. Begin/TabItem may return false for an inactive tab but it still updates the ref 'isOpen' when the user clicks the little close button. We must let the method continue so the close handling below runs.
+                    if (tab)
+                    {
+                        customTabSelected = true;
+
+                        // Capture which tab header the user interacted with so delete targets the expected tab
+                        try
+                        {
+                            if (ImGui.IsItemClicked() || ImGui.IsItemActivated() || ImGui.IsItemFocused())
+                            {
+                                tabToDeleteIndex = index;
+                            }
+                        }
+                        catch { /* non-fatal: defensive */ }
+
+                        if (layout == null)
+                        {
+                            Plugin.PluginLog.Debug($"RenderTab: layout is null for tab '{tabName}' index={index}.");
+                        }
+                        else
+                        {
+                            var layoutTypeName = layout.GetType().Name;
+                            try
+                            {
+                                switch (layout)
+                                {
+                                    case BioLayout bioLayout:
+                                        Bio.RenderBioLayout(index, uniqueId, bioLayout);
+                                        break;
+                                    case DetailsLayout detailsLayout:
+                                        Details.RenderDetailsLayout(index, uniqueId, detailsLayout);
+                                        break;
+                                    case GalleryLayout galleryLayout:
+                                        Gallery.RenderGalleryLayout(index, uniqueId, galleryLayout);
+                                        break;
+                                    case InfoLayout infoLayout:
+                                        Info.RenderInfoLayout(index, uniqueId, infoLayout);
+                                        break;
+                                    case StoryLayout storyLayout:
+                                        Story.RenderStoryLayout(index, uniqueId, storyLayout);
+                                        break;
+                                    case InventoryLayout inventoryLayout:
+                                        ProfileLayoutTypes.Inventory.RenderInventoryLayout(index, uniqueId, inventoryLayout);
+                                        break;
+                                    case TreeLayout treeLayout:
+                                        Tree.RenderTreeLayout(index, true, uniqueId, treeLayout, string.Empty, new Vector4(0, 0, 0, 0));
+                                        break;
+                                    default:
+                                        Plugin.PluginLog.Debug($"RenderTab: unsupported layout type '{layoutTypeName}' for tab '{tabName}' index={index}.");
+                                        break;
+                                }
+                            }
+                            catch (Exception exLayout)
+                            {
+                                // Log full exception + context so we can identify the root cause inside the layout renderer.
+                                Plugin.PluginLog.Debug($"RenderTab: Exception while rendering layout '{layoutTypeName}' for tab '{tabName}' (index={index}): {exLayout}");
+                            }
+                        }
+                    }
+                }
+
+                // Handle the case where the tab was closed (close button pressed)
+                if (!isOpen)
+                {
+                    // Keep UI behaviour: open confirmation instead of immediately removing
+                    isOpen = true; // reopen temporarily to show confirmation
+                    tabToDeleteIndex = index;
+                    showDeleteConfirmationPopup = true;
+                    ImGui.OpenPopup("Delete Tab Confirmation");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log full exception with context
+                Plugin.PluginLog.Debug($"ProfileWindow RenderTab Debug: Exception rendering tab '{tabName}' index={index}: {ex}");
+            }
+        }
+
+
+
+        private bool ProfileHasContent()
+        {
+            
+            if(oocInfo != string.Empty || Story.storyTitle != string.Empty) { return true; }
+
+            for (int i = 0; i < Story.ChapterNames.Length; i++)
+            {
+                if(Story.ChapterNames[i] != string.Empty) return true;
+
+            }
+            for (int i = 0; i < Story.ChapterContents.Length; i++)
+            {
+                if (Story.ChapterContents[i] != string.Empty)
+                {
+                    return true;
+                }
+            }
+
+            if (CurrentProfile != null && CurrentProfile.customTabs?.Count > 0)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        /// Creates a 4x4 transparent PNG as a byte array.
+        private static byte[] CreateTransparentPng()
+        {
+            // Minimal valid 4x4 transparent PNG (manually constructed) PNG header + IHDR chunk + IDAT chunk (compressed transparent pixels) + IEND chunk
+            return new byte[]
+            {
+                // PNG signature
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+                // IHDR chunk (13 bytes data)
+                0x00, 0x00, 0x00, 0x0D, // chunk length
+                0x49, 0x48, 0x44, 0x52, // "IHDR"
+                0x00, 0x00, 0x00, 0x04, // width: 4
+                0x00, 0x00, 0x00, 0x04, // height: 4
+                0x08,                   // bit depth: 8
+                0x06,                   // color type: RGBA
+                0x00,                   // compression method
+                0x00,                   // filter method
+                0x00,                   // interlace method
+                0x90, 0x6B, 0x0B, 0x5C, // CRC
+                // IDAT chunk (compressed data for 4x4 transparent image)
+                0x00, 0x00, 0x00, 0x1B, // chunk length: 27
+                0x49, 0x44, 0x41, 0x54, // "IDAT"
+                0x78, 0x9C, 0x62, 0x60, 0x60, 0x60, 0x60, 0x60,
+                0x00, 0x02, 0x06, 0x20, 0x08, 0x00, 0x00, 0x00,
+                0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x15, 0x7F,
+                0x00, 0x11,
+                0x11, 0x94, 0x19, 0x8E, // CRC
+                // IEND chunk
+                0x00, 0x00, 0x00, 0x00, // chunk length: 0
+                0x49, 0x45, 0x4E, 0x44, // "IEND"
+                0xAE, 0x42, 0x60, 0x82  // CRC
+            };
+        }
+
+        public override void OnClose()
+        {
+            // Stop and dispose all audio players when closing the window
+            Misc.CleanupAudioPlayers();
+            base.OnClose();
+        }
+
+        public void Dispose()
+        {
+            // Stop and dispose all audio players
+            Misc.CleanupAudioPlayers();
+
+            WindowOperations.SafeDispose(currentAvatarImg);
+            currentAvatarImg = null;
+            WindowOperations.SafeDispose(pictureTab);
+            pictureTab = null;
+            WindowOperations.SafeDispose(backgroundImage);
+            backgroundImage = null;
+            WindowOperations.SafeDispose(avatarHolder);
+            avatarHolder = null;
+
+            // Dispose and dereference custom layouts
+            if (customLayouts != null)
+            {
+                foreach (var layout in customLayouts)
+                {
+                    switch (layout)
+                    {
+                        case GalleryLayout gallery:
+                            if (gallery.images != null)
+                            {
+                                foreach (var img in gallery.images)
+                                {
+                                    WindowOperations.SafeDispose(img.image);
+                                    img.image = null;
+                                    WindowOperations.SafeDispose(img.thumbnail);
+                                    img.thumbnail = null;
+                                }
+                                gallery.images.Clear();
+                            }
+                            break;
+
+                        case InventoryLayout inventory:
+                            if (inventory.inventorySlotContents != null)
+                            {
+                                foreach (var item in inventory.inventorySlotContents.Values)
+                                {
+                                    WindowOperations.SafeDispose(item.iconTexture);  
+                                    item.iconTexture = null;
+                                }
+                                inventory.inventorySlotContents.Clear();
+                            }
+                            break;
+
+                        case BioLayout bio:
+                            if (bio.traits != null)
+                            {
+                                foreach (var trait in bio.traits)
+                                {
+                                    WindowOperations.SafeDispose(trait.icon?.icon);
+                                    trait.icon.icon = null;
+                                    trait.icon = null;
+                                }
+                                bio.traits.Clear();
+                            }
+                            bio.fields?.Clear();
+                            bio.descriptors?.Clear();
+                            break;
+
+                        case DetailsLayout details:
+                            details.details?.Clear();
+                            break;
+
+                        case StoryLayout story:
+                            story.chapters?.Clear();
+                            break;
+
+                        case TreeLayout tree:
+                            tree.relationships?.Clear();
+                            tree.Paths?.Clear();
+                            tree.PathConnections?.Clear();
+                            break;
+
+                        case InfoLayout info:
+                            info.text = string.Empty;
+                            break;
+
+                        case DynamicLayout dynamicLayout:
+                            dynamicLayout.elements?.Clear();
+                            dynamicLayout.RootNode = null;
+                            break;
+                    }
+                }
+                customLayouts.Clear();
+            }
+
+            // Dispose and dereference inventory
+            currentInventory = null;
+
+            // Clear tooltipData data
+            CurrentProfile = null;
+            profiles?.Clear();
+        }
+
+        private void DrawProfileTypeSelection()
+        {
+            try
+            {
+                // Use the current index for the label
+                var currentLabel = UI.ListingCategoryVals[currentProfileType].Item1;
+
+                using var combo = ImRaii.Combo("##Profiles", currentLabel);
+                if (!combo)
+                    return;
+                foreach (var ((name, description), idx) in UI.ListingCategoryVals.WithIndex())
+                {
+                    if (ImGui.Selectable(name + "##" + idx, idx == currentProfileType))
+                    {
+                        profileType = UI.ListingCategoryVals[idx];
+                        currentProfileType = idx;
+                    }
+                    UIHelpers.SelectableHelpMarker(description);
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("ProfileWindow DrawProfileTypeSelection Debug: " + ex.Message);
+            }
+        }
+        private void DrawLayoutTypeSelection()
+        {
+            try {
+            bool inLayoutWalk =
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Tree) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Bio) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Details) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Story) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Info) ||
+                Helpers.TutorialManager.IsCurrent(Helpers.ProfileTutorial.Step_Layout_Gallery);
+            using var combo = ImRaii.Combo("##LayoutTypes", layoutType.Item1);
+            if (!combo)
+                return;
+                foreach (var ((name, description, Type), idx) in UI.LayoutTypeVals.WithIndex())
+                {
+                    if(name != "Roster")
+                    {
+                        var itemMin = ImGui.GetCursorScreenPos();
+                        if (ImGui.Selectable(name + "##" + idx, idx == currentLayoutType))
+                        {
+                            layoutType = UI.LayoutTypeVals[idx];
+                            currentLayoutType = idx;
+                        }
+                        var itemMax = ImGui.GetItemRectMax();
+                        if (currentLayoutType == idx && inLayoutWalk)
+                            Helpers.TutorialManager.AnchorRect(Helpers.ProfileTutorial.Anchor_LayoutItem, itemMin, itemMax);
+                        UIHelpers.SelectableHelpMarker(description);
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                Plugin.PluginLog.Debug("ProfileWindow DrawLayoutTypeSelection Debug: " + ex.Message);
+            }
+        }
+
+
+
+        public void AddProfileSelection()
+        {
+            try
+            {
+                List<string> profileNames = new List<string>();
+                for (int i = 0; i < profiles.Count; i++)
+                {
+                    profileNames.Add(profiles[i].title);
+                }
+                string[] ProfileNames = new string[profileNames.Count];
+                ProfileNames = profileNames.ToArray();
+                var profileName = ProfileNames[profileIndex];
+
+                using var combo = ImRaii.Combo("##Profiles", profileName);
+                if (!combo)
+                    return;
+                foreach (var (newText, idx) in ProfileNames.WithIndex())
+                {
+                    if (profiles.Count > 0)
+                    {
+                        var label = newText;
+                        if (label == string.Empty)
+                        {
+                            label = "New Profile";
+                        }
+                        if (newText != string.Empty)
+                        {
+                            if (ImGui.Selectable(label + "##" + idx, idx == profileIndex))
+                            {
+                                CurrentProfile = profiles[idx];
+                                currentAvatarImg = UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+                                Bio.currentAlignment = 9;
+                                profileIndex = idx;
+                                TargetProfileWindow.ResetAllData();
+                                Fetching = true;
+                                Profiles_DS.FetchProfiles(Plugin.character);
+                                Profiles_DS.FetchProfile(Plugin.character, true, profileIndex, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                            }
+                            UIHelpers.SelectableHelpMarker("Select to edit the selected profile");
+                        }
+
+                        if (showTypeCreation == true)
+                        {
+                            ImGui.OpenPopup($"Profile Creation##{profiles.Count}");
+                            RenderProfileTypeCreation(profiles.Count);
+                        }
+
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("ProfileWindow AddProfileSelection Debug: " + ex.Message);
+            }
+        }
+     
+
+
+
+
+
+
+
+        public static int CountLinesBetweenStrings(string filePath, string startString, string endString)
+        {
+            using (StreamReader reader = new StreamReader(filePath))
+            {
+                string line;
+                bool counting = false; // Flag to indicate if we're between the start and end strings
+                int lineCount = 0; // Counter for lines
+
+                while ((line = reader.ReadLine()) != null)
+                {
+                    if (line.Contains(startString))
+                    {
+                        counting = true; // Start counting lines after finding the start string
+                        continue; // Skip the start line itself
+                    }
+
+                    if (line.Contains(endString))
+                    {
+                        counting = false; // Stop counting lines after finding the end string
+                        break; // Exit the loop
+                    }
+
+                    if (counting)
+                    {
+                        lineCount++; // Increment line count if we're in the counting state
+                    }
+                }
+
+                return lineCount;
+            }
+        }
+  
+
+
+        // Helper function to extract values between tags
+
+
+
+        // Helper method to extract tag content
+        public async Task<string> ExtractTagFromFile(string filePath, string tag)
+        {
+            try
+            {
+                // Read the entire file content
+                string fileContent = await File.ReadAllTextAsync(filePath);
+                // Extract and return content for the specified tag
+                return ExtractTagContent(fileContent, tag);
+            }
+            catch (Exception ex)
+            {
+                // Handle exceptions (e.g., file not found, etc.)
+                Plugin.PluginLog.Debug($"Debug reading file: {ex.Message}");
+                return string.Empty; // Return empty if an Debug occurs
+            }
+        }
+
+        private string ExtractTagContent(string content, string tagName)
+        {
+            var startTag = $"<{tagName}>";
+            var endTag = $"</{tagName}>";
+
+            var startIndex = content.IndexOf(startTag);
+            var endIndex = content.IndexOf(endTag, startIndex + startTag.Length);
+
+            if (startIndex >= 0 && endIndex > startIndex)
+            {
+                // Calculate the start position for content extraction
+                startIndex += startTag.Length;
+
+                // Return the extracted content
+                return content.Substring(startIndex, endIndex - startIndex).Trim();
+            }
+
+            return string.Empty; // Return empty if tags are not found
+        }
+
+        // Helper method to read a tag value
+        private string ReadTagValue(StreamReader reader, string tag)
+        {
+            string line = reader.ReadLine();
+            return ExtractTagContent(line, tag);
+        }
+        public void LoadBackupLoaderDialog()
+        {
+            _fileDialogManager.OpenFileDialog(
+                "Load Backup",
+                "JSON{.json}",
+                (bool success, string filePath) =>
+                {
+                    if (!success || string.IsNullOrEmpty(filePath))
+                        return;
+
+                    try
+                    {
+                        ProfileData profile = BackupData.ImportProfileFromJsonAsync(filePath).GetAwaiter().GetResult();
+                        if (profile == null)
+                        {
+                            Plugin.PluginLog.Debug("LoadBackupLoaderDialog: imported profile is null.");
+                            return;
+                        }
+
+                        // Apply profile into CurrentProfile and attempt to map it to the currently selected slot
+                        LoadAndApplyProfile(profile);
+                        Plugin.PluginLog.Debug($"Backup loaded (pre-apply): title='{profile.title}', tabs={profile.customTabs?.Count ?? 0}, importedIndex={profile.index}");
+
+                        // If there is an existing profile slot selected, overwrite that slot so the backup is applied
+                        if (profiles != null && profiles.Count > 0 && profileIndex >= 0 && profileIndex < profiles.Count)
+                        {
+                            try
+                            {
+                                // Preserve server-side index (the numeric id the rest of the code expects)
+                                profile.index = profiles[profileIndex].index;
+                                profiles[profileIndex] = profile;
+                                CurrentProfile = profile;
+                                Plugin.PluginLog.Debug($"LoadBackupLoaderDialog: applied backup to existing slot profileIndex={profileIndex}, serverIndex={profile.index}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Plugin.PluginLog.Debug($"LoadBackupLoaderDialog: failed to apply backup to selected slot: {ex}");
+                            }
+
+                            // Submit the profile to server (voidData true will create tabs server-side for this profile index)
+                            SubmitProfileData(true);
+                        }
+                        else
+                        {
+                            // No existing slot selected - do not blindly submit to index 0. Log and inform developer/user to create a profile first.
+                            Plugin.PluginLog.Debug("LoadBackupLoaderDialog: no existing profile slot to apply the backup to. Please create a profile first.");
+                            // Still set CurrentProfile so user can inspect and manually create/choose a profile to apply onto.
+                            CurrentProfile = profile;
+                        }
+
+                        Plugin.PluginLog.Debug($"Backup loaded: title='{profile.title}', tabs={profile.customTabs?.Count ?? 0}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Plugin.PluginLog.Debug($"Debug loading backup file: {ex.Message}");
+                    }
+                    // NOTE: SubmitProfileData is now invoked only when we have a valid existing slot to overwrite.
+                }
+            );
+        }
+        public void LoadBackupSaveDialog()
+        {
+            try
+            {
+                _fileDialogManager.SaveFileDialog("Save Backup", "JSON{.json}", "Backup Name", ".json", (Action<bool, string>)((s, f) =>
+                {
+                    if (!s)
+                        return;
+                    var dataPath = f.ToString();
+                    SaveBackupFile(dataPath).GetAwaiter().GetResult();
+                }));
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug Loading Backup Dialog: {ex.Message}");
+            }
+        }
+        public async Task SaveBackupFile(string dataPath)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(dataPath))
+                    throw new ArgumentNullException(nameof(dataPath));
+
+                dataPath = dataPath.Trim();
+
+                // If caller passed a directory, write a default filename inside it
+                if (System.IO.Directory.Exists(dataPath))
+                {
+                    dataPath = System.IO.Path.Combine(dataPath, "Backup.json");
+                }
+
+                // Ensure file has an extension
+                if (!System.IO.Path.HasExtension(dataPath))
+                    dataPath = System.IO.Path.ChangeExtension(dataPath, ".json");
+
+                var dir = System.IO.Path.GetDirectoryName(dataPath);
+                if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
+                    System.IO.Directory.CreateDirectory(dir);
+
+                // Write file
+                await BackupData.ExportProfileToJsonAsync(CurrentProfile, dataPath).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"Debug saving backup file: {ex.Message}");
+            }
+        }
+        private void DrawProfileLoadingOverlay(bool tabsLoading, bool galleryLoading)
+        {
+            var windowPos = ImGui.GetWindowPos();
+            var windowSize = ImGui.GetWindowSize();
+            var dl = ImGui.GetWindowDrawList();
+
+            // Semi-transparent overlay
+            dl.AddRectFilled(
+                windowPos,
+                new System.Numerics.Vector2(windowPos.X + windowSize.X, windowPos.Y + windowSize.Y),
+                ImGui.ColorConvertFloat4ToU32(new System.Numerics.Vector4(
+                    ThemeManager.Background.X, ThemeManager.Background.Y, ThemeManager.Background.Z, 0.9f)));
+
+            // Card dimensions
+            float cardWidth = Math.Min(windowSize.X - 40, 340);
+            int lineCount = 1; // title
+            if (Sending) lineCount++;
+            if (Fetching && !tabsLoading && !galleryLoading) lineCount++;
+            if (tabsLoading) lineCount += 2; // label + bar
+            if (galleryLoading) lineCount += 2; // label + bar
+            float cardHeight = 40 + lineCount * 28;
+
+            float cardX = windowPos.X + (windowSize.X - cardWidth) / 2;
+            float cardY = windowPos.Y + (windowSize.Y - cardHeight) / 2;
+
+            // Card background
+            var cardMin = new System.Numerics.Vector2(cardX, cardY);
+            var cardMax = new System.Numerics.Vector2(cardX + cardWidth, cardY + cardHeight);
+            dl.AddRectFilled(cardMin, cardMax,
+                ImGui.ColorConvertFloat4ToU32(ThemeManager.BgLight), 10f);
+            dl.AddRect(cardMin, cardMax,
+                ImGui.ColorConvertFloat4ToU32(ThemeManager.Border), 10f, ImDrawFlags.None, 1f);
+
+            float yPos = cardY + 14;
+            float barWidth = cardWidth - 32;
+
+            // Title
+            ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+            ThemeManager.AccentText("Loading Profile...");
+            yPos += 28;
+
+            if (Sending)
+            {
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+                ThemeManager.SubtitleText("Sending data to server...");
+                yPos += 28;
+            }
+
+            if (tabsLoading && Profiles_DR.tabsCount > 0)
+            {
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+                ThemeManager.SubtitleText($"Loading tabs ({Profiles_DR.loadedTabsCount}/{Profiles_DR.tabsCount})...");
+                yPos += 24;
+
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+                float tabProgress = (float)Profiles_DR.loadedTabsCount / Math.Max(1, Profiles_DR.tabsCount);
+                ThemeManager.StyledProgressBar(tabProgress, new System.Numerics.Vector2(barWidth, 20),
+                    $"{Profiles_DR.loadedTabsCount}/{Profiles_DR.tabsCount}", null);
+                yPos += 28;
+            }
+
+            if (galleryLoading && Profiles_DR.GalleryImagesToLoad > 0)
+            {
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+                ThemeManager.SubtitleText($"Loading images ({Profiles_DR.loadedGalleryImages}/{Profiles_DR.GalleryImagesToLoad})...");
+                yPos += 24;
+
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+                float imgProgress = (float)Profiles_DR.loadedGalleryImages / Math.Max(1, Profiles_DR.GalleryImagesToLoad);
+                ThemeManager.StyledProgressBar(imgProgress, new System.Numerics.Vector2(barWidth, 20),
+                    $"{Profiles_DR.loadedGalleryImages}/{Profiles_DR.GalleryImagesToLoad}", null);
+                yPos += 28;
+            }
+
+            if (Fetching && !tabsLoading && !galleryLoading)
+            {
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, yPos));
+                ThemeManager.SubtitleText("Waiting for server...");
+                yPos += 28;
+            }
+        }
+
+        private void DrawSaveProgressOverlay()
+        {
+            var windowPos = ImGui.GetWindowPos();
+            var windowSize = ImGui.GetWindowSize();
+            var dl = ImGui.GetWindowDrawList();
+
+            // Semi-transparent overlay
+            dl.AddRectFilled(
+                windowPos,
+                new System.Numerics.Vector2(windowPos.X + windowSize.X, windowPos.Y + windowSize.Y),
+                ImGui.ColorConvertFloat4ToU32(new System.Numerics.Vector4(
+                    ThemeManager.Background.X, ThemeManager.Background.Y, ThemeManager.Background.Z, 0.85f)));
+
+            // Center the progress card
+            float cardWidth = Math.Min(windowSize.X - 40, 320);
+            float cardHeight = 120;
+            float cardX = windowPos.X + (windowSize.X - cardWidth) / 2;
+            float cardY = windowPos.Y + (windowSize.Y - cardHeight) / 2;
+
+            // Card background
+            var cardMin = new System.Numerics.Vector2(cardX, cardY);
+            var cardMax = new System.Numerics.Vector2(cardX + cardWidth, cardY + cardHeight);
+            dl.AddRectFilled(cardMin, cardMax,
+                ImGui.ColorConvertFloat4ToU32(ThemeManager.BgLight), 10f);
+            dl.AddRect(cardMin, cardMax,
+                ImGui.ColorConvertFloat4ToU32(ThemeManager.Border), 10f, ImDrawFlags.None, 1f);
+
+            // Position content inside card
+            ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, cardY + 14));
+
+            if (ProfileSaveTracker.HasError)
+            {
+                ImGui.TextColored(ThemeManager.Error, "Save Failed");
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, cardY + 38));
+                ImGui.PushTextWrapPos(cardX + cardWidth - 16);
+                ThemeManager.SubtitleText(ProfileSaveTracker.ErrorMessage);
+                ImGui.PopTextWrapPos();
+            }
+            else
+            {
+                if (ProfileSaveTracker.Progress >= 1f)
+                    ImGui.TextColored(ThemeManager.Success, "Profile Saved!");
+                else
+                    ThemeManager.AccentText("Saving Profile...");
+
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, cardY + 40));
+                ThemeManager.SubtitleText(ProfileSaveTracker.CurrentStep);
+
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, cardY + 64));
+                var barColor = ProfileSaveTracker.Progress >= 1f ? ThemeManager.Success : (System.Numerics.Vector4?)null;
+                ThemeManager.StyledProgressBar(
+                    ProfileSaveTracker.Progress,
+                    new System.Numerics.Vector2(cardWidth - 32, 20),
+                    $"{ProfileSaveTracker.CompletedSteps}/{ProfileSaveTracker.TotalSteps}",
+                    barColor);
+
+                // Step counter text
+                ImGui.SetCursorScreenPos(new System.Numerics.Vector2(cardX + 16, cardY + 92));
+                ThemeManager.SubtitleText($"Step {ProfileSaveTracker.CompletedSteps} of {ProfileSaveTracker.TotalSteps}");
+            }
+        }
+
+        private static int GetLayoutTabIndex(CustomLayout layout)
+        {
+            if (layout == null) return int.MaxValue;
+            return layout switch
+            {
+                BioLayout b => b.tabIndex,
+                DetailsLayout d => d.tabIndex,
+                DynamicLayout dyn => dyn.tabIndex,
+                GalleryLayout g => g.tabIndex,
+                InfoLayout inf => inf.tabIndex,
+                StoryLayout s => s.tabIndex,
+                InventoryLayout inv => inv.tabIndex,
+                TreeLayout tr => tr.tabIndex,
+                _ => int.MaxValue,
+            };
+        }
+
+        private static void SetLayoutTabIndex(CustomLayout layout, int index)
+        {
+            if (layout == null) return;
+            switch (layout)
+            {
+                case BioLayout b: b.tabIndex = index; break;
+                case DetailsLayout d: d.tabIndex = index; break;
+                case DynamicLayout dyn: dyn.tabIndex = index; break;
+                case GalleryLayout g: g.tabIndex = index; break;
+                case InfoLayout inf: inf.tabIndex = index; break;
+                case StoryLayout s: s.tabIndex = index; break;
+                case InventoryLayout inv: inv.tabIndex = index; break;
+                case TreeLayout tr: tr.tabIndex = index; break;
+            }
+        }
+
+        public void SubmitProfileData(bool voidData)
+        {
+            if (ProfileSaveTracker.IsSaving) return;
+
+            // Count total steps: 1 for profile status + tabs creation (if voidData) + 1 per tab layout
+            int totalSteps = 1; // SetProfileStatus
+            if (voidData)
+                totalSteps += CurrentProfile.customTabs.Count; // CreateTab calls
+            totalSteps += CurrentProfile.customTabs.Count; // layout submissions
+            totalSteps += 1; // final cleanup/fetch
+
+            ProfileSaveTracker.Begin(totalSteps);
+            Sending = true;
+
+            // Capture values needed for the async work. Use the character that OWNS this profile - not the one currently logged into the game. Otherwise saving a profile for a character you selected in the dropdown (server 2) while logged in as a different character (server 1) would route the SetProfileStatus to server-1's user_id and slot, stomping the wrong character's profile in that slot.
+            var profile = CurrentProfile;
+            var character = Plugin.character;
+            if (profile != null
+                && !string.IsNullOrEmpty(profile.playerName)
+                && !string.IsNullOrEmpty(profile.playerWorld))
+            {
+                var owner = Plugin.plugin?.Configuration?.characters
+                    ?.FirstOrDefault(c =>
+                        string.Equals(c.characterName,  profile.playerName,  StringComparison.OrdinalIgnoreCase)
+                     && string.Equals(c.characterWorld, profile.playerWorld, StringComparison.OrdinalIgnoreCase)
+                     && !string.IsNullOrEmpty(c.characterKey));
+                if (owner != null) character = owner;
+            }
+            var profIdx = profileIndex;
+            var tabs = new List<CustomTab>(CurrentProfile.customTabs);
+            var config = configuration;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    // Step 1: Profile status (avatar, background, metadata)
+                    ProfileSaveTracker.CurrentStep = "Sending profile status...";
+                    await Profiles_DS.SetProfileStatus(character, profile.isPrivate, profile.isActive, profIdx, profile.title, profile.titleColor, profile.avatarBytes, profile.backgroundBytes, profile.SpoilerARR, profile.SpoilerHW, profile.SpoilerSB, profile.SpoilerSHB, profile.SpoilerEW, profile.SpoilerDT, profile.NSFW, profile.TRIGGERING, profile.equipmentPublic, profile.immersiveTheme);
+                    ProfileSaveTracker.Advance("Profile status sent");
+
+                    // Step 2: Create tabs if new profile - batch all CreateTab calls together
+                    if (voidData)
+                    {
+                        ProfileSaveTracker.CurrentStep = "Creating tabs...";
+                        var createTabBuffers = new List<byte[]>();
+                        for (int i = 0; i < tabs.Count; i++)
+                        {
+                            CustomTab tab = tabs[i];
+                            var layoutTypeInt = ResolveLayoutTypeInt(tab.Layout);
+                            var buf = ProfileTabs_DS.BuildCreateTabBuffer(character, tab.Name, layoutTypeInt, profile.index, i);
+                            if (buf != null) createTabBuffers.Add(buf);
+                        }
+                        if (createTabBuffers.Count > 0)
+                            await ClientTCP.SendBatchAsync(createTabBuffers);
+                        for (int i = 0; i < tabs.Count; i++)
+                            ProfileSaveTracker.Advance($"Tab created: {tabs[i].Name}");
+                    }
+
+                    // Step 2.5: Send tab reorder if tabs were rearranged
+                    if (tabsReordered && !voidData)
+                    {
+                        ProfileSaveTracker.CurrentStep = "Saving tab order...";
+                        var indexChanges = new List<(int oldIndex, int newIndex)>();
+                        for (int pos = 0; pos < tabs.Count; pos++)
+                        {
+                            int dbIdx = pos < initialTabOrder.Count ? initialTabOrder[pos] : pos;
+                            if (dbIdx != pos)
+                                indexChanges.Add((dbIdx, pos));
+                        }
+                        if (indexChanges.Count > 0)
+                            await ProfileTabs_DS.SendTabReorder(character, profIdx, indexChanges);
+                        tabsReordered = false;
+                        initialTabOrder.Clear();
+                        for (int ti = 0; ti < tabs.Count; ti++)
+                            initialTabOrder.Add(ti);
+                    }
+
+                    // Step 3: Submit all tab layouts in a single batch
+                    ProfileSaveTracker.CurrentStep = "Preparing tab data...";
+                    var tabBuffers = new List<byte[]>();
+                    for (int i = 0; i < tabs.Count; i++)
+                    {
+                        var tab = tabs[i];
+                        byte[] buf = null;
+                        if (tab.Layout is BioLayout bioLayout)
+                            buf = ProfileTabs_DS.BuildProfileBioBuffer(character, profIdx, bioLayout);
+                        else if (tab.Layout is DetailsLayout detailsLayout)
+                            buf = ProfileTabs_DS.BuildProfileDetailsBuffer(character, profIdx, detailsLayout);
+                        else if (tab.Layout is GalleryLayout galleryLayout)
+                            buf = ProfileTabs_DS.BuildGalleryLayoutBuffer(character, profIdx, galleryLayout);
+                        else if (tab.Layout is InfoLayout infoLayout)
+                            buf = ProfileTabs_DS.BuildInfoLayoutBuffer(character, profIdx, infoLayout);
+                        else if (tab.Layout is StoryLayout storyLayout)
+                            buf = ProfileTabs_DS.BuildStoryLayoutBuffer(character, profIdx, storyLayout);
+                        else if (tab.Layout is InventoryLayout inventoryLayout)
+                            buf = ProfileTabs_DS.BuildInventoryLayoutBuffer(character, profIdx, inventoryLayout);
+                        else if (tab.Layout is TreeLayout treeLayout)
+                            buf = ProfileTabs_DS.BuildTreeLayoutBuffer(character, profIdx, treeLayout);
+                        else if (tab.Layout is DynamicLayout dynamicLayout)
+                        {
+                            // DynamicLayout sends directly (has images)
+                            ProfileTabs_DS.SubmitDynamicLayout(character, profIdx, dynamicLayout);
+                        }
+
+                        if (buf != null) tabBuffers.Add(buf);
+                    }
+
+                    // Send all tab data as one batch - single semaphore acquire, single flush
+                    ProfileSaveTracker.CurrentStep = "Sending tab data...";
+                    if (tabBuffers.Count > 0)
+                        await ClientTCP.SendBatchAsync(tabBuffers);
+                    for (int i = 0; i < tabs.Count; i++)
+                    {
+                        string tabLabel = !string.IsNullOrEmpty(tabs[i].Name) ? tabs[i].Name : $"Tab {i + 1}";
+                        ProfileSaveTracker.Advance($"Saved {tabLabel}");
+                    }
+
+                    // Step 4: Cleanup and refresh
+                    ProfileSaveTracker.CurrentStep = "Finalizing...";
+                    Sending = false;
+                    if (Plugin.plugin.Configuration.AutobackupEnabled)
+                    {
+                        await SaveBackupFile(config.dataSavePath);
+                    }
+                    CurrentProfile.customTabs.Clear();
+                    AbsoluteRP.Windows.Inventory.InventoryWindow.ClearTabs();
+                    customLayouts.Clear();
+                    ProfileSaveTracker.Advance("Loading profile from server...");
+                    ProfileSaveTracker.CurrentStep = "Loading profile from server...";
+                    Profiles_DS.FetchProfile(character, true, profIdx, Plugin.plugin.playername, Plugin.plugin.playerworld, -1);
+                }
+                catch (Exception ex)
+                {
+                    Plugin.PluginLog.Debug("Received exception in SubmitProfileData: " + ex.Message);
+                    ProfileSaveTracker.Fail(ex.Message);
+                }
+            });
+        }
+        public void LoadAndApplyProfile(ProfileData profile)
+        {
+            try
+            {
+                if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+                // Assign
+                CurrentProfile = profile;
+
+                // Ensure tabs list exists
+                if (CurrentProfile.customTabs == null)
+                    CurrentProfile.customTabs = new System.Collections.Generic.List<CustomTab>();
+
+                // Reset internal helpers
+                customLayouts.Clear();
+                CustomTabOpen.Clear();
+                tabOrder.Clear();
+                initialTabOrder.Clear();
+
+                customTabsCount = CurrentProfile.customTabs.Count;
+
+                // Ensure every tab has a runtime layout instance so RenderCustomTabs will display it
+                for (int i = 0; i < CurrentProfile.customTabs.Count; i++)
+                {
+                    var t = CurrentProfile.customTabs[i];
+
+                    // Ensure tab name is not null
+                    t.Name ??= $"Page {i + 1}";
+
+                    // Keep IsOpen true by default so user sees the tab
+                    t.IsOpen = t.IsOpen;
+
+                    // If Layout is missing, create an empty layout based on the stored type
+                    if (t.Layout == null)
+                    {
+                        try
+                        {
+                            // t.type is stored as int matching LayoutTypes
+                            var lt = (LayoutTypes)Math.Clamp(t.type, 0, Enum.GetValues(typeof(LayoutTypes)).Length - 1);
+
+                            CustomLayout created = lt switch
+                            {
+                                LayoutTypes.Bio => new BioLayout { tabIndex = i },
+                                LayoutTypes.Details => new DetailsLayout { tabIndex = i },
+                                LayoutTypes.Gallery => new GalleryLayout { tabIndex = i },
+                                LayoutTypes.Info => new InfoLayout { tabIndex = i },
+                                LayoutTypes.Story => new StoryLayout { tabIndex = i },
+                                LayoutTypes.Inventory => new InventoryLayout { tabIndex = i },
+                                LayoutTypes.Relationship => new TreeLayout { tabIndex = i },
+                                _ => new CustomLayout { id = 0, name = t.Name ?? string.Empty, layoutType = lt, viewable = true }
+                            };
+
+                            t.Layout = created;
+                        }
+                        catch
+                        {
+                            // Fallback: ensure there is at least a generic layout
+                            t.Layout = new CustomLayout { id = 0, name = t.Name ?? string.Empty, layoutType = LayoutTypes.Info, viewable = true };
+                        }
+                    }
+                    else
+                    {
+                        // If layout already exists, try to set/repair tabIndex where applicable
+                        switch (t.Layout)
+                        {
+                            case BioLayout b: b.tabIndex = i; break;
+                            case DetailsLayout d: d.tabIndex = i; break;
+                            case GalleryLayout g: g.tabIndex = i; break;
+                            case InfoLayout inf: inf.tabIndex = i; break;
+                            case StoryLayout s: s.tabIndex = i; break;
+                            case InventoryLayout inventoryLayout: inventoryLayout.tabIndex = i; break;
+                            case TreeLayout tr:  tr.tabIndex = i;NormalizeTreeLayoutSlots(tr); break;
+                        }
+                    }
+
+                    // Track layout instances for disposal/management
+                    if (t.Layout != null)
+                    {
+                        customLayouts.Add(t.Layout);
+                    }
+
+                    // Track open state and ordering
+                    CustomTabOpen[i] = t.IsOpen;
+                    tabOrder.Add(i);
+                    initialTabOrder.Add(i);
+
+                    // capture inventory layout for quick access
+                    if (t.Layout is InventoryLayout inv && currentInventory == null)
+                        currentInventory = inv;
+                }
+
+                // Choose a safe avatar image fallback (we don't attempt byte->texture here)
+                if (currentAvatarImg == null)
+                    currentAvatarImg = avatarHolder ?? pictureTab ?? UI.UICommonImage(UI.CommonImageTypes.avatarHolder);
+
+                // If profile is already present in the profiles list, set profileIndex accordingly
+                var idx = profiles?.IndexOf(profile) ?? -1;
+                if (idx >= 0)
+                    profileIndex = idx;
+
+                // Diagnostics
+                Plugin.PluginLog.Debug($"LoadAndApplyProfile: title='{CurrentProfile.title}', tabs={CurrentProfile.customTabs.Count}, profileIndex={profileIndex}");
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug($"LoadAndApplyProfile Debug: {ex.Message}");
+            }
+        }
+
+    }
+}
+
+
+

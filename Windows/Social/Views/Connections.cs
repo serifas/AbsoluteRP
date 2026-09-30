@@ -1,0 +1,214 @@
+using AbsoluteRP.Helpers;
+using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
+using Dalamud.Interface.Windowing;
+using Dalamud.Plugin;
+using FFXIVClientStructs.FFXIV.Common.Math;
+using Networking;
+using AbsoluteRP.Network;
+
+namespace AbsoluteRP.Windows.Social.Views
+{
+    // Connection management UI - shows received/sent/blocked connection requests between players. Players can accept, decline, block, or remove connections.
+    public class Connections
+    {
+        public static List<Tuple<string, string>> receivedProfileRequests = new List<Tuple<string, string>>();
+        public static List<Tuple<string, string>> sentProfileRequests = new List<Tuple<string, string>>();
+        public static List<Tuple<string, string>> blockedProfileRequests = new List<Tuple<string, string>>();
+        public static List<Tuple<string, string>> connetedProfileList = new List<Tuple<string, string>>();
+        // One connection as the server describes it, from the viewer's side.
+        public class Entry
+        {
+            public string Name = string.Empty, World = string.Empty;
+            public int UserId; public string Username = string.Empty;
+            public int Status; public bool IsReceiver;
+        }
+        public static List<Entry> All = new();
+        public static long LastReceivedMs;
+        public static string username = "";
+        public static string localPlayerName = "";
+        public static string localPlayerWorld = "";
+        public static int currentListing = 0;
+        private IDalamudPluginInterface pg;
+
+        // Flags to indicate combo state for the current frame
+        public static bool ConnectionComboOpen { get; private set; }
+
+        public static void LoadConnectionsUI()
+        {
+            try
+            {
+
+                AddConnectionListingOptions();
+                Vector2 windowSize = ImGui.GetWindowSize();
+                var childSize = new Vector2(windowSize.X - 30, windowSize.Y - 80);
+                localPlayerName = Plugin.plugin.playername;
+                localPlayerWorld = Plugin.plugin.playerworld;
+                if (currentListing == 2)
+                {
+                    using var receivedRequestsTable = ImRaii.Child("ReceivedRequests", childSize, true);
+                    if (receivedRequestsTable)
+                    {
+                        for (var i = 0; i < receivedProfileRequests.Count; i++)
+                        {
+                            var requesterName = receivedProfileRequests[i].Item1;
+                            var requesterWorld = receivedProfileRequests[i].Item2;
+                            ImGui.TextUnformatted(requesterName + " @ " + requesterWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.GhostButton("Decline##Decline" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.refused);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.PillButton("Accept##Accept" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.accepted);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.DangerButton("Block##Block" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, requesterName, requesterWorld, (int)UI.ConnectionStatus.blocked);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                        }
+                    }
+                }
+                if (currentListing == 0)
+                {
+                    using var connectedTable = ImRaii.Child("Connected", childSize, true);
+                    if (connectedTable)
+                    {
+
+                        for (var i = 0; i < connetedProfileList.Count; i++)
+                        {
+                            var connectionName = connetedProfileList[i].Item1;
+                            var connectionWorld = connetedProfileList[i].Item2;
+                            ImGui.TextUnformatted(connectionName + " @ " + connectionWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.DangerButton("Remove##Remove" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.refused);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.DangerButton("Block##Block" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, connectionName, connectionWorld, (int)UI.ConnectionStatus.blocked);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                        }
+                    }
+
+                }
+                if (currentListing == 1)
+                {
+                    using var sentRequestsTable = ImRaii.Child("SentRequests", childSize, true);
+                    if (sentRequestsTable)
+                    {
+
+                        for (var i = 0; i < sentProfileRequests.Count; i++)
+                        {
+
+                            var receiverName = sentProfileRequests[i].Item1;
+                            var receiverWorld = sentProfileRequests[i].Item2;
+                            ImGui.TextUnformatted(receiverName + " @ " + receiverWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.GhostButton("Cancel##Cancel" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, receiverName, receiverWorld, (int)UI.ConnectionStatus.refused);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                        }
+                    }
+                }
+                if (currentListing == 3)
+                {
+                    using var blockedRequestsTable = ImRaii.Child("BlockedRequests", childSize, true);
+                    if (blockedRequestsTable)
+                    {
+
+                        for (var i = 0; i < blockedProfileRequests.Count; i++)
+                        {
+                            var blockedName = blockedProfileRequests[i].Item1;
+                            var blockedWorld = blockedProfileRequests[i].Item2;
+                            ImGui.TextUnformatted(blockedName + " @ " + blockedWorld);
+                            ImGui.SameLine();
+                            using (ImRaii.Disabled(!Plugin.CtrlPressed()))
+                            {
+                                if (ThemeManager.PillButton("Unblock##Unblock" + i))
+                                {
+                                    Profiles_DS.SendProfileAccessUpdate(Plugin.character, username, localPlayerName, localPlayerWorld, blockedName, blockedWorld, (int)UI.ConnectionStatus.refused);
+                                }
+                            }
+                            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                            {
+                                ImGui.SetTooltip("Ctrl Click to Enable");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Plugin.PluginLog.Debug("ConnectionsWindow Draw Debug: " + ex.Message);
+            }
+        }
+        public static void AddConnectionListingOptions()
+        {
+            var (text, desc) = UI.ConnectionListingVals[currentListing];
+            using var combo = ImRaii.Combo("##Connetions", text);
+
+            // Use IsPopupOpen to detect the combo's popup being open. This is reliable even if the combo variable is false.
+            ConnectionComboOpen = ImGui.IsPopupOpen("##Connetions");
+
+            if (!combo)
+                return;
+
+            foreach (var ((newText, newDesc), idx) in UI.ConnectionListingVals.WithIndex())
+            {
+                if (ImGui.Selectable(newText, idx == currentListing))
+                    currentListing = idx;
+
+                UIHelpers.SelectableHelpMarker(newDesc);
+            }
+        }
+    }
+}
