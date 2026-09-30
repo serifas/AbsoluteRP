@@ -258,6 +258,8 @@ Generated_Code/
 # because we have git ;-)
 _UpgradeReport_Files/
 Backup*/
+!Backups/
+!/Backups/**
 !AbsoluteRoleplay/Backups/
 UpgradeLog*.XML
 UpgradeLog*.htm
