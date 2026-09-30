@@ -14,6 +14,8 @@
     <LangVersion>latest</LangVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <UseAppHost>false</UseAppHost>
     <!-- Drop our build output into the plugin's bin (next to AbsoluteRP.dll)
          so DalamudPackager picks up the renderer\ folder when zipping. -->
     <OutputPath>$(MSBuildThisFileDirectory)..\bin\x64\$(Configuration)\renderer\</OutputPath>

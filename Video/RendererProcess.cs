@@ -104,19 +104,57 @@ public sealed class RendererProcess : IDisposable
         this.initialVolume = Math.Clamp(initialVolume, 0, 100);
 
         var dir = pi.AssemblyLocation.Directory?.FullName ?? AppContext.BaseDirectory;
+        // Prefer a native exe when a local build produced one; the shipped build is a dll run by dotnet.
         exePath = Path.Combine(dir, "renderer", "AbsoluteRP.Renderer.exe");
+        dllPath = Path.Combine(dir, "renderer", "AbsoluteRP.Renderer.dll");
 
         // Manual reset
         keepAliveName = "AbsoluteRP.KeepAlive." + Guid.NewGuid().ToString("N");
         keepAliveEvent = new EventWaitHandle(false, EventResetMode.ManualReset, keepAliveName);
     }
 
+    private readonly string dllPath;
+
+    private static string? FindDotnetHost()
+    {
+        try
+        {
+            var rt = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();  
+            var d = new DirectoryInfo(rt);
+            for (int i = 0; i < 4 && d != null; i++)
+            {
+                var candidate = Path.Combine(d.FullName, "dotnet.exe");
+                if (File.Exists(candidate)) return candidate;
+                d = d.Parent;
+            }
+        }
+        catch { }
+        var env = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (!string.IsNullOrEmpty(env) && File.Exists(Path.Combine(env, "dotnet.exe"))) return Path.Combine(env, "dotnet.exe");
+        return null;
+    }
+
     public void Start()
     {
-        if (!File.Exists(exePath))
+        string fileName; string prefixArgs = string.Empty;
+        if (File.Exists(exePath)) fileName = exePath;
+        else if (File.Exists(dllPath))
+        {
+            var host = FindDotnetHost();
+            if (host == null)
+            {
+                LaunchFailed = true;
+                LaunchError = "no dotnet host found to run " + dllPath;
+                log.Warning("[AbsoluteRP] {E}", LaunchError);
+                return;
+            }
+            fileName = host;
+            prefixArgs = "\"" + dllPath + "\" ";
+        }
+        else
         {
             LaunchFailed = true;
-            LaunchError = "renderer exe missing at " + exePath;
+            LaunchError = "renderer missing at " + dllPath;
             log.Warning("[AbsoluteRP] {E}", LaunchError);
             return;
         }
@@ -135,11 +173,11 @@ public sealed class RendererProcess : IDisposable
         {
             var psi = new ProcessStartInfo
             {
-                FileName = exePath,
-                Arguments = args,
+                FileName = fileName,
+                Arguments = prefixArgs + args,
                 UseShellExecute = false,
                 CreateNoWindow = true,
-                WorkingDirectory = Path.GetDirectoryName(exePath) ?? AppContext.BaseDirectory,
+                WorkingDirectory = Path.GetDirectoryName(dllPath) ?? AppContext.BaseDirectory,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
             };

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "LibVLCSharp": {
+        "type": "Direct",
+        "requested": "[3.9.5, )",
+        "resolved": "3.9.5",
+        "contentHash": "wTNVRfvjvOtj/G5nOLSUnw2wRMNDQ3fnZtVVfWPWDbX5lSDEahrUKub+LduySb6WuJY03enx6bXWk6v+Sq4QNQ=="
+      },
+      "Newtonsoft.Json": {
+        "type": "Direct",
+        "requested": "[13.0.3, )",
+        "resolved": "13.0.3",
+        "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
+      },
+      "VideoLAN.LibVLC.Windows": {
+        "type": "Direct",
+        "requested": "[3.0.21, )",
+        "resolved": "3.0.21",
+        "contentHash": "1b1yjZPIzS2+s6YZv9Z5Co/q2srIvo03ZToPvZblWreeyeFGkLDwX7WZat8AxCB9uMQV6VUnms67SgQqko7Z0w=="
+      }
+    },
+    "net10.0-windows7.0/win-x64": {}
+  }
+}
