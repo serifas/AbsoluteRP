@@ -37,6 +37,11 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         public static bool ExistingProfile = false;
         // Set only when the server refused the profile (private, or none). The access panel shows for this, never merely because data hasn't arrived yet.
         public static bool AccessDenied = false;
+        // True from a target fetch until the server answers or the viewer cancels.
+        public static bool PendingFetch = false;
+        private static long _fetchStartedTicks;
+        // A fetch with no reply at all after this long falls back to the access panel.
+        private const double FetchTimeoutSeconds = 15.0;
         public static bool showUrlPopup;
         private static bool allow;
         public static string playername;
@@ -228,8 +233,50 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             }
         }
 
+        // Marks a target fetch as in flight; stale state from the last view is dropped.
+        internal static void BeginFetch()
+        {
+            PendingFetch = true;
+            RequestingProfile = true;
+            ExistingProfile = false;
+            AccessDenied = false;
+            _fetchStartedTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+        }
+
+        // Drops a pending fetch so a late reply can neither reopen nor repaint the window.
+        internal static void CancelFetch()
+        {
+            if (PendingFetch) _cancelledTicks = System.Diagnostics.Stopwatch.GetTimestamp();
+            PendingFetch = false;
+            RequestingProfile = false;
+            warning = false;
+            warningMessage = string.Empty;
+        }
+
+        private static long _cancelledTicks;
+
+        // True shortly after a cancel, so a late reply to it is swallowed instead of misrouted.
+        internal static bool RecentlyCancelled
+            => _cancelledTicks != 0
+            && (System.Diagnostics.Stopwatch.GetTimestamp() - _cancelledTicks) / (double)System.Diagnostics.Stopwatch.Frequency < 60.0;
+
+        // Ends the pending state once the server answered; shows the access panel if it never did.
+        internal static void TickFetch()
+        {
+            if (!PendingFetch) return;
+            if (ExistingProfile || AccessDenied) { PendingFetch = false; return; }
+            // The viewer is deciding on a content warning; that is an answer, not a stall.
+            if (warning) { _fetchStartedTicks = System.Diagnostics.Stopwatch.GetTimestamp(); return; }
+            var elapsed = (System.Diagnostics.Stopwatch.GetTimestamp() - _fetchStartedTicks) / (double)System.Diagnostics.Stopwatch.Frequency;
+            if (elapsed < FetchTimeoutSeconds) return;
+            PendingFetch = false;
+            RequestingProfile = false;
+            AccessDenied = true;
+        }
+
         public override void Draw()
         {
+            TickFetch();
             if (AbsoluteRP.Immersive.ImmersiveMode.IsActive)
             {
                 // The content warning is owned by this host window so it is opened before any HUD panel exists and stays on top of everything the HUD draws.
@@ -400,9 +447,17 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             ImGui.SetNextWindowPos(vp.WorkPos + vp.WorkSize * 0.5f, ImGuiCond.Always, new Vector2(0.5f, 0.5f));
             // ImGui puts newly created windows at the display front, so HUD panels created after the modal would cover it while it still captures input. Re-focusing it every frame keeps it in front.
             ImGui.SetNextWindowFocus();
+            bool popupOpen = false;
             try
             {
-                if (ImGui.BeginPopupModal("WARNING", ref warning, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings))
+                popupOpen = ImGui.BeginPopupModal("WARNING", ref warning, ImGuiWindowFlags.AlwaysAutoResize | ImGuiWindowFlags.NoSavedSettings);
+                // The title-bar X declines like "Go back" instead of leaving an endless loader behind.
+                if (!warning && !popupOpen)
+                {
+                    Plugin.plugin.CloseTargetWindow();
+                    return;
+                }
+                if (popupOpen)
                 {
                     ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.TextPrimary);
                     ImGui.TextUnformatted(warningMessage ?? "Warning");
@@ -437,7 +492,7 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
             }
             finally
             {
-                ImGui.EndPopup();
+                if (popupOpen) ImGui.EndPopup();
             }
         }
 
@@ -587,17 +642,21 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                 {
                     profileData = data;
                 }
-                if (!ExistingProfile)
+                // Refused, missing, or timed out: the request panel. A fetch still in flight shows the loader below.
+                if (AccessDenied || (!ExistingProfile && !RequestingProfile))
                 {
                     RequestingProfile = false;
                     ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.TextSecondary);
-                    ImGui.TextWrapped("This player either does not have an active tooltipData or has not granted you permission to view it.");
+                    ImGui.TextWrapped("This player either does not have an active profile or has not granted you permission to view it.");
                     ImGui.PopStyleColor();
                     ImGui.Spacing();
                     if (RsElements.Button("Request Access", RsElements.ButtonVariant.Primary))
                     {
                         Profiles_DS.SendProfileAccessUpdate(Plugin.character, Plugin.plugin.username, Plugin.plugin.playername, Plugin.plugin.playerworld, characterName, characterWorld, (int)UI.ConnectionStatus.pending);
                     }
+                    ImGui.SameLine();
+                    if (RsElements.Button("Close##targetAccessClose", RsElements.ButtonVariant.Ghost))
+                        Plugin.plugin.CloseTargetWindow();
                 }
                 else
                 {
@@ -607,6 +666,8 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                         // Check if all target tabs AND gallery images loaded
                         bool allTargetTabsLoaded = Profiles_DR.tabsTargetCount > 0
                             && Profiles_DR.loadedTargetTabsCount >= Profiles_DR.tabsTargetCount;
+                        // A profile with no tabs at all is done as soon as its count arrives.
+                        if (ExistingProfile && Profiles_DR.targetTabCountReceived && Profiles_DR.tabsTargetCount <= 0) allTargetTabsLoaded = true;
                         bool galleryDone = Profiles_DR.TargetGalleryImagesToLoad == 0
                             || Profiles_DR.loadedTargetGalleryImages >= Profiles_DR.TargetGalleryImagesToLoad;
 
@@ -675,6 +736,13 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
                             {
                                 DrawLoadingMutedLine(cardX + pad, yPos, "Requesting profile data...");
                             }
+
+                            // Themed X in the card corner so a pending request can be cancelled.
+                            var closeSize = RsTheme.S(26f);
+                            ImGui.SetCursorScreenPos(new Vector2(cardMax.X - closeSize - RsTheme.S(6f), cardY + RsTheme.S(6f)));
+                            if (RsElements.IconButton(FontAwesomeIcon.Times, "targetLoadingClose", RsElements.ButtonVariant.Ghost, 26f))
+                                Plugin.plugin.CloseTargetWindow();
+                            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Cancel");
                             return;
                         }
                     }
@@ -1116,6 +1184,8 @@ namespace AbsoluteRP.Windows.Profiles.ProfileTypeWindows
         {
             // Stop and dispose all audio players when closing the window
             Misc.CleanupAudioPlayers();
+            // Closing mid-request cancels it, so the reply cannot pop the window back up.
+            CancelFetch();
             base.OnClose();
         }
 

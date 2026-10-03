@@ -73,7 +73,7 @@ namespace AbsoluteRP.Network
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Debug("Debug in SendChatmessage: " + ex.ToString());
+                    Plugin.PluginLog.Debug("Debug in SendARPChatmessage: " + ex.ToString());
                 }
             }
         }

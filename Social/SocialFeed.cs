@@ -42,6 +42,12 @@ public sealed class SocialPost
     public int    CommentCount;
     public bool   ViewerLiked;
     public bool   ViewerReposted;
+    // Set when this feed entry surfaced because someone reposted it (newest reposter).
+    public int    RepostedByUserID;
+    public string RepostedByName = string.Empty;
+    public long   RepostedAt;
+    // Feed ordering time: the repost time for a repost entry, else the post's own time.
+    public long   ActivityAt => RepostedAt > CreatedAt ? RepostedAt : CreatedAt;
 }
 
 public sealed class SocialFollow
@@ -143,6 +149,11 @@ public static class SocialFeed
     // senders
 
     
+
+    // repost feedback: server error text (e.g. own post) + a one-shot "refetch the feed" flag after a successful toggle
+    public static string RepostError = string.Empty;
+    public static long   RepostErrorAt;
+    public static bool   FeedRefreshRequested;
 
     // reports
     public static readonly HashSet<int> ReportedPostIds = new();

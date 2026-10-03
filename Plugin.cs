@@ -1147,7 +1147,8 @@ namespace AbsoluteRP
             {
                 if (InTooltipCombatLock() || InTooltipDutyLock() || InTooltipPvpLock())
                     return;
-
+                if (tooltipLoaded)
+                    return;                
                 WindowOperations.DrawTooltipInfo(gameObject);
 
                 lastTargetAddress = gameObject.Address;
@@ -1163,6 +1164,7 @@ namespace AbsoluteRP
                 )
             )
             {
+                tooltipLoaded = false;
                 TooltipWindow.IsOpen = false;
                 lastTargetAddress = IntPtr.Zero;
             }

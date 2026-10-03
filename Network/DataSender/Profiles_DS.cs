@@ -95,6 +95,8 @@ namespace AbsoluteRP.Network
 
 
                         // Reset target tooltipData tabs. Only proceed if the target window is in a default state
+                        // Starts the cancel / timeout tracking; a skipped send then times out instead of hanging.
+                        TargetProfileWindow.BeginFetch();
                         if (!TargetProfileWindow.IsDefault() && !acknowledgedWarning)
                             return;
                         // Remembered so an accepted content warning can re-ask for the same profile.
@@ -136,6 +138,12 @@ namespace AbsoluteRP.Network
                 {
                     Plugin.PluginLog.Debug("Debug in FetchProfile: " + ex.ToString());
                 }
+            }
+            else if (!self)
+            {
+                // Offline: nothing will answer, so show the request panel rather than a loader.
+                TargetProfileWindow.CancelFetch();
+                TargetProfileWindow.AccessDenied = true;
             }
         }
 
@@ -398,7 +406,7 @@ namespace AbsoluteRP.Network
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Debug("Debug in SendChatmessage: " + ex.ToString());
+                    //removed cus of log spam
                 }
             }
         }
@@ -441,7 +449,7 @@ namespace AbsoluteRP.Network
                 }
                 catch (Exception ex)
                 {
-                    Plugin.PluginLog.Debug("Debug in SendChatmessage: " + ex.ToString());
+                    Plugin.PluginLog.Debug("Debug in DeleteProfile: " + ex.ToString());
                 }
             }
         }

@@ -128,15 +128,20 @@ namespace AbsoluteRP.Network
             try
             {
                 // While another player's profile is being fetched, this reply is about them: say so and stop the loading screen, leaving the viewer's own profiles alone.
-                if (TargetProfileWindow.RequestingProfile && !ProfilesPage.Fetching)
+                bool forTarget = TargetProfileWindow.PendingFetch || TargetProfileWindow.RequestingProfile;
+                if (forTarget && !ProfilesPage.Fetching)
                 {
                     TargetHasNoProfile = true;
                     TargetProfileWindow.ExistingProfile = false;
                     TargetProfileWindow.AccessDenied = true;
                     TargetProfileWindow.RequestingProfile = false;
+                    TargetProfileWindow.PendingFetch = false;
                     Plugin.plugin.OpenTargetWindow();
                     return;
                 }
+                // Late reply to a target request the viewer cancelled: drop it, never touch own profiles.
+                if (TargetProfileWindow.RecentlyCancelled && !ProfilesPage.Fetching)
+                    return;
                 using (var buffer = new ByteBuffer())
                 {
                     Inventory.ProfileBaseData.Clear();
@@ -197,7 +202,10 @@ namespace AbsoluteRP.Network
                     Bookmarks.DisableBookmarkSelection = false;
                     ReportWindow.reportStatus = "";
 
-                    Plugin.plugin.OpenTargetWindow();
+                    // Reopen only for a live request; a cancelled one stays closed.
+                    bool live = TargetProfileWindow.PendingFetch;
+                    TargetProfileWindow.PendingFetch = false;
+                    if (live) Plugin.plugin.OpenTargetWindow();
                 }
             }
             catch (Exception ex)
@@ -499,6 +507,8 @@ namespace AbsoluteRP.Network
                     bool DT = buffer.ReadBool();
                     bool NSFW = buffer.ReadBool();
                     bool TRIGGERING = buffer.ReadBool();
+                    // A warning for a cancelled request would block the next fetch; ignore it.
+                    if (!TargetProfileWindow.PendingFetch && !Plugin.plugin.IsTargetWindowOpen) return;
 
 
                     List<string> spoilers = new List<string>();

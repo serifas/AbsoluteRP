@@ -121,6 +121,27 @@ public static class SocialComposer
         _cursor++;
     }
 
+    // Wraps the selection (or inserts an empty pair at the caret) in literal tag text, e.g. [spoiler]...[/spoiler]. Tag chars carry no inline styling so the serialized BBCode keeps them outside style runs; the caret lands inside an empty pair / after the closing tag.
+    public static void WrapSelection(string open, string close)
+    {
+        int a, b;
+        bool sel = HasSelection();
+        if (sel) (a, b) = OrderedSelection();
+        else     (a, b) = (_cursor, _cursor);
+        a = Math.Clamp(a, 0, _doc.Count); b = Math.Clamp(b, 0, _doc.Count);
+        TextAlign AlignAt(int idx) => _doc.Count == 0 ? _pendingStyle.Align
+            : _doc[Math.Clamp(idx, 0, _doc.Count - 1)].Align;
+        var alB = AlignAt(b > a ? b - 1 : b);
+        var alA = AlignAt(a);
+        for (int k = 0; k < close.Length; k++)
+            _doc.Insert(b + k, new Segment { Kind = SegmentKind.Text, Ch = close[k], Align = alB, FontFamily = string.Empty });
+        for (int k = 0; k < open.Length; k++)
+            _doc.Insert(a + k, new Segment { Kind = SegmentKind.Text, Ch = open[k], Align = alA, FontFamily = string.Empty });
+        _selStart = _selEnd = -1;
+        _cursor = sel ? b + open.Length + close.Length : a + open.Length;
+        _wantFocus = true;
+    }
+
     public static void ToggleBold()      => ToggleFlag(s => s.Bold,      (ref Segment s, bool v) => s.Bold = v,      ref _pendingStyle.Bold);
     public static void ToggleItalic()    => ToggleFlag(s => s.Italic,    (ref Segment s, bool v) => s.Italic = v,    ref _pendingStyle.Italic);
     public static void ToggleUnderline() => ToggleFlag(s => s.Underline, (ref Segment s, bool v) => s.Underline = v, ref _pendingStyle.Underline);

@@ -76,6 +76,23 @@ public static class ImmersiveHud
     private static float _previewScale = 1f;
 
     // A small close control in the top-right corner while a profile loads, so a load that never finishes can always be dismissed.
+    // Small X in a loading card's corner; the viewport-corner button was easy to miss.
+    private static void DrawCardClose(ImDrawListPtr dl, Vector2 min, Vector2 size, float a)
+    {
+        var S = (Func<float, float>)RsTheme.S;
+        var keep = ImGui.GetCursorScreenPos();
+        var b = S(22f);
+        var pos = new Vector2(min.X + size.X - b - S(18f), min.Y + S(6f));
+        ImGui.SetCursorScreenPos(pos);
+        if (ImGui.InvisibleButton("##card_close", new Vector2(b, b))) RequestClose();
+        var hov = ImGui.IsItemHovered();
+        if (hov) ImGui.SetTooltip("Cancel");
+        var col = ImmersiveMode.Col(hov ? ImmersiveMode.TextColor : _theme.Danger, (hov ? 1f : 0.75f) * a);
+        if (hov) dl.AddRectFilled(pos, pos + new Vector2(b, b), ImmersiveMode.Col(_theme.Danger, 0.15f * a), S(4f));
+        ImmersiveMode.DrawCloseGlyph(dl, pos + new Vector2(b, b) * 0.5f, S(5f), col);
+        ImGui.SetCursorScreenPos(keep);
+    }
+
     private static void DrawLoadingClose()
     {
         var S = (Func<float, float>)RsTheme.S;
@@ -2583,6 +2600,7 @@ public static class ImmersiveHud
         var a = BeginPanel("loading_std", null, CenterPanelPos(size), size, 0f, 0f, EntranceMotion(), header: false, bob: false);
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
+        DrawCardClose(dl, min, size, a);
         var inset = _theme.ContentInset;
         var innerW = size.X - inset * 2f;
         var y = min.Y + inset;
@@ -2624,6 +2642,7 @@ public static class ImmersiveHud
         var a = BeginPanel("link", null, CenterPanelPos(size), size, 0.5f, 0f, EntranceMotion(), header: false);
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
+        DrawCardClose(dl, min, size, a);
         var innerW = size.X - _theme.ContentInset * 2f;
         var c = new Vector2(min.X + size.X * 0.5f, ImGui.GetCursorScreenPos().Y + S(28f));
         DrawArcRing(dl, c, S(20f), ImmersiveMode.Time * 2.4f, 3, 0.6f, 2f, ImmersiveMode.Col(ImmersiveMode.Accent, a));
@@ -2655,6 +2674,7 @@ public static class ImmersiveHud
         var a = BeginPanel("attune_aether", null, CenterPanelPos(size), size, 0.5f, 0f, Motion.Drift, header: false);
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
+        DrawCardClose(dl, min, size, a);
         var c = min + size * 0.5f - new Vector2(0, S(34f));
         var frac = LoadFraction(tabsLoading, galleryLoading, out var status);
         var f = frac < 0f ? 0.5f + 0.5f * MathF.Sin(ImmersiveMode.Time * 1.2f) : frac;
@@ -2701,6 +2721,7 @@ public static class ImmersiveHud
         var a = BeginPanel("attune", null, CenterPanelPos(size), size, 0.12f, 0f, Motion.RiseUp, header: false, bob: false);
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
+        DrawCardClose(dl, min, size, a);
         var c = min + size * 0.5f - new Vector2(0, S(20f));
         var frac = LoadFraction(tabsLoading, galleryLoading, out var status);
         var R = S(96f);
@@ -2747,6 +2768,7 @@ public static class ImmersiveHud
         var a = BeginPanel("transcribe", "Transcribing record", CenterPanelPos(size), size, 0.3f, 0f, Motion.Unroll, bob: false);
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
+        DrawCardClose(dl, min, size, a);
         var inset = _theme.ContentInset;
         var innerW = size.X - inset * 2f;
         var frac = LoadFraction(tabsLoading, galleryLoading, out var status);
@@ -2801,6 +2823,7 @@ public static class ImmersiveHud
         var a = BeginPanel("rift", null, CenterPanelPos(size), size, 0.5f, 0f, Motion.Burn, header: false);
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
+        DrawCardClose(dl, min, size, a);
         var c = min + size * 0.5f - new Vector2(0, S(30f));
         var frac = LoadFraction(tabsLoading, galleryLoading, out var status);
         var fl = 0.75f + 0.25f * Hash(MathF.Floor(ImmersiveMode.Time * 11f).ToString());

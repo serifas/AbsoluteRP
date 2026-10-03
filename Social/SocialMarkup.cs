@@ -27,7 +27,14 @@ public static class SocialMarkup
     }
 
     // Public entry - reads `body` and emits ImGui commands. Wraps at the current content region width. Media tokens interrupt inline flow and draw on their own rows.
-    public static void Render(string body, float wrapWidth = 0f)
+    public static void Render(string body, float wrapWidth = 0f, string? scope = null)
+    {
+        if (string.IsNullOrEmpty(body)) return;
+        PruneSpoilers();
+        RenderCore(body, wrapWidth, scope ?? ("h" + body.GetHashCode().ToString("X")), 0);
+    }
+
+    private static void RenderCore(string body, float wrapWidth, string scope, int depth)
     {
         if (string.IsNullOrEmpty(body)) return;
         if (wrapWidth <= 0f) wrapWidth = ImGui.GetContentRegionAvail().X;
@@ -37,6 +44,7 @@ public static class SocialMarkup
         styleStack.Push(baseStyle);
 
         int i = 0;
+        int spoilerIndex = 0;
         var textAccum = new System.Text.StringBuilder();
 
         void FlushText()
@@ -50,6 +58,14 @@ public static class SocialMarkup
         while (i < body.Length)
         {
             char c = body[i];
+            // [spoiler]...[/spoiler] / [spoiler=Label]...[/spoiler] - matched with nesting; unclosed falls through to literal text.
+            if (c == '[' && TryReadSpoiler(body, i, out var spLabel, out var spInner, out var spEnd))
+            {
+                FlushText();
+                DrawSpoiler(spLabel, spInner, wrapWidth, scope + "#" + spoilerIndex++, depth);
+                i = spEnd;
+                continue;
+            }
             if (c == '[' && TryReadTag(body, i, out var tag, out var end))
             {
                 FlushText();
@@ -61,6 +77,179 @@ public static class SocialMarkup
             i++;
         }
         FlushText();
+    }
+
+    // spoilers
+
+    // Reveal state: key -> last frame the block was visible. Present = revealed. Entries not seen for a few frames (scrolled out, feed reloaded, window closed) are dropped so the spoiler re-hides.
+    private static readonly Dictionary<string, int> _revealed = new();
+    private static bool _clickClaimed;
+
+    // True while a mouse press that started on a spoiler is still down (and on its release frame) - card-level click handlers check this so toggling a spoiler doesn't also open the post.
+    public static bool ClickClaimed
+    {
+        get
+        {
+            if (!_clickClaimed) return false;
+            if (ImGui.IsMouseDown(ImGuiMouseButton.Left) || ImGui.IsMouseReleased(ImGuiMouseButton.Left)) return true;
+            _clickClaimed = false;
+            return false;
+        }
+    }
+
+    // Hide every revealed spoiler (call on feed reload).
+    public static void ResetSpoilers() => _revealed.Clear();
+
+    private static readonly List<string> _pruneTmp = new();
+    private static void PruneSpoilers()
+    {
+        if (_revealed.Count == 0) return;
+        int frame = ImGui.GetFrameCount();
+        _pruneTmp.Clear();
+        foreach (var kv in _revealed) if (frame - kv.Value > 3) _pruneTmp.Add(kv.Key);
+        foreach (var k in _pruneTmp) _revealed.Remove(k);
+    }
+
+    private static bool TryReadSpoilerOpen(string s, int start, out string? label, out int after)
+    {
+        label = null; after = start;
+        if (start + 8 > s.Length || string.Compare(s, start, "[spoiler", 0, 8, StringComparison.OrdinalIgnoreCase) != 0) return false;
+        int p = start + 8;
+        if (p >= s.Length) return false;
+        if (s[p] == ']') { after = p + 1; return true; }
+        if (s[p] != '=') return false;
+        int close = s.IndexOf(']', p + 1);
+        if (close < 0) return false;
+        label = s.Substring(p + 1, close - p - 1).Trim();
+        after = close + 1;
+        return true;
+    }
+
+    private static bool TryReadSpoiler(string s, int start, out string label, out string inner, out int end)
+    {
+        label = "Spoiler"; inner = string.Empty; end = start;
+        if (!TryReadSpoilerOpen(s, start, out var lbl, out var contentStart)) return false;
+        const string closeTag = "[/spoiler]";
+        int depth = 1, p = contentStart;
+        while (p < s.Length)
+        {
+            int nextOpen  = IndexOfIgnoreCase(s, "[spoiler", p);
+            int nextClose = IndexOfIgnoreCase(s, closeTag, p);
+            if (nextClose < 0) return false;
+            if (nextOpen >= 0 && nextOpen < nextClose)
+            {
+                if (TryReadSpoilerOpen(s, nextOpen, out _, out var oa)) { depth++; p = oa; }
+                else p = nextOpen + 1;
+                continue;
+            }
+            depth--;
+            if (depth == 0)
+            {
+                inner = s.Substring(contentStart, nextClose - contentStart);
+                end   = nextClose + closeTag.Length;
+                if (!string.IsNullOrWhiteSpace(lbl)) label = lbl!;
+                return true;
+            }
+            p = nextClose + closeTag.Length;
+        }
+        return false;
+    }
+
+    // Manual hit test (works inside the NoInputs clip children used by the feed card preview).
+    private static bool SpoilerHit(Vector2 min, Vector2 max, out bool hovered)
+    {
+        hovered = ImGui.IsMouseHoveringRect(min, max)
+               && ImGui.IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
+        if (hovered) ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+        if (hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            _clickClaimed = true;
+            return true;
+        }
+        return false;
+    }
+
+    private static void DrawSpoiler(string label, string inner, float wrapWidth, string key, int depth)
+    {
+        var dl     = ImGui.GetWindowDrawList();
+        var pad    = RsTheme.S(8f);
+        var round  = RsTheme.S(6f);
+        var accent = RsTheme.AccentPrimary;
+        var border = ImGui.ColorConvertFloat4ToU32(new Vector4(accent.X, accent.Y, accent.Z, 0.55f));
+        var bar    = ImGui.ColorConvertFloat4ToU32(accent);
+        var muted  = ImGui.ColorConvertFloat4ToU32(RsTheme.TextMuted);
+        var width  = MathF.Max(RsTheme.S(120f), wrapWidth);
+        int frame  = ImGui.GetFrameCount();
+        var icon   = FontAwesomeIcon.EyeSlash.ToIconString();
+        float iconW;
+        using (RsIcons.Push()) iconW = ImGui.CalcTextSize(icon).X;
+
+        ImGui.Spacing();
+        var min = ImGui.GetCursorScreenPos();
+        var lineH = ImGui.GetTextLineHeight();
+        bool revealed = _revealed.ContainsKey(key);
+
+        void DrawHeader(Vector2 tp, float right, string hint, bool hovered)
+        {
+            using (RsIcons.Push()) dl.AddText(tp, muted, icon);
+            dl.AddText(new Vector2(tp.X + iconW + RsTheme.S(6f), tp.Y), muted, label);
+            var hs = ImGui.CalcTextSize(hint);
+            dl.AddText(new Vector2(right - pad - hs.X, tp.Y),
+                       ImGui.ColorConvertFloat4ToU32(hovered ? RsTheme.TextPrimary : RsTheme.TextMuted), hint);
+        }
+
+        if (!revealed)
+        {
+            // Obscured plate - inner content (incl. media) is never parsed, loaded or drawn while hidden.
+            var size  = new Vector2(width, lineH * 2f + pad * 3f);
+            var max   = min + size;
+            bool clicked = SpoilerHit(min, max, out var hovered);
+            var plate = RsTheme.BgSecondary;
+            dl.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(new Vector4(plate.X * 0.7f, plate.Y * 0.7f, plate.Z * 0.7f, 0.96f)), round);
+            // "Blurred text" smears.
+            uint seed = (uint)key.GetHashCode();
+            var tm = RsTheme.TextMuted;
+            var smear = ImGui.ColorConvertFloat4ToU32(new Vector4(tm.X, tm.Y, tm.Z, hovered ? 0.16f : 0.10f));
+            float y = min.Y + pad * 2f + lineH;
+            float x = min.X + pad * 1.5f;
+            float rowEnd = max.X - pad;
+            for (int k = 0; k < 10 && x < rowEnd; k++)
+            {
+                seed = seed * 1664525u + 1013904223u;
+                float w = RsTheme.S(22f + (seed >> 24) % 60);
+                float x2 = MathF.Min(rowEnd, x + w);
+                dl.AddRectFilled(new Vector2(x, y), new Vector2(x2, y + lineH * 0.55f), smear, lineH * 0.3f);
+                x = x2 + RsTheme.S(6f);
+            }
+            dl.AddRect(min, max, hovered ? bar : border, round, ImDrawFlags.None, 1f);
+            dl.AddRectFilled(min, new Vector2(min.X + RsTheme.S(3f), max.Y), bar, round, ImDrawFlags.RoundCornersLeft);
+            DrawHeader(new Vector2(min.X + pad * 1.5f, min.Y + pad), max.X, "Click to reveal", hovered);
+
+            ImGui.Dummy(size);
+            if (clicked) _revealed[key] = frame;
+        }
+        else
+        {
+            // Header row (click to hide) + nested markup rendered normally.
+            var hdrMax = new Vector2(min.X + width, min.Y + lineH + pad);
+            bool clicked = SpoilerHit(min, hdrMax, out var hovered);
+            DrawHeader(new Vector2(min.X + pad * 1.5f, min.Y + pad * 0.5f), hdrMax.X, "Click to hide", hovered);
+            ImGui.Dummy(new Vector2(width, lineH + pad));
+
+            var indent = pad * 1.5f;
+            ImGui.Indent(indent);
+            if (depth < 8) RenderCore(inner, MathF.Max(RsTheme.S(40f), width - indent - pad), key, depth + 1);
+            else           ImGui.TextWrapped(inner);
+            ImGui.Unindent(indent);
+            ImGui.Dummy(new Vector2(1f, pad * 0.5f));
+            var max = new Vector2(min.X + width, ImGui.GetCursorScreenPos().Y);
+            dl.AddRect(min, max, border, round, ImDrawFlags.None, 1f);
+            dl.AddRectFilled(min, new Vector2(min.X + RsTheme.S(3f), max.Y), bar, round, ImDrawFlags.RoundCornersLeft);
+
+            if (clicked) _revealed.Remove(key);
+            else if (ImGui.IsRectVisible(min, max)) _revealed[key] = frame;
+        }
+        ImGui.Spacing();
     }
 
     // tag handling

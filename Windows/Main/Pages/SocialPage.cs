@@ -43,6 +43,8 @@ public sealed class SocialPage : IPage
     private SocialPost? _detailPost;                  // when _view == Detail
     private int         _lastCommentsFetchedFor    = 0;
     private string      _newCommentBody           = string.Empty;
+    private string      _composeSpoilerLabel      = string.Empty;
+    private bool        _composeShowPreview;
     private int         _editingCommentId;
     // Tab-scoped "please open Compose next Draw" flag so header buttons switch the view without also processing card clicks the same frame.
     private bool        _requestOpenCompose;
@@ -228,6 +230,13 @@ public sealed class SocialPage : IPage
     {
         // Tick the per-URL video-thumbnail cache once per frame so its deferred dispose + LRU eviction run before any DrawVideoBlock asks for a texture. Cheap when the cache is empty.
         AbsoluteRP.Social.SocialVideoThumbCache.BeginFrame();
+
+        // A repost / un-repost was acknowledged - refetch so the repost entry shows up (or goes away).
+        if (SocialFeed.FeedRefreshRequested)
+        {
+            SocialFeed.FeedRefreshRequested = false;
+            RefreshFeedForFilter();
+        }
 
         // Cross-window: the user profile popup queues a post here when its post list is clicked. Consume it once by opening the detail view - nulling the field so it doesn't re-fire.
         var pending = SocialFeed.PendingOpenPost;
@@ -858,6 +867,12 @@ public sealed class SocialPage : IPage
             ImGui.TextUnformatted(SocialFeed.ReportMessage);
             ImGui.PopStyleColor();
         }
+        if (!string.IsNullOrEmpty(SocialFeed.RepostError) && SocialFeed.NowMs() - SocialFeed.RepostErrorAt < 6000)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.AccentDanger);
+            ImGui.TextUnformatted(SocialFeed.RepostError);
+            ImGui.PopStyleColor();
+        }
     }
 
     private void FetchCurrentTab(SocialCategory cat)
@@ -869,6 +884,7 @@ public sealed class SocialPage : IPage
     // Fires a Fetch for whatever the feed filter is currently pointed at. "All" fans out to every category so the merged view has something to render - each one caches independently in SocialFeed.
     private void RefreshFeedForFilter()
     {
+        SocialMarkup.ResetSpoilers();
         if (_feedFilterIndex == 0)
         {
             for (int i = 0; i < Categories.Length; i++)
@@ -895,7 +911,8 @@ public sealed class SocialPage : IPage
             // Deduplicate by post Id - a post's category may match only one slice today, but this future-proofs against multi-cat tagging.
             var seen = new HashSet<long>();
             merged.RemoveAll(p => !seen.Add(p.Id));
-            merged.Sort((a, b) => b.CreatedAt.CompareTo(a.CreatedAt));
+            // Reposted entries sort by their repost time, matching the server's per-category order.
+            merged.Sort((a, b) => b.ActivityAt.CompareTo(a.ActivityAt));
             return merged;
         }
         return SocialFeed.GetCached(_currentFilterCat, SocialScope.All, string.Empty);
@@ -1009,6 +1026,20 @@ public sealed class SocialPage : IPage
     {
         var id = "post_" + post.Id;
         // Capture the panel's outer bounds up front - RsElements.EndPanel trailing Dummy is zero-height, so GetItemRectMin/Max after it doesn't cover the card. We reconstruct min from the cursor at BeginPanel time and max from width + cursor after EndPanel.
+        // "<name> reposted" line above the card for entries that surfaced through a repost.
+        if (post.RepostedByUserID > 0)
+        {
+            var myId = Plugin.plugin?.Configuration?.account?.userID ?? 0;
+            var who  = post.RepostedByUserID == myId ? "You" : (string.IsNullOrWhiteSpace(post.RepostedByName) ? "Someone" : post.RepostedByName);
+            ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.TextMuted);
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + RsTheme.S(8f));
+            using (AbsoluteRP.RsUI.RsIcons.Push())
+                ImGui.TextUnformatted(FontAwesomeIcon.Retweet.ToIconString());
+            ImGui.SameLine(0, RsTheme.S(6f));
+            ImGui.TextUnformatted($"{who} reposted  •  {RelativeTime(post.RepostedAt)}");
+            ImGui.PopStyleColor();
+        }
+
         var cardMin   = ImGui.GetCursorScreenPos();
         var cardWidth = ImGui.GetContentRegionAvail().X;
         if (!RsElements.BeginPanel(id, title: null, fitContentsX: false, fitContentsY: true))
@@ -1049,7 +1080,7 @@ public sealed class SocialPage : IPage
                 ImGui.Spacing();
 
                 // Render the ACTUAL post body (BBCode + inline media) via SocialMarkup, clipped to a fixed max height. Overflow fades into the card's background so long posts feel trimmed rather than hard-cut. Clicking anywhere on the card still opens the full detail view.
-                var previewMaxH = RsTheme.S(180f);
+                var previewMaxH = RsTheme.S(280f);
                 var previewMin  = ImGui.GetCursorScreenPos();
                 var availW      = ImGui.GetContentRegionAvail().X;
                 var previewMax  = new Vector2(previewMin.X + availW, previewMin.Y + previewMaxH);
@@ -1062,7 +1093,7 @@ public sealed class SocialPage : IPage
                                     | ImGuiWindowFlags.NoScrollWithMouse
                                     | ImGuiWindowFlags.NoInputs))
                 {
-                    SocialMarkup.Render(post.Body);
+                    SocialMarkup.Render(post.Body, scope: "fd" + post.Id);
                 }
                 // Was the rendered content taller than the clip window? Compare via the child window's scroll-max, which is populated even when the child hides its scrollbar.
                 bool overflowed;
@@ -1082,9 +1113,12 @@ public sealed class SocialPage : IPage
                     var bot     = ImGui.ColorConvertFloat4ToU32(new Vector4(bg.X, bg.Y, bg.Z, 0.98f));
                     dl.AddRectFilledMultiColor(fadeTop, previewMax, top, top, bot, bot);
 
-                    ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.TextMuted);
-                    ImGui.TextUnformatted("(click to read more)");
+                    // "Show more" link - opens the full post in the detail view (only shown when the body overflows).
+                    ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.AccentPrimary);
+                    ImGui.TextUnformatted("Show more");
                     ImGui.PopStyleColor();
+                    if (ImGui.IsItemHovered()) ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
+                    if (ImGui.IsItemClicked(ImGuiMouseButton.Left)) OpenDetail(post);
                 }
             }
 
@@ -1109,7 +1143,7 @@ public sealed class SocialPage : IPage
             dl.AddRect      (cardMin, cardMax, ImGui.ColorConvertFloat4ToU32(RsTheme.AccentPrimary), RsTheme.S(8f), ImDrawFlags.None, 1.5f);
             ImGui.SetMouseCursor(ImGuiMouseCursor.Hand);
         }
-        if (hovering && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemActive())
+        if (hovering && ImGui.IsMouseClicked(ImGuiMouseButton.Left) && !ImGui.IsAnyItemActive() && !SocialMarkup.ClickClaimed)
         {
             OpenDetail(post);
         }
@@ -1216,7 +1250,7 @@ public sealed class SocialPage : IPage
                           onClick: () => _ = SocialFeed.ToggleLike(post.Id, !post.ViewerLiked));
         ImGui.SameLine(0, RsTheme.S(18f));
 
-        // Repost - Retweet glyph, green-active. Hidden on own posts since the server rejects self-repost; authors still see the count as a passive icon so they know how many reposts they got.
+        // Repost - Retweet glyph, green-active. Disabled on own posts since the server rejects self-repost; authors still see the count as a passive icon so they know how many reposts they got.
         if (!isMine)
         {
             DrawIconWithCount("rp_" + prefix + post.Id, FontAwesomeIcon.Retweet,
@@ -1225,14 +1259,18 @@ public sealed class SocialPage : IPage
                               activeColor:   new System.Numerics.Vector4(0.36f, 0.85f, 0.45f, 1f),
                               inactiveColor: RsTheme.TextMuted,
                               onClick: () => _ = SocialFeed.ToggleRepost(post.Id, !post.ViewerReposted));
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip(post.ViewerReposted ? "Undo repost" : "Repost");
         }
         else
         {
+            ImGui.BeginDisabled();
             DrawIconWithCount("rp_" + prefix + post.Id, FontAwesomeIcon.Retweet,
                               post.RepostCount, active: false,
                               activeColor:   RsTheme.AccentPrimary,
                               inactiveColor: RsTheme.TextMuted,
                               onClick: null);
+            ImGui.EndDisabled();
+            if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip("You can't repost your own post");
         }
 
         // Save - just the star, lit when the post is in your bookmarks.
@@ -1626,9 +1664,46 @@ public sealed class SocialPage : IPage
                 AbsoluteRP.Social.SocialComposer.ApplySize(pt);
             }
 
+            // Spoiler: wraps the selection in [spoiler]...[/spoiler]; optional label -> [spoiler=Label].
+            ImGui.SameLine();
+            using (AbsoluteRP.RsUI.RsIcons.Push())
+            {
+                if (ToolbarToggle(Dalamud.Interface.FontAwesomeIcon.EyeSlash.ToIconString() + "##np_spoiler", false))
+                    ImGui.OpenPopup("##np_spoiler_pop");
+            }
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Spoiler - hide the selection behind a click-to-reveal block");
+            if (ImGui.BeginPopup("##np_spoiler_pop"))
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.TextMuted);
+                ImGui.TextUnformatted("Spoiler label (optional)");
+                ImGui.PopStyleColor();
+                ImGui.SetNextItemWidth(RsTheme.S(200f));
+                bool enter = ImGui.InputTextWithHint("##np_spoiler_lbl", "Spoiler", ref _composeSpoilerLabel, 60, ImGuiInputTextFlags.EnterReturnsTrue);
+                if (RsElements.Button("Insert spoiler##np_sp_ok", RsElements.ButtonVariant.Primary) || enter)
+                {
+                    var lbl = (_composeSpoilerLabel ?? string.Empty).Replace("]", "").Replace("[", "").Trim();
+                    AbsoluteRP.Social.SocialComposer.WrapSelection(
+                        string.IsNullOrEmpty(lbl) ? "[spoiler]" : "[spoiler=" + lbl + "]", "[/spoiler]");
+                    _composeSpoilerLabel = string.Empty;
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
+            }
+
             ImGui.Spacing();
             AbsoluteRP.Social.SocialComposer.Draw("np_composer",
                 new Vector2(composerWPx, RsTheme.S(280f)));
+
+            // Live preview of the serialized body (renders spoilers/media exactly as the feed will).
+            RsElements.Checkbox("Preview##np_prev", ref _composeShowPreview);
+            if (_composeShowPreview)
+            {
+                ImGui.PushStyleColor(ImGuiCol.ChildBg, RsTheme.BgSecondary);
+                if (ImGui.BeginChild("##np_preview", new Vector2(composerWPx, RsTheme.S(200f)), true))
+                    SocialMarkup.Render(AbsoluteRP.Social.SocialComposer.ToBBCode(), scope: "np_preview");
+                ImGui.EndChild();
+                ImGui.PopStyleColor();
+            }
 
             SectionSpacer();
 
@@ -2115,7 +2190,7 @@ public sealed class SocialPage : IPage
                 ImGui.Spacing();
 
                 if (!string.IsNullOrEmpty(post.Body))
-                    SocialMarkup.Render(post.Body);
+                    SocialMarkup.Render(post.Body, scope: "dv" + post.Id);
 
                 ImGui.Spacing();
                 ImGui.Separator();
@@ -2275,9 +2350,7 @@ public sealed class SocialPage : IPage
             if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip("Remove this reply as a moderator (hold Ctrl)");
         }
 
-        ImGui.PushStyleColor(ImGuiCol.Text, RsTheme.TextPrimary);
-        ImGui.TextWrapped(c.Body);
-        ImGui.PopStyleColor();
+        SocialMarkup.Render(c.Body, scope: "cm" + c.Id);
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();

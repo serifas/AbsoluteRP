@@ -24,6 +24,26 @@ namespace AbsoluteRP.Network
                 var list = new List<SocialPost>(count);
                 for (int i = 0; i < count; i++) list.Add(SocialFeed.ReadPost(buffer));
 
+                // Trailing repost block (newer servers only): int n, then per entry int position, int postId, int reposterUserId, string reposterName, long repostedAtMs.
+                if (buffer.Length() >= 4)
+                {
+                    int rc = buffer.ReadInt();
+                    for (int i = 0; i < rc && buffer.Length() >= 12; i++)
+                    {
+                        int pos = buffer.ReadInt();
+                        int pid = buffer.ReadInt();
+                        int uid = buffer.ReadInt();
+                        string rname = buffer.ReadString();
+                        long at = buffer.ReadLong();
+                        if (pos >= 0 && pos < list.Count && list[pos].Id == pid)
+                        {
+                            list[pos].RepostedByUserID = uid;
+                            list[pos].RepostedByName = rname ?? string.Empty;
+                            list[pos].RepostedAt = at;
+                        }
+                    }
+                }
+
                 // Phase 1 replaces the whole bucket on fetch. Pagination (offset > 0) appends instead so infinite-scroll works when the UI wires it up.
                 var key = SocialFeed.BucketKey(cat, SocialScope.All, string.Empty);
                 if (offset == 0 || !SocialFeed._byBucket.ContainsKey(key))
@@ -318,7 +338,18 @@ namespace AbsoluteRP.Network
                 var postId = buffer.ReadInt();
                 var isReposted = buffer.ReadBool();
                 var newCount = buffer.ReadInt();
+                var error = buffer.Length() >= 4 ? buffer.ReadString() : string.Empty;   // trailing, newer servers
                 MutatePost(postId, p => { p.ViewerReposted = isReposted; p.RepostCount = newCount; });
+                if (!string.IsNullOrEmpty(error))
+                {
+                    SocialFeed.RepostError = error;
+                    SocialFeed.RepostErrorAt = NowMs();
+                }
+                else
+                {
+                    // Refetch so the repost entry appears / disappears in the feed.
+                    SocialFeed.FeedRefreshRequested = true;
+                }
                 SocialFeed.Version++;
             }
             catch (Exception ex) { Plugin.PluginLog.Debug("SocialFeed.HandleSocialRepostChanged: " + ex.Message); }

@@ -218,7 +218,7 @@ public static class SocialUserProfilePopup
                             | ImGuiWindowFlags.NoInputs))
         {
             if (!string.IsNullOrEmpty(post.Body))
-                SocialMarkup.Render(post.Body);
+                SocialMarkup.Render(post.Body, scope: "pp" + post.Id);
         }
         bool overflowed;
         try { overflowed = ImGui.GetScrollMaxY() > 0f; }
@@ -248,7 +248,7 @@ public static class SocialUserProfilePopup
         // Whole-card click. Placed FIRST via SetCursorScreenPos back to min so the InvisibleButton covers the whole box; we already marked the nested body child NoInputs so it doesn't eat clicks.
         var cursorAfter = ImGui.GetCursorScreenPos();
         ImGui.SetCursorScreenPos(min);
-        if (ImGui.InvisibleButton("##compact_hit_" + post.Id, new Vector2(availW, endY - min.Y)))
+        if (ImGui.InvisibleButton("##compact_hit_" + post.Id, new Vector2(availW, endY - min.Y)) && !SocialMarkup.ClickClaimed)
         {
             SocialFeed.PendingOpenPost = post;
             _open = false;   // close the profile popup so the detail is on top

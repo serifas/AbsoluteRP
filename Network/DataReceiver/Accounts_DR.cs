@@ -171,11 +171,16 @@ namespace AbsoluteRP.Network
                     string message2 = buffer.ReadString();
                     string characterName = buffer.ReadString();
                     string characterWorld = buffer.ReadString();
-                    permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = rank, can_warn = warn };
+                    // Only the login reply carries the account's real rank; other status messages send an empty one.
+                    if (status == (int)UI.StatusMessages.LOGIN_VERIFIED || permissions == null)
+                        permissions = new RankPermissions() { can_announce = announce, can_suspend = suspend, can_ban = ban, rank = rank, can_warn = warn };
 
-                    // ADDED: Store userID for current user
-                    Accounts_DS.userID = userID;
-                    Plugin.plugin.Configuration.account.userID = userID;
+                    // Store userID for current user (later status messages may send 0)
+                    if (userID > 0)
+                    {
+                        Accounts_DS.userID = userID;
+                        Plugin.plugin.Configuration.account.userID = userID;
+                    }
                     Plugin.PluginLog.Info($"[StatusMessage] Set userID to {userID}");
 
                     // Receive Status
